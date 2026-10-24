@@ -680,25 +680,35 @@ const DialogBody = ({
   );
 };
 
+/** The row stays until the closing fade ends, so the window fades out whole. */
 const ConnectionDialog = ({
   demoMode,
   onClose,
+  onClosed,
+  open,
   row,
 }: {
   demoMode: boolean;
   onClose: () => void;
+  onClosed: () => void;
+  open: boolean;
   row: ProviderRow | null;
 }) => {
   const status = row ? statusFor(demoMode, row) : null;
 
   return (
     <DialogPrimitive.Root
-      onOpenChange={(open) => {
-        if (!open) {
+      onOpenChange={(next) => {
+        if (!next) {
           onClose();
         }
       }}
-      open={row !== null}
+      onOpenChangeComplete={(next) => {
+        if (!next) {
+          onClosed();
+        }
+      }}
+      open={open && row !== null}
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="motion-fade fixed inset-0 z-50 bg-black/40" />
@@ -745,6 +755,12 @@ const ConnectionDialog = ({
 const ConnectionsScreen = () => {
   const data = useQuery(api.connections.list);
   const [openId, setOpenId] = useState<ProviderId | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const openService = (id: ProviderId): void => {
+    setOpenId(id);
+    setOpen(true);
+  };
 
   const openRow =
     data?.providers.find((row) => row.definition.id === openId) ?? null;
@@ -790,7 +806,7 @@ const ConnectionsScreen = () => {
                 </h2>
                 <CardGrid
                   demoMode={data.demoMode}
-                  onOpen={setOpenId}
+                  onOpen={openService}
                   rows={rows}
                 />
               </section>
@@ -820,7 +836,7 @@ const ConnectionsScreen = () => {
                 <button
                   aria-label={`${row.definition.label}. ${row.definition.summary} Details.`}
                   className="hover:text-accent-foreground flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 motion-reduce:transition-none"
-                  onClick={() => setOpenId(row.definition.id)}
+                  onClick={() => openService(row.definition.id)}
                   type="button"
                 >
                   <span className="text-body w-28 shrink-0 font-semibold sm:w-36">
@@ -841,7 +857,9 @@ const ConnectionsScreen = () => {
       ) : null}
       <ConnectionDialog
         demoMode={data?.demoMode ?? false}
-        onClose={() => setOpenId(null)}
+        onClose={() => setOpen(false)}
+        onClosed={() => setOpenId(null)}
+        open={open}
         row={openRow}
       />
     </>
