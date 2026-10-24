@@ -3,9 +3,18 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
+import { Dialog } from "@lifelink/ui/components/dialog";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
-import { CopyIcon, PlusIcon, PrinterIcon, SquareIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  CopyIcon,
+  PlusIcon,
+  PrinterIcon,
+  SquareIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
@@ -13,6 +22,7 @@ import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 
 import { ListEditor, listAsText, quantityWords } from "./list-editor";
+import { Receipt } from "./receipt";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -95,12 +105,21 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
   );
 };
 
-const GroceryWorkspace = ({ list }: { list: Doc<"groceryLists"> }) => (
+const GroceryWorkspace = ({
+  list,
+  onDelete,
+}: {
+  list: Doc<"groceryLists">;
+  onDelete: () => void;
+}) => (
   <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
     <section aria-label="List" className="min-w-0">
-      <ListEditor key={list._id} list={list} />
+      <ListEditor key={list._id} list={list} onDelete={onDelete} />
     </section>
-    <ListTools list={list} />
+    <div className="flex min-w-0 flex-col gap-8">
+      <Receipt list={list} />
+      <ListTools list={list} />
+    </div>
     <PrintableList list={list} />
   </div>
 );
@@ -108,12 +127,26 @@ const GroceryWorkspace = ({ list }: { list: Doc<"groceryLists"> }) => (
 const GroceriesScreen = () => {
   const data = useQuery(api.groceries.lists);
   const createList = useMutation(api.groceries.createList);
+  const deleteList = useMutation(api.groceries.deleteList);
+  const newListButton = useRef<HTMLButtonElement>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<Doc<"groceryLists"> | null>(
+    null
+  );
+
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [chosen, setChosen] = useState<Id<"groceryLists"> | null>(null);
 
   const list =
     data?.lists.find((candidate) => candidate._id === chosen) ??
     data?.lists[0] ??
     null;
+
+  const requestDelete = (target: Doc<"groceryLists">): void => {
+    setDeleteError(null);
+    setDeleteTarget(target);
+  };
 
   const newList = async (): Promise<void> => {
     try {
@@ -134,7 +167,7 @@ const GroceriesScreen = () => {
       <style>{PRINT_STYLES}</style>
       <PageHeader
         actions={
-          <Button onClick={newList} variant="outline">
+          <Button onClick={newList} ref={newListButton} variant="outline">
             <PlusIcon />
             New list
           </Button>
@@ -142,6 +175,61 @@ const GroceriesScreen = () => {
         subline="Keep a grocery list, plan your budget, and copy or print what you need."
         title="Groceries"
       />
+      <Dialog
+        finalFocus={newListButton}
+        description={`This permanently deletes “${deleteTarget?.name ?? ""}” and all its items, budget, and preferences. This cannot be undone.`}
+        onOpenChange={(open) => {
+          if (!open && !deleting) {
+            setDeleteTarget(null);
+          }
+        }}
+        open={deleteTarget !== null}
+        title="Delete this grocery list?"
+      >
+        {deleteError ? (
+          <p className="text-negative text-base" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            disabled={deleting}
+            onClick={() => setDeleteTarget(null)}
+            variant="outline"
+          >
+            Keep list
+          </Button>
+          <Button
+            aria-busy={deleting}
+            disabled={deleting}
+            onClick={async () => {
+              if (deleteTarget === null || deleting) {
+                return;
+              }
+
+              setDeleting(true);
+              setDeleteError(null);
+
+              try {
+                await deleteList({ listId: deleteTarget._id });
+                setChosen((current) =>
+                  current === deleteTarget._id ? null : current
+                );
+                setDeleteTarget(null);
+                toast.success(`“${deleteTarget.name}” deleted.`);
+              } catch (error) {
+                setDeleteError(errorText(error));
+              }
+
+              setDeleting(false);
+            }}
+            variant="destructive"
+          >
+            <Trash2Icon />
+            {deleting ? "Deleting…" : "Delete list"}
+          </Button>
+        </div>
+      </Dialog>
       <section
         aria-label="Grocery lists and budgets"
         className="flex scroll-mt-24 flex-col gap-6"
@@ -162,21 +250,47 @@ const GroceriesScreen = () => {
             No grocery lists yet.
           </EmptyNote>
         ) : null}
-        {data !== undefined && data.lists.length > 1 ? (
+        {data !== undefined && data.lists.length > 0 ? (
           <nav aria-label="Your lists" className="flex flex-wrap gap-2">
-            {data.lists.map((candidate) => (
-              <Button
-                aria-current={candidate._id === list?._id ? "true" : undefined}
-                key={candidate._id}
-                onClick={() => setChosen(candidate._id)}
-                variant={candidate._id === list?._id ? "secondary" : "outline"}
-              >
-                {candidate.name}
-              </Button>
-            ))}
+            {data.lists.map((candidate) => {
+              const isCurrent = candidate._id === list?._id;
+
+              return (
+                <div
+                  className={cn(
+                    "group/list border-control flex max-w-full min-w-0 items-center rounded-md border transition-colors",
+                    isCurrent
+                      ? "bg-neutral-wash hover:bg-rule"
+                      : "bg-raised hover:border-foreground hover:bg-parchment"
+                  )}
+                  key={candidate._id}
+                >
+                  <Button
+                    aria-current={isCurrent ? "true" : undefined}
+                    className="shrink pr-2 hover:bg-transparent active:bg-transparent"
+                    onClick={() => setChosen(candidate._id)}
+                    variant="ghost"
+                  >
+                    {candidate.name}
+                  </Button>
+                  <Button
+                    aria-label={`Delete ${candidate.name}`}
+                    className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 transition-opacity group-focus-within/list:opacity-100 group-hover/list:opacity-100 hover:bg-transparent active:bg-transparent"
+                    onClick={() => requestDelete(candidate)}
+                    size="icon"
+                    title={`Delete ${candidate.name}`}
+                    variant="ghost"
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+              );
+            })}
           </nav>
         ) : null}
-        {list === null ? null : <GroceryWorkspace list={list} />}
+        {list === null ? null : (
+          <GroceryWorkspace list={list} onDelete={() => requestDelete(list)} />
+        )}
       </section>
     </>
   );

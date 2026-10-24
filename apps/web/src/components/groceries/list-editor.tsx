@@ -2,13 +2,17 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import {
+  groceryQuantityError,
+  groceryUnit,
+} from "@lifelink/contracts/groceries";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
-import { PlusIcon, XIcon } from "lucide-react";
+import { PlusIcon, RotateCcwIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +21,7 @@ import { messageOf } from "@/lib/errors";
 import { money } from "@/lib/format";
 
 import { centsFromDollars, dollarsFromCents } from "./amounts";
+import { UnitSelect } from "./unit-select";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -116,7 +121,7 @@ const ItemRow = ({
 const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
   const addItem = useMutation(api.groceries.addItem);
   const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("");
   const [price, setPrice] = useState("");
   const baseId = useId();
@@ -124,22 +129,33 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
   const priceInvalid =
     price.trim().length > 0 && centsFromDollars(price) === null;
 
+  const quantityError = groceryQuantityError(Number(quantity), unit);
+  const fractional = groceryUnit(unit)?.fractional === true;
+
   return (
     <form
       className="bg-surface grid gap-4 rounded-xl p-5 sm:grid-cols-3 sm:items-end"
       onSubmit={async (event) => {
         event.preventDefault();
 
+        if (
+          quantityError !== null ||
+          priceInvalid ||
+          name.trim().length === 0
+        ) {
+          return;
+        }
+
         try {
           await addItem({
             estimatedCents: centsFromDollars(price),
             listId,
             name,
-            quantity: quantity.trim().length === 0 ? null : Number(quantity),
+            quantity: Number(quantity),
             unit: unit.trim() || null,
           });
           setName("");
-          setQuantity("");
+          setQuantity("1");
           setUnit("");
           setPrice("");
         } catch (error) {
@@ -159,28 +175,32 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${baseId}-quantity`}>Quantity</Label>
         <Input
+          aria-describedby={
+            quantityError ? `${baseId}-quantity-error` : undefined
+          }
+          aria-invalid={quantityError !== null}
           id={`${baseId}-quantity`}
-          inputMode="decimal"
-          min={0}
+          inputMode={fractional ? "decimal" : "numeric"}
+          min={fractional ? 0 : 1}
           onChange={(event) => setQuantity(event.target.value)}
-          step="any"
+          required
+          step={fractional ? "any" : 1}
           type="number"
           value={quantity}
         />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${baseId}-unit`}>Unit</Label>
-        <Input
+        <UnitSelect
           id={`${baseId}-unit`}
-          onChange={(event) => setUnit(event.target.value)}
-          placeholder="lb, dozen"
+          onValueChange={setUnit}
           value={unit}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${baseId}-price`}>Estimate ($)</Label>
+        <Label htmlFor={`${baseId}-price`}>Total estimate ($)</Label>
         <Input
-          aria-describedby={priceInvalid ? `${baseId}-price-error` : undefined}
+          aria-describedby={`${baseId}-price-help${priceInvalid ? ` ${baseId}-price-error` : ""}`}
           aria-invalid={priceInvalid}
           id={`${baseId}-price`}
           inputMode="decimal"
@@ -189,6 +209,22 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
           value={price}
         />
       </div>
+      {quantityError ? (
+        <p
+          className="text-negative text-lg leading-7 sm:col-span-3"
+          id={`${baseId}-quantity-error`}
+          role="alert"
+        >
+          {quantityError}
+        </p>
+      ) : null}
+      <p
+        className="text-muted-foreground text-base sm:col-span-3"
+        id={`${baseId}-price-help`}
+      >
+        Estimate the total for this quantity after discounts. Enter 0 for a free
+        item, or leave blank if unsure.
+      </p>
       {priceInvalid ? (
         <p
           className="text-negative text-lg leading-7 sm:col-span-3"
@@ -200,7 +236,9 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
       ) : null}
       <Button
         className="justify-self-start sm:col-span-3"
-        disabled={name.trim().length === 0 || priceInvalid}
+        disabled={
+          name.trim().length === 0 || priceInvalid || quantityError !== null
+        }
         type="submit"
       >
         <PlusIcon />
@@ -213,9 +251,11 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
 const DetailsForm = ({
   list,
   onDone,
+  onDelete,
 }: {
   list: Doc<"groceryLists">;
   onDone: () => void;
+  onDelete: () => void;
 }) => {
   const setDetails = useMutation(api.groceries.setDetails);
   const [name, setName] = useState(list.name);
@@ -301,23 +341,33 @@ const DetailsForm = ({
         <Button onClick={onDone} type="button" variant="ghost">
           Cancel
         </Button>
+        <Button
+          className="sm:ml-auto"
+          onClick={onDelete}
+          type="button"
+          variant="destructive"
+        >
+          <Trash2Icon />
+          Delete list
+        </Button>
       </div>
     </form>
   );
 };
 
-/** One list: items to tick off, an estimate against the budget, and its preferences. */
-const ListEditor = ({ list }: { list: Doc<"groceryLists"> }) => {
+/** One list: items to tick off, its details, and its preferences. */
+const ListEditor = ({
+  list,
+  onDelete,
+}: {
+  list: Doc<"groceryLists">;
+  onDelete: () => void;
+}) => {
   const [editingDetails, setEditingDetails] = useState(false);
-  const open = list.items.filter((item) => !item.checked);
-  const guessed = open.filter((item) => item.estimatedCents !== null);
-
-  const estimate = guessed.reduce(
-    (total, item) => total + (item.estimatedCents ?? 0),
-    0
-  );
-
-  const overBudget = list.budgetCents !== null && estimate > list.budgetCents;
+  const [resetting, setResetting] = useState(false);
+  const unmarkAll = useMutation(api.groceries.unmarkAll);
+  const hasMarkedItems = list.items.some((item) => item.checked);
+  const openCount = list.items.filter((item) => !item.checked).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -325,25 +375,7 @@ const ListEditor = ({ list }: { list: Doc<"groceryLists"> }) => {
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl leading-8 font-semibold">{list.name}</h2>
           <p className="text-lg">
-            {open.length} {open.length === 1 ? "item" : "items"} to buy
-            {guessed.length > 0
-              ? ` · your guesses add up to ${money(estimate)}`
-              : ""}
-            {guessed.length > 0 && guessed.length < open.length
-              ? " (some items have no guess)"
-              : ""}
-          </p>
-          <p
-            className={
-              overBudget
-                ? "text-negative text-lg font-semibold"
-                : "text-muted-foreground text-base"
-            }
-          >
-            {list.budgetCents === null
-              ? "No budget set."
-              : `Budget ${money(list.budgetCents)}.`}
-            {overBudget ? " Your guesses are over budget." : ""}
+            {openCount} {openCount === 1 ? "item" : "items"} to buy
           </p>
         </div>
         {editingDetails ? null : (
@@ -353,7 +385,11 @@ const ListEditor = ({ list }: { list: Doc<"groceryLists"> }) => {
         )}
       </div>
       {editingDetails ? (
-        <DetailsForm list={list} onDone={() => setEditingDetails(false)} />
+        <DetailsForm
+          list={list}
+          onDelete={onDelete}
+          onDone={() => setEditingDetails(false)}
+        />
       ) : null}
       {list.preferences.length > 0 && !editingDetails ? (
         <ul className="text-muted-foreground flex list-inside list-disc flex-col gap-1 text-lg leading-7">
@@ -363,6 +399,38 @@ const ListEditor = ({ list }: { list: Doc<"groceryLists"> }) => {
         </ul>
       ) : null}
       <AddItemForm listId={list._id} />
+      {list.items.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            aria-busy={resetting}
+            aria-describedby="grocery-reset-help"
+            disabled={!hasMarkedItems || resetting}
+            onClick={async () => {
+              setResetting(true);
+
+              try {
+                await unmarkAll({ listId: list._id });
+              } catch (error) {
+                toast.error(errorText(error));
+              }
+
+              setResetting(false);
+            }}
+            variant="outline"
+          >
+            <RotateCcwIcon />
+            {resetting ? "Unmarking…" : "Unmark all"}
+          </Button>
+          <p
+            className="text-muted-foreground text-base"
+            id="grocery-reset-help"
+          >
+            {hasMarkedItems
+              ? "Reuse this list for your next shopping trip."
+              : "All items are already unmarked."}
+          </p>
+        </div>
+      ) : null}
       {list.items.length === 0 ? (
         <EmptyNote>
           Nothing on this list yet. Add the first item above.
