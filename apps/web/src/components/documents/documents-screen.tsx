@@ -2,60 +2,36 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
-import { Input } from "@lifelink/ui/components/input";
-import { Label } from "@lifelink/ui/components/label";
 import { cn } from "@lifelink/ui/lib/utils";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useAction, useQuery } from "convex/react";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { ChevronLeftIcon } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
+import { IsoIcon } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
-import { ago } from "@/lib/format";
+import { isRowStillShown } from "@/lib/list-beside-reader";
 
+import { DriveNotice } from "./drive-notice";
+import { ListEnd, VirtualFileList } from "./file-list";
+import type { Browse } from "./file-list";
 import { FilePreview } from "./file-preview";
-import type { DriveFile, Listing } from "./file-preview";
+import { FilesToolbar } from "./files-toolbar";
+import type { Sort } from "./files-toolbar";
 
 /** How long typing must pause before the list filters. */
 const SEARCH_DELAY_MS = 350;
 
-/** Start loading the next files when this few unseen rows remain. */
-const LOAD_AHEAD_ROWS = 6;
-
-/** A first guess at a row's height; each row is measured once drawn. */
-const ESTIMATED_ROW_HEIGHT = 110;
-
-/** Rows drawn beyond the screen, so scrolling and Tab never land on a gap. */
-const OVERSCAN_ROWS = 8;
-
-const SORTS = [
-  { label: "Recently changed", value: "recent" },
-  { label: "Oldest first", value: "oldest" },
-  { label: "Name, A to Z", value: "name_asc" },
-  { label: "Name, Z to A", value: "name_desc" },
-  { label: "Folders first", value: "folders_first" },
-] as const;
-
-type Sort = (typeof SORTS)[number]["value"];
-
-const isSort = (value: string): value is Sort =>
-  SORTS.some((sort) => sort.value === value);
-
-type Browse =
-  | { kind: "error"; message: string }
-  | { kind: "loading" }
-  | {
-      files: DriveFile[];
-      kind: "ready";
-      mode: Listing["mode"];
-      more: "error" | "idle" | "loading";
-      nextCursor: string | null;
-    };
+const FILES_HEADING_ID = "files-heading";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -66,199 +42,59 @@ const searchTermOf = (input: string): string | null => {
   return trimmed.length === 0 ? null : trimmed;
 };
 
-/** Hover and selection match the sidebar menu. */
-const FileRow = ({
-  file,
-  isSelected,
-  onSelect,
-  timeZone,
-}: {
-  file: DriveFile;
-  isSelected: boolean;
-  onSelect: () => void;
-  timeZone: string;
-}) => (
-  <button
-    aria-current={isSelected ? "true" : undefined}
-    className={cn(
-      "bg-background text-foreground hover:bg-neutral-wash hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 items-center justify-between gap-3 rounded-md px-3 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
-      isSelected && "bg-neutral-wash"
-    )}
-    onClick={onSelect}
-    type="button"
-  >
-    <span className="flex min-w-0 items-center gap-3">
-      <IsoIcon kind={fileIconFor(file.kind)} size={48} />
-      <span className="flex min-w-0 flex-col gap-1">
-        <span
-          className={cn(
-            "text-lg wrap-anywhere",
-            isSelected && "text-accent-foreground font-semibold"
-          )}
-        >
-          {file.name}
-        </span>
-        <span className="text-muted-foreground text-base">
-          {file.kind}
-          {file.modifiedAt === null
-            ? ""
-            : ` · ${ago(file.modifiedAt, timeZone)}`}
-        </span>
-      </span>
-    </span>
-    <ChevronRightIcon
-      aria-hidden="true"
-      className={cn(
-        "size-5 shrink-0",
-        isSelected ? "text-accent-foreground" : "text-muted-foreground"
-      )}
-    />
-  </button>
+/** Nothing chosen yet: a quiet hint where the preview will appear. */
+const NoPreview = () => (
+  <div className="text-muted-foreground hidden flex-col items-center gap-4 pt-16 pl-10 text-center @3xl/content:flex">
+    <IsoIcon kind="file" size={72} />
+    <p className="max-w-xs">Choose a file to see a preview of it here.</p>
+  </div>
 );
-
-/** The end of the list: loading, a retry after a failure, or the final count. */
-const ListEnd = ({
-  browse,
-  onLoadMore,
-}: {
-  browse: Extract<Browse, { kind: "ready" }>;
-  onLoadMore: () => void;
-}) => {
-  if (browse.more === "error") {
-    return (
-      <ErrorNote onRetry={onLoadMore}>
-        The next files could not be loaded.
-      </ErrorNote>
-    );
-  }
-
-  if (browse.more === "loading") {
-    return <LoadingRows label="Loading more files" rows={2} />;
-  }
-
-  if (browse.nextCursor === null) {
-    return (
-      <p className="text-muted-foreground border-rule border-t pt-4 text-base">
-        {browse.files.length === 1
-          ? "That is the only file."
-          : `That is all ${browse.files.length} files.`}
-      </p>
-    );
-  }
-
-  return null;
-};
-
-/**
- * Draws only the rows near the screen, so a Drive with thousands of files
- * stays quick. Rows are measured as they render because long names wrap.
- */
-const VirtualFileList = ({
-  browse,
-  onLoadMore,
-  onSelect,
-  selectedId,
-  timeZone,
-}: {
-  browse: Extract<Browse, { kind: "ready" }>;
-  onLoadMore: () => void;
-  onSelect: (id: string) => void;
-  selectedId: string | null;
-  timeZone: string;
-}) => {
-  // The virtualizer mutates its own state; React Compiler memoization would hide those updates.
-  "use no memo";
-
-  const list = useRef<HTMLUListElement>(null);
-  const [scrollMargin, setScrollMargin] = useState(0);
-  const { files } = browse;
-
-  // The list scrolls with the page, so the virtualizer needs to know how far
-  // down the page it starts. Content above it can change height at any time.
-  useEffect(() => {
-    const measure = () => {
-      const top = list.current?.getBoundingClientRect().top;
-
-      if (top !== undefined) {
-        setScrollMargin(top + window.scrollY);
-      }
-    };
-
-    const observer = new ResizeObserver(measure);
-
-    observer.observe(document.body);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // oxlint-disable-next-line react/incompatible-library -- This component opts out of compiler memoization ("use no memo") and passes nothing from the virtualizer to memoized children.
-  const virtualizer = useWindowVirtualizer({
-    count: files.length,
-    estimateSize: () => ESTIMATED_ROW_HEIGHT,
-    getItemKey: (index) => files[index]?.id ?? index,
-    overscan: OVERSCAN_ROWS,
-    scrollMargin,
-  });
-
-  const rows = virtualizer.getVirtualItems();
-  const lastDrawn = rows.at(-1)?.index ?? -1;
-  const canLoadMore = browse.nextCursor !== null && browse.more === "idle";
-
-  useEffect(() => {
-    if (canLoadMore && lastDrawn >= files.length - LOAD_AHEAD_ROWS) {
-      onLoadMore();
-    }
-  }, [canLoadMore, files.length, lastDrawn, onLoadMore]);
-
-  return (
-    <ul
-      aria-label="Your Drive files"
-      className="relative"
-      ref={list}
-      style={{ height: virtualizer.getTotalSize() }}
-    >
-      {rows.map((row) => {
-        const file = files[row.index];
-
-        return file === undefined ? null : (
-          <li
-            aria-posinset={row.index + 1}
-            aria-setsize={browse.nextCursor === null ? files.length : -1}
-            className="border-rule absolute top-0 left-0 w-full border-t"
-            data-index={row.index}
-            key={row.key}
-            ref={virtualizer.measureElement}
-            style={{
-              transform: `translateY(${row.start - virtualizer.options.scrollMargin}px)`,
-            }}
-          >
-            <FileRow
-              file={file}
-              isSelected={file.id === selectedId}
-              onSelect={() => onSelect(file.id)}
-              timeZone={timeZone}
-            />
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
 
 /** One search-and-sort view of the Drive, growing as the person scrolls. */
 const FileBrowser = ({
+  onBack,
+  onSelect,
   search,
+  selectedId,
   sort,
   timeZone,
 }: {
+  onBack: () => void;
+  onSelect: (id: string) => void;
   search: string | null;
+  selectedId: string | null;
   sort: Sort;
   timeZone: string;
 }) => {
   const listFiles = useAction(api.drive.files);
   const [browse, setBrowse] = useState<Browse>({ kind: "loading" });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const loadingMore = useRef(false);
+  const openedNote = useRef<HTMLOutputElement>(null);
+
+  const listStaysBeside = (): boolean =>
+    selectedId !== null &&
+    isRowStillShown(
+      document.querySelector(`[data-file-id="${CSS.escape(selectedId)}"]`)
+    );
+
+  // Focus stays on the row beside the preview, so say what opened instead.
+  const announceOpened = useEffectEvent((id: string | null) => {
+    const opened =
+      browse.kind === "ready"
+        ? browse.files.find((file) => file.id === id)
+        : undefined;
+
+    if (openedNote.current !== null) {
+      openedNote.current.textContent =
+        opened !== undefined && listStaysBeside()
+          ? `Opened: ${opened.name}`
+          : "";
+    }
+  });
+
+  useEffect(() => {
+    announceOpened(selectedId);
+  }, [selectedId]);
 
   useEffect(() => {
     let current = true;
@@ -332,7 +168,13 @@ const FileBrowser = ({
   }, [cursor, listFiles, search, sort]);
 
   if (browse.kind === "loading") {
-    return <LoadingRows label="Loading your Drive files" rows={6} />;
+    return (
+      <LoadingRows
+        layout="documents"
+        label="Loading your Drive files"
+        rows={6}
+      />
+    );
   }
 
   if (browse.kind === "error") {
@@ -344,77 +186,77 @@ const FileBrowser = ({
   const isPractice = browse.mode === "simulated";
 
   return (
-    <div className="flex flex-col gap-4">
-      {isPractice ? (
-        <p className="text-muted-foreground max-w-prose text-base">
-          This is a practice Drive with sample files. Notes you save to Drive in
-          Practice mode appear here too. Nothing comes from a real Google
-          account.
-        </p>
-      ) : null}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <section
-          aria-labelledby="files-heading"
-          className={cn(
-            "min-w-0 flex-col gap-3",
-            selected === null ? "flex" : "hidden lg:flex"
-          )}
+    <div className="grid items-start gap-6 @3xl/content:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] @3xl/content:gap-0">
+      <section
+        aria-labelledby={FILES_HEADING_ID}
+        className={cn(
+          "min-w-0 flex-col @3xl/content:flex @3xl/content:self-stretch @3xl/content:border-r @3xl/content:pr-4",
+          selected === null ? "flex" : "hidden"
+        )}
+      >
+        <h2
+          className="text-section px-3 pb-3 font-semibold outline-none"
+          id={FILES_HEADING_ID}
+          tabIndex={-1}
         >
-          <h2 className="text-2xl font-semibold" id="files-heading">
-            {search === null ? "Your files" : "Files found"}
-          </h2>
-          {browse.files.length === 0 ? (
-            <EmptyNote>
-              {search === null
-                ? "Your Google Drive has no files yet."
-                : `No file names contain “${search}”.`}
-            </EmptyNote>
-          ) : (
-            <>
-              <VirtualFileList
-                browse={browse}
-                onLoadMore={loadMore}
-                onSelect={setSelectedId}
-                selectedId={selectedId}
-                timeZone={timeZone}
-              />
-              <ListEnd browse={browse} onLoadMore={loadMore} />
-            </>
-          )}
-        </section>
-        {selected === null ? (
-          <EmptyNote className="hidden lg:mt-12 lg:flex">
-            Choose a file to see a preview of it here.
+          {search === null ? "Your files" : "Files found"}
+        </h2>
+        {browse.files.length === 0 ? (
+          <EmptyNote>
+            {search === null
+              ? "Your Google Drive has no files yet."
+              : `No file names contain “${search}”.`}
           </EmptyNote>
         ) : (
-          <div className="flex min-w-0 flex-col gap-4">
-            <Button
-              className="hover:bg-surface hover:text-foreground self-start rounded-md lg:hidden"
-              onClick={() => setSelectedId(null)}
-              variant="outline"
-            >
-              <ChevronLeftIcon />
-              Back to your files
-            </Button>
-            <FilePreview
-              file={selected}
-              isPractice={isPractice}
-              key={selected.id}
+          <>
+            <VirtualFileList
+              browse={browse}
+              onLoadMore={loadMore}
+              onSelect={onSelect}
+              selectedId={selectedId}
               timeZone={timeZone}
             />
-          </div>
+            <ListEnd browse={browse} onLoadMore={loadMore} />
+          </>
         )}
-      </div>
+      </section>
+      {selected === null ? (
+        <NoPreview />
+      ) : (
+        <div className="flex min-w-0 flex-col gap-2 @3xl/content:sticky @3xl/content:top-6 @3xl/content:pl-10">
+          <Button
+            className="-ml-2 self-start pl-2 @3xl/content:hidden"
+            onClick={onBack}
+            size="sm"
+            variant="ghost"
+          >
+            <ChevronLeftIcon aria-hidden="true" />
+            Back to your files
+          </Button>
+          <FilePreview
+            file={selected}
+            isPractice={isPractice}
+            key={selected.id}
+            listStaysBeside={listStaysBeside}
+            timeZone={timeZone}
+          />
+        </div>
+      )}
+      <output aria-live="polite" className="sr-only" ref={openedNote} />
     </div>
   );
 };
 
 const DriveFiles = ({ timeZone }: { timeZone: string }) => {
-  const searchId = useId();
-  const sortId = useId();
   const [input, setInput] = useState("");
   const [search, setSearch] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("recent");
+  const browseKey = `${sort}:${search ?? ""}`;
+  // A choice belongs to one search and sort; a new list starts with none.
+  const [selection, setSelection] = useState<{ id: string; key: string }>();
+  const selectedId = selection?.key === browseKey ? selection.id : null;
+  const listPosition = useRef({ x: 0, y: 0 });
+  const returningTo = useRef<string | null>(null);
   const pending = searchTermOf(input) !== search;
 
   // Filter once typing pauses, so each keystroke does not start a new search.
@@ -426,53 +268,61 @@ const DriveFiles = ({ timeZone }: { timeZone: string }) => {
     return () => clearTimeout(timer);
   }, [input]);
 
+  // On a phone, "Back" returns to the same place in the list and the same row.
+  useLayoutEffect(() => {
+    const id = returningTo.current;
+
+    if (selectedId !== null || id === null) {
+      return;
+    }
+
+    returningTo.current = null;
+    globalThis.scrollTo({
+      behavior: "instant",
+      left: listPosition.current.x,
+      top: listPosition.current.y,
+    });
+
+    // The list only draws rows near the screen, so wait for it to catch up.
+    const frame = requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(
+        `[data-file-id="${CSS.escape(id)}"]`
+      );
+
+      (row ?? document.querySelector(`#${FILES_HEADING_ID}`))?.focus({
+        preventScroll: true,
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId]);
+
   return (
-    <div className="flex flex-col gap-4">
-      <search>
-        <form
-          className="flex flex-wrap items-end gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchTermOf(input));
-          }}
-        >
-          <div className="flex min-w-64 flex-[2] flex-col gap-2">
-            <Label htmlFor={searchId}>Find a file by name</Label>
-            <Input
-              id={searchId}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Start typing, for example: medication"
-              type="search"
-              value={input}
-            />
-          </div>
-          <div className="flex min-w-56 flex-1 flex-col gap-2">
-            <Label htmlFor={sortId}>Sort by</Label>
-            <select
-              className="border-control bg-raised text-foreground hover:border-foreground min-h-control w-full min-w-0 rounded-md border px-4 py-2 text-base transition-colors"
-              id={sortId}
-              onChange={(event) => {
-                if (isSort(event.target.value)) {
-                  setSort(event.target.value);
-                }
-              }}
-              value={sort}
-            >
-              {SORTS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </form>
-      </search>
-      <p aria-live="polite" className="text-muted-foreground min-h-7 text-base">
-        {pending ? "Searching…" : ""}
-      </p>
+    <div className="flex flex-col gap-5">
+      <FilesToolbar
+        className={selectedId === null ? undefined : "hidden @3xl/content:flex"}
+        input={input}
+        onInput={setInput}
+        onSort={setSort}
+        onSubmit={() => setSearch(searchTermOf(input))}
+        pending={pending}
+        sort={sort}
+      />
       <FileBrowser
-        key={`${sort}:${search ?? ""}`}
+        key={browseKey}
+        onBack={() => {
+          returningTo.current = selectedId;
+          setSelection(undefined);
+        }}
+        onSelect={(id) => {
+          listPosition.current = {
+            x: globalThis.scrollX,
+            y: globalThis.scrollY,
+          };
+          setSelection({ id, key: browseKey });
+        }}
         search={search}
+        selectedId={selectedId}
         sort={sort}
         timeZone={timeZone}
       />
@@ -489,34 +339,42 @@ const DocumentsScreen = () => {
     (provider) => provider.definition.id === "google_drive"
   );
 
+  const needsReconnect =
+    drive?.status === "error" || drive?.status === "expired";
+
+  const isActive = drive?.status === "active";
+
   return (
     <>
-      <PageHeader
-        subline="Find the files you keep in Google Drive and preview them here. Open any file in Google Drive to read, change, or share it."
-        title="Documents"
-      />
+      <PageHeader title="Documents" />
       {connections === undefined ? (
-        <LoadingRows label="Checking your Google Drive connection" rows={2} />
+        <LoadingRows
+          layout="note"
+          label="Checking your Google Drive connection"
+          rows={2}
+        />
       ) : null}
-      {connections !== undefined && drive?.status !== "active" ? (
-        <EmptyNote
+      {connections !== undefined && !isActive ? (
+        <DriveNotice
           action={
-            <Link
-              className="text-foreground inline-flex min-h-12 items-center font-semibold underline underline-offset-4"
-              href="/connections"
-            >
-              {drive?.status === "error" || drive?.status === "expired"
-                ? "Reconnect Google Drive"
-                : "Connect Google Drive"}
-            </Link>
+            needsReconnect ? "Reconnect Google Drive" : "Connect Google Drive"
           }
         >
           {connections.demoMode
             ? "Connect the practice Google Drive to try this with sample files."
             : "Connect Google Drive to see your files here."}
-        </EmptyNote>
+        </DriveNotice>
       ) : null}
-      {drive?.status === "active" ? <DriveFiles timeZone={timeZone} /> : null}
+      {connections !== undefined && isActive ? (
+        <>
+          <DriveNotice>
+            {connections.demoMode
+              ? "Practice Drive with sample files, plus notes you save in Practice mode. Nothing here comes from a real Google account."
+              : `Connected: Google Drive${drive.accountLabel ? ` (${drive.accountLabel})` : ""}. Open a file in Google Drive to change or share it.`}
+          </DriveNotice>
+          <DriveFiles timeZone={timeZone} />
+        </>
+      ) : null}
     </>
   );
 };
