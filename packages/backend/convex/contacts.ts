@@ -15,6 +15,11 @@ const channelValidator = v.object({
   preferred: v.boolean(),
 });
 
+const savedHandleValidator = v.object({
+  address: v.string(),
+  service: v.literal("whatsapp"),
+});
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const PHONE_PATTERN = /^\+?[\d\s().-]{7,}$/u;
 const DISCORD_ID_PATTERN = /^\d{15,21}$/u;
@@ -81,6 +86,26 @@ const cleanChannels = (
   return cleaned;
 };
 
+/** WhatsApp numbers are stored for reference only, normalised like iMessage numbers. */
+const cleanSavedHandles = (
+  handles: { address: string; service: "whatsapp" }[]
+): { address: string; service: "whatsapp" }[] =>
+  handles.map((handle) => {
+    const address = handle.address.trim();
+
+    if (!PHONE_PATTERN.test(address)) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "WhatsApp needs a phone number with its country code.",
+      });
+    }
+
+    return {
+      address: address.replaceAll(/[\s().-]/gu, ""),
+      service: handle.service,
+    };
+  });
+
 const hueFor = (name: string): number => {
   let hash = 0;
 
@@ -114,6 +139,7 @@ export const create = mutation({
     channels: v.array(channelValidator),
     name: v.string(),
     relationship: v.string(),
+    savedHandles: v.optional(v.array(savedHandleValidator)),
     trusted: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -136,6 +162,7 @@ export const create = mutation({
       ownerId: owner._id,
       relationship: args.relationship.trim(),
       sample: false,
+      savedHandles: cleanSavedHandles(args.savedHandles ?? []),
       trusted: args.trusted,
     });
 
@@ -156,6 +183,7 @@ export const update = mutation({
     contactId: v.id("contacts"),
     name: v.string(),
     relationship: v.string(),
+    savedHandles: v.optional(v.array(savedHandleValidator)),
     trusted: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -173,6 +201,14 @@ export const update = mutation({
       relationship: args.relationship.trim(),
       trusted: args.trusted,
     });
+
+    // Older clients don't send saved numbers; leave them untouched then.
+    if (args.savedHandles !== undefined) {
+      await ctx.db.patch(contact._id, {
+        savedHandles: cleanSavedHandles(args.savedHandles),
+      });
+    }
+
     await audit(ctx, {
       actor: "person",
       detail: `Updated ${contact.name}.`,
