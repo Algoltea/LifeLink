@@ -6,7 +6,7 @@ import { ChevronUpIcon } from "lucide-react";
 import type { Ref } from "react";
 import { useCallback, useState } from "react";
 
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { money } from "@/lib/format";
 
 import { quantityWords, shoppingOrder } from "./list-editor";
@@ -111,6 +111,8 @@ const Receipt = ({
   list: Doc<"groceryLists">;
   ref?: Ref<HTMLElement>;
 }) => {
+  const locale = useLocale();
+
   const {
     budget,
     estimate,
@@ -168,7 +170,7 @@ const Receipt = ({
                 {item.quantity === null ? null : (
                   <span className="text-muted-foreground">
                     {" "}
-                    {quantityWords(item)}
+                    {quantityWords(item, locale)}
                   </span>
                 )}
               </span>
@@ -179,7 +181,7 @@ const Receipt = ({
                     <span className="sr-only">{t.noGuess}</span>
                   </>
                 ) : (
-                  money(item.estimatedCents)
+                  money(item.estimatedCents, locale)
                 )}
               </span>
             </li>
@@ -194,18 +196,18 @@ const Receipt = ({
         <Line label={t.items} value={`${items.length}`} />
         {inCart.length > 0 ? (
           <>
-            <Line label={t.inYourCart} value={money(inCartCents)} />
-            <Line label={t.stillToGet} value={money(toGetCents)} />
+            <Line label={t.inYourCart} value={money(inCartCents, locale)} />
+            <Line label={t.stillToGet} value={money(toGetCents, locale)} />
           </>
         ) : null}
         <Line
           className="text-lg font-semibold"
           label={t.estimatedTotal}
-          value={money(estimate)}
+          value={money(estimate, locale)}
         />
         <Line
           label={t.budget}
-          value={budget === null ? t.notSet : money(budget)}
+          value={budget === null ? t.notSet : money(budget, locale)}
         />
         {budget === null ? null : (
           <Line
@@ -214,7 +216,7 @@ const Receipt = ({
               overBudget ? "text-negative" : "text-positive"
             )}
             label={overBudget ? t.overBudget : t.leftToSpend}
-            value={money(Math.abs(budget - estimate))}
+            value={money(Math.abs(budget - estimate), locale)}
           />
         )}
       </dl>
@@ -242,6 +244,7 @@ const ReceiptBar = ({
   list: Doc<"groceryLists">;
   onShow: () => void;
 }) => {
+  const locale = useLocale();
   const { budget, estimate, items, overBudget } = estimateFor(list);
   const t = useMessages().groceries.receiptBar;
 
@@ -250,7 +253,7 @@ const ReceiptBar = ({
   }
 
   // Money only: the item count is in the list header, and a short bar covers less of the list.
-  const total = `${money(estimate)} ${budget === null ? t.estimated : t.total}`;
+  const total = `${money(estimate, locale)} ${budget === null ? t.estimated : t.total}`;
 
   return (
     <button
@@ -261,11 +264,11 @@ const ReceiptBar = ({
       <span className="min-w-0">
         {total}
         {budget !== null && !overBudget
-          ? t.left(money(budget - estimate))
+          ? t.left(money(budget - estimate, locale))
           : null}
         {budget !== null && overBudget ? (
           <span className="text-negative font-semibold">
-            {t.over(money(estimate - budget))}
+            {t.over(money(estimate - budget, locale))}
           </span>
         ) : null}
       </span>

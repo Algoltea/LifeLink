@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 
 import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 type Listing = FunctionReturnType<typeof api.drive.files>;
@@ -140,6 +140,7 @@ const FilePreview = ({
   listStaysBeside: () => boolean;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const noteId = useId();
   const { preview } = file;
@@ -203,7 +204,9 @@ const FilePreview = ({
               {t.kinds[file.kind] ?? file.kind}
               {file.modifiedAt === null
                 ? ""
-                : t.changedSuffix(formatWhen(file.modifiedAt, timeZone))}
+                : t.changedSuffix(
+                    formatWhen(file.modifiedAt, timeZone, locale)
+                  )}
             </span>
             {isPractice ? <SimulatedPill /> : null}
           </p>

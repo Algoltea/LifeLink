@@ -19,6 +19,7 @@ import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
 import type { PermissionIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { useLocale } from "@/i18n/locale";
 import type { ConnectionsMessages } from "@/i18n/messages/en/connections";
 import { messageOf } from "@/lib/errors";
 
@@ -361,6 +362,7 @@ const DialogActions = ({
   onDone: () => void;
   row: ProviderRow;
 }) => {
+  const locale = useLocale();
   const words = useConnectionMessages();
   const start = useAction(api.connections.start);
   const disconnect = useAction(api.connections.disconnect);
@@ -432,7 +434,7 @@ const DialogActions = ({
           id={errorId}
           role="alert"
         >
-          {translateConnectionMessage(visibleError)}
+          {translateConnectionMessage(visibleError, locale)}
         </p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -909,7 +911,7 @@ const ConnectionsScreen = () => {
                   className="text-section font-semibold"
                   id={`group-${group.ids[0]}`}
                 >
-                  {group.title}
+                  {words.groups[group.title]}
                 </h2>
                 <CardGrid
                   demoMode={data.demoMode}

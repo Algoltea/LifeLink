@@ -43,7 +43,7 @@ import type { ChatMessage } from "./integrations/openrouter";
 import { checkRequestDraft } from "./lib/drafts";
 import { channelFor, createTask, firstName, signOff } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
-import { contactLocale, ownerLocale } from "./lib/locale";
+import { contactLocale } from "./lib/locale";
 import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_TEXT = 8000;
@@ -1063,14 +1063,11 @@ export const askTrustedContact = mutation({
     }
 
     const recipientLocale = await contactLocale(ctx, owner._id, contact);
-    const locale = await ownerLocale(ctx, owner._id);
 
+    // Saved analysis has no language provenance and may predate preference changes.
+    // Keep the recipient's draft independent of the owner's explanation text.
     const body = checkRequestDraft(
       {
-        concern:
-          recipientLocale === locale
-            ? (review.signals[0]?.label ?? null)
-            : null,
         email: review.inputKind === "email",
         firstName: firstName(contact.name),
         signOff: signOff(owner),

@@ -42,6 +42,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { paginationOptsValidator } from "convex/server";
 import type { FunctionReturnType, PaginationResult } from "convex/server";
 import { ConvexError, v } from "convex/values";
+import { z } from "zod";
 
 import { api, components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -57,6 +58,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { decodeJson } from "./integrations/http";
 import { modelFor } from "./integrations/openrouter";
 import { readEnv, readEnvOr } from "./lib/env";
+import { ownerLocale } from "./lib/locale";
 import { UPCOMING_WINDOW, applyProposal } from "./lib/proposals";
 import type { ProposalOutcome } from "./lib/proposals";
 import { newsTool, weatherTool } from "./lib/readtools";
@@ -78,6 +80,19 @@ const WHITESPACE_PATTERN = /\s+/gu;
 // Annotated once: inferring the full component type at each call site exceeds TypeScript's union limit.
 const agentComponent: AgentComponent = components.agent;
 const RULES_AGENT_NAME = "LifeLink (demo rules, no model)";
+
+const providerErrorSchema = z.object({ message: z.string() });
+
+/** Streamed provider failures may carry a plain object instead of an Error. */
+const errorMessage = (cause: unknown): string => {
+  if (cause instanceof Error) {
+    return cause.message;
+  }
+
+  const parsed = providerErrorSchema.safeParse(cause);
+
+  return parsed.success ? parsed.data.message : "an unexpected error";
+};
 
 const channelValidator = v.union(
   v.literal("text"),
@@ -905,7 +920,9 @@ export const applyProposalForOwner = internalMutation({
       return {
         actionId: null,
         message:
-          "That request did not have the details I need, so nothing was prepared.",
+          (await ownerLocale(ctx, owner._id)) === "es"
+            ? "Esa petición no incluía los detalles necesarios, así que no se preparó nada."
+            : "That request did not have the details I need, so nothing was prepared.",
         taskId: null,
       };
     }
@@ -1011,8 +1028,8 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
     reminderTitle: null,
     reply:
       context.language === "Spanish"
-        ? "En el modo de práctica sin el asistente conectado, puedo pedirle a alguien que te lleve, enviar un mensaje, añadir productos a la lista o revisar un mensaje sospechoso."
-        : "In practice mode without the assistant model connected, I can ask someone for a ride, send a message, add grocery items, or check a message for scams.",
+        ? "En el modo de práctica sin el asistente conectado, solo entiendo peticiones en inglés para pedir transporte, preparar mensajes, añadir productos o revisar mensajes sospechosos. Puede escribir sus propios mensajes en cualquier idioma desde Mensajes."
+        : "In practice mode without the assistant model connected, I only understand requests in English for rides, message drafts, grocery items, or scam checks. You can write your own messages in any language from Messages.",
   };
 
   const groceryItems = GROCERY_PATTERN.exec(text)?.groups?.items;
@@ -1122,7 +1139,7 @@ export const respond = internalAction({
       if (!context.demoMode) {
         await saveAssistantText(
           context.language === "Spanish"
-            ? "El asistente aún no está configurado, así que no puedo preparar esto. Puedes escribir a tu familia desde Mensajes. Quien configuró la aplicación puede terminar con bun run dev:setup."
+            ? "El asistente aún no está configurado, así que no puedo preparar esto. Puede escribir a su familia desde Mensajes. Quien configuró la aplicación puede terminar con bun run dev:setup."
             : "The assistant is not set up yet, so I can't plan this for you. You can still write to family from Messages. Whoever set up the app can finish it with bun run dev:setup.",
           RULES_AGENT_NAME
         );
@@ -1222,22 +1239,33 @@ export const respond = internalAction({
     });
 
     try {
+      let streamError: Error | null = null;
+
       const result = await agent.streamText(
         ctx,
         { threadId: args.threadId, userId: args.ownerId },
-        { promptMessageId: args.promptMessageId },
+        {
+          onError: ({ error }) => {
+            streamError = new Error(errorMessage(error));
+          },
+          promptMessageId: args.promptMessageId,
+        },
         { saveStreamDeltas: { chunking: "word", throttleMs: 250 } }
       );
 
       await result.consumeStream();
+
+      // Stream consumption reports provider failures through onError, without rejecting.
+      if (streamError !== null) {
+        throw streamError;
+      }
     } catch (error) {
-      const reason =
-        error instanceof Error
-          ? error.message.slice(0, 200)
-          : "an unexpected error";
+      const reason = errorMessage(error).slice(0, 200);
 
       await saveAssistantText(
-        `I couldn't work that out just now (${reason}). Nothing was sent. Please try again in a moment.`,
+        context.language === "Spanish"
+          ? `No pude resolverlo ahora (${reason}). Revise la conversación por si se preparó algo y vuelva a intentarlo en un momento.`
+          : `I couldn't work that out just now (${reason}). Check the conversation for anything already prepared, and try again in a moment.`,
         AGENT_NAME
       );
 

@@ -77,10 +77,10 @@ const ridePreparedMessage = (
 
     const next =
       contact === null || appointment === null
-        ? "Primero, responde a la pregunta en pantalla. Después lee el mensaje y"
-        : "Léelo y";
+        ? "Primero, responda a la pregunta en pantalla. Después lea el mensaje y"
+        : "Léalo y";
 
-    return `He preparado un mensaje para pedirle a ${who} que te lleve${when}. ${next} pulsa Aprobar cuando esté bien. No se envía nada hasta que lo hagas.`;
+    return `He preparado un mensaje para pedirle a ${who} que le lleve${when}. ${next} pulse Aprobar cuando esté bien. No se envía nada hasta que lo haga.`;
   }
 
   const chosen =
@@ -114,7 +114,7 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   if (appointments.length === 0) {
     return outcome(
       locale === "es"
-        ? "No veo una cita próxima. Añádela en Hoy o abre un correo sobre ella, y puedo pedirle a alguien que te lleve."
+        ? "No veo una cita próxima. Añádala en Hoy o abra un correo sobre ella, y puedo pedirle a alguien que le lleve."
         : "I don't see an appointment coming up. Add it on Today first, or open an email about it, and I can ask someone for a ride."
     );
   }
@@ -139,7 +139,7 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   if (recipient !== undefined && match.kind === "none") {
     return outcome(
       locale === "es"
-        ? `No encontré a ${recipient.nameAsSaid} entre las personas de confianza a quienes puedes escribir. Puedes añadirla en Círculo de confianza.`
+        ? `No encontré a ${recipient.nameAsSaid} entre las personas de confianza a quienes puede escribir. Puede añadirla en Círculo de confianza.`
         : `I couldn't find ${recipient.nameAsSaid} among the trusted people you can message. You can add them under Trusted circle.`
     );
   }
@@ -147,7 +147,7 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   if (reachable.length === 0) {
     return outcome(
       locale === "es"
-        ? "Aún no puedes escribir a nadie de tu círculo. Añade una forma de contacto en Círculo de confianza."
+        ? "Aún no puede escribir a nadie de su círculo. Añada una forma de contacto en Círculo de confianza."
         : "Nobody in your trusted circle can be messaged yet. Add a way to reach them under Trusted circle."
     );
   }
@@ -187,8 +187,8 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
     if (locale === "es") {
       return outcome(
         recipient === undefined
-          ? "¿A quién te gustaría escribir?"
-          : `No encontré a ${recipient.nameAsSaid} en tus contactos.`
+          ? "¿A quién le gustaría escribir?"
+          : `No encontré a ${recipient.nameAsSaid} en sus contactos.`
       );
     }
 
@@ -272,7 +272,7 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
 
   return outcome(
     locale === "es"
-      ? `He preparado un mensaje para ${name}. Léelo, cambia lo que quieras y pulsa Aprobar para enviarlo.`
+      ? `He preparado un mensaje para ${name}. Léalo, cambie lo que quiera y pulse Aprobar para enviarlo.`
       : `I've drafted a message to ${name}. Read it, change anything you like, and press Approve to send it.`,
     taskId
   );
@@ -288,7 +288,7 @@ const proposeReminder = async (
   if (remindAt === null || remindAt < planning.now || title.length === 0) {
     return outcome(
       locale === "es"
-        ? "¿Qué quieres que te recuerde y cuándo exactamente? Dime el día y la hora."
+        ? "¿Qué quiere que le recuerde y cuándo exactamente? Dígame el día y la hora."
         : "What should I remind you about, and exactly when? Please give the day and time."
     );
   }
@@ -323,7 +323,7 @@ const proposeReminder = async (
 
   return outcome(
     locale === "es"
-      ? `Puedo recordarte «${title}» el ${formatWhen(remindAt, owner.timeZone, intlLocaleOf(locale))}. Pulsa Aprobar para guardarlo.`
+      ? `Puedo recordarle «${title}» el ${formatWhen(remindAt, owner.timeZone, intlLocaleOf(locale))}. Pulse Aprobar para guardarlo.`
       : `I can remind you "${title}" on ${formatWhen(remindAt, owner.timeZone)}. Press Approve to save it.`,
     taskId
   );
@@ -337,7 +337,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   if (items.length === 0) {
     return outcome(
       locale === "es"
-        ? "¿Qué productos quieres añadir a tu lista?"
+        ? "¿Qué productos quiere añadir a su lista?"
         : "Which items would you like on your list?"
     );
   }
@@ -369,7 +369,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   if (list === null) {
     return outcome(
       locale === "es"
-        ? "¿Qué productos quieres añadir a tu lista?"
+        ? "¿Qué productos quiere añadir a su lista?"
         : "Which items would you like on your list?"
     );
   }
@@ -391,7 +391,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
 
   return outcome(
     locale === "es"
-      ? `Añadí ${items.map((item) => item.name).join(", ")} a tu lista ${list.name}. No se ha hecho ningún pedido.`
+      ? `Añadí ${items.map((item) => item.name).join(", ")} a su lista ${list.name}. No se ha hecho ningún pedido.`
       : `I added ${items.map((item) => item.name).join(", ")} to your ${list.name} list. Nothing has been ordered.`
   );
 };
@@ -404,7 +404,7 @@ const startScamCheck = async (planning: Planning): Promise<ProposalOutcome> => {
 
   return outcome(
     planning.locale === "es"
-      ? "Estoy revisando ese mensaje. El resultado aparecerá en Revisar estafas en un momento. No pulses ningún enlace mientras esperas."
+      ? "Estoy revisando ese mensaje. El resultado aparecerá en Revisar estafas en un momento. No pulse ningún enlace mientras espera."
       : "I'm checking that message now. The result will appear under Scam check in a moment. Please don't click any links in it while you wait."
   );
 };

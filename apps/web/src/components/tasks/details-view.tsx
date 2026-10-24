@@ -1,9 +1,10 @@
 import type { ActionDetails } from "@lifelink/contracts/actions";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
 import type { ReactNode } from "react";
 
 import { Avatar, ReadAloudButton } from "@/components/app/bits";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { getLocale, messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { formatWhen, money } from "@/lib/format";
 
@@ -96,8 +97,12 @@ const Fact = ({
 );
 
 /** What a card says, as one passage for Read aloud: the words exactly as they will go out. */
-const spokenDetails = (details: ActionDetails, timeZone: string): string => {
-  const words = currentMessages();
+const spokenDetails = (
+  details: ActionDetails,
+  timeZone: string,
+  locale: InterfaceLocale = getLocale()
+): string => {
+  const words = messagesFor(locale);
   const t = words.actionDetails.spoken;
 
   switch (details.kind) {
@@ -115,13 +120,13 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
     }
 
     case "confirm_arrangement": {
-      return t.confirm(translateServerMessage(details.summary));
+      return t.confirm(translateServerMessage(details.summary, locale));
     }
 
     case "create_reminder": {
       return t.reminder(
         details.title,
-        formatWhen(details.remindAt, timeZone),
+        formatWhen(details.remindAt, timeZone, locale),
         details.shareWithCircle
       );
     }
@@ -147,7 +152,7 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
     case "calendar_event": {
       return t.calendar(
         details.title,
-        formatWhen(details.startsAt, timeZone),
+        formatWhen(details.startsAt, timeZone, locale),
         details.location
       );
     }
@@ -224,6 +229,7 @@ const DetailsView = ({
   timeZone: string;
 }) => {
   const messages = useMessages();
+  const locale = useLocale();
   const t = messages.actionDetails;
 
   switch (details.kind) {
@@ -245,7 +251,7 @@ const DetailsView = ({
             {t.confirming}
           </span>
           <p className="text-2xl leading-snug font-semibold">
-            {translateServerMessage(details.summary)}
+            {translateServerMessage(details.summary, locale)}
           </p>
         </div>
       );
@@ -260,7 +266,9 @@ const DetailsView = ({
           )}
         >
           <Fact label={t.reminder}>{details.title}</Fact>
-          <Fact label={t.when}>{formatWhen(details.remindAt, timeZone)}</Fact>
+          <Fact label={t.when}>
+            {formatWhen(details.remindAt, timeZone, locale)}
+          </Fact>
           <Fact label={t.sharedWithCircle}>
             {details.shareWithCircle ? t.yesShared : t.noJustYou}
           </Fact>
@@ -320,10 +328,10 @@ const DetailsView = ({
           <p className="text-muted-foreground text-base">
             {details.estimatedCents === null
               ? t.noEstimate
-              : t.estimate(money(details.estimatedCents))}
+              : t.estimate(money(details.estimatedCents, locale))}
             {details.budgetCents === null
               ? ""
-              : t.budget(money(details.budgetCents))}
+              : t.budget(money(details.budgetCents, locale))}
           </p>
           <p className="text-muted-foreground text-base">{t.shoppingRecord}</p>
         </div>
@@ -349,7 +357,9 @@ const DetailsView = ({
           )}
         >
           <Fact label={t.event}>{details.title}</Fact>
-          <Fact label={t.starts}>{formatWhen(details.startsAt, timeZone)}</Fact>
+          <Fact label={t.starts}>
+            {formatWhen(details.startsAt, timeZone, locale)}
+          </Fact>
           <Fact label={t.where}>{details.location ?? t.notGiven}</Fact>
           <Fact label={t.calendar}>
             {details.provider === "google_calendar"

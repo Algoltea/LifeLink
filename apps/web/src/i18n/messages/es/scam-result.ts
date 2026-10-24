@@ -30,6 +30,8 @@ const scamResult: Messages["scamResult"] = {
     screenshot: "Una foto o captura de pantalla",
     text: "Un mensaje",
   },
+  localLanguageNotice:
+    "Esta revisión local solo está preparada para analizar mensajes en inglés. Puede pasar por alto estafas en español y otros idiomas. Que no haya señales de alerta no significa que el mensaje sea seguro.",
   method: {
     cloud:
       "Un servicio de IA en la nube ayudó con esta revisión, con su permiso.",

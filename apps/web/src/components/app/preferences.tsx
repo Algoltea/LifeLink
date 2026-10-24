@@ -68,12 +68,16 @@ const PreferencesProvider = ({ children }: { children: ReactNode }) => {
       textScale: stored.textScale,
     });
     setTheme(stored.theme);
-
-    // Screens follow a language the person chose; without a choice, the browser's language stays.
-    if (stored.supportLanguage !== undefined) {
-      setLocale(interfaceLocaleOf(stored.supportLanguage));
-    }
   }, [stored, setTheme]);
+
+  // Unrelated preference saves must not overwrite a language awaiting retry.
+  const supportLanguage = stored?.supportLanguage;
+
+  useEffect(() => {
+    if (supportLanguage !== undefined) {
+      setLocale(interfaceLocaleOf(supportLanguage));
+    }
+  }, [supportLanguage]);
 
   const value = useMemo<PreferencesValue>(
     () => ({

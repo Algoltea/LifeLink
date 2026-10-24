@@ -16,7 +16,8 @@ import { toast } from "sonner";
 import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
@@ -39,9 +40,11 @@ type VoiceState = "connecting" | "dictating" | "idle" | "live";
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const voiceHintFor = (voice: VoiceState, available: boolean): string => {
-  const t = currentMessages().voice;
-
+const voiceHintFor = (
+  voice: VoiceState,
+  available: boolean,
+  t: Messages["voice"]
+): string => {
   if (!available) {
     return t.unavailable;
   }
@@ -326,7 +329,7 @@ const ComposerSession = ({
   const voiceAvailable = (liveConfigured && online) || canDictate;
   const listening = voice !== "idle";
 
-  const voiceHint = voiceHintFor(voice, voiceAvailable);
+  const voiceHint = voiceHintFor(voice, voiceAvailable, t);
 
   return (
     <div className={cn("@container/composer flex flex-col gap-4", className)}>

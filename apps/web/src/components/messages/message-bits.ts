@@ -1,6 +1,8 @@
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 
-import { currentIntlLocale, currentMessages } from "@/i18n/locale";
+import { getLocale, messagesFor } from "@/i18n/locale";
 import {
   DAY,
   HOUR,
@@ -28,18 +30,19 @@ const GROUP_GAP = HOUR;
 const dividerLabel = (
   timestamp: number,
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): string => {
-  const time = formatTime(timestamp, timeZone);
-  const day = relativeDay(timestamp, timeZone, now);
-  const { format, threads } = currentMessages();
+  const time = formatTime(timestamp, timeZone, locale);
+  const day = relativeDay(timestamp, timeZone, now, locale);
+  const { format, threads } = messagesFor(locale);
 
   if (day === format.today || day === format.yesterday) {
     return threads.dividerAt(day, time);
   }
 
   if (now - timestamp < RECENT_DAYS * DAY && timestamp <= now) {
-    const weekday = new Intl.DateTimeFormat(currentIntlLocale(), {
+    const weekday = new Intl.DateTimeFormat(intlLocaleOf(locale), {
       timeZone,
       weekday: "long",
     }).format(timestamp);
@@ -47,7 +50,7 @@ const dividerLabel = (
     return threads.dividerAt(weekday, time);
   }
 
-  return threads.dividerAt(formatShortDay(timestamp, timeZone), time);
+  return threads.dividerAt(formatShortDay(timestamp, timeZone, locale), time);
 };
 
 interface ConversationItem {
@@ -108,7 +111,8 @@ const receivedMessageActions = (
 const conversationItems = (
   messages: Message[],
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): ConversationItem[] => {
   const latestOutgoing = messages.findLast(
     (message) => message.direction === "outgoing"
@@ -121,15 +125,17 @@ const conversationItems = (
 
     const newDay =
       previous === undefined ||
-      relativeDay(previous.createdAt, timeZone, now) !==
-        relativeDay(message.createdAt, timeZone, now);
+      relativeDay(previous.createdAt, timeZone, now, locale) !==
+        relativeDay(message.createdAt, timeZone, now, locale);
 
     const paused =
       previous !== undefined &&
       message.createdAt - previous.createdAt > GROUP_GAP;
 
     const divider =
-      newDay || paused ? dividerLabel(message.createdAt, timeZone, now) : null;
+      newDay || paused
+        ? dividerLabel(message.createdAt, timeZone, now, locale)
+        : null;
 
     return {
       divider,
@@ -146,9 +152,12 @@ const conversationItems = (
 };
 
 /** One line for the list: who spoke last and what they said. */
-const previewOf = (message: Message): string => {
+const previewOf = (
+  message: Message,
+  locale: InterfaceLocale = getLocale()
+): string => {
   const photos = message.photoIds.length;
-  const { threads } = currentMessages();
+  const { threads } = messagesFor(locale);
 
   const photoWords =
     photos === 1 ? threads.previewOnePhoto : threads.previewManyPhotos(photos);

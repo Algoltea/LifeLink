@@ -9,7 +9,7 @@ import type { RefObject } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import { InboxSkeleton, hueFor, listTime } from "./email-bits";
@@ -72,6 +72,7 @@ const EmailList = ({
   selectedId: string | null;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const t = useMessages().email;
 
   if (emails === undefined) {
@@ -120,9 +121,9 @@ const EmailList = ({
                   <time
                     className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
                     dateTime={new Date(email.receivedAt).toISOString()}
-                    title={formatWhen(email.receivedAt, timeZone)}
+                    title={formatWhen(email.receivedAt, timeZone, locale)}
                   >
-                    {listTime(email.receivedAt, timeZone)}
+                    {listTime(email.receivedAt, timeZone, undefined, locale)}
                   </time>
                 </span>
                 <span className="text-label truncate">

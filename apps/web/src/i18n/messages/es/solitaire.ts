@@ -1,5 +1,26 @@
 import type { solitaire as english } from "../en/solitaire";
 
+const feminineCard = /^(?:jota|reina|siguiente carta)\b/u;
+const extraCards = / y \d+ cartas? más$/u;
+
+const cardWithArticle = (card: string): string => {
+  if (card.startsWith("la ")) {
+    return card;
+  }
+
+  return `${feminineCard.test(card) ? "la" : "el"} ${card}`;
+};
+
+const requiredCard = (color: string, rank: string): string => {
+  const feminine = feminineCard.test(rank);
+  const colorWord = color === "red" ? "roj" : "negr";
+
+  return `${feminine ? "una" : "un"} ${rank} ${colorWord}${feminine ? "a" : "o"}`;
+};
+
+const movedCards = (cards: string): string =>
+  `Se ${extraCards.test(cards) ? "movieron" : "movió"} ${cardWithArticle(cards)}`;
+
 const solitaire: typeof english = {
   action: "Qué hace",
   cardName: (rank: string, suit: string) => `${rank} de ${suit}`,
@@ -9,7 +30,7 @@ const solitaire: typeof english = {
   cardsBelow: (count: number) =>
     `${count} ${count === 1 ? "carta boca abajo debajo" : "cartas boca abajo debajo"}`,
   cardsPerDraw: "Cartas por robo",
-  chooseAnother: "Elige otro lugar o pulsa Escape para elegir otra carta.",
+  chooseAnother: "Elija otro lugar o pulse Escape para elegir otra carta.",
   columnCard: (card: string, index: number) => `${card}, columna ${index}`,
   columnEmpty: (index: number) =>
     `Columna ${index}, vacía. Solo un rey puede ir aquí.`,
@@ -17,7 +38,7 @@ const solitaire: typeof english = {
   dealt: (cards: string) =>
     `Se repartió una nueva partida, robando ${cards} a la vez.`,
   discarded: (reason: string) =>
-    `No se pudo abrir tu partida guardada, así que se repartió una nueva. ${reason}`,
+    `No se pudo abrir su partida guardada, así que se repartió una nueva. ${reason}`,
   draw: "Robar",
   drawSetting: (next: string, current: string) =>
     `Las nuevas partidas robarán ${next} a la vez. Esta partida sigue robando ${current}.`,
@@ -26,7 +47,7 @@ const solitaire: typeof english = {
   earlier: "anteriormente",
   emptyColumn: "Esta columna está vacía. Solo un rey puede ir aquí.",
   emptyFoundation: "Esta base está vacía. Primero van los ases.",
-  emptyWaste: "El descarte está vacío. Roba del mazo primero.",
+  emptyWaste: "El descarte está vacío. Robe del mazo primero.",
   engineExact: {
     "A saved column is out of order.":
       "Una columna guardada está fuera de orden.",
@@ -42,7 +63,7 @@ const solitaire: typeof english = {
       "Esa carta no puede ir ahí: una base empieza con un as.",
     "That card is already there.": "Esa carta ya está allí.",
     "That card is face down. Turn it over by moving the cards on top of it.":
-      "Esa carta está boca abajo. Mueve las cartas de encima para darle vuelta.",
+      "Esa carta está boca abajo. Mueva las cartas de encima para darle vuelta.",
     "That foundation is empty.": "Esa base está vacía.",
     "The saved draw setting is not 1 or 3.":
       "El número guardado de cartas por robo no es 1 ni 3.",
@@ -62,7 +83,7 @@ const solitaire: typeof english = {
     "The saved waste pile has a face-down card.":
       "El descarte guardado tiene una carta boca abajo.",
     "The waste pile is empty. Draw from the stock first.":
-      "El descarte está vacío. Roba del mazo primero.",
+      "El descarte está vacío. Robe del mazo primero.",
     "There are no cards left to draw.": "No quedan cartas para robar.",
     "There is no card there.": "No hay ninguna carta allí.",
     "There is no column there.": "No hay ninguna columna allí.",
@@ -78,36 +99,41 @@ const solitaire: typeof english = {
       "Se dio vuelta al descarte para formar un nuevo mazo.",
     "Undid the last move.": "Se deshizo el último movimiento.",
     "You have already gone through the deck as many times as this game allows.":
-      "Ya recorriste el mazo tantas veces como permite esta partida.",
+      "Ya recorrió el mazo tantas veces como permite esta partida.",
   },
   engineMoreCards: (count: string) =>
     `y ${count} ${count === "1" ? "carta más" : "cartas más"}`,
   enginePatterns: [
-    [/^Drew the (?<card>.+)\.$/u, (card) => `Se robó el ${card}.`],
+    [
+      /^Drew the (?<card>.+)\.$/u,
+      (card) => `Se robó ${cardWithArticle(card)}.`,
+    ],
     [
       /^Drew (?<count>\d+) cards\. The (?<card>.+) is on top\.$/u,
-      (count, card) => `Se robaron ${count} cartas. El ${card} está encima.`,
+      (count, card) =>
+        `Se robaron ${count} cartas. Arriba está ${cardWithArticle(card)}.`,
     ],
     [
       /^Moved (?<card>.+) to foundation (?<index>\d+)\.$/u,
-      (card, index) => `Se movió el ${card} a la base ${index}.`,
+      (card, index) => `Se movió ${cardWithArticle(card)} a la base ${index}.`,
     ],
     [
       /^Moved (?<cards>.+) onto (?<top>.+)\.$/u,
-      (cards, top) => `Se movió ${cards} sobre el ${top}.`,
+      (cards, top) => `${movedCards(cards)} sobre ${cardWithArticle(top)}.`,
     ],
     [
       /^Moved (?<cards>.+) to empty column (?<index>\d+)\.$/u,
-      (cards, index) => `Se movió ${cards} a la columna vacía ${index}.`,
+      (cards, index) => `${movedCards(cards)} a la columna vacía ${index}.`,
     ],
     [
       /^Nothing can go on the (?<card>.+) in a column\.$/u,
-      (card) => `No se puede colocar nada sobre el ${card} en una columna.`,
+      (card) =>
+        `No se puede colocar nada sobre ${cardWithArticle(card)} en una columna.`,
     ],
     [
       /^That card can't go there: it needs a (?<color>red|black) (?<rank>.+)\.$/u,
       (color, rank) =>
-        `Esa carta no puede ir ahí: se necesita un ${rank} ${color === "red" ? "rojo" : "negro"}.`,
+        `Esa carta no puede ir ahí: se necesita ${requiredCard(color, rank)}.`,
     ],
     [
       /^That card can't go there: this foundation is for (?<suit>.+)\.$/u,
@@ -115,15 +141,18 @@ const solitaire: typeof english = {
     ],
     [
       /^That card can't go there: this foundation starts with the (?<card>.+)\.$/u,
-      (card) => `Esa carta no puede ir ahí: esta base empieza con el ${card}.`,
+      (card) =>
+        `Esa carta no puede ir ahí: esta base empieza con ${cardWithArticle(card)}.`,
     ],
     [
       /^That foundation is complete: it already ends with the (?<card>.+)\.$/u,
-      (card) => `Esa base está completa: ya termina con el ${card}.`,
+      (card) =>
+        `Esa base está completa: ya termina con ${cardWithArticle(card)}.`,
     ],
     [
       /^That card can't go there: this foundation needs the (?<card>.+)\.$/u,
-      (card) => `Esa carta no puede ir ahí: esta base necesita el ${card}.`,
+      (card) =>
+        `Esa carta no puede ir ahí: esta base necesita ${cardWithArticle(card)}.`,
     ],
     [/^The (?<pile>.+) is missing\.$/u, (pile) => `Falta ${pile}.`],
     [
@@ -135,7 +164,7 @@ const solitaire: typeof english = {
       (pile, count) => `${pile} debe tener ${count} montones.`,
     ],
   ],
-  engineRevealed: (card: string) => ` Se dio vuelta al ${card}.`,
+  engineRevealed: (card: string) => ` Se reveló ${cardWithArticle(card)}.`,
   engineUndoStep: (reason: string) =>
     `Un paso para deshacer está dañado: ${reason}`,
   engineWords: {
@@ -152,20 +181,20 @@ const solitaire: typeof english = {
     "waste pile": "descarte",
   },
   faceDown:
-    "Esa carta está boca abajo. Mueve las cartas de encima para darle vuelta.",
+    "Esa carta está boca abajo. Mueva las cartas de encima para darle vuelta.",
   foundation: (index: number) => `Base ${index}.`,
   foundationCount: (count: number) => `${count} de 52 cartas en las bases`,
   foundationEmpty: (name: string, card: string) =>
-    `${name}, vacía. Empieza con el ${card}.`,
+    `${name}, vacía. Empieza con ${cardWithArticle(card)}.`,
   foundationName: (suit: string) => `Base de ${suit}`,
   foundationTop: (name: string, card: string) => `${name}, ${card} encima.`,
   gestures:
-    "Toca una carta para seleccionarla y luego toca donde quieras ponerla. Si una carta solo tiene un destino posible, un toque la mueve allí. Toca de nuevo la carta seleccionada para enviarla a una base o toca dos veces cualquier carta para hacer lo mismo.",
-  guestIntro: "Un juego tranquilo. No necesitas una cuenta.",
+    "Toque una carta para seleccionarla y luego toque donde quiera ponerla. Si una carta solo tiene un destino posible, un toque la mueve allí. Toque de nuevo la carta seleccionada para enviarla a una base o toque dos veces cualquier carta para hacer lo mismo.",
+  guestIntro: "Un juego tranquilo. No necesita una cuenta.",
   hint: "Pista",
-  hintDraw: "Pista: roba del mazo.",
+  hintDraw: "Pista: robe del mazo.",
   hintMove: (source: string, target: string) =>
-    `Pista: mueve ${source} ${target}.`,
+    `Pista: mueva ${source} ${target}.`,
   howToPlay: "Cómo jugar",
   intro: "Un juego tranquilo. Disponible sin conexión.",
   key: "Tecla",
@@ -191,13 +220,13 @@ const solitaire: typeof english = {
     `${count} ${count === 1 ? "movimiento" : "movimientos"}`,
   newGame: "Nueva partida",
   noMovesNote:
-    " No quedan movimientos en esta partida. Puedes deshacer o empezar una nueva.",
+    " No quedan movimientos en esta partida. Puede deshacer o empezar una nueva.",
   noSafeCards:
     "No hay cartas que se puedan enviar de forma segura a las bases ahora.",
   noUsefulMoves:
-    "No quedan movimientos útiles. Prueba a deshacer o empieza una nueva partida.",
+    "No quedan movimientos útiles. Pruebe a deshacer o empiece una nueva partida.",
   nothingSelected: "No hay ninguna carta seleccionada.",
-  onto: (card: string) => `sobre el ${card}`,
+  onto: (card: string) => `sobre ${cardWithArticle(card)}`,
   putBack: "Se devolvió la carta. No hay ninguna seleccionada.",
   ranks: [
     "as",
@@ -214,33 +243,33 @@ const solitaire: typeof english = {
     "reina",
     "rey",
   ],
-  ready: "Hay una nueva partida lista. Elige una carta para empezar.",
-  resumed: "Se reanudó tu última partida.",
+  ready: "Hay una nueva partida lista. Elija una carta para empezar.",
+  resumed: "Se reanudó su última partida.",
   resumedAt: (date: string) =>
-    `Se reanudó tu última partida, guardada el ${date}.`,
+    `Se reanudó su última partida, guardada el ${date}.`,
   rules:
-    "Forma cuatro montones del as al rey, cada uno en el lugar marcado con su palo (♠ ♥ ♣ ♦). En las siete columnas, coloca cada carta sobre otra de valor inmediatamente superior y de distinto color: un 7 rojo sobre un 8 negro. Solo un rey puede ir en una columna vacía. Roba del mazo cuando no puedas avanzar.",
+    "Forme cuatro montones del as al rey, cada uno en el lugar marcado con su palo (♠ ♥ ♣ ♦). En las siete columnas, coloque cada carta sobre otra de valor inmediatamente superior y de distinto color: un 7 rojo sobre un 8 negro. Solo un rey puede ir en una columna vacía. Robe del mazo cuando no pueda avanzar.",
   safeCards: "Enviar cartas seguras a las bases",
   saveFailed:
-    "Este navegador no permite guardar la partida. Perderás tu progreso si cierras esta página.",
+    "Este navegador no permite guardar la partida. Perderá su progreso si cierra esta página.",
   savedHint:
-    "Tu partida se guarda en este dispositivo después de cada movimiento, incluso sin conexión a internet.",
+    "Su partida se guarda en este dispositivo después de cada movimiento, incluso sin conexión a internet.",
   scrollHint:
-    "Desplaza la mesa hacia los lados para llegar a cada montón o gira tu teléfono para tener más espacio.",
+    "Desplace la mesa hacia los lados para llegar a cada montón o gire su teléfono para tener más espacio.",
   selected: " Seleccionada.",
   selectedBlocked: (name: string) =>
-    `Seleccionaste ${name}. No tiene adónde ir ahora. Pulsa Escape para devolverla.`,
+    `Seleccionó ${name}. No tiene adónde ir ahora. Pulse Escape para devolverla.`,
   selectedTargets: (name: string, count: number) =>
-    `Seleccionaste ${name}. Puede ir a ${count} lugares. Elige uno o pulsa Escape.`,
+    `Seleccionó ${name}. Puede ir a ${count} lugares. Elija uno o pulse Escape.`,
   sentSafe: (count: number, names: string) =>
     `Se ${count === 1 ? "envió 1 carta" : `enviaron ${count} cartas`} a las bases: ${names}.`,
   shuffling: "Barajando las cartas.",
   sourceWithCards: (name: string, count: number) =>
     `${name} y ${count === 1 ? "la carta" : `las ${count} cartas`} encima`,
   startFresh: "Empezar de cero",
-  stock: (cards: string) => `Mazo, ${cards}. Pulsa para robar.`,
+  stock: (cards: string) => `Mazo, ${cards}. Pulse para robar.`,
   stockEmpty: "El mazo está vacío.",
-  stockRecycle: "El mazo está vacío. Pulsa para dar vuelta al descarte.",
+  stockRecycle: "El mazo está vacío. Pulse para dar vuelta al descarte.",
   suggested: " Sugerida por la pista.",
   suits: {
     clubs: "tréboles",
@@ -256,10 +285,10 @@ const solitaire: typeof english = {
   toFoundation: "a una base",
   undo: "Deshacer",
   waste: "Descarte",
-  wasteEmpty: "Descarte vacío. Roba del mazo.",
+  wasteEmpty: "Descarte vacío. Robe del mazo.",
   wasteTop: (card: string) => `Descarte, ${card} encima.`,
-  won: (moves: number) => `Ganaste en ${moves} movimientos.`,
-  wonNote: (moves: number) => ` Ganaste en ${moves} movimientos. Bien jugado.`,
+  won: (moves: number) => `Ganó en ${moves} movimientos.`,
+  wonNote: (moves: number) => ` Ganó en ${moves} movimientos. Bien jugado.`,
 };
 
 export { solitaire };

@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import { previewOf } from "./message-bits";
@@ -64,6 +64,7 @@ const ConversationRow = ({
 }) => {
   const { contact, last } = thread;
   const t = useMessages().threads;
+  const locale = useLocale();
 
   return (
     <Link
@@ -92,17 +93,17 @@ const ConversationRow = ({
             <time
               className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
               dateTime={new Date(last.createdAt).toISOString()}
-              title={formatWhen(last.createdAt, timeZone)}
+              title={formatWhen(last.createdAt, timeZone, locale)}
             >
               <span className="sr-only">, </span>
-              {listTime(last.createdAt, timeZone)}
+              {listTime(last.createdAt, timeZone, undefined, locale)}
             </time>
           ) : null}
         </span>
         <span className="text-muted-foreground text-label truncate">
           <span className="sr-only">, </span>
           {last
-            ? previewOf(last)
+            ? previewOf(last, locale)
             : `${t.startConversation}${thread.channel ? ` · ${t.channels[thread.channel]}` : ""}`}
         </span>
         <RowStatus thread={thread} />

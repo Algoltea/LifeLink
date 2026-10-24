@@ -75,10 +75,11 @@ const enroll = async (
 const approveMessage = async (
   owner: Person,
   contactId: Id<"contacts">,
-  photoIds: Id<"photos">[] = []
+  photoIds: Id<"photos">[] = [],
+  body = BODY
 ): Promise<Id<"actions">> => {
   const taskId = await owner.mutation(api.messages.draft, {
-    body: BODY,
+    body,
     contactId,
     photoIds,
   });
@@ -432,7 +433,11 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     await owner.mutation(api.profiles.updatePreferences, {
       supportLanguage: "es",
     });
-    const actionId = await approveMessage(owner, contactId);
+
+    const approvedBody =
+      "Hola, Sam.\n¿Puedes llevarme a Clínica Central? — Ruth";
+
+    const actionId = await approveMessage(owner, contactId, [], approvedBody);
 
     const approved = await backend.run(async (ctx) => ({
       approvals: await ctx.db.query("approvals").collect(),
@@ -458,6 +463,9 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     await owner.mutation(api.profiles.updatePreferences, {
       supportLanguage: "en",
     });
+    await backend.run(
+      async (ctx) => await ctx.db.patch(contactId, { language: "en" })
+    );
     sdk.sendText.mockResolvedValue({
       guid: "spanish-replay",
       sendErrorCode: 0,
@@ -468,7 +476,10 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     ).resolves.toBe("went_through");
     expect(sdk.sendText).toHaveBeenCalledExactlyOnceWith(
       ROUTE.spaceId,
-      withIntroduction(imessageIntroduction("Ruth Alvarez", "es"), BODY),
+      withIntroduction(
+        imessageIntroduction("Ruth Alvarez", "es"),
+        approvedBody
+      ),
       { clientMessageId: start.idempotencyKey }
     );
 
@@ -483,7 +494,9 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
       async (ctx) => await ctx.db.query("messages").collect()
     );
 
-    expect(outgoing).toMatchObject([{ body: BODY, direction: "outgoing" }]);
+    expect(outgoing).toMatchObject([
+      { body: approvedBody, direction: "outgoing" },
+    ]);
   });
 
   it("reconciles with the captured sender, space and original idempotency key", async () => {

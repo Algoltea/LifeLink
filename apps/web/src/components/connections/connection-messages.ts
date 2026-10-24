@@ -1,3 +1,5 @@
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
+
 import { getLocale, useLocale } from "@/i18n/locale";
 import { connections as enConnections } from "@/i18n/messages/en/connections";
 import type { ConnectionsMessages } from "@/i18n/messages/en/connections";
@@ -15,9 +17,12 @@ const CONNECTION_STATE = /^The connection is (?<status>.+)\.$/u;
 const useConnectionMessages = (): ConnectionsMessages =>
   useLocale() === "es" ? esConnections : enConnections;
 
-const translateConnectionMessage = (message: string): string => {
+const translateConnectionMessage = (
+  message: string,
+  locale: InterfaceLocale = getLocale()
+): string => {
   const words: ConnectionsMessages =
-    getLocale() === "es" ? esConnections : enConnections;
+    locale === "es" ? esConnections : enConnections;
 
   const text = message.trim();
 
@@ -43,7 +48,7 @@ const translateConnectionMessage = (message: string): string => {
     return words.connectionState(words.connectionStates[state[1]] ?? state[1]);
   }
 
-  return translateServerMessage(message);
+  return translateServerMessage(message, locale);
 };
 
 export { translateConnectionMessage, useConnectionMessages };

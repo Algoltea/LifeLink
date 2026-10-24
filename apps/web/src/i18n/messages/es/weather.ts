@@ -28,7 +28,7 @@ const weather: Messages["weather"] = {
     "Rain likely, take a coat": "Probable lluvia, lleve un abrigo",
     Showers: "Chubascos",
     Snow: "Nieve",
-    "Snow grains": "Granizo fino",
+    "Snow grains": "Granos de nieve",
     "Snow likely, take care outside": "Probable nieve, tenga cuidado afuera",
     "Snow showers": "Chubascos de nieve",
     "Storms likely": "Probables tormentas",

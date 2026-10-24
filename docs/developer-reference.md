@@ -2,6 +2,8 @@
 
 Detailed setup, architecture, and integration notes. Start with the [project README](../README.md) for a shorter introduction and demo walkthrough.
 
+For language behavior, see [Language support](../README.md#language-support) and the [PR #16 verification record](language-support-handoff.md#pr-16-follow-up). UI render helpers accept an explicit interface locale so React Compiler can invalidate their results. Use `useLocale()` or `useMessages()` in components and pass the locale to formatting/translation helpers; never remount a screen to refresh its language. Only translate known application-owned text, preserving authored content and approved details verbatim.
+
 LifeLink is a calm, accessible assistant that helps older adults stay close to family, keep track of the day, and check messages that look wrong. You speak or type what you need, review exactly what will happen, approve it, and then follow its progress until it's done.
 
 Two commands get you from a fresh checkout to a running app:

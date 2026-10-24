@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
+import { useLocale } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 import {
@@ -36,6 +37,7 @@ const CallbackResult = ({
   missing: boolean;
   outcome: Outcome;
 }) => {
+  const locale = useLocale();
   const words = useConnectionMessages().callback;
 
   if (declined) {
@@ -64,7 +66,9 @@ const CallbackResult = ({
         {words.connected(label)}
       </p>
     ) : (
-      <ErrorNote>{translateConnectionMessage(outcome.message)}</ErrorNote>
+      <ErrorNote>
+        {translateConnectionMessage(outcome.message, locale)}
+      </ErrorNote>
     );
   }
 

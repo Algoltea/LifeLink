@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import {
   describeWeather,
   toUnit,
@@ -17,7 +18,7 @@ import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useCallback, useSyncExternalStore } from "react";
 
-import { currentMessages } from "@/i18n/locale";
+import { getLocale, messagesFor } from "@/i18n/locale";
 import { dayKey, MINUTE } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
 import { useRefreshWhenStale } from "@/lib/refresh";
@@ -45,16 +46,21 @@ const useTemperatureUnit = (): TemperatureUnit =>
   );
 
 /** Shared weather wording in the person's language. */
-const translateCondition = (english: string): string =>
-  currentMessages().weather.conditions[english] ?? english;
+const translateCondition = (english: string, locale: InterfaceLocale): string =>
+  messagesFor(locale).weather.conditions[english] ?? english;
 
-const weatherLabel = (code: number): string =>
-  translateCondition(describeWeather(code).label);
+const weatherLabel = (
+  code: number,
+  locale: InterfaceLocale = getLocale()
+): string => translateCondition(describeWeather(code).label, locale);
 
-const adviceFor = (day: WeatherDay): string | null => {
+const adviceFor = (
+  day: WeatherDay,
+  locale: InterfaceLocale = getLocale()
+): string | null => {
   const advice = weatherAdvice(day);
 
-  return advice === null ? null : translateCondition(advice);
+  return advice === null ? null : translateCondition(advice, locale);
 };
 
 const degrees = (celsius: number, unit: TemperatureUnit): string =>
@@ -114,11 +120,15 @@ const forecastOf = (state: WeatherState | undefined): Forecast | null =>
     : null;
 
 /** One sentence for "Read my day aloud". */
-const spokenWeather = (forecast: Forecast, unit: TemperatureUnit): string => {
-  const words = currentMessages().weather;
-  const now = weatherLabel(forecast.current.code).toLowerCase();
+const spokenWeather = (
+  forecast: Forecast,
+  unit: TemperatureUnit,
+  locale: InterfaceLocale = getLocale()
+): string => {
+  const words = messagesFor(locale).weather;
+  const now = weatherLabel(forecast.current.code, locale).toLowerCase();
   const [today] = forecast.days;
-  const advice = today ? adviceFor(today) : null;
+  const advice = today ? adviceFor(today, locale) : null;
 
   const range = today
     ? words.spokenRange(toUnit(today.highC, unit), toUnit(today.lowC, unit))

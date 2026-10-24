@@ -1,6 +1,8 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { describeWeather } from "@lifelink/contracts/weather";
 import type {
   Forecast,
@@ -22,7 +24,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { currentIntlLocale, useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { adviceFor, degrees, weatherLabel } from "@/lib/weather";
 import type { WeatherState } from "@/lib/weather";
 
@@ -51,10 +53,15 @@ const WeatherIcon = ({
   return <Icon aria-hidden="true" className={cn("shrink-0", className)} />;
 };
 
-const weekday = (date: string, index: number, today: string): string =>
+const weekday = (
+  date: string,
+  index: number,
+  today: string,
+  locale: InterfaceLocale
+): string =>
   index === 0
     ? today
-    : new Intl.DateTimeFormat(currentIntlLocale(), {
+    : new Intl.DateTimeFormat(intlLocaleOf(locale), {
         timeZone: "UTC",
         weekday: "short",
       }).format(Date.parse(`${date}T12:00:00Z`));
@@ -68,14 +75,15 @@ const WeekForecast = ({
   practice: boolean;
   unit: TemperatureUnit;
 }) => {
+  const locale = useLocale();
   const t = useMessages();
 
   return (
     <>
       <ul className="flex flex-col">
         {forecast.days.map((day, index) => {
-          const advice = adviceFor(day);
-          const label = weatherLabel(day.code);
+          const advice = adviceFor(day, locale);
+          const label = weatherLabel(day.code, locale);
 
           return (
             <li
@@ -83,7 +91,7 @@ const WeekForecast = ({
               key={day.date}
             >
               <span className="text-body w-14 shrink-0 font-semibold">
-                {weekday(day.date, index, t.format.today)}
+                {weekday(day.date, index, t.format.today, locale)}
               </span>
               <WeatherIcon
                 className="text-muted-foreground size-5"
@@ -129,6 +137,7 @@ const WeatherChip = ({
   state: WeatherState | undefined;
   unit: TemperatureUnit;
 }) => {
+  const locale = useLocale();
   const t = useMessages();
 
   // The week list asks for a missing place; the header waits quietly for weather.
@@ -138,7 +147,7 @@ const WeatherChip = ({
 
   const { forecast } = state;
   const [today] = forecast.days;
-  const label = weatherLabel(forecast.current.code);
+  const label = weatherLabel(forecast.current.code, locale);
 
   return (
     <>

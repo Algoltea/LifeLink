@@ -20,13 +20,15 @@ import { es } from "./messages/es";
 const CATALOGS: Record<InterfaceLocale, Messages> = { en, es };
 
 const readStoredLocale = (): InterfaceLocale => {
+  let saved: string | null = null;
+
   try {
-    return interfaceLocaleOf(
-      localStorage.getItem(LOCALE_STORAGE_KEY) ?? globalThis.navigator?.language
-    );
+    saved = localStorage.getItem(LOCALE_STORAGE_KEY);
   } catch {
-    return DEFAULT_LOCALE;
+    // The browser's language still works when device storage is unavailable.
   }
+
+  return interfaceLocaleOf(saved || globalThis.navigator?.language);
 };
 
 let active: InterfaceLocale =

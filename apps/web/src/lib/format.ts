@@ -1,38 +1,57 @@
 /** Dates and times in the person's own time zone and language, in words where recency matters. */
 
-import { currentIntlLocale, currentMessages } from "@/i18n/locale";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
+
+import { getLocale, messagesFor } from "@/i18n/locale";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-const formatTime = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat(currentIntlLocale(), {
+const formatTime = (
+  timestamp: number,
+  timeZone: string,
+  locale: InterfaceLocale = getLocale()
+): string =>
+  new Intl.DateTimeFormat(intlLocaleOf(locale), {
     hour: "numeric",
     minute: "2-digit",
     timeZone,
   }).format(timestamp);
 
-const formatDay = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat(currentIntlLocale(), {
+const formatDay = (
+  timestamp: number,
+  timeZone: string,
+  locale: InterfaceLocale = getLocale()
+): string =>
+  new Intl.DateTimeFormat(intlLocaleOf(locale), {
     day: "numeric",
     month: "long",
     timeZone,
     weekday: "long",
   }).format(timestamp);
 
-const formatShortDay = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat(currentIntlLocale(), {
+const formatShortDay = (
+  timestamp: number,
+  timeZone: string,
+  locale: InterfaceLocale = getLocale()
+): string =>
+  new Intl.DateTimeFormat(intlLocaleOf(locale), {
     day: "numeric",
     month: "short",
     timeZone,
     weekday: "short",
   }).format(timestamp);
 
-const formatWhen = (timestamp: number, timeZone: string): string =>
-  currentMessages().format.at(
-    formatDay(timestamp, timeZone),
-    formatTime(timestamp, timeZone)
+const formatWhen = (
+  timestamp: number,
+  timeZone: string,
+  locale: InterfaceLocale = getLocale()
+): string =>
+  messagesFor(locale).format.at(
+    formatDay(timestamp, timeZone, locale),
+    formatTime(timestamp, timeZone, locale)
   );
 
 const dayKey = (timestamp: number, timeZone: string): string =>
@@ -47,10 +66,11 @@ const dayKey = (timestamp: number, timeZone: string): string =>
 const relativeDay = (
   timestamp: number,
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): string => {
   const key = dayKey(timestamp, timeZone);
-  const words = currentMessages().format;
+  const words = messagesFor(locale).format;
 
   if (key === dayKey(now, timeZone)) {
     return words.today;
@@ -64,13 +84,18 @@ const relativeDay = (
     return words.yesterday;
   }
 
-  return formatDay(timestamp, timeZone);
+  return formatDay(timestamp, timeZone, locale);
 };
 
 /** "Just now", "12 minutes ago", "Yesterday at 4:10 PM". */
-const ago = (timestamp: number, timeZone: string, now = Date.now()): string => {
+const ago = (
+  timestamp: number,
+  timeZone: string,
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
+): string => {
   const elapsed = now - timestamp;
-  const words = currentMessages().format;
+  const words = messagesFor(locale).format;
 
   if (elapsed < MINUTE) {
     return words.justNow;
@@ -85,13 +110,13 @@ const ago = (timestamp: number, timeZone: string, now = Date.now()): string => {
   }
 
   return words.at(
-    relativeDay(timestamp, timeZone, now),
-    formatTime(timestamp, timeZone)
+    relativeDay(timestamp, timeZone, now, locale),
+    formatTime(timestamp, timeZone, locale)
   );
 };
 
-const money = (cents: number): string =>
-  new Intl.NumberFormat(currentIntlLocale(), {
+const money = (cents: number, locale: InterfaceLocale = getLocale()): string =>
+  new Intl.NumberFormat(intlLocaleOf(locale), {
     currency: "USD",
     style: "currency",
   }).format(cents / 100);

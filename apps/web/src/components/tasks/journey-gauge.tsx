@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 type Step = Pick<
@@ -124,13 +124,16 @@ const JourneyGauge = ({
   steps: Step[];
 }) => {
   const t = useMessages().tasks;
+  const locale = useLocale();
   const STATUS_WORDS = t.steps;
-  const label = (step: Step): string => translateServerMessage(step.label);
+
+  const label = (step: Step): string =>
+    translateServerMessage(step.label, locale);
 
   const detail = (step: Step): string | null =>
     step.detail === null || step.detail === undefined
       ? null
-      : translateServerMessage(step.detail);
+      : translateServerMessage(step.detail, locale);
 
   const doneCount = steps.findIndex(
     (step) => step.status !== "succeeded" && step.status !== "skipped"

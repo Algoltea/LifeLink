@@ -18,8 +18,7 @@ import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { Composer } from "@/components/voice/composer";
-import { useMessages } from "@/i18n/locale";
-import { translateServerMessage } from "@/i18n/server-messages";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { useGreeting } from "@/lib/greeting";
 
@@ -29,6 +28,7 @@ import {
   CHAT_WORKSPACE,
 } from "./chat-layout";
 import { ChatLoadingWorkspace } from "./chat-loading-workspace";
+import { conversationTitleFor } from "./conversation-title";
 import { EmailSummaryPreset } from "./email-summary-preset";
 import { HistoryDrawer } from "./history-drawer";
 import { AssistantThread } from "./thread";
@@ -240,6 +240,7 @@ const Conversation = ({
 };
 
 const AskWorkspace = () => {
+  const locale = useLocale();
   const threadId = useQuery(api.assistant.myThread);
 
   const history = usePaginatedQuery(
@@ -318,7 +319,7 @@ const AskWorkspace = () => {
         }
         title={
           activeConversation?.hasMessages
-            ? translateServerMessage(activeConversation.title)
+            ? conversationTitleFor(activeConversation, locale)
             : null
         }
       />

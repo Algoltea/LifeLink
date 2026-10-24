@@ -28,6 +28,8 @@ const scamResult = {
     screenshot: "A photo or screenshot",
     text: "A message",
   },
+  localLanguageNotice:
+    "This local check is designed for English only. It can miss scams in Spanish and other languages. No warning signs does not mean a message is safe.",
   method: {
     cloud: "A cloud AI service helped with this check, with your permission.",
     cloudOld:

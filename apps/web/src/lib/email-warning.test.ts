@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { messagesFor } from "@/i18n/locale";
+
 import { emailWarningIntro, hasEmailWarning } from "./email-warning";
 
 describe("email warning narration", () => {
@@ -37,12 +39,39 @@ describe("email warning narration", () => {
     );
   });
 
-  it.each([
-    { suspicious: null },
-    { suspicious: false },
-    { scamCheck: { verdict: "unsure" }, suspicious: false },
-  ])("does not announce a scam on an unflagged email: %j", (email) => {
-    expect(hasEmailWarning(email)).toBeFalsy();
-    expect(emailWarningIntro(email, [])).toBe("");
-  });
+  it.each([{ suspicious: null }, { suspicious: false }])(
+    "does not invent a check or warning for an unchecked email: %j",
+    (email) => {
+      expect(hasEmailWarning(email)).toBeFalsy();
+      expect(emailWarningIntro(email, [])).toBe("");
+    }
+  );
+
+  it.each(["en", "es"] as const)(
+    "discloses the language limit without inventing a warning for an unflagged checked email in %s",
+    (locale) => {
+      const email = { scamCheck: { verdict: "unsure" }, suspicious: false };
+
+      expect(hasEmailWarning(email)).toBeFalsy();
+      expect(emailWarningIntro(email, [], locale)).toBe(
+        messagesFor(locale).email.localLanguageNotice
+      );
+    }
+  );
+
+  it.each(["en", "es"] as const)(
+    "keeps the language limit and saved warning in %s narration",
+    (locale) => {
+      const intro = emailWarningIntro(
+        { scamCheck: { verdict: "suspicious" }, suspicious: true },
+        ["Mentions private details"],
+        locale
+      );
+
+      expect(intro).toContain(messagesFor(locale).email.localLanguageNotice);
+      expect(intro).toContain(
+        locale === "es" ? "Menciona datos privados" : "Mentions private details"
+      );
+    }
+  );
 });

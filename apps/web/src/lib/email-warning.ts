@@ -1,4 +1,6 @@
-import { currentMessages } from "@/i18n/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
+
+import { getLocale, messagesFor } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 interface EmailWarningSource {
@@ -11,25 +13,28 @@ const hasEmailWarning = (email: EmailWarningSource): boolean =>
   email.scamCheck?.verdict === "likely_scam" ||
   email.scamCheck?.verdict === "suspicious";
 
-/** Say the caution before the sender's words, using the saved check's reasons. */
+/** Explain the local check's limits before reading the sender's words. */
 const emailWarningIntro = (
   email: EmailWarningSource,
-  warningSigns: string[]
+  warningSigns: string[],
+  locale: InterfaceLocale = getLocale()
 ): string => {
-  if (!hasEmailWarning(email)) {
-    return "";
-  }
+  const { localLanguageNotice, warning: t } = messagesFor(locale).email;
 
-  const t = currentMessages().email.warning;
+  if (!hasEmailWarning(email)) {
+    return email.scamCheck === undefined ? "" : localLanguageNotice;
+  }
 
   const reason =
     warningSigns.length > 0
       ? t.signs(
-          warningSigns.map((sign) => translateServerMessage(sign)).join("; ")
+          warningSigns
+            .map((sign) => translateServerMessage(sign, locale))
+            .join("; ")
         )
       : t.concern;
 
-  return t.intro(reason);
+  return `${t.intro(reason)} ${localLanguageNotice}`;
 };
 
 export { emailWarningIntro, hasEmailWarning };

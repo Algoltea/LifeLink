@@ -15,8 +15,7 @@ import { SimulatedPill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { ENV } from "@/env";
-import { useMessages } from "@/i18n/locale";
-import { translateServerMessage } from "@/i18n/server-messages";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
 import { ago, formatDay, formatWhen, money } from "@/lib/format";
@@ -183,6 +182,7 @@ const Conversation = ({
   const reply = useMutation(api.messages.replyInApp);
   const [body, setBody] = useState("");
   const inputId = useId();
+  const locale = useLocale();
   const t = useMessages().family;
 
   if (thread === null) {
@@ -222,7 +222,7 @@ const Conversation = ({
               </p>
               <span className="text-muted-foreground text-sm">
                 {message.fromMe ? t.you : ownerName} ·{" "}
-                {ago(message.createdAt, timeZone)}
+                {ago(message.createdAt, timeZone, undefined, locale)}
                 {message.hasPhotos ? t.withPhotos : ""}
               </span>
             </li>
@@ -263,6 +263,7 @@ const Conversation = ({
 
 const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
   const overview = useQuery(api.family.overview, { ownerId });
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.family;
 
@@ -311,9 +312,9 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
           <ul className="flex flex-col gap-3">
             {overview.updates.map((update) => (
               <li className="border-rule border-t pt-4" key={update.id}>
-                <p className="text-lg">{translateServerMessage(update.text)}</p>
+                <p className="text-lg">{update.text}</p>
                 <span className="text-muted-foreground text-base">
-                  {ago(update.createdAt, timeZone)}
+                  {ago(update.createdAt, timeZone, undefined, locale)}
                 </span>
               </li>
             ))}
@@ -344,7 +345,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                       {appointment.title}
                     </span>
                     <span className="text-base">
-                      {formatWhen(appointment.startsAt, timeZone)}
+                      {formatWhen(appointment.startsAt, timeZone, locale)}
                       {appointment.location ? ` · ${appointment.location}` : ""}
                     </span>
                     {ride ? (
@@ -374,7 +375,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                 >
                   <span>{reminder.title}</span>
                   <span className="text-muted-foreground">
-                    {formatWhen(reminder.remindAt, timeZone)}
+                    {formatWhen(reminder.remindAt, timeZone, locale)}
                   </span>
                 </li>
               ))}
@@ -408,7 +409,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                 <span className="text-lg">
                   {t.checked(
                     t.kinds[alert.kind] ?? alert.kind,
-                    formatDay(alert.createdAt, timeZone)
+                    formatDay(alert.createdAt, timeZone, locale)
                   )}
                 </span>
               </li>
@@ -429,7 +430,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                 {list.name}
                 {list.budgetCents === null
                   ? ""
-                  : t.budget(money(list.budgetCents))}
+                  : t.budget(money(list.budgetCents, locale))}
               </span>
               <span className="text-base">
                 {list.items.length > 0 ? list.items.join(", ") : t.nothingLeft}

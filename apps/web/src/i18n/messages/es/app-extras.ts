@@ -65,9 +65,9 @@ const appExtras: typeof EnglishAppExtras = {
     scamBody:
       "¿Tiene dudas sobre un mensaje o una llamada? LifeLink busca señales de alerta antes de que actúe.",
     scamTitle: "Comprobar estafas",
-    settings: "Cargando la configuración",
+    settings: "Cargando los ajustes",
     settingsBody: "Ajuste LifeLink para leer y escuchar con comodidad.",
-    settingsTitle: "Configuración",
+    settingsTitle: "Ajustes",
     shared: "Cargando la información compartida",
     startListening: "Empezar a escuchar",
     takePhoto: "Tomar una foto",

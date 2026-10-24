@@ -2,6 +2,8 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -17,7 +19,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
-import { currentIntlLocale, useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay, money } from "@/lib/format";
 
@@ -46,9 +48,10 @@ const matches = (list: Doc<"groceryLists">, query: string): boolean => {
 /** Newest month first; lists keep their newest-first order within a month. */
 const byMonth = (
   lists: Doc<"groceryLists">[],
-  timeZone: string
+  timeZone: string,
+  locale: InterfaceLocale
 ): { label: string; lists: Doc<"groceryLists">[] }[] => {
-  const format = new Intl.DateTimeFormat(currentIntlLocale(), {
+  const format = new Intl.DateTimeFormat(intlLocaleOf(locale), {
     month: "long",
     timeZone,
     year: "numeric",
@@ -98,6 +101,7 @@ const PastRow = ({
   reusePending: boolean;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const t = useMessages().groceries;
 
   return (
@@ -119,8 +123,8 @@ const PastRow = ({
           {list.name}
         </Link>
         <span className="text-muted-foreground text-base">
-          {t.finished(formatShortDay(finishedAt(list), timeZone))} ·{" "}
-          {t.itemCount(list.items.length)} · {money(totalOf(list))}
+          {t.finished(formatShortDay(finishedAt(list), timeZone, locale))} ·{" "}
+          {t.itemCount(list.items.length)} · {money(totalOf(list), locale)}
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -155,6 +159,7 @@ const PastRow = ({
  * menu only shows the newest few, so this page is where older trips live.
  */
 const PastListsScreen = () => {
+  const locale = useLocale();
   const data = useQuery(api.groceries.lists);
   const copyList = useMutation(api.groceries.copyList);
   const { me } = usePreferences();
@@ -180,7 +185,7 @@ const PastListsScreen = () => {
     .toSorted((a, b) => finishedAt(b) - finishedAt(a));
 
   const shown = past.filter((list) => matches(list, query));
-  const months = byMonth(shown, timeZone);
+  const months = byMonth(shown, timeZone, locale);
 
   const reuse = async (source: Doc<"groceryLists">): Promise<void> => {
     if (reuseInFlight.current) {

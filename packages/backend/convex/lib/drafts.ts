@@ -45,8 +45,6 @@ const rideRequestDraft = (
 };
 
 interface CheckRequestDraft {
-  /** The first warning, already in the recipient's language, or null. */
-  concern: string | null;
   email: boolean;
   firstName: string;
   signOff: string;
@@ -64,12 +62,7 @@ const checkRequestDraft = (
 
   const what = draft.email ? "an email" : "a message";
 
-  const it =
-    draft.concern === null
-      ? "looks a bit odd"
-      : `seems to ${draft.concern.toLowerCase()}`;
-
-  return `Hi ${draft.firstName}, I got ${what} that I'm not sure about. It ${it}. Could you help me check whether it's real before I do anything? ${draft.signOff}`;
+  return `Hi ${draft.firstName}, I got ${what} that I'm not sure about. It looks a bit odd. Could you help me check whether it's real before I do anything? ${draft.signOff}`;
 };
 
 export { checkRequestDraft, rideRequestDraft };

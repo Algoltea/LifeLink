@@ -19,7 +19,7 @@ import type { ReactNode, RefObject } from "react";
 
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import { conversationItems } from "./message-bits";
@@ -73,13 +73,14 @@ const Outgoing = ({
 }) => {
   const { message } = item;
   const t = useMessages().threads;
+  const locale = useLocale();
   const troubled = message.status === "failed" || message.status === "unknown";
 
   return (
     <div className="flex flex-col items-end gap-1.5 pl-10 sm:pl-24">
       <div className="bg-neutral-wash max-w-full rounded-[1.222rem] px-4 py-3 text-lg sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
         <span className="sr-only">
-          {t.srYou(formatWhen(message.createdAt, timeZone))}
+          {t.srYou(formatWhen(message.createdAt, timeZone, locale))}
         </span>
         <BubbleText body={message.body} />
         <PhotoCount count={message.photoIds.length} />
@@ -132,6 +133,7 @@ const Incoming = ({
   const firstName = contact.name.split(" ")[0] ?? contact.name;
   const hasText = message.body.trim().length > 0;
   const t = useMessages().threads;
+  const locale = useLocale();
 
   return (
     <div className="flex gap-3">
@@ -150,7 +152,10 @@ const Incoming = ({
         {/* The gap on the far side lives on the bubble, so the actions below can use the full width. */}
         <div className="border-border bg-raised contrast:border-control max-w-[calc(100%-2rem)] rounded-[1.222rem] border px-4 py-3 text-lg sm:max-w-[calc(100%-6rem)] sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
           <span className="sr-only">
-            {t.srThem(firstName, formatWhen(message.createdAt, timeZone))}
+            {t.srThem(
+              firstName,
+              formatWhen(message.createdAt, timeZone, locale)
+            )}
           </span>
           <BubbleText body={message.body} />
           <PhotoCount count={message.photoIds.length} />
@@ -213,7 +218,8 @@ const ConversationList = ({
   onUseReply: (suggestion: string) => void;
   timeZone: string;
 }) => {
-  const items = conversationItems(messages, timeZone);
+  const locale = useLocale();
+  const items = conversationItems(messages, timeZone, undefined, locale);
   const modes = new Set(messages.map((message) => message.mode));
   // Practice is marked once in the header; only a mixed conversation needs it per message.
   const mixed = modes.size > 1;

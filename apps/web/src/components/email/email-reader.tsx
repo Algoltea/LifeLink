@@ -9,7 +9,6 @@ import {
   InfoIcon,
   LightbulbIcon,
   ReplyIcon,
-  ShieldCheckIcon,
   ShieldIcon,
   ShieldQuestionIcon,
   TextIcon,
@@ -23,7 +22,7 @@ import { toast } from "sonner";
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { emailWarningIntro, hasEmailWarning } from "@/lib/email-warning";
@@ -65,6 +64,7 @@ const ScanBanner = ({
   email: Doc<"emails">;
   warningSigns: string[];
 }) => {
+  const locale = useLocale();
   const t = useMessages().email;
   const scanSummary = scanSummaryFor(email, t);
   const checkHref = { pathname: "/scam", query: { email: email._id } };
@@ -72,11 +72,13 @@ const ScanBanner = ({
   if (email.scamCheck !== undefined && !hasEmailWarning(email)) {
     return (
       <p className="text-muted-foreground text-label flex items-start gap-2.5">
-        <ShieldCheckIcon
+        <ShieldQuestionIcon
           aria-hidden="true"
           className="mt-0.5 size-5 shrink-0"
         />
-        <span>{scanSummary}</span>
+        <span>
+          {scanSummary} {t.localLanguageNotice}
+        </span>
       </p>
     );
   }
@@ -109,13 +111,14 @@ const ScanBanner = ({
         {!pending && warningSigns.length > 0 ? (
           <ul className="text-body mt-2 flex list-disc flex-col gap-1 pl-5">
             {warningSigns.map((sign) => (
-              <li key={sign}>{translateServerMessage(sign)}</li>
+              <li key={sign}>{translateServerMessage(sign, locale)}</li>
             ))}
           </ul>
         ) : null}
         {!pending && warningSigns.length === 0 ? (
           <p className="text-body">{t.concern}</p>
         ) : null}
+        <p className="text-body mt-2">{t.localLanguageNotice}</p>
       </div>
       <Link
         className={buttonVariants({ className: "self-start", size: "sm" })}
@@ -138,6 +141,7 @@ const SummaryBody = ({
   const summarize = useMutation(api.emails.summarize);
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const consentId = useId();
+  const locale = useLocale();
   const t = useMessages().email;
   const working = email.selectedForReview && email.summary === null;
 
@@ -155,7 +159,7 @@ const SummaryBody = ({
           className="self-start"
           label={t.readSummary}
           text={[
-            emailWarningIntro(email, warningSigns),
+            emailWarningIntro(email, warningSigns, locale),
             t.summarySpoken,
             email.summary,
             email.actionNeeded ?? "",
@@ -221,6 +225,7 @@ const ReaderHeader = ({
   headingRef: RefObject<HTMLHeadingElement | null>;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const t = useMessages().email;
 
   return (
@@ -252,10 +257,10 @@ const ReaderHeader = ({
         <p className="text-muted-foreground text-label flex flex-wrap items-center gap-2 self-start pt-0.5">
           <time
             dateTime={new Date(email.receivedAt).toISOString()}
-            title={formatWhen(email.receivedAt, timeZone)}
+            title={formatWhen(email.receivedAt, timeZone, locale)}
           >
-            {formatShortDay(email.receivedAt, timeZone)} ·{" "}
-            {formatTime(email.receivedAt, timeZone)}
+            {formatShortDay(email.receivedAt, timeZone, locale)} ·{" "}
+            {formatTime(email.receivedAt, timeZone, locale)}
           </time>
           <ModePill mode={email.mode} />
         </p>
@@ -271,6 +276,7 @@ const AppointmentCard = ({
   appointment: Doc<"appointments">;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.email;
 
@@ -287,7 +293,7 @@ const AppointmentCard = ({
       </h3>
       <p className="font-bold">{appointment.title}</p>
       <p>
-        {formatWhen(appointment.startsAt, timeZone)}
+        {formatWhen(appointment.startsAt, timeZone, locale)}
         {appointment.location ? ` · ${appointment.location}` : ""}
       </p>
       <p className="text-muted-foreground text-label">
@@ -310,6 +316,7 @@ const CheckDisclosure = ({
   labelId: string;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const words = useMessages();
   const t = words.email;
 
@@ -322,8 +329,8 @@ const CheckDisclosure = ({
           ? t.notCheckedNote
           : t.checked(
               words.format.at(
-                formatShortDay(email.scamCheck.checkedAt, timeZone),
-                formatTime(email.scamCheck.checkedAt, timeZone)
+                formatShortDay(email.scamCheck.checkedAt, timeZone, locale),
+                formatTime(email.scamCheck.checkedAt, timeZone, locale)
               )
             )
       }
@@ -334,7 +341,9 @@ const CheckDisclosure = ({
         {t.checkUsesSigns}
         {email.scamCheck === undefined
           ? t.checkManually
-          : t.checkedAt(formatWhen(email.scamCheck.checkedAt, timeZone))}
+          : t.checkedAt(
+              formatWhen(email.scamCheck.checkedAt, timeZone, locale)
+            )}
       </p>
       <Link
         className={checkLinkClass}
@@ -370,6 +379,7 @@ const EmailReader = ({
   const loadedId = detail?.email._id;
   const summaryId = useId();
   const checkId = useId();
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.email;
 
@@ -430,7 +440,7 @@ const EmailReader = ({
             <ReadAloudButton
               label={messages.common.readAloud}
               text={[
-                emailWarningIntro(email, warningSigns),
+                emailWarningIntro(email, warningSigns, locale),
                 t.nowTheEmail,
                 t.spokenFrom(
                   email.subject || t.noSubjectSpoken,

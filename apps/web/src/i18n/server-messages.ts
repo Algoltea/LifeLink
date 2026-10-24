@@ -1,3 +1,5 @@
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
+
 import { getLocale } from "./locale";
 import { es as spanish } from "./server/es";
 
@@ -6,8 +8,11 @@ import { es as spanish } from "./server/es";
  * the person's language; anything unknown is shown as written, so a missing
  * translation never hides what went wrong.
  */
-const translateServerMessage = (message: string): string => {
-  if (getLocale() === "en") {
+const translateServerMessage = (
+  message: string,
+  locale: InterfaceLocale = getLocale()
+): string => {
+  if (locale === "en") {
     return message;
   }
 

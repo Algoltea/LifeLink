@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import { XIcon } from "lucide-react";
@@ -17,7 +18,7 @@ import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
@@ -31,8 +32,12 @@ const methodWords = (recap: Recap, t: Words): string =>
   recap.method === "cloud" ? t.cloud : t.local[recap.localReason ?? "chosen"];
 
 /** Local recaps are written by LifeLink in English; cloud recaps already use the person's language. */
-const recapText = (recap: Recap, text: string): string =>
-  recap.method === "local" ? translateServerMessage(text) : text;
+const recapText = (
+  recap: Recap,
+  text: string,
+  locale: InterfaceLocale
+): string =>
+  recap.method === "local" ? translateServerMessage(text, locale) : text;
 
 const Part = ({ children, title }: { children: ReactNode; title: string }) => {
   const id = useId();
@@ -123,14 +128,15 @@ const sectionsOf = (
     updatedAt: number;
   }[],
   timeZone: string,
-  t: Words
+  t: Words,
+  locale: InterfaceLocale
 ): Step[] => {
   const steps: Step[] = [
     {
       content: (
         <Part title={t.inShort}>
           <p className="text-lg leading-relaxed">
-            {recapText(recap, recap.summary)}
+            {recapText(recap, recap.summary, locale)}
           </p>
         </Part>
       ),
@@ -148,7 +154,9 @@ const sectionsOf = (
                 className="flex flex-col gap-1"
                 key={`${item.offer.quote}-${item.acceptance.quote}`}
               >
-                <span className="text-lg">{recapText(recap, item.text)}</span>
+                <span className="text-lg">
+                  {recapText(recap, item.text, locale)}
+                </span>
                 <Said contactName={contactName} {...item.offer} />
                 <Said contactName={contactName} {...item.acceptance} />
               </li>
@@ -168,7 +176,9 @@ const sectionsOf = (
           <ul className="flex flex-col gap-3">
             {recap.offers.map((item) => (
               <li className="flex flex-col gap-1" key={item.offer.quote}>
-                <span className="text-lg">{recapText(recap, item.text)}</span>
+                <span className="text-lg">
+                  {recapText(recap, item.text, locale)}
+                </span>
                 <Said contactName={contactName} {...item.offer} />
               </li>
             ))}
@@ -185,7 +195,7 @@ const sectionsOf = (
         <Part title={t.stillUnclear}>
           <ul className="flex list-disc flex-col gap-1 pl-6 text-lg">
             {recap.unclear.map((item) => (
-              <li key={item}>{recapText(recap, item)}</li>
+              <li key={item}>{recapText(recap, item, locale)}</li>
             ))}
           </ul>
         </Part>
@@ -215,7 +225,7 @@ const sectionsOf = (
                     {task.title}
                   </Link>
                   <span className="text-muted-foreground text-base">
-                    {formatWhen(task.updatedAt, timeZone)}
+                    {formatWhen(task.updatedAt, timeZone, locale)}
                   </span>
                   <ModePill mode={task.mode} />
                 </li>
@@ -245,7 +255,9 @@ const sectionsOf = (
                     ? t.messageTo(contactName)
                     : t.reminderForYou}
                 </span>
-                <span className="text-base">{recapText(recap, step.why)}</span>
+                <span className="text-base">
+                  {recapText(recap, step.why, locale)}
+                </span>
                 {step.messageDraft ? (
                   <p className="text-lg leading-7 whitespace-pre-wrap">
                     {step.messageDraft}
@@ -253,7 +265,8 @@ const sectionsOf = (
                 ) : null}
                 {step.reminderTitle && step.remindAt !== null ? (
                   <p className="text-lg">
-                    {step.reminderTitle}, {formatWhen(step.remindAt, timeZone)}
+                    {step.reminderTitle},{" "}
+                    {formatWhen(step.remindAt, timeZone, locale)}
                   </p>
                 ) : null}
                 <PrepareStep index={index} recap={recap} />
@@ -269,14 +282,18 @@ const sectionsOf = (
   return steps;
 };
 
-const spokenText = (recap: Recap, t: Words): string =>
+const spokenText = (recap: Recap, t: Words, locale: InterfaceLocale): string =>
   [
-    recapText(recap, recap.summary),
+    recapText(recap, recap.summary, locale),
     ...recap.agreements.map((item) =>
-      t.agreedSpoken(recapText(recap, item.text))
+      t.agreedSpoken(recapText(recap, item.text, locale))
     ),
-    ...recap.offers.map((item) => t.offeredSpoken(recapText(recap, item.text))),
-    ...recap.unclear.map((item) => t.unclearSpoken(recapText(recap, item))),
+    ...recap.offers.map((item) =>
+      t.offeredSpoken(recapText(recap, item.text, locale))
+    ),
+    ...recap.unclear.map((item) =>
+      t.unclearSpoken(recapText(recap, item, locale))
+    ),
   ].join(" ");
 
 const RequestForm = ({
@@ -366,6 +383,7 @@ const RecapPanel = ({
   const { me, preferences } = usePreferences();
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);
+  const locale = useLocale();
   const t = useMessages().recap;
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
@@ -395,7 +413,14 @@ const RecapPanel = ({
   } else if (view?.recap.status === "recapping") {
     body = <p className="text-lg">{t.reading}</p>;
   } else if (view !== undefined) {
-    const steps = sectionsOf(view.recap, contactName, view.done, timeZone, t);
+    const steps = sectionsOf(
+      view.recap,
+      contactName,
+      view.done,
+      timeZone,
+      t,
+      locale
+    );
 
     body = (
       <>
@@ -406,7 +431,7 @@ const RecapPanel = ({
         <ReadAloudButton
           className="self-start"
           label={t.readAloud}
-          text={spokenText(view.recap, t)}
+          text={spokenText(view.recap, t, locale)}
         />
         {preferences.stepByStep ? (
           <OneAtATime noun={t.part} steps={steps} />

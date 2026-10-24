@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation } from "convex/react";
@@ -21,7 +22,7 @@ import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { OneAtATime } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { Disclosure } from "@/components/email/email-bits";
-import { useMessages } from "@/i18n/locale";
+import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
@@ -55,8 +56,44 @@ const verdictOf = (verdict: Verdict, t: Words) => ({
 });
 
 /** Rule-based checks are written by LifeLink in English; cloud checks already use the person's language. */
-const reviewText = (review: Review, text: string): string =>
-  review.model.startsWith("rules") ? translateServerMessage(text) : text;
+const reviewText = (
+  review: Pick<Review, "model">,
+  text: string,
+  locale: InterfaceLocale
+): string =>
+  review.model.startsWith("rules")
+    ? translateServerMessage(text, locale)
+    : text;
+
+const reviewNarration = (
+  review: Pick<
+    Review,
+    | "explanation"
+    | "inputKind"
+    | "model"
+    | "nextSteps"
+    | "signals"
+    | "unverifiedQuoteCount"
+    | "verdict"
+  >,
+  locale: InterfaceLocale
+): string => {
+  const t = messagesFor(locale).scamResult;
+
+  return [
+    review.model.startsWith("rules") ? t.localLanguageNotice : "",
+    verdictOf(review.verdict, t).label,
+    reviewText(review, review.explanation, locale),
+    review.inputKind === "screenshot" ? t.imageUnverified : "",
+    (review.unverifiedQuoteCount ?? 0) > 0 ? t.removedQuotes : "",
+    ...review.signals
+      .filter((signal) => signal.stance !== "warns_against")
+      .map((signal) => reviewText(review, signal.label, locale)),
+    ...review.nextSteps.map((step) => reviewText(review, step, locale)),
+  ]
+    .filter(Boolean)
+    .join(". ");
+};
 
 const checkMethod = (review: Review, t: Words): string => {
   if (!review.model.startsWith("rules")) {
@@ -92,6 +129,7 @@ const SignalList = ({
   review: Review;
   signals: Signal[];
 }) => {
+  const locale = useLocale();
   const t = useMessages().scamResult;
 
   return (
@@ -99,7 +137,7 @@ const SignalList = ({
       {signals.map((signal, index) => (
         <li className="flex flex-col gap-1" key={`${signal.label}-${index}`}>
           <h3 className="text-lg font-semibold">
-            {reviewText(review, signal.label)}
+            {reviewText(review, signal.label, locale)}
           </h3>
           {signal.quote ? (
             <blockquote className="text-neutral-ink pl-5 text-lg wrap-anywhere">
@@ -107,7 +145,7 @@ const SignalList = ({
             </blockquote>
           ) : null}
           <p className="text-muted-foreground text-lg">
-            {reviewText(review, signal.detail)}
+            {reviewText(review, signal.detail, locale)}
           </p>
           {!photo && signal.quote && signal.evidence === "image_unverified" ? (
             <p className="text-warning text-lg">{t.imageUnverified}</p>
@@ -260,6 +298,7 @@ const ResultBanner = ({
   review: Review;
   spoken: string;
 }) => {
+  const locale = useLocale();
   const t = useMessages().scamResult;
   const verdict = verdictOf(review.verdict, t);
 
@@ -289,8 +328,13 @@ const ResultBanner = ({
         )}
         <div className="flex min-w-0 flex-col gap-2">
           <h2 className="text-section font-semibold">{verdict.label}</h2>
+          {review.model.startsWith("rules") ? (
+            <p className="max-w-prose text-lg leading-relaxed">
+              {t.localLanguageNotice}
+            </p>
+          ) : null}
           <p className="max-w-prose text-lg leading-relaxed">
-            {reviewText(review, review.explanation)}
+            {reviewText(review, review.explanation, locale)}
           </p>
         </div>
       </div>
@@ -310,6 +354,7 @@ const Evidence = ({
   review: Review;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const { preferences } = usePreferences();
   const t = useMessages().scamResult;
   const photo = review.inputKind === "screenshot";
@@ -387,7 +432,7 @@ const Evidence = ({
       <Disclosure
         icon={<ShieldQuestionIcon />}
         labelId={`method-${review._id}`}
-        note={ago(review.createdAt, timeZone)}
+        note={ago(review.createdAt, timeZone, undefined, locale)}
         title={t.howChecked}
       >
         <p className="text-lg">{checkMethod(review, t)}</p>
@@ -448,6 +493,7 @@ const ResultContent = ({
   review: Review;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const { preferences } = usePreferences();
   const photo = review.inputKind === "screenshot";
 
@@ -456,21 +502,12 @@ const ResultContent = ({
 
   const messages = useMessages();
   const t = messages.scamResult;
-  const verdict = verdictOf(review.verdict, t);
-  const nextSteps = review.nextSteps.map((step) => reviewText(review, step));
 
-  const spoken = [
-    verdict.label,
-    reviewText(review, review.explanation),
-    photo ? t.imageUnverified : "",
-    (review.unverifiedQuoteCount ?? 0) > 0 ? t.removedQuotes : "",
-    ...review.signals
-      .filter((signal) => signal.stance !== "warns_against")
-      .map((signal) => reviewText(review, signal.label)),
-    ...nextSteps,
-  ]
-    .filter(Boolean)
-    .join(". ");
+  const nextSteps = review.nextSteps.map((step) =>
+    reviewText(review, step, locale)
+  );
+
+  const spoken = reviewNarration(review, locale);
 
   if (review.status === "reviewing") {
     return (
@@ -574,6 +611,7 @@ const ScamResult = ({
   review: Review;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const resultRef = useRef<HTMLElement>(null);
   const messages = useMessages();
   const t = messages.scamResult;
@@ -601,7 +639,8 @@ const ScamResult = ({
           <div className="flex flex-wrap items-center gap-2">
             <ModePill mode={review.mode} />
             <p className="text-muted-foreground text-lg">
-              {t.kinds[review.inputKind]} · {ago(review.createdAt, timeZone)}
+              {t.kinds[review.inputKind]} ·{" "}
+              {ago(review.createdAt, timeZone, undefined, locale)}
             </p>
           </div>
         </div>
@@ -639,6 +678,6 @@ const ScamResult = ({
   );
 };
 
-export { ScamResult, verdictOf };
+export { ScamResult, reviewNarration, verdictOf };
 
 export type { Review };

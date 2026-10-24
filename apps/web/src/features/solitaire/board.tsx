@@ -10,7 +10,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { RotateCcw } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useMessages } from "@/i18n/locale";
 
 import {
   foundationLabel,
@@ -24,6 +24,7 @@ import {
   wasteLabel,
 } from "./board-model";
 import type { Slot } from "./board-model";
+import type { SolitaireMessages } from "./localization";
 import { CardBack, CardFace, EmptyFoundation, EmptyPile } from "./playing-card";
 
 type Mark = "hint" | "none" | "selected" | "target";
@@ -71,9 +72,7 @@ interface SlotButtonProps {
   readonly slot: Slot;
 }
 
-const markSuffix = (mark: Mark): string => {
-  const t = currentMessages().solitaire;
-
+const markSuffix = (mark: Mark, t: SolitaireMessages): string => {
   if (mark === "selected") {
     return t.selected;
   }
@@ -93,11 +92,12 @@ const SlotButton = ({
   mark,
   slot,
 }: SlotButtonProps) => {
+  const t = useMessages().solitaire;
   const key = slotKey(slot);
 
   return (
     <button
-      aria-label={`${label}${markSuffix(mark)}`}
+      aria-label={`${label}${markSuffix(mark, t)}`}
       className={cn(
         "hover:outline-control relative block aspect-[5/7] w-full cursor-pointer rounded-md text-left hover:outline hover:outline-2 focus-visible:z-10",
         className
@@ -146,6 +146,7 @@ const pileMark = (
 };
 
 const StockPile = ({ board }: { readonly board: BoardProps }) => {
+  const t = useMessages().solitaire;
   const { state } = board;
   const mark: Mark = board.hint?.type === "draw" ? "hint" : "none";
 
@@ -153,7 +154,7 @@ const StockPile = ({ board }: { readonly board: BoardProps }) => {
     <div className="[container-type:inline-size]">
       <SlotButton
         board={board}
-        label={stockLabel(state)}
+        label={stockLabel(state, t)}
         mark={mark}
         slot={{ area: "stock" }}
       >
@@ -201,7 +202,7 @@ const WastePile = ({ board }: { readonly board: BoardProps }) => {
         <SlotButton
           board={board}
           className={cn(under.length > 0 && "absolute top-0", topOffset)}
-          label={wasteLabel(state)}
+          label={wasteLabel(state, t)}
           mark={mark}
           slot={{ area: "waste" }}
         >
@@ -229,6 +230,7 @@ const FoundationPile = ({
   readonly board: BoardProps;
   readonly index: number;
 }) => {
+  const t = useMessages().solitaire;
   const top = board.state.foundations[index]?.at(-1);
   const suit = FOUNDATION_SUITS[index];
   const source: MoveSource | null = top ? { index, kind: "foundation" } : null;
@@ -238,7 +240,7 @@ const FoundationPile = ({
     <div className="[container-type:inline-size]">
       <SlotButton
         board={board}
-        label={foundationLabel(board.state, index)}
+        label={foundationLabel(board.state, index, t)}
         mark={mark}
         slot={{ area: "foundation", index }}
       >
@@ -303,7 +305,7 @@ const TableauColumn = ({
       <div className="[container-type:inline-size]">
         <SlotButton
           board={board}
-          label={tableauCardLabel(column, index, 0)}
+          label={tableauCardLabel(column, index, 0, t)}
           mark={mark}
           slot={{ area: "tableau", cardIndex: 0, index }}
         >
@@ -342,7 +344,7 @@ const TableauColumn = ({
             board={board}
             className={offset}
             key={card.id}
-            label={tableauCardLabel(column, index, cardIndex)}
+            label={tableauCardLabel(column, index, cardIndex, t)}
             mark={mark}
             slot={{ area: "tableau", cardIndex, index }}
           >

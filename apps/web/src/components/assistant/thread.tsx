@@ -16,7 +16,7 @@ import {
   InlineActionReview,
   InlineTaskReview,
 } from "@/components/tasks/inline-action-review";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useMessages } from "@/i18n/locale";
 
 import { EmailSummaryCard } from "./email-summary-card";
 
@@ -107,7 +107,7 @@ const CopyButton = ({ text }: { text: string }) => {
 };
 
 const Bubble = ({ message }: { message: UIMessage }) => {
-  const t = currentMessages().ask;
+  const t = useMessages().ask;
 
   if (message.role === "user") {
     return (

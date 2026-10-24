@@ -3,21 +3,21 @@ import type { auth as english } from "../en/auth";
 const auth: typeof english = {
   busy: "Un momento…",
   connectionFailed:
-    "No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.",
+    "No pudimos conectarnos. Revise su conexión a internet e inténtelo de nuevo.",
   createAccount: "Crear cuenta",
-  createFailed: "No pudimos crear la cuenta. Inténtalo de nuevo.",
-  createTitle: "Crea tu cuenta",
+  createFailed: "No pudimos crear la cuenta. Inténtelo de nuevo.",
+  createTitle: "Cree su cuenta",
   credentialsMismatch:
-    "El correo y la contraseña no coinciden. Revísalos e inténtalo de nuevo.",
+    "El correo y la contraseña no coinciden. Revíselos e inténtelo de nuevo.",
   email: "Correo electrónico",
   friend: "Amigo",
-  fullName: "Tu nombre completo",
+  fullName: "Su nombre completo",
   hide: "Ocultar",
   hidePassword: "Ocultar contraseña",
   intro:
-    "LifeLink te ayuda a mantenerte en contacto con tu familia y a organizar tu día. No se envía nada sin tu permiso.",
+    "LifeLink le ayuda a mantenerse en contacto con su familia y a organizar su día. No se envía nada sin su permiso.",
   minimumPassword: (count: number) =>
-    `Elige una contraseña de al menos ${count} caracteres.`,
+    `Elija una contraseña de al menos ${count} caracteres.`,
   modeLabel: "Iniciar sesión o crear una cuenta",
   password: "Contraseña",
   passwordHint: (count: number) => `Al menos ${count} caracteres.`,
@@ -26,8 +26,8 @@ const auth: typeof english = {
   showPassword: "Mostrar contraseña",
   signIn: "Iniciar sesión",
   signUp: "Crear una cuenta",
-  takingBreak: "¿Solo quieres descansar un rato?",
-  welcome: "Te damos la bienvenida de nuevo",
+  takingBreak: "¿Solo quiere descansar un rato?",
+  welcome: "Le damos la bienvenida de nuevo",
 };
 
 export { auth };

@@ -2,6 +2,7 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import type { api } from "@lifelink/backend/convex/_generated/api";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import type { FunctionReturnType } from "convex/server";
@@ -10,11 +11,12 @@ import { useState, useSyncExternalStore } from "react";
 
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
-import { translateServerMessage } from "@/i18n/server-messages";
 import { DAY, MINUTE, relativeDay } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
+
+import { conversationTitleFor } from "./conversation-title";
 
 type Conversation = FunctionReturnType<
   typeof api.assistant.listConversations
@@ -35,9 +37,10 @@ const groupOf = (
   updatedAt: number,
   timeZone: string,
   now: number,
-  t: Messages
+  t: Messages,
+  locale: InterfaceLocale
 ): Group => {
-  const day = relativeDay(updatedAt, timeZone, now);
+  const day = relativeDay(updatedAt, timeZone, now, locale);
 
   if (day === t.format.today) {
     return "today";
@@ -63,12 +66,13 @@ const groupConversations = (
   conversations: Conversation[],
   timeZone: string,
   now: number,
-  t: Messages
+  t: Messages,
+  locale: InterfaceLocale
 ): { group: Group; items: Conversation[] }[] => {
   const buckets = new Map<Group, Conversation[]>();
 
   for (const conversation of conversations) {
-    const group = groupOf(conversation.updatedAt, timeZone, now, t);
+    const group = groupOf(conversation.updatedAt, timeZone, now, t, locale);
     const bucket = buckets.get(group) ?? [];
     bucket.push(conversation);
     buckets.set(group, bucket);
@@ -111,6 +115,7 @@ const HistoryDrawer = ({
   timeZone: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.ask;
 
@@ -127,7 +132,7 @@ const HistoryDrawer = ({
   );
 
   const groups = saved
-    ? groupConversations(saved, timeZone, now, messages)
+    ? groupConversations(saved, timeZone, now, messages, locale)
     : [];
 
   return (
@@ -217,7 +222,7 @@ const HistoryDrawer = ({
                           type="button"
                         >
                           <span className="text-label line-clamp-2 flex-1 font-medium wrap-anywhere">
-                            {translateServerMessage(conversation.title)}
+                            {conversationTitleFor(conversation, locale)}
                           </span>
                           <time
                             className="text-muted-foreground shrink-0 text-[0.833rem]"
@@ -225,7 +230,12 @@ const HistoryDrawer = ({
                               conversation.updatedAt
                             ).toISOString()}
                           >
-                            {listTime(conversation.updatedAt, timeZone, now)}
+                            {listTime(
+                              conversation.updatedAt,
+                              timeZone,
+                              now,
+                              locale
+                            )}
                           </time>
                           {active ? (
                             <span className="sr-only">{t.openNow}</span>

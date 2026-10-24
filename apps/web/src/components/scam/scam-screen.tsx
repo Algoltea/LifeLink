@@ -22,7 +22,7 @@ import { useId, useRef, useState } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
@@ -119,10 +119,9 @@ const EmailPicker = ({
 const photoAvailability = (
   practice: boolean,
   loaded: boolean,
-  configured: boolean
+  configured: boolean,
+  t: ReturnType<typeof useMessages>["scam"]["photo"]
 ): string | null => {
-  const t = currentMessages().scam.photo;
-
   if (practice) {
     return t.practice;
   }
@@ -139,6 +138,7 @@ const photoAvailability = (
 };
 
 const useCheckAvailability = () => {
+  const t = useMessages().scam.photo;
   const { me } = usePreferences();
   const integrations = useQuery(api.status.integrations);
   const practice = me?.profile?.demoMode === true;
@@ -156,7 +156,8 @@ const useCheckAvailability = () => {
     unavailable: photoAvailability(
       practice,
       profileLoaded && integrations !== undefined,
-      configured
+      configured,
+      t
     ),
   };
 };
@@ -474,6 +475,7 @@ const HistoryList = ({
   reviews: Doc<"scamReviews">[] | undefined;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.scam;
 
@@ -514,7 +516,7 @@ const HistoryList = ({
                   {email?.subject || review.inputText?.trim() || kind}
                 </span>
                 <span className="text-muted-foreground text-label">
-                  {kind} · {ago(review.createdAt, timeZone)}
+                  {kind} · {ago(review.createdAt, timeZone, undefined, locale)}
                   {review.mode === "simulated" ? t.practiceSuffix : ""}
                 </span>
               </span>

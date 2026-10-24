@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { LoadingRows } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { formatDay } from "@/lib/format";
@@ -239,6 +239,7 @@ const GrantCard = ({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const live = grant.state === "active" || grant.state === "invited";
+  const locale = useLocale();
   const messages = useMessages();
   const t = messages.sharing;
   const state = t.state[grant.state];
@@ -251,7 +252,7 @@ const GrantCard = ({
           <span className="text-muted-foreground text-base">
             {grant.expiresAt === null
               ? t.expiry.none
-              : t.until(formatDay(grant.expiresAt, timeZone))}
+              : t.until(formatDay(grant.expiresAt, timeZone, locale))}
           </span>
         </div>
       </div>

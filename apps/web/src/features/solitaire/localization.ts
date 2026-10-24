@@ -5,7 +5,9 @@ import {
 } from "@lifelink/solitaire/cards";
 import type { CardIdentity } from "@lifelink/solitaire/cards";
 
-import { currentMessages, getLocale } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
+
+export type SolitaireMessages = Messages["solitaire"];
 
 const CARD_NAME =
   /\b(?:ace|[2-9]|10|jack|queen|king) of (?:clubs|diamonds|hearts|spades)\b/gu;
@@ -18,24 +20,16 @@ const ENGINE_WORDS =
 const REVEAL = /^(?<description>.*) Turned over the (?<card>.+)\.$/u;
 const UNDO_STEP = /^An undo step is damaged: (?<reason>.+)$/u;
 
-export const cardName = (card: CardIdentity): string => {
-  const t = currentMessages().solitaire;
+export const cardName = (card: CardIdentity, t: SolitaireMessages): string =>
+  t.cardName(t.ranks[card.rank - 1] ?? String(card.rank), t.suits[card.suit]);
 
-  return t.cardName(
-    t.ranks[card.rank - 1] ?? String(card.rank),
-    t.suits[card.suit]
-  );
-};
-
-const translateCardWords = (message: string): string => {
-  const t = currentMessages().solitaire;
-
-  return message
+const translateCardWords = (message: string, t: SolitaireMessages): string =>
+  message
     .replace(CARD_NAME, (name) => {
       for (const suit of SUITS) {
         for (const rank of RANKS) {
           if (englishCardName({ rank, suit }) === name) {
-            return cardName({ rank, suit });
+            return cardName({ rank, suit }, t);
           }
         }
       }
@@ -48,15 +42,14 @@ const translateCardWords = (message: string): string => {
 
       return suit ? t.suits[suit] : (t.engineWords[word] ?? word);
     });
-};
 
-export const translateGameMessage = (message: string): string => {
-  if (getLocale() === "en") {
-    return message;
-  }
-
-  const t = currentMessages().solitaire;
-  const exact = t.engineExact[message];
+export const translateGameMessage = (
+  message: string,
+  t: SolitaireMessages
+): string => {
+  const exact = Object.hasOwn(t.engineExact, message)
+    ? t.engineExact[message]
+    : undefined;
 
   if (exact !== undefined) {
     return exact;
@@ -65,16 +58,16 @@ export const translateGameMessage = (message: string): string => {
   const undoStep = UNDO_STEP.exec(message);
 
   if (undoStep?.[1]) {
-    return t.engineUndoStep(translateGameMessage(undoStep[1]));
+    return t.engineUndoStep(translateGameMessage(undoStep[1], t));
   }
 
   const reveal = REVEAL.exec(message);
 
   if (reveal?.[1] && reveal[2]) {
-    return `${translateGameMessage(reveal[1])}${t.engineRevealed(translateCardWords(reveal[2]))}`;
+    return `${translateGameMessage(reveal[1], t)}${t.engineRevealed(translateCardWords(reveal[2], t))}`;
   }
 
-  const localized = translateCardWords(message);
+  const localized = translateCardWords(message, t);
 
   for (const [pattern, replace] of t.enginePatterns) {
     const match = pattern.exec(localized);

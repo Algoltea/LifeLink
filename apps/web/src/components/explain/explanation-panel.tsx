@@ -2,6 +2,8 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import { XIcon } from "lucide-react";
@@ -14,7 +16,7 @@ import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
-import { currentIntlLocale, getLocale, useLocale } from "@/i18n/locale";
+import { useLocale } from "@/i18n/locale";
 import { explanation as en } from "@/i18n/messages/en/explanation";
 import { explanation as es } from "@/i18n/messages/es/explanation";
 import { messageOf } from "@/lib/errors";
@@ -27,22 +29,23 @@ type HeadingLevel = 2 | 3;
 
 const catalogs = { en, es };
 
-const currentWords = () => catalogs[getLocale()];
-
 const useWords = () => catalogs[useLocale()];
 
-const methodWords = (explanation: Explanation): string =>
+const methodWords = (
+  explanation: Explanation,
+  locale: InterfaceLocale
+): string =>
   explanation.method === "cloud"
-    ? currentWords().cloud
-    : currentWords().local[explanation.localReason ?? "chosen"];
+    ? catalogs[locale].cloud
+    : catalogs[locale].local[explanation.localReason ?? "chosen"];
 
 const contentLanguage = (explanation: Explanation): string =>
   explanation.method === "cloud"
     ? (explanation.helpStyle?.language ?? "en")
     : "en";
 
-const formatIsoDate = (isoDate: string): string =>
-  new Intl.DateTimeFormat(currentIntlLocale(), {
+const formatIsoDate = (isoDate: string, locale: InterfaceLocale): string =>
+  new Intl.DateTimeFormat(intlLocaleOf(locale), {
     day: "numeric",
     month: "long",
     timeZone: "UTC",
@@ -109,37 +112,40 @@ const Quote = ({ children }: { children: string }) => (
 );
 
 /** Everything worth reading aloud, with guesses named as guesses. */
-const spokenText = (explanation: Explanation): string =>
-  [
-    explanation.method === "local" ? currentWords().localLanguageNotice : "",
+const spokenText = (
+  explanation: Explanation,
+  locale: InterfaceLocale
+): string => {
+  const words = catalogs[locale];
+
+  return [
+    explanation.method === "local" ? words.localLanguageNotice : "",
     explanation.plainSummary,
     ...explanation.requests.map((item) =>
-      currentWords().requestSpoken(item.text, item.quote)
+      words.requestSpoken(item.text, item.quote)
     ),
     ...explanation.dates.map((date) =>
-      currentWords().dateSpoken(
+      words.dateSpoken(
         date.quote,
-        date.isoDate ? formatIsoDate(date.isoDate) : ""
+        date.isoDate ? formatIsoDate(date.isoDate, locale) : ""
       )
     ),
-    ...explanation.missingDetails.map((detail) =>
-      currentWords().missingSpoken(detail)
-    ),
-    explanation.interpretations.length > 0 ? currentWords().guessNote : "",
-    ...explanation.interpretations.map((item) =>
-      currentWords().guessSpoken(item.text)
-    ),
+    ...explanation.missingDetails.map((detail) => words.missingSpoken(detail)),
+    explanation.interpretations.length > 0 ? words.guessNote : "",
+    ...explanation.interpretations.map((item) => words.guessSpoken(item.text)),
   ]
     .filter((part) => part.length > 0)
     .join(" ");
+};
 
 /** The explanation's sections, in reading order; empty sections are left out. */
 const sectionsOf = (
   explanation: Explanation,
   level: HeadingLevel,
-  onUseReply: (draft: string) => void
+  onUseReply: (draft: string) => void,
+  locale: InterfaceLocale
 ): Step[] => {
-  const words = currentWords();
+  const words = catalogs[locale];
   const language = contentLanguage(explanation);
 
   const steps: Step[] = [
@@ -186,7 +192,9 @@ const sectionsOf = (
             {explanation.dates.map((date) => (
               <li key={date.quote}>
                 “{date.quote}”
-                {date.isoDate ? ` (${formatIsoDate(date.isoDate)})` : ""}
+                {date.isoDate
+                  ? ` (${formatIsoDate(date.isoDate, locale)})`
+                  : ""}
               </li>
             ))}
           </ul>
@@ -312,8 +320,9 @@ const ExplanationBody = ({
   onUseReply: (draft: string) => void;
 }) => {
   const { preferences } = usePreferences();
-  const words = useWords();
-  const steps = sectionsOf(explanation, level, onUseReply);
+  const locale = useLocale();
+  const words = catalogs[locale];
+  const steps = sectionsOf(explanation, level, onUseReply, locale);
 
   return (
     <div className="flex flex-col gap-5">
@@ -323,7 +332,7 @@ const ExplanationBody = ({
       <ReadAloudButton
         className="self-start"
         label={words.readAloud}
-        text={spokenText(explanation)}
+        text={spokenText(explanation, locale)}
       />
       {preferences.stepByStep ? (
         <OneAtATime noun={words.part} steps={steps} />
@@ -425,7 +434,8 @@ const ExplanationPanel = ({
   source: ExplainSource;
 }) => {
   const explanation = useQuery(api.explanations.forSource, source);
-  const words = useWords();
+  const locale = useLocale();
+  const words = catalogs[locale];
   const { me } = usePreferences();
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);
@@ -454,7 +464,9 @@ const ExplanationPanel = ({
   } else if (explanation !== undefined) {
     body = (
       <>
-        <p className="text-base font-semibold">{methodWords(explanation)}</p>
+        <p className="text-base font-semibold">
+          {methodWords(explanation, locale)}
+        </p>
         {explanation.method === "local" ? (
           <p className="text-base">{words.localLanguageNotice}</p>
         ) : null}

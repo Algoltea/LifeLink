@@ -4,7 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatDay } from "@/lib/format";
 import { subscribeToClock, useGreeting } from "@/lib/greeting";
 
@@ -28,6 +28,7 @@ const TodayHeader = ({
   timeZone: string;
   weather: ReactNode;
 }) => {
+  const locale = useLocale();
   const heading = useRef<HTMLHeadingElement>(null);
 
   const greeting = useGreeting(timeZone);
@@ -35,7 +36,7 @@ const TodayHeader = ({
 
   const date = useSyncExternalStore(
     subscribeToClock,
-    () => formatDay(Date.now(), timeZone),
+    () => formatDay(Date.now(), timeZone, locale),
     serverDate
   );
 

@@ -27,6 +27,7 @@ const voice = {
     "That could not be prepared. Please ask them to try again or type it.",
   prepared:
     "Prepared. It is on the screen now; nothing happens until it is approved there.",
+  readAloudUnavailable: "Read-aloud is unavailable. Please try again.",
   retry: "Your words are still in the box. Press Send to try again.",
   savedOffline: "Saved. LifeLink will look at this when you're back online.",
   screeningConnectionProblem: "The call-screening connection had a problem.",

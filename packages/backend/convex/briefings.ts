@@ -144,11 +144,11 @@ const rulesBriefing = (input: Facts): Briefing => {
     const lines: string[] = [];
 
     if (next?.ride === "none") {
-      lines.push("Aún no tienes transporte para esa cita.");
+      lines.push("Aún no tiene transporte para esa cita.");
     }
 
     if (next?.ride === "confirmed") {
-      lines.push("Tu transporte está confirmado.");
+      lines.push("Su transporte está confirmado.");
     }
 
     for (const reminder of input.reminders.slice(0, 2)) {
@@ -157,7 +157,7 @@ const rulesBriefing = (input: Facts): Briefing => {
 
     if (input.waitingCount > 0) {
       lines.push(
-        `${input.waitingCount} ${input.waitingCount === 1 ? "cosa espera" : "cosas esperan"} tu aprobación.`
+        `${input.waitingCount} ${input.waitingCount === 1 ? "cosa espera" : "cosas esperan"} su aprobación.`
       );
     }
 

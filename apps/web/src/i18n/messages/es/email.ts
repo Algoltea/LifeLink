@@ -13,14 +13,14 @@ const email: Messages["email"] = {
   checkManually: " Puede revisarlo a mano abajo.",
   checkThis: "Revisar este correo",
   checkUsesSigns:
-    "Usa señales de alerta comunes, no IA en la nube. Esta revisión no puede confirmar quién lo envió ni si lo que dice es cierto.",
+    "Esta revisión automática usa reglas solo para el inglés, sin IA en la nube. Puede pasar por alto estafas en español u otros idiomas y no puede confirmar quién envió el correo ni si lo que dice es cierto.",
   checked: (when) => `Revisado el ${when} · hecho en LifeLink`,
   checkedAt: (when) => ` Revisado el ${when}.`,
   checking: "Buscando…",
   checksAutomatic:
-    "Las revisiones automáticas no envían el correo a un proveedor de IA. No pueden confirmar quién envió un correo ni si lo que dice es cierto. «Buscar correo nuevo» trae sus correos recientes y los revisa de la misma manera.",
+    "Las revisiones automáticas no envían el correo a un proveedor de IA. Sus reglas solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. No pueden confirmar quién envió un correo ni si lo que dice es cierto. «Buscar correo nuevo» trae sus correos recientes y los revisa de la misma manera.",
   checksIntro:
-    "El correo nuevo se revisa en LifeLink, en este dispositivo, buscando señales comunes de estafa. Elija un mensaje para leerlo y ver qué llamó la atención.",
+    "El correo nuevo se revisa en LifeLink buscando señales comunes de estafa. Elija un mensaje para leerlo y ver qué llamó la atención.",
   checksTitle: "Cómo funcionan las revisiones del correo",
   chooseEmail: "Elija un correo para leerlo y ver su revisión de estafas.",
   cloudConsent:
@@ -38,6 +38,8 @@ const email: Messages["email"] = {
     "LifeLink no abre los enlaces de los correos. Si le pide dinero o datos privados, revíselo primero.",
   loadingEmail: "Cargando el correo",
   loadingEmails: "Cargando los correos",
+  localLanguageNotice:
+    "Las revisiones automáticas de estafas solo están preparadas para analizar mensajes en inglés. Pueden pasar por alto estafas en español y otros idiomas. Que no haya señales de alerta no significa que el correo sea seguro.",
   lowerPriority: "Menos importante",
   mailboxes: "Sus buzones",
   mayNeedReply: "Puede necesitar respuesta",

@@ -11,14 +11,14 @@ const email = {
   checkManually: " You can check it manually below.",
   checkThis: "Check this email",
   checkUsesSigns:
-    "It uses common warning signs, not cloud AI. This check can’t confirm who sent it or whether what it says is true.",
+    "This automatic check uses English-only rules, without cloud AI. It can miss scams in Spanish or other languages and cannot confirm who sent the email or whether its claims are true.",
   checked: (when: string) => `Checked ${when} · done in LifeLink`,
   checkedAt: (when: string) => ` Checked ${when}.`,
   checking: "Checking…",
   checksAutomatic:
-    "Automatic checks don’t send email to an AI provider. They can’t confirm who sent an email or whether what it says is true. “Check for new email” brings in your recent emails and checks them the same way.",
+    "Automatic checks don’t send email to an AI provider. Their rules cover English only and can miss scams in other languages. They can’t confirm who sent an email or whether what it says is true. “Check for new email” brings in your recent emails and checks them the same way.",
   checksIntro:
-    "New email is checked in LifeLink, on this device, for common scam signs. Pick a message to read it and see what stood out.",
+    "New email is checked in LifeLink for common scam signs. Pick a message to read it and see what stood out.",
   checksTitle: "How the email checks work",
   chooseEmail: "Choose an email to read it and see its scam check.",
   cloudConsent:
@@ -37,6 +37,8 @@ const email = {
     "Links in emails aren’t opened by LifeLink. If it asks for money or private details, check it first.",
   loadingEmail: "Loading email",
   loadingEmails: "Loading emails",
+  localLanguageNotice:
+    "Automatic scam checks are designed for English only. They can miss scams in Spanish and other languages. No warning signs does not mean an email is safe.",
   lowerPriority: "Lower priority",
   mailboxes: "Your mailboxes",
   mayNeedReply: "May need a reply",

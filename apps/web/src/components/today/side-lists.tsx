@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -12,7 +13,7 @@ import type { ReactNode } from "react";
 import { Avatar } from "@/components/app/bits";
 import { listTime } from "@/components/email/email-bits";
 import { WeatherIcon } from "@/components/today/weather";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, messagesFor, useMessages } from "@/i18n/locale";
 import {
   formatShortDay,
   formatTime,
@@ -112,12 +113,13 @@ const SideEmpty = ({ children }: { children: ReactNode }) => (
  * there, not in the header, because the weather matters most next to plans.
  */
 const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
+  const t = useMessages().today;
+
   if (state?.status !== "no_location" && state?.status !== "not_found") {
     return null;
   }
 
   const missing = state.status === "no_location";
-  const t = currentMessages().today;
 
   return (
     <Link className={PANEL_ROW} href="/settings#profile">
@@ -146,13 +148,17 @@ const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
 };
 
 /** "Today", "Tomorrow", then the short weekday. */
-const dayLabel = (timestamp: number, timeZone: string): string => {
-  const day = relativeDay(timestamp, timeZone);
-  const words = currentMessages().format;
+const dayLabel = (
+  timestamp: number,
+  timeZone: string,
+  locale: InterfaceLocale
+): string => {
+  const day = relativeDay(timestamp, timeZone, undefined, locale);
+  const words = messagesFor(locale).format;
 
   return day === words.today || day === words.tomorrow
     ? day
-    : (formatShortDay(timestamp, timeZone).split(",")[0] ?? day);
+    : (formatShortDay(timestamp, timeZone, locale).split(",")[0] ?? day);
 };
 
 /** Appointments and reminders in the same row rhythm as the family list. */
@@ -165,6 +171,7 @@ const WeekList = ({
   timeZone: string;
   weather: WeatherState | undefined;
 }) => {
+  const locale = useLocale();
   const t = useMessages();
 
   return (
@@ -179,14 +186,14 @@ const WeekList = ({
               <time
                 className="flex w-20 shrink-0 flex-col"
                 dateTime={new Date(row.at).toISOString()}
-                title={formatWhen(row.at, timeZone)}
+                title={formatWhen(row.at, timeZone, locale)}
               >
                 <span className="text-muted-foreground text-label">
-                  {dayLabel(row.at, timeZone)}
+                  {dayLabel(row.at, timeZone, locale)}
                 </span>
                 <span className="num text-body font-semibold">
                   <span className="sr-only">, </span>
-                  {formatTime(row.at, timeZone)}
+                  {formatTime(row.at, timeZone, locale)}
                 </span>
               </time>
               <span className="flex min-w-0 flex-1 flex-col">
@@ -252,6 +259,7 @@ const FamilyList = ({
   messages: FamilyMessage[];
   timeZone: string;
 }) => {
+  const locale = useLocale();
   // Pictures and relationships come from the contact list, which other screens already load.
   const contacts = useQuery(api.contacts.list);
   const t = useMessages();
@@ -300,10 +308,15 @@ const FamilyList = ({
                       <time
                         className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
                         dateTime={new Date(message.createdAt).toISOString()}
-                        title={formatWhen(message.createdAt, timeZone)}
+                        title={formatWhen(message.createdAt, timeZone, locale)}
                       >
                         <span className="sr-only">, </span>
-                        {listTime(message.createdAt, timeZone)}
+                        {listTime(
+                          message.createdAt,
+                          timeZone,
+                          undefined,
+                          locale
+                        )}
                       </time>
                     </span>
                     <span className="text-muted-foreground text-label truncate">

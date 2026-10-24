@@ -1,5 +1,7 @@
 "use client";
 
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import {
   applyMove,
   autoMoveToFoundations,
@@ -25,7 +27,7 @@ import { Button } from "@lifelink/ui/components/button";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
-import { currentIntlLocale, currentMessages, useMessages } from "@/i18n/locale";
+import { messagesFor, useLocale } from "@/i18n/locale";
 
 import { Board } from "./board";
 import {
@@ -42,12 +44,15 @@ import {
 import type { Direction, Slot } from "./board-model";
 import { HowToPlay } from "./how-to-play";
 import { cardName, translateGameMessage } from "./localization";
+import type { SolitaireMessages } from "./localization";
 import { freshGame, loadGame, saveGame } from "./storage";
 import type { LoadedGame } from "./storage";
 
+type AnnouncementMessage = (messages: SolitaireMessages) => string;
+
 interface Announcement {
   readonly id: number;
-  readonly text: string;
+  readonly message: AnnouncementMessage;
 }
 
 const directionFor = (key: string): Direction | null => {
@@ -74,11 +79,11 @@ const directionFor = (key: string): Direction | null => {
   }
 };
 
-const drawWords = (count: DrawCount): string =>
-  currentMessages().solitaire.drawWords(count);
-
-const describeSource = (state: GameState, source: MoveSource): string => {
-  const t = currentMessages().solitaire;
+const describeSource = (
+  state: GameState,
+  source: MoveSource,
+  t: SolitaireMessages
+): string => {
   const picked = sourceCards(state, source);
 
   if (!picked.ok) {
@@ -87,34 +92,42 @@ const describeSource = (state: GameState, source: MoveSource): string => {
 
   const [first] = picked.cards;
   const extra = picked.cards.length - 1;
-  const name = first ? cardName(first) : t.thatCard;
+  const name = first ? cardName(first, t) : t.thatCard;
 
   return extra > 0 ? t.sourceWithCards(name, extra) : name;
 };
 
-const describeTarget = (state: GameState, target: MoveTarget): string => {
-  const t = currentMessages().solitaire;
-
+const describeTarget = (
+  state: GameState,
+  target: MoveTarget,
+  t: SolitaireMessages
+): string => {
   if (target.kind === "foundation") {
     return t.toFoundation;
   }
 
   const top = state.tableau[target.index]?.at(-1);
 
-  return top ? t.onto(cardName(top)) : t.toColumn(target.index + 1);
+  return top ? t.onto(cardName(top, t)) : t.toColumn(target.index + 1);
 };
 
-const describeHint = (state: GameState, hint: Move): string =>
+const describeHint = (
+  state: GameState,
+  hint: Move,
+  t: SolitaireMessages
+): string =>
   hint.type === "draw"
-    ? currentMessages().solitaire.hintDraw
-    : currentMessages().solitaire.hintMove(
-        describeSource(state, hint.source),
-        describeTarget(state, hint.target)
+    ? t.hintDraw
+    : t.hintMove(
+        describeSource(state, hint.source, t),
+        describeTarget(state, hint.target, t)
       );
 
-const emptyReason = (state: GameState, slot: Slot): string => {
-  const t = currentMessages().solitaire;
-
+const emptyReason = (
+  state: GameState,
+  slot: Slot,
+  t: SolitaireMessages
+): string => {
   if (slot.area === "waste") {
     return t.emptyWaste;
   }
@@ -133,20 +146,18 @@ const emptyReason = (state: GameState, slot: Slot): string => {
   return t.faceDown;
 };
 
-const formatSavedAt = (savedAt: string): string => {
+const formatSavedAt = (savedAt: string, locale: InterfaceLocale): string => {
   const date = new Date(savedAt);
 
   return Number.isNaN(date.getTime())
-    ? currentMessages().solitaire.earlier
-    : date.toLocaleString(currentIntlLocale(), {
+    ? messagesFor(locale).solitaire.earlier
+    : date.toLocaleString(intlLocaleOf(locale), {
         dateStyle: "medium",
         timeStyle: "short",
       });
 };
 
-const outcomeNote = (state: GameState): string => {
-  const t = currentMessages().solitaire;
-
+const outcomeNote = (state: GameState, t: SolitaireMessages): string => {
   if (isWon(state)) {
     return t.wonNote(state.moves);
   }
@@ -170,15 +181,13 @@ const isUndoChord = (event: KeyChord): boolean =>
   !event.altKey &&
   event.key.toLowerCase() === "z";
 
-const openingMessage = (loaded: LoadedGame): string => {
-  const t = currentMessages().solitaire;
-
+const openingMessage = (loaded: LoadedGame, t: SolitaireMessages): string => {
   if (loaded.resumedFrom) {
     return t.resumed;
   }
 
   return loaded.discarded
-    ? t.discarded(translateGameMessage(loaded.discarded))
+    ? t.discarded(translateGameMessage(loaded.discarded, t))
     : t.ready;
 };
 
@@ -191,17 +200,20 @@ const isInside = (
 
 /** The playable table. Client-only: it reads the saved game from localStorage while it first renders. */
 export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
-  const t = useMessages().solitaire;
+  const locale = useLocale();
+  const t = messagesFor(locale).solitaire;
   const [opening, setOpening] = useState(() => loadGame(1));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState<Slot>(STOCK_SLOT);
   const [selected, setSelected] = useState<MoveSource | null>(null);
   const [hint, setHint] = useState<Move | null>(null);
 
-  const [announcement, setAnnouncement] = useState<Announcement>({
+  // Keep the event's data, and translate it when rendered so language changes
+  // preserve the last announcement along with the game and selection.
+  const [announcement, setAnnouncement] = useState<Announcement>(() => ({
     id: 0,
-    text: openingMessage(opening),
-  });
+    message: (messages) => openingMessage(opening, messages),
+  }));
 
   const [saveFailed, setSaveFailed] = useState(false);
 
@@ -213,8 +225,8 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   const slotElements = useRef(new Map<string, HTMLButtonElement>());
   const boardFocusPending = useRef(false);
 
-  const announce = (text: string) => {
-    setAnnouncement((previous) => ({ id: previous.id + 1, text }));
+  const announce = (message: AnnouncementMessage) => {
+    setAnnouncement((previous) => ({ id: previous.id + 1, message }));
   };
 
   useEffect(() => {
@@ -224,24 +236,32 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     }
   }, [cursor]);
 
-  const commit = (next: GameState, text: string, nextCursor: Slot = cursor) => {
+  const commit = (
+    next: GameState,
+    message: AnnouncementMessage,
+    nextCursor: Slot = cursor
+  ) => {
     setGame(next);
     setSaveFailed(!saveGame(next));
     setSelected(null);
     setHint(null);
     setCursor(clampSlot(next, nextCursor));
-    announce(`${text}${outcomeNote(next)}`);
+    announce(
+      (messages) => `${message(messages)}${outcomeNote(next, messages)}`
+    );
   };
 
   const run = (result: MoveResult, nextCursor?: Slot) => {
     if (result.ok) {
       commit(
         result.state,
-        translateGameMessage(result.description),
+        (messages) => translateGameMessage(result.description, messages),
         nextCursor
       );
     } else {
-      announce(translateGameMessage(result.error.message));
+      announce((messages) =>
+        translateGameMessage(result.error.message, messages)
+      );
     }
   };
 
@@ -249,7 +269,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const source = sourceForSlot(game, slot);
 
     if (!source) {
-      announce(emptyReason(game, slot));
+      announce((messages) => emptyReason(game, slot, messages));
 
       return;
     }
@@ -269,13 +289,13 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     setSelected(source);
     setHint(null);
 
-    const name = describeSource(game, source);
+    announce((messages) => {
+      const name = describeSource(game, source, messages);
 
-    announce(
-      targets.length === 0
-        ? t.selectedBlocked(name)
-        : t.selectedTargets(name, targets.length)
-    );
+      return targets.length === 0
+        ? messages.selectedBlocked(name)
+        : messages.selectedTargets(name, targets.length);
+    });
   };
 
   const activate = (slot: Slot) => {
@@ -292,10 +312,12 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       const home = sendToFoundation(game, selected);
 
       if (home.ok) {
-        commit(home.state, translateGameMessage(home.description));
+        commit(home.state, (messages) =>
+          translateGameMessage(home.description, messages)
+        );
       } else {
         setSelected(null);
-        announce(t.putBack);
+        announce((messages) => messages.putBack);
       }
 
       return;
@@ -311,12 +333,13 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       if (result.ok) {
         commit(
           result.state,
-          translateGameMessage(result.description),
+          (messages) => translateGameMessage(result.description, messages),
           slotForTarget(result.state, target)
         );
       } else {
         announce(
-          `${translateGameMessage(result.error.message)} ${t.chooseAnother}`
+          (messages) =>
+            `${translateGameMessage(result.error.message, messages)} ${messages.chooseAnother}`
         );
       }
 
@@ -345,14 +368,14 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const next = findHint(game);
 
     if (!next) {
-      announce(t.noUsefulMoves);
+      announce((messages) => messages.noUsefulMoves);
 
       return;
     }
 
     setSelected(null);
     setHint(next);
-    announce(describeHint(game, next));
+    announce((messages) => describeHint(game, next, messages));
 
     if (next.type === "transfer") {
       setCursor(slotForSource(next.source));
@@ -363,15 +386,18 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const result = autoMoveToFoundations(game);
 
     if (result.moved.length === 0) {
-      announce(t.noSafeCards);
+      announce((messages) => messages.noSafeCards);
 
       return;
     }
 
-    const names = result.moved.map((card) => cardName(card)).join(", ");
-    const count = result.moved.length;
+    commit(result.state, (messages) => {
+      const names = result.moved
+        .map((card) => cardName(card, messages))
+        .join(", ");
 
-    commit(result.state, t.sentSafe(count, names));
+      return messages.sentSafe(result.moved.length, names);
+    });
   };
 
   const startNewGame = (drawCount: DrawCount = preferredDraw) => {
@@ -380,7 +406,11 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       discarded: null,
       resumedFrom: null,
     }));
-    commit(freshGame(drawCount), t.dealt(drawWords(drawCount)), STOCK_SLOT);
+    commit(
+      freshGame(drawCount),
+      (messages) => messages.dealt(messages.drawWords(drawCount)),
+      STOCK_SLOT
+    );
   };
 
   const changeDrawCount = (drawCount: DrawCount) => {
@@ -392,7 +422,12 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       return;
     }
 
-    announce(t.drawSetting(drawWords(drawCount), drawWords(game.drawCount)));
+    announce((messages) =>
+      messages.drawSetting(
+        messages.drawWords(drawCount),
+        messages.drawWords(game.drawCount)
+      )
+    );
   };
 
   const handleBoardKeys = (event: KeyboardEvent<HTMLElement>) => {
@@ -409,7 +444,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     if (event.key === "Escape" && selected) {
       event.preventDefault();
       setSelected(null);
-      announce(t.nothingSelected);
+      announce((messages) => messages.nothingSelected);
     }
   };
 
@@ -489,7 +524,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
           {guest ? t.guestIntro : t.intro}
         </p>
         <p className="num text-muted-foreground text-label">
-          {t.drawing(drawWords(game.drawCount))}
+          {t.drawing(t.drawWords(game.drawCount))}
           {" · "}
           <span className="whitespace-nowrap">{t.moves(game.moves)}</span>
           {" · "}
@@ -502,7 +537,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       {opening.resumedFrom === null ? null : (
         <div className="bg-parchment flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
           <p className="text-body">
-            {t.resumedAt(formatSavedAt(opening.resumedFrom))}
+            {t.resumedAt(formatSavedAt(opening.resumedFrom, locale))}
           </p>
           <Button onClick={() => startNewGame()} size="sm" variant="outline">
             {t.startFresh}
@@ -557,7 +592,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
         aria-live="polite"
         className="bg-parchment text-body block min-h-14 rounded-lg px-4 py-3"
       >
-        <span key={announcement.id}>{announcement.text}</span>
+        <span key={announcement.id}>{announcement.message(t)}</span>
       </output>
 
       {won ? (

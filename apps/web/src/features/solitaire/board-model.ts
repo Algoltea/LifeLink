@@ -7,9 +7,8 @@ import type {
 } from "@lifelink/solitaire/game";
 import { FOUNDATION_SUITS } from "@lifelink/solitaire/rules";
 
-import { currentMessages } from "@/i18n/locale";
-
 import { cardName } from "./localization";
+import type { SolitaireMessages } from "./localization";
 
 /** One focusable place on the board. Tableau slots name a card by index; an empty column uses index 0. */
 export type Slot =
@@ -248,9 +247,7 @@ export const targetMatches = (
 ): boolean =>
   targets.some((target) => target.kind === kind && target.index === index);
 
-export const stockLabel = (state: Position): string => {
-  const t = currentMessages().solitaire;
-
+export const stockLabel = (state: Position, t: SolitaireMessages): string => {
   if (state.stock.length > 0) {
     return t.stock(t.cards(state.stock.length));
   }
@@ -258,15 +255,17 @@ export const stockLabel = (state: Position): string => {
   return state.waste.length > 0 ? t.stockRecycle : t.stockEmpty;
 };
 
-export const wasteLabel = (state: Position): string => {
-  const t = currentMessages().solitaire;
+export const wasteLabel = (state: Position, t: SolitaireMessages): string => {
   const top = state.waste.at(-1);
 
-  return top ? t.wasteTop(cardName(top)) : t.wasteEmpty;
+  return top ? t.wasteTop(cardName(top, t)) : t.wasteEmpty;
 };
 
-export const foundationLabel = (state: Position, index: number): string => {
-  const t = currentMessages().solitaire;
+export const foundationLabel = (
+  state: Position,
+  index: number,
+  t: SolitaireMessages
+): string => {
   const top = state.foundations[index]?.at(-1);
   const suit = FOUNDATION_SUITS[index];
 
@@ -277,8 +276,8 @@ export const foundationLabel = (state: Position, index: number): string => {
   const name = t.foundationName(t.suits[suit]);
 
   return top
-    ? t.foundationTop(name, cardName(top))
-    : t.foundationEmpty(name, cardName({ rank: ACE, suit }));
+    ? t.foundationTop(name, cardName(top, t))
+    : t.foundationEmpty(name, cardName({ rank: ACE, suit }, t));
 };
 
 const countFaceDown = (cards: readonly Card[]): number =>
@@ -287,9 +286,9 @@ const countFaceDown = (cards: readonly Card[]): number =>
 export const tableauCardLabel = (
   column: readonly Card[],
   index: number,
-  cardIndex: number
+  cardIndex: number,
+  t: SolitaireMessages
 ): string => {
-  const t = currentMessages().solitaire;
   const card = column[cardIndex];
 
   if (!card) {
@@ -298,7 +297,7 @@ export const tableauCardLabel = (
 
   const above = column.length - 1 - cardIndex;
   const hidden = countFaceDown(column.slice(0, cardIndex));
-  const parts = [t.columnCard(cardName(card), index + 1)];
+  const parts = [t.columnCard(cardName(card, t), index + 1)];
 
   if (above > 0) {
     parts.push(t.cardsAbove(above));

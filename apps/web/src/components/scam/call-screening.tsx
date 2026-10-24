@@ -16,6 +16,7 @@ import {
 import { useEffect, useId, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { useLocale } from "@/i18n/locale";
 import { ago } from "@/lib/format";
 
 import {
@@ -312,6 +313,7 @@ const CallScreening = ({
 
 /** Call summaries remain separate from message records for older clients. */
 const CallHistory = () => {
+  const locale = useLocale();
   const summaries = useQuery(api.callscreening.list);
   const messages = useCallScreeningMessages();
   const { me } = usePreferences();
@@ -361,7 +363,9 @@ const CallHistory = () => {
                   ·{" "}
                   {ago(
                     summary.createdAt,
-                    me?.profile?.timeZone ?? "America/New_York"
+                    me?.profile?.timeZone ?? "America/New_York",
+                    undefined,
+                    locale
                   )}
                 </span>
               </span>

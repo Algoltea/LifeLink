@@ -15,7 +15,7 @@ const connections: ConnectionsMessages = {
     missing:
       "Esta página se abrió sin una conexión que terminar. Empiece de nuevo desde Conexiones.",
     practice:
-      "El modo de práctica está activado. Desactívelo en Configuración antes de terminar una conexión real.",
+      "El modo de práctica está activado. Desactívelo en Ajustes antes de terminar una conexión real.",
     service: "El servicio",
     subline:
       "Vuelva a Conexiones para revisar sus servicios o empezar de nuevo.",
@@ -72,7 +72,7 @@ const connections: ConnectionsMessages = {
     "This service does not use a personal sign-in.":
       "Este servicio no usa un inicio de sesión personal.",
     "Turn off Practice mode in Settings before connecting or changing a real account.":
-      "Desactive el modo de práctica en Configuración antes de conectar o cambiar una cuenta real.",
+      "Desactive el modo de práctica en Ajustes antes de conectar o cambiar una cuenta real.",
     "We could not confirm the connection.": "No pudimos confirmar la conexión.",
   },
   groups: {
@@ -116,7 +116,7 @@ const connections: ConnectionsMessages = {
   },
   practiceAccount: "Usar una cuenta de práctica",
   practiceBlocked: (label) =>
-    `Su conexión real de ${label} está guardada. Las cuentas de práctica no pueden reemplazarla. Desactive el modo de práctica en Configuración para administrarla.`,
+    `Su conexión real de ${label} está guardada. Las cuentas de práctica no pueden reemplazarla. Desactive el modo de práctica en Ajustes para administrarla.`,
   practiceConnected: (label) =>
     `Se conectó una cuenta de práctica de ${label}. Nunca se comunica con el servicio real.`,
   practiceDisconnected: (label) =>

@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay } from "@/lib/format";
 
@@ -49,6 +49,7 @@ const PRINT_STYLES = `@media print {
 }`;
 
 const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const locale = useLocale();
   const t = useMessages().groceries;
 
   return (
@@ -60,7 +61,7 @@ const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
           .map((item) => (
             <li key={item.id}>
               <SquareIcon aria-hidden="true" className="mr-3 inline size-5" />
-              {item.name} {quantityWords(item)}
+              {item.name} {quantityWords(item, locale)}
             </li>
           ))}
       </ul>
@@ -72,6 +73,7 @@ const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
 };
 
 const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const locale = useLocale();
   const hasOpenItems = list.items.some((item) => !item.checked);
   const t = useMessages().groceries;
 
@@ -92,7 +94,7 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
           disabled={!hasOpenItems}
           onClick={async () => {
             try {
-              await navigator.clipboard.writeText(listAsText(list));
+              await navigator.clipboard.writeText(listAsText(list, locale));
               toast.success(t.copied);
             } catch {
               toast.error(t.copyFailed);
@@ -123,6 +125,7 @@ const GroceryWorkspace = ({
   list: Doc<"groceryLists">;
 }) => {
   const receipt = useRef<HTMLElement>(null);
+  const t = useMessages().groceries;
 
   const showReceipt = (): void => {
     const target = receipt.current;
@@ -144,10 +147,7 @@ const GroceryWorkspace = ({
 
   return (
     <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <section
-        aria-label={currentMessages().groceries.list}
-        className="min-w-0"
-      >
+      <section aria-label={t.list} className="min-w-0">
         <ListEditor
           actions={actions}
           finishedOn={finishedOn}
@@ -282,6 +282,7 @@ const GroceriesScreen = ({
 }: {
   initialListId?: string | null;
 }) => {
+  const locale = useLocale();
   const data = useQuery(api.groceries.lists);
   const { me } = usePreferences();
   const newListButton = useRef<HTMLButtonElement>(null);
@@ -362,7 +363,7 @@ const GroceriesScreen = ({
             finishedOn={
               list.archivedAt === undefined
                 ? null
-                : formatShortDay(list.archivedAt, timeZone)
+                : formatShortDay(list.archivedAt, timeZone, locale)
             }
             list={list}
           />

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import type { DriveFile, Listing } from "./file-preview";
@@ -72,6 +72,7 @@ const FileRow = ({
   onSelect: () => void;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const t = useMessages().documents;
 
   return (
@@ -97,10 +98,10 @@ const FileRow = ({
             <time
               className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
               dateTime={new Date(file.modifiedAt).toISOString()}
-              title={t.changedAt(formatWhen(file.modifiedAt, timeZone))}
+              title={t.changedAt(formatWhen(file.modifiedAt, timeZone, locale))}
             >
               <span className="sr-only">{t.changedSr}</span>
-              {listTime(file.modifiedAt, timeZone)}
+              {listTime(file.modifiedAt, timeZone, undefined, locale)}
             </time>
           )}
         </span>

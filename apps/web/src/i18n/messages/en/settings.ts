@@ -36,7 +36,7 @@ const settings = {
   helpTitle: "How I like help",
   language: "Language",
   languageDescription:
-    "LifeLink’s screens, read-aloud, and explanations use this language. Screens are written in English and Spanish; for other languages, explanations and scam checks use your language and screens stay in English. Quotes stay in the message’s own words, and suggested replies follow the message’s language.",
+    "Choose the language for LifeLink’s screens and cloud help. Screens are available in English and Spanish; other choices use English screens. Cloud help can use other languages when available. Local scam checks and automatic email checks use English-only rules and can miss scams in other languages. Quotes and messages keep their original words.",
   lessMovement: "Less movement",
   lessMovementDescription: "Turns off sliding and fading.",
   loading: "Loading settings",

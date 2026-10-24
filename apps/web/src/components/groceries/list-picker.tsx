@@ -2,6 +2,7 @@
 
 import { Select } from "@base-ui/react/select";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -13,7 +14,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, messagesFor, useMessages } from "@/i18n/locale";
 import { formatShortDay, money } from "@/lib/format";
 
 /** Rows follow the app's text size, unlike a phone's built-in picker. */
@@ -26,8 +27,8 @@ const GROUP_LABEL =
 const totalOf = (list: Doc<"groceryLists">): number =>
   list.items.reduce((total, item) => total + (item.estimatedCents ?? 0), 0);
 
-const countOf = (list: Doc<"groceryLists">): string =>
-  currentMessages().groceries.itemCount(list.items.length);
+const countOf = (list: Doc<"groceryLists">, locale: InterfaceLocale): string =>
+  messagesFor(locale).groceries.itemCount(list.items.length);
 
 /** The menu stays about one screen tall; older trips live on the past lists page. */
 const PAST_IN_MENU = 3;
@@ -155,6 +156,7 @@ const ListPicker = ({
   selectedId: Id<"groceryLists"> | null;
   timeZone: string;
 }) => {
+  const locale = useLocale();
   const all = [...current, ...past];
   const t = useMessages().groceries;
 
@@ -197,7 +199,7 @@ const ListPicker = ({
                     {selected.archivedAt === undefined ? null : (
                       <span className="text-muted-foreground">
                         {t.finishedSuffix(
-                          formatShortDay(selected.archivedAt, timeZone)
+                          formatShortDay(selected.archivedAt, timeZone, locale)
                         )}
                       </span>
                     )}
@@ -231,8 +233,8 @@ const ListPicker = ({
                     <ListOption
                       details={
                         inCart > 0
-                          ? `${countOf(item)} · ${t.inCartDetail(inCart)}`
-                          : countOf(item)
+                          ? `${countOf(item, locale)} · ${t.inCartDetail(inCart)}`
+                          : countOf(item, locale)
                       }
                       key={item._id}
                       list={item}
@@ -251,7 +253,7 @@ const ListPicker = ({
                 </Select.GroupLabel>
                 {past.slice(0, PAST_IN_MENU).map((item) => (
                   <ListOption
-                    details={`${t.finished(formatShortDay(item.archivedAt ?? item.updatedAt, timeZone))} · ${countOf(item)} · ${money(totalOf(item))}`}
+                    details={`${t.finished(formatShortDay(item.archivedAt ?? item.updatedAt, timeZone, locale))} · ${countOf(item, locale)} · ${money(totalOf(item), locale)}`}
                     key={item._id}
                     list={item}
                   />

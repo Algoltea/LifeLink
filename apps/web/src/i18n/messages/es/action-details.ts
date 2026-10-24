@@ -19,8 +19,8 @@ const actionDetails: Messages["actionDetails"] = {
   noJustYou: "No, solo usted",
   notGiven: "No se indicó",
   onlyGrantees: (names, scope) =>
-    `Solo ${names} verá esto, porque usted comparte ${scope} con esa persona.`,
-  peopleYouAllowed: "las personas que usted permitió",
+    `Esto solo se comparte con ${names}, según sus permisos para ${scope}.`,
+  peopleYouAllowed: "las personas a quienes dio permiso",
   readEmail: "Leer el correo en voz alta",
   readMessage: "Leer el mensaje en voz alta",
   readNote: "Leer la nota en voz alta",

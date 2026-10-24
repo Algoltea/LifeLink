@@ -22,7 +22,7 @@ const documents: Messages["documents"] = {
   filesFound: "Archivos encontrados",
   find: "Buscar un archivo por nombre",
   folderNoPreview:
-    "Las carpetas no se pueden ver aquí. Ábrala en Google Drive para ver qué contiene.",
+    "Esta carpeta no se puede ver aquí. Ábrala en Google Drive para ver qué contiene.",
   kinds: {
     Document: "Documento",
     File: "Archivo",

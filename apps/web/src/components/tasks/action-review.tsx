@@ -22,7 +22,7 @@ import { toast } from "sonner";
 
 import { ModePill } from "@/components/app/bits";
 import { useOffline } from "@/components/app/offline-queue";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 
@@ -71,27 +71,31 @@ const Question = ({
 }: {
   ambiguity: Ambiguity;
   onAnswer: (value: string) => void;
-}) => (
-  <fieldset className="border-foreground bg-raised flex flex-col gap-3 rounded-xl border-2 px-6 py-5">
-    <legend className="flex items-center gap-2 px-1 text-xl font-semibold">
-      <CircleHelpIcon aria-hidden="true" className="size-6" />
-      {translateServerMessage(ambiguity.question)}
-    </legend>
-    <div className="flex flex-col gap-2">
-      {ambiguity.options.map((option) => (
-        <Button
-          className="justify-start text-left"
-          key={option.value}
-          onClick={() => onAnswer(option.value)}
-          size="lg"
-          variant="outline"
-        >
-          {translateServerMessage(option.label)}
-        </Button>
-      ))}
-    </div>
-  </fieldset>
-);
+}) => {
+  const locale = useLocale();
+
+  return (
+    <fieldset className="border-foreground bg-raised flex flex-col gap-3 rounded-xl border-2 px-6 py-5">
+      <legend className="flex items-center gap-2 px-1 text-xl font-semibold">
+        <CircleHelpIcon aria-hidden="true" className="size-6" />
+        {translateServerMessage(ambiguity.question, locale)}
+      </legend>
+      <div className="flex flex-col gap-2">
+        {ambiguity.options.map((option) => (
+          <Button
+            className="justify-start text-left"
+            key={option.value}
+            onClick={() => onAnswer(option.value)}
+            size="lg"
+            variant="outline"
+          >
+            {translateServerMessage(option.label, locale)}
+          </Button>
+        ))}
+      </div>
+    </fieldset>
+  );
+};
 
 const OutcomeConfirmation = ({
   busy,
@@ -153,6 +157,7 @@ const ShoppingHistory = ({ view }: { view: ActionView }) => {
   const lastAttempt = view.attempts.at(-1);
   const { status } = view.action;
   const t = useMessages().tasks;
+  const locale = useLocale();
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -161,12 +166,14 @@ const ShoppingHistory = ({ view }: { view: ActionView }) => {
           <p className="flex flex-wrap items-center gap-3 text-xl font-semibold">
             {t.recordedOutcome} <ModePill mode={receipt.mode} />
           </p>
-          <p className="text-lg">{translateServerMessage(receipt.summary)}</p>
+          <p className="text-lg">
+            {translateServerMessage(receipt.summary, locale)}
+          </p>
         </div>
       ) : null}
       {lastAttempt?.error ? (
         <p className="text-muted-foreground text-lg">
-          {translateServerMessage(lastAttempt.error)}
+          {translateServerMessage(lastAttempt.error, locale)}
         </p>
       ) : null}
       {status === "approved" || status === "failed" ? (
@@ -187,7 +194,9 @@ const Outcome = ({ view }: { view: ActionView }) => {
   const { status } = view.action;
   const receipt = view.receipts.at(-1);
   const lastAttempt = view.attempts.at(-1);
-  const t = useMessages().tasks;
+  const words = useMessages();
+  const t = words.tasks;
+  const locale = useLocale();
 
   const confirmOutcome = async (wentThrough: boolean): Promise<void> => {
     setConfirming(true);
@@ -228,7 +237,7 @@ const Outcome = ({ view }: { view: ActionView }) => {
           {t.done} <ModePill mode={receipt.mode} />
         </span>
         <span className="text-lg">
-          {translateServerMessage(receipt.summary)}
+          {translateServerMessage(receipt.summary, locale)}
         </span>
         {receipt.url ? (
           <a
@@ -252,7 +261,9 @@ const Outcome = ({ view }: { view: ActionView }) => {
       >
         <p className="text-xl font-semibold">{t.didNotGoThrough}</p>
         {lastAttempt?.error ? (
-          <p className="text-lg">{translateServerMessage(lastAttempt.error)}</p>
+          <p className="text-lg">
+            {translateServerMessage(lastAttempt.error, locale)}
+          </p>
         ) : null}
         <p className="text-base">{t.nothingWasSent}</p>
         <div className="flex flex-wrap gap-3">
@@ -266,7 +277,7 @@ const Outcome = ({ view }: { view: ActionView }) => {
             }}
             variant="outline"
           >
-            {currentMessages().common.tryAgain}
+            {words.common.tryAgain}
           </Button>
           <CancelActionButton view={view} />
         </div>
@@ -563,6 +574,7 @@ const ApprovalBar = ({
   const blockers: readonly string[] = view.blockers ?? [];
   const blocked = !retired && blockers.length > 0;
   const t = useMessages().tasks;
+  const locale = useLocale();
 
   const onApprove = async (
     event: MouseEvent<HTMLButtonElement>
@@ -651,7 +663,7 @@ const ApprovalBar = ({
         >
           <p className="text-lg leading-7">
             {blockers
-              .map((blocker) => translateServerMessage(blocker))
+              .map((blocker) => translateServerMessage(blocker, locale))
               .join(" ")}
           </p>
           {blockers.some((blocker) => blocker.includes("Trusted circle")) ? (

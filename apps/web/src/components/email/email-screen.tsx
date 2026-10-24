@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { isRowStillShown } from "@/lib/list-beside-reader";
@@ -46,6 +46,7 @@ const MailboxStatus = () => {
   const connections = useQuery(api.connections.list);
   const refresh = useAction(api.emails.refresh);
   const [busy, setBusy] = useState(false);
+  const locale = useLocale();
   const t = useMessages().email;
 
   if (connections === undefined) {
@@ -133,7 +134,9 @@ const MailboxStatus = () => {
         >
           {t.needsAttention(
             mailbox.definition.label,
-            mailbox.lastError ? translateServerMessage(mailbox.lastError) : null
+            mailbox.lastError
+              ? translateServerMessage(mailbox.lastError, locale)
+              : null
           )}{" "}
           <Link className="font-semibold underline" href="/connections">
             {t.reconnect}

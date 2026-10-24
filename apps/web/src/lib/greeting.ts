@@ -1,6 +1,7 @@
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { useSyncExternalStore } from "react";
 
-import { currentMessages, useLocale } from "@/i18n/locale";
+import { messagesFor, useLocale } from "@/i18n/locale";
 import { MINUTE } from "@/lib/format";
 
 const AFTERNOON_HOUR = 12;
@@ -16,9 +17,9 @@ const hourIn = (timeZone: string): number =>
     }).format(Date.now())
   );
 
-const greetingIn = (timeZone: string): string => {
+const greetingIn = (timeZone: string, locale: InterfaceLocale): string => {
   const hour = hourIn(timeZone);
-  const words = currentMessages().greeting;
+  const words = messagesFor(locale).greeting;
 
   if (hour < AFTERNOON_HOUR) {
     return words.morning;
@@ -34,17 +35,18 @@ const subscribeToClock = (onChange: () => void) => {
   return () => globalThis.clearInterval(timer);
 };
 
-const serverGreeting = (): string => currentMessages().greeting.hello;
+const serverGreeting = (locale: InterfaceLocale): string =>
+  messagesFor(locale).greeting.hello;
 
 /** One greeting for Today and Ask, so the two screens never disagree. */
 const useGreeting = (timeZone: string): string => {
   // Read so the greeting follows a language change, not only the clock.
-  useLocale();
+  const locale = useLocale();
 
   return useSyncExternalStore(
     subscribeToClock,
-    () => greetingIn(timeZone),
-    serverGreeting
+    () => greetingIn(timeZone, locale),
+    () => serverGreeting(locale)
   );
 };
 

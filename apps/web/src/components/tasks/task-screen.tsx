@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import { CheckIcon } from "lucide-react";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { ago, formatDay, formatTime } from "@/lib/format";
@@ -49,13 +50,17 @@ interface Heading {
   title: string;
 }
 
-const headingFor = (focus: ActionView | null, detail: TaskDetail): Heading => {
+const headingFor = (
+  focus: ActionView | null,
+  detail: TaskDetail,
+  locale: InterfaceLocale
+): Heading => {
   const kind = focus?.current?.details.kind;
   const awaiting = focus?.action.status === "awaiting_approval";
-  const { tasks } = currentMessages();
+  const { tasks } = messagesFor(locale);
   const t = tasks.heading;
   const who = detail.contact?.name.split(" ")[0] ?? tasks.them;
-  const title = translateServerMessage(detail.task.title);
+  const title = translateServerMessage(detail.task.title, locale);
 
   if (awaiting && kind === "send_message") {
     return { subline: t.sendSubline(who), title: t.sendTitle };
@@ -90,6 +95,7 @@ const ChecksPanel = ({
 }) => {
   const details = focus?.current?.details;
   const t = useMessages().tasks;
+  const locale = useLocale();
   const checks: string[] = [];
 
   if (detail.contact !== null) {
@@ -105,8 +111,8 @@ const ChecksPanel = ({
     checks.push(
       t.checks.appointment(
         detail.appointment.title,
-        formatDay(detail.appointment.startsAt, detail.timeZone),
-        formatTime(detail.appointment.startsAt, detail.timeZone)
+        formatDay(detail.appointment.startsAt, detail.timeZone, locale),
+        formatTime(detail.appointment.startsAt, detail.timeZone, locale)
       )
     );
   }
@@ -164,6 +170,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
 
   const unclear = waitStep?.status === "waiting" && replies.length > 0;
   const words = useMessages();
+  const locale = useLocale();
   const t = words.tasks;
   const who = detail.contact?.name.split(" ")[0] ?? t.they;
 
@@ -191,7 +198,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
           >
             <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-base">
               {message.direction === "incoming" ? t.replied(who) : t.youSent} ·{" "}
-              {ago(message.createdAt, detail.timeZone)}
+              {ago(message.createdAt, detail.timeZone, undefined, locale)}
               {message.direction === "outgoing"
                 ? ` · ${words.threads.status[message.status].toLowerCase()}`
                 : ""}
@@ -240,6 +247,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
   // SAFETY: the id comes from a LifeLink link; the query validates it and rejects anything not owned by this person.
   const detail = useQuery(api.tasks.detail, { taskId: taskId as Id<"tasks"> });
   const words = useMessages();
+  const locale = useLocale();
   const t = words.tasks;
 
   if (detail === undefined) {
@@ -261,7 +269,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
   }
 
   const focus = focusOf(detail.actions);
-  const heading = headingFor(focus, detail);
+  const heading = headingFor(focus, detail, locale);
   const hue = detail.contact?.hue ?? 30;
 
   const others = detail.actions.filter(
@@ -275,7 +283,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
           {words.today.title}
         </Link>
         <span aria-hidden="true"> › </span>
-        <span>{translateServerMessage(detail.task.title)}</span>
+        <span>{translateServerMessage(detail.task.title, locale)}</span>
       </nav>
       <PageHeader
         actions={
@@ -283,7 +291,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
             text={[
               `${heading.title}. ${heading.subline}`,
               focus?.current
-                ? spokenDetails(focus.current.details, detail.timeZone)
+                ? spokenDetails(focus.current.details, detail.timeZone, locale)
                 : "",
             ].join(" ")}
           />

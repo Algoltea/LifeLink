@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
@@ -10,7 +11,7 @@ import { CopyIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
-import { currentIntlLocale, messagesFor, useMessages } from "@/i18n/locale";
+import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
@@ -27,13 +28,14 @@ const PendingLink = ({
   url: string;
 }) => {
   const [copied, setCopied] = useState(false);
+  const locale = useLocale();
   const t = useMessages().telegramSetup;
 
   const expires =
     expiresAt === null
       ? ""
       : t.expires(
-          new Intl.DateTimeFormat(currentIntlLocale(), {
+          new Intl.DateTimeFormat(intlLocaleOf(locale), {
             day: "numeric",
             month: "long",
             weekday: "long",

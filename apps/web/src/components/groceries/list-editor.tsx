@@ -6,6 +6,7 @@ import {
   groceryQuantityError,
   groceryUnit,
 } from "@lifelink/contracts/groceries";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Dialog } from "@lifelink/ui/components/dialog";
@@ -29,7 +30,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyNote } from "@/components/app/states";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, getLocale, messagesFor, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { money } from "@/lib/format";
@@ -45,7 +46,10 @@ type GroceryItem = Doc<"groceryLists">["items"][number];
 /** Long enough to notice a stray tap and reach Undo without hurrying. */
 const UNDO_WINDOW_MS = 10_000;
 
-const quantityWords = (item: GroceryItem): string => {
+const quantityWords = (
+  item: GroceryItem,
+  locale: InterfaceLocale = getLocale()
+): string => {
   if (item.quantity === null) {
     return "";
   }
@@ -53,23 +57,26 @@ const quantityWords = (item: GroceryItem): string => {
   const unit =
     item.unit === null
       ? null
-      : (currentMessages().groceries.units[item.unit]?.short ?? item.unit);
+      : (messagesFor(locale).groceries.units[item.unit]?.short ?? item.unit);
 
   return unit ? `${item.quantity} ${unit}` : `× ${item.quantity}`;
 };
 
 /** The list as plain lines, for copying into a text or an email. */
-const listAsText = (list: Doc<"groceryLists">): string => {
+const listAsText = (
+  list: Doc<"groceryLists">,
+  locale: InterfaceLocale = getLocale()
+): string => {
   const open = list.items.filter((item) => !item.checked);
 
   const lines = open.map(
     (item) =>
-      `- ${item.name}${item.quantity === null ? "" : ` (${quantityWords(item).replace("× ", "")})`}`
+      `- ${item.name}${item.quantity === null ? "" : ` (${quantityWords(item, locale).replace("× ", "")})`}`
   );
 
   const notes =
     list.preferences.length > 0
-      ? `\n\n${currentMessages().groceries.notes(list.preferences.join("; "))}`
+      ? `\n\n${messagesFor(locale).groceries.notes(list.preferences.join("; "))}`
       : "";
 
   return `${list.name}\n${lines.join("\n")}${notes}`;
@@ -84,6 +91,7 @@ const ItemRow = ({
   listId: Doc<"groceryLists">["_id"];
   onToggle: () => void;
 }) => {
+  const locale = useLocale();
   const updateItem = useMutation(api.groceries.updateItem);
   const removeItem = useMutation(api.groceries.removeItem);
   const restoreItem = useMutation(api.groceries.restoreItem);
@@ -146,10 +154,10 @@ const ItemRow = ({
         </Label>
         <span className="text-muted-foreground text-base">
           {[
-            quantityWords(item),
+            quantityWords(item, locale),
             item.estimatedCents === null
               ? ""
-              : t.about(money(item.estimatedCents)),
+              : t.about(money(item.estimatedCents, locale)),
           ]
             .filter((part) => part.length > 0)
             .join(" · ")}
@@ -168,6 +176,7 @@ const ItemRow = ({
 };
 
 const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
+  const locale = useLocale();
   const addItem = useMutation(api.groceries.addItem);
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -182,7 +191,9 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
   const rawQuantityError = groceryQuantityError(Number(quantity), unit);
 
   const quantityError =
-    rawQuantityError === null ? null : translateServerMessage(rawQuantityError);
+    rawQuantityError === null
+      ? null
+      : translateServerMessage(rawQuantityError, locale);
 
   const fractional = groceryUnit(unit)?.fractional === true;
 

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 const DISCLOSURE_MOTION_MS = 180;
@@ -86,13 +86,14 @@ const SummaryDisclosure = ({
 };
 
 const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
+  const locale = useLocale();
   const headingId = useId();
   const disclosureName = useId();
   const t = useMessages().ask.emailSummary;
 
-  // LifeLink's own summary is written in English; a cloud summary already uses the person's language.
-  const local = (text: string): string =>
-    summary.method === "cloud" ? text : translateServerMessage(text);
+  // Local reasons are fixed rules; item summaries can contain original email text.
+  const reasonFor = (text: string): string =>
+    summary.method === "cloud" ? text : translateServerMessage(text, locale);
 
   return (
     <section
@@ -118,7 +119,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
       </header>
       {summary.summary ? (
         <p className="border-border border-b px-5 py-4 text-lg wrap-anywhere">
-          {local(summary.summary)}
+          {summary.summary}
         </p>
       ) : null}
       {summary.items.length === 0 ? (
@@ -174,9 +175,9 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
                           </p>
                         </div>
                         <div className="min-w-0 space-y-2 wrap-anywhere">
-                          {item.summary ? <p>{local(item.summary)}</p> : null}
+                          {item.summary ? <p>{item.summary}</p> : null}
                           <p className="text-muted-foreground text-label">
-                            {local(item.reason)}
+                            {reasonFor(item.reason)}
                           </p>
                           {item.quote ? (
                             <blockquote className="border-border text-muted-foreground text-label border-l-2 pl-3">
@@ -202,7 +203,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
             {t.howMade}
           </summary>
           <p className="pb-3 wrap-anywhere">
-            {translateServerMessage(summary.note)}
+            {translateServerMessage(summary.note, locale)}
           </p>
         </SummaryDisclosure>
         <p className="text-muted-foreground text-label">{t.suggestionsOnly}</p>

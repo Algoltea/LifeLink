@@ -11,7 +11,7 @@ import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
 
@@ -30,6 +30,7 @@ const lookupKey = (code: string, zone: string): string => `${zone}|${code}`;
 
 const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   const t = useMessages().onboarding;
+  const locale = useLocale();
 
   const roles = [
     { label: t.owner, value: "owner" },
@@ -138,6 +139,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
         role,
         signOffName: text("signOff") || null,
         startInDemoMode: role === "owner" && demo,
+        supportLanguage: locale,
         timeZone: text("timeZone") || timeZone,
       });
       router.replace(role === "family" ? "/family" : "/");

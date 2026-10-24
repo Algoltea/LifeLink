@@ -8,7 +8,7 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { LoadingRows } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { formatWhen } from "@/lib/format";
 
@@ -19,6 +19,7 @@ import { JourneyGauge } from "./journey-gauge";
 const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
   const detail = useQuery(api.tasks.detail, { taskId });
   const t = useMessages().tasks;
+  const locale = useLocale();
 
   if (detail === undefined) {
     return <LoadingRows label={t.loadingRequest} layout="task-panel" />;
@@ -53,12 +54,12 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
               // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
               href={`/tasks/${task._id}` as Route}
             >
-              {translateServerMessage(task.title)}
+              {translateServerMessage(task.title, locale)}
             </Link>
           </h2>
           {appointment ? (
             <p className="text-muted-foreground text-lg">
-              {formatWhen(appointment.startsAt, timeZone)}
+              {formatWhen(appointment.startsAt, timeZone, locale)}
               {appointment.location ? ` · ${appointment.location}` : ""}
             </p>
           ) : null}

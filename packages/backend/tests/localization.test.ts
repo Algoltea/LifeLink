@@ -275,33 +275,111 @@ describe("recipient-language drafts and service notices", () => {
     expect(notices.telegramStartHelp("Sam", "sam_a")).toContain("@sam_a");
   });
 
-  it("writes deterministic briefings in Spanish while preserving appointment words", async () => {
-    vi.stubEnv("OPENROUTER_API_KEY", "");
-    const backend = newBackend();
-    const { owner, ownerId } = await ownerWithContact(backend, false);
+  it.each(["es", "fr"])(
+    "keeps saved %s analysis out of an English help draft after preferences change",
+    async (reviewLanguage) => {
+      const backend = newBackend();
+      const { owner, contactId } = await ownerWithContact(backend, false);
 
-    await owner.mutation(api.profiles.updatePreferences, {
-      supportLanguage: "es",
-    });
-    await owner.mutation(api.appointments.create, {
-      location: null,
-      notes: null,
-      startsAt: Date.now() + DAY,
-      title: "Dr. Patel",
-    });
-    await backend.action(internal.briefings.generate, {
-      dateKey: "2026-10-24",
-      ownerId,
-    });
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: reviewLanguage,
+      });
 
-    const briefing = await backend.run(
-      async (ctx) => await ctx.db.query("briefings").first()
-    );
+      const reviewId = await owner.mutation(api.scam.submit, {
+        emailId: null,
+        screenshotId: null,
+        text: "Original message, unchanged",
+      });
 
-    expect(briefing?.greetingFact).toContain("Dr. Patel es el");
-    expect(briefing?.lines).toContain(
-      "Aún no tienes transporte para esa cita."
-    );
-    expect(briefing?.source).toBe("rules");
-  });
+      const signal = {
+        detail: "Owner-only analysis",
+        label: reviewLanguage === "es" ? "pide dinero" : "demande de l'argent",
+        quote: null,
+        stance: "requests" as const,
+      };
+
+      await backend.run(async (ctx) => {
+        await ctx.db.patch(reviewId, { signals: [signal] });
+        await ctx.db.patch(contactId, { language: "en" });
+      });
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: "en",
+      });
+
+      const taskId = await owner.mutation(api.scam.askTrustedContact, {
+        contactId,
+        reviewId,
+      });
+
+      const { current } = await onlyAction(owner, taskId);
+
+      expect(current.details).toMatchObject({
+        body: "Hi Sam, I got a message that I'm not sure about. It looks a bit odd. Could you help me check whether it's real before I do anything? Ruth",
+        kind: "send_message",
+      });
+      await expect(
+        backend.run(async (ctx) => await ctx.db.get(reviewId))
+      ).resolves.toMatchObject({
+        inputText: "Original message, unchanged",
+        signals: [signal],
+      });
+    }
+  );
+
+  it.each(["en", "es", "fr"])(
+    "writes new deterministic briefings for %s while retaining older content",
+    async (language) => {
+      vi.stubEnv("OPENROUTER_API_KEY", "");
+      const backend = newBackend();
+      const { owner, ownerId } = await ownerWithContact(backend, false);
+
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: "es",
+      });
+      await owner.mutation(api.appointments.create, {
+        location: null,
+        notes: null,
+        startsAt: Date.now() + DAY,
+        title: "Dr. Patel",
+      });
+      await backend.action(internal.briefings.generate, {
+        dateKey: "2026-10-24",
+        ownerId,
+      });
+
+      const briefing = await backend.run(
+        async (ctx) => await ctx.db.query("briefings").first()
+      );
+
+      expect(briefing).toMatchObject({
+        greetingFact: expect.stringContaining("Dr. Patel es el"),
+        lines: expect.arrayContaining([
+          "Aún no tiene transporte para esa cita.",
+        ]),
+        source: "rules",
+      });
+
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: language,
+      });
+      await backend.action(internal.briefings.generate, {
+        dateKey: "2026-10-25",
+        ownerId,
+      });
+
+      const briefings = await backend.run(
+        async (ctx) => await ctx.db.query("briefings").collect()
+      );
+
+      expect(briefings[0]).toStrictEqual(briefing);
+      expect(briefings[1]?.greetingFact).toContain(
+        language === "es" ? "Dr. Patel es el" : "Dr. Patel is on"
+      );
+      expect(briefings[1]?.lines).toContain(
+        language === "es"
+          ? "Aún no tiene transporte para esa cita."
+          : "You don't have a ride arranged for it yet."
+      );
+    }
+  );
 });

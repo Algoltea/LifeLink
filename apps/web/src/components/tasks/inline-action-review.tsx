@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { useId } from "react";
 
 import { LoadingRows } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 import { ActionReview } from "./action-review";
@@ -15,6 +15,7 @@ const InlineActionReview = ({ actionId }: { actionId: string }) => {
   const review = useQuery(api.assistant.actionReview, { actionId });
   const headingId = useId();
   const t = useMessages().tasks;
+  const locale = useLocale();
 
   if (review === undefined) {
     return <LoadingRows layout="review" label={t.loadingLatest} rows={2} />;
@@ -33,7 +34,7 @@ const InlineActionReview = ({ actionId }: { actionId: string }) => {
         className="border-border bg-parchment border-b px-5 py-3.5 text-lg font-semibold"
         id={headingId}
       >
-        {translateServerMessage(review.title)}
+        {translateServerMessage(review.title, locale)}
       </h3>
       <div className="p-5">
         <ActionReview

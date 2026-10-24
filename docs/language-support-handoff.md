@@ -1,5 +1,18 @@
 # Language support handoff — October 24, 2026
 
+## PR 16 follow-up
+
+This section supersedes the packaging checkpoint and historical resume checklist below.
+
+- Replaced the keyed `LocaleBoundary` remount with document-language synchronization. Screen subscriptions and explicit locale arguments refresh formatted labels without discarding drafts, focus, Settings failure/retry state, or Solitaire progress, selection, and undo. Unrelated preference updates no longer overwrite a local language choice awaiting retry.
+- Browser-language fallback works when local storage is blocked. Onboarding saves the active language. Spanish UI and owner-facing deterministic backend text use **usted**; conversational drafts and original quoted content are preserved.
+- Preserved authored conversation titles, original email summaries/snippets, and approved family-update text instead of translating them when their words happen to match a fixed status message. Contact-language scam-help drafts do not reuse owner-language analysis.
+- Added regressions for language-switch state preservation, catalog/server translation behavior, recipient drafts and exact approval replay, deterministic briefings, fallback parsing, and provider error details.
+
+**Verification:** local lint/format, typecheck, unit/integration tests, and the production build pass. The production build used local public endpoint URLs and did not deploy functions. Browser checks used a read-only signed-out auth fixture, so they verify rendering and local play rather than real authentication or provider delivery. Spanish sign-in and Solitaire were inspected at desktop and 390px mobile widths without page-level horizontal overflow. A production Solitaire session saved a drawn card and restored the same one-move game after an offline reload, with Spanish labels and narration text. Local screenshots and machine-readable results are in ignored `.taste-skill/pr16/`.
+
+**Remaining verification and coverage limits:** signed-in onboarding/account persistence and exact approval previews are covered by automated tests where noted, not a live Spanish end-to-end browser journey. Active microphone/voice sessions, cloud language quality, real messaging, and native-speaker review remain unverified. Static browser-tab metadata and the standalone offline fallback page may remain English. Fixed-message coverage is bounded; unknown provider errors remain verbatim. Local detection and Practice parsing still analyze English patterns, and cached briefings do not regenerate on language changes. No real outbound messages or deployments were performed.
+
 ## Packaging checkpoint
 
 The user subsequently requested committing the complete working-tree diff by concern and pushing the branch, without co-author trailers. The historical snapshot below describes the earlier pause, not the current validation state.

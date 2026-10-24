@@ -2,6 +2,8 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -27,7 +29,7 @@ import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
 import { WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
-import { currentIntlLocale, currentMessages, useMessages } from "@/i18n/locale";
+import { useLocale, messagesFor, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { dayKey, formatTime, relativeDay } from "@/lib/format";
 import {
@@ -44,14 +46,17 @@ import {
 type TodaySummary = FunctionReturnType<typeof api.today.summary>;
 
 /** Appointments and reminders form the short overview on Today. */
-const currentBriefing = (summary: TodaySummary): string[] => {
+const currentBriefing = (
+  summary: TodaySummary,
+  locale: InterfaceLocale
+): string[] => {
   const lines: string[] = [];
-  const { format, today } = currentMessages();
+  const { format, today } = messagesFor(locale);
 
   const [next] = summary.appointments;
 
   if (next) {
-    const day = relativeDay(next.startsAt, summary.timeZone);
+    const day = relativeDay(next.startsAt, summary.timeZone, undefined, locale);
     let when = today.onDay(day);
 
     if (day === format.today) {
@@ -64,7 +69,7 @@ const currentBriefing = (summary: TodaySummary): string[] => {
       today.nextAppointment(
         next.title,
         when,
-        formatTime(next.startsAt, summary.timeZone)
+        formatTime(next.startsAt, summary.timeZone, locale)
       )
     );
   } else {
@@ -79,7 +84,10 @@ const currentBriefing = (summary: TodaySummary): string[] => {
 };
 
 /** Who wrote in the last two days, by first name, the same people as the Messages list. */
-const spokenMessages = (messages: TodaySummary["messages"]): string => {
+const spokenMessages = (
+  messages: TodaySummary["messages"],
+  locale: InterfaceLocale
+): string => {
   const names = [
     ...new Set(
       messages.map((message) => message.contactName.split(" ")[0] ?? "")
@@ -88,8 +96,8 @@ const spokenMessages = (messages: TodaySummary["messages"]): string => {
 
   return names.length === 0
     ? ""
-    : currentMessages().today.messagesFrom(
-        new Intl.ListFormat(currentIntlLocale(), {
+    : messagesFor(locale).today.messagesFrom(
+        new Intl.ListFormat(intlLocaleOf(locale), {
           type: "conjunction",
         }).format(names)
       );
@@ -151,12 +159,13 @@ const TodayContent = ({
   stepsHidden: boolean;
   summary: TodaySummary;
 }) => {
+  const locale = useLocale();
   const { timeZone } = summary;
   const weather = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
   const t = useMessages();
-  const lines = currentBriefing(summary);
+  const lines = currentBriefing(summary, locale);
 
   // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
   const welcome =
@@ -179,10 +188,10 @@ const TodayContent = ({
         title: appointment.title,
         weather: day
           ? {
-              advice: adviceFor(day),
+              advice: adviceFor(day, locale),
               code: day.code,
               high: degrees(day.highC, unit),
-              label: weatherLabel(day.code),
+              label: weatherLabel(day.code, locale),
             }
           : undefined,
       };
@@ -201,8 +210,8 @@ const TodayContent = ({
         lines={lines}
         preferredName={summary.preferredName}
         spoken={[
-          forecast ? spokenWeather(forecast, unit) : "",
-          spokenMessages(summary.messages),
+          forecast ? spokenWeather(forecast, unit, locale) : "",
+          spokenMessages(summary.messages, locale),
         ]}
         timeZone={timeZone}
         weather={<WeatherChip state={weather} unit={unit} />}

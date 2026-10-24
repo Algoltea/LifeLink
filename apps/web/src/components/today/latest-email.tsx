@@ -10,7 +10,7 @@ import Link from "next/link";
 
 import { listTime } from "@/components/email/email-bits";
 import { AllLink, PANEL_ROW, PanelPart } from "@/components/today/side-lists";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { hasEmailWarning } from "@/lib/email-warning";
 import { formatWhen } from "@/lib/format";
 
@@ -46,6 +46,7 @@ const EmailWarning = ({ email }: { email: EmailRow }) => {
 
 /** The three newest emails, with a simple hint on messages that need care. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
+  const locale = useLocale();
   const emails = useQuery(api.emails.list);
   const t = useMessages();
   const connections = useQuery(api.connections.list);
@@ -107,10 +108,10 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
                     <time
                       className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
                       dateTime={new Date(email.receivedAt).toISOString()}
-                      title={formatWhen(email.receivedAt, timeZone)}
+                      title={formatWhen(email.receivedAt, timeZone, locale)}
                     >
                       <span className="sr-only">, </span>
-                      {listTime(email.receivedAt, timeZone)}
+                      {listTime(email.receivedAt, timeZone, undefined, locale)}
                     </time>
                   </span>
                   <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
