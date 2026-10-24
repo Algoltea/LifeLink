@@ -23,8 +23,8 @@ const CALL_PRIVACY =
   "LifeLink does not record calls. Sound from your microphone goes to Google’s Gemini to make the captions. When you stop, LifeLink saves a short summary of warning signs, not the captions.";
 
 const CallPrivacy = ({ practice = false }: { practice?: boolean }) => (
-  <p className="text-muted-foreground text-body flex items-start gap-3 leading-relaxed">
-    <LockKeyholeIcon aria-hidden="true" className="mt-1 size-5 shrink-0" />
+  <p className="text-muted-foreground text-label flex items-start gap-2">
+    <LockKeyholeIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
     {practice
       ? "No microphone or cloud AI is used. A short summary is saved in Earlier checks."
       : CALL_PRIVACY}

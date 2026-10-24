@@ -35,9 +35,9 @@ const errorText = (cause: unknown): string =>
 type Source = "email" | "screenshot" | "text";
 
 const SOURCES = [
-  { icon: TextIcon, label: "Type or paste the words", value: "text" },
-  { icon: ImageIcon, label: "Add a photo or screenshot", value: "screenshot" },
-  { icon: MailIcon, label: "Pick an email", value: "email" },
+  { icon: TextIcon, label: "Text", value: "text" },
+  { icon: ImageIcon, label: "Photo", value: "screenshot" },
+  { icon: MailIcon, label: "Email", value: "email" },
 ] as const;
 
 interface EmailChoice {
@@ -46,41 +46,6 @@ interface EmailChoice {
   id: Id<"emails">;
   subject: string;
 }
-
-const CloudConsent = ({
-  allowed,
-  disabled,
-  onChange,
-  photo,
-}: {
-  allowed: boolean;
-  disabled: boolean;
-  onChange: (allowed: boolean) => void;
-  photo: boolean;
-}) => {
-  const consentId = useId();
-
-  return (
-    <label
-      className="flex min-h-12 cursor-pointer items-start gap-3 text-lg leading-relaxed"
-      htmlFor={consentId}
-    >
-      <input
-        checked={allowed}
-        className="accent-primary mt-1 size-6 shrink-0"
-        disabled={disabled}
-        id={consentId}
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
-      <span>
-        {photo
-          ? "Send this photo and my note to a cloud AI service so it can read the words for this check. A photo can’t be checked without this."
-          : "Allow a cloud AI service to help with this message, just for this check. Leave this unchecked to look for common warning signs without cloud AI."}
-      </span>
-    </label>
-  );
-};
 
 const EmailPicker = ({
   disabled,
@@ -116,11 +81,9 @@ const EmailPicker = ({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <Label className="text-lg" htmlFor={id}>
-        Choose an email
-      </Label>
+      <Label htmlFor={id}>Choose an email</Label>
       <select
-        className="border-control bg-raised text-foreground min-h-14 w-full min-w-0 rounded-lg border px-4 text-lg"
+        className="border-control bg-raised text-foreground min-h-control text-body w-full min-w-0 rounded-md border px-4"
         disabled={disabled}
         id={id}
         onChange={(event) => onChange(event.target.value)}
@@ -136,10 +99,10 @@ const EmailPicker = ({
       </select>
       {selected ? (
         <div className="border-rule flex flex-col gap-1 border-b py-3 wrap-anywhere">
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-label">
             From {selected.fromName ?? selected.fromAddress}
           </p>
-          <p className="text-xl font-semibold">
+          <p className="text-body font-semibold">
             {selected.subject || "(No subject)"}
           </p>
         </div>
@@ -154,7 +117,7 @@ const photoAvailability = (
   configured: boolean
 ): string | null => {
   if (practice) {
-    return "Practice mode is on, so photos aren’t checked or sent anywhere. You can type the words from the letter instead.";
+    return "Practice mode is on. Photos are not checked or sent to an AI service.";
   }
 
   if (!loaded) {
@@ -162,7 +125,7 @@ const photoAvailability = (
   }
 
   if (!configured) {
-    return "Photo checks aren’t available right now. Your photo won’t be uploaded. You can type the words instead.";
+    return "Photo checks are not available right now. Your photo will not be uploaded.";
   }
 
   return null;
@@ -181,6 +144,7 @@ const useCheckAvailability = () => {
 
   return {
     cloudAvailable: profileLoaded && !practice && configured,
+    practice,
     profileLoaded,
     unavailable: photoAvailability(
       practice,
@@ -193,7 +157,6 @@ const useCheckAvailability = () => {
 const formReady = ({
   source,
   file,
-  allowed,
   unavailable,
   text,
   email,
@@ -201,19 +164,13 @@ const formReady = ({
 }: {
   source: Source;
   file: File | null;
-  allowed: boolean;
   unavailable: string | null;
   text: string;
   email: EmailChoice | null;
   profileLoaded: boolean;
 }): boolean => {
   if (source === "screenshot") {
-    return (
-      file !== null &&
-      photoError(file) === null &&
-      allowed &&
-      unavailable === null
-    );
+    return file !== null && photoError(file) === null && unavailable === null;
   }
 
   return (
@@ -230,7 +187,7 @@ const submitLabel = (photo: boolean, busy: boolean): string => {
   return photo ? "Check this photo" : "Check this message";
 };
 
-/** Consent belongs to this input and is cleared whenever the person replaces it. */
+/** Manual checks use AI by default; Practice and unavailable services use local rules. */
 const CheckForm = ({
   active,
   email,
@@ -244,7 +201,9 @@ const CheckForm = ({
   initialSource: Source;
   onStarted: (reviewId: Id<"scamReviews">) => void;
 }) => {
-  const { cloudAvailable, profileLoaded, unavailable } = useCheckAvailability();
+  const { cloudAvailable, practice, profileLoaded, unavailable } =
+    useCheckAvailability();
+
   const submit = useMutation(api.scam.submit);
   const submitPhoto = useAction(api.scam.submitPhoto);
   const [source, setSource] = useState(initialSource);
@@ -258,7 +217,6 @@ const CheckForm = ({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
-  const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const textId = useId();
@@ -269,7 +227,6 @@ const CheckForm = ({
   const selected = emails?.find((item) => item.id === chosenEmailId) ?? null;
 
   const ready = formReady({
-    allowed: allowCloudAnalysis,
     email: selected,
     file,
     profileLoaded,
@@ -280,14 +237,13 @@ const CheckForm = ({
 
   const changeSource = (next: Source) => {
     setSource(next);
-    setAllowCloudAnalysis(false);
     setFormError(null);
   };
 
   const start = async (): Promise<Id<"scamReviews">> => {
     if (photo && file !== null) {
-      // Both the UI and the server gate storage on consent and availability.
-      if (unavailable !== null || !allowCloudAnalysis) {
+      // Both the UI and the server reject unavailable photo checks before storage.
+      if (unavailable !== null) {
         throw new Error(
           "Photo checks aren’t available. Type the words instead."
         );
@@ -308,7 +264,7 @@ const CheckForm = ({
     }
 
     return await submit({
-      allowCloudAnalysis: allowCloudAnalysis && cloudAvailable,
+      allowCloudAnalysis: cloudAvailable,
       emailId: source === "email" ? (selected?.id ?? null) : null,
       screenshotId: null,
       text: source === "text" ? text : null,
@@ -338,8 +294,6 @@ const CheckForm = ({
           setFormError(errorText(error));
         }
 
-        // A retry is another check and needs fresh permission too.
-        setAllowCloudAnalysis(false);
         setBusy(false);
         inFlight.current = false;
       }}
@@ -352,7 +306,7 @@ const CheckForm = ({
         >
           Check a message
         </h2>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground text-label">
           A letter, a text, a screenshot or an email. Choose the easiest way to
           show it.
         </p>
@@ -361,11 +315,11 @@ const CheckForm = ({
         <legend className="sr-only">
           How would you like to show the message?
         </legend>
-        <div className="grid grid-cols-1 gap-3 @lg/content:grid-cols-3">
+        <div className="flex flex-wrap gap-2">
           {SOURCES.map((option) => (
             <label
               className={cn(
-                "border-control has-focus-visible:outline-ring flex min-h-18 min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-lg leading-6 has-focus-visible:outline-3 has-focus-visible:outline-offset-2",
+                "border-control has-focus-visible:outline-ring text-label min-h-control flex min-w-0 flex-1 basis-24 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 has-focus-visible:outline-3 has-focus-visible:outline-offset-2",
                 source === option.value
                   ? "border-primary bg-neutral-wash text-primary font-semibold"
                   : "bg-background hover:bg-parchment font-medium"
@@ -380,7 +334,7 @@ const CheckForm = ({
                 type="radio"
                 value={option.value}
               />
-              <option.icon aria-hidden="true" className="size-6 shrink-0" />
+              <option.icon aria-hidden="true" className="size-5 shrink-0" />
               {option.label}
             </label>
           ))}
@@ -392,7 +346,6 @@ const CheckForm = ({
           emails={emails}
           onChange={(id) => {
             setChosenEmailId(id);
-            setAllowCloudAnalysis(false);
             setFormError(null);
           }}
           selected={selected}
@@ -400,9 +353,7 @@ const CheckForm = ({
       ) : null}
       {source === "text" ? (
         <div className="flex flex-col gap-2">
-          <Label className="text-lg" htmlFor={textId}>
-            The message’s words
-          </Label>
+          <Label htmlFor={textId}>The message’s words</Label>
           <Textarea
             className="text-lg"
             disabled={busy}
@@ -410,7 +361,6 @@ const CheckForm = ({
             maxLength={8000}
             onChange={(event) => {
               setText(event.target.value);
-              setAllowCloudAnalysis(false);
             }}
             placeholder="Paste or type the words here"
             ref={textRef}
@@ -427,54 +377,44 @@ const CheckForm = ({
             file={file}
             onFile={(next) => {
               setFile(next);
-              setAllowCloudAnalysis(false);
               setFormError(null);
             }}
           />
           <div className="flex flex-col gap-2">
-            <Label className="text-lg" htmlFor={noteId}>
-              Anything to add? (optional)
-            </Label>
+            <Label htmlFor={noteId}>Anything to add? (optional)</Label>
             <Textarea
-              className="text-lg"
+              className="text-body min-h-20"
               disabled={busy}
               id={noteId}
               maxLength={8000}
               onChange={(event) => {
                 setNote(event.target.value);
-                setAllowCloudAnalysis(false);
               }}
               placeholder="For example, who it claimed to be from"
               rows={2}
               value={note}
             />
           </div>
-          <p className="text-muted-foreground text-lg">
-            To read the words in a photo, LifeLink needs a cloud AI service. It
-            asks you first, every time. The photo is kept with this check until
-            you delete it.
-          </p>
           {unavailable ? (
-            <p className="text-warning text-lg" id={guidanceId}>
+            <p className="text-warning text-label" id={guidanceId}>
               {unavailable}
             </p>
           ) : null}
         </>
       ) : null}
       {cloudAvailable ? (
-        <CloudConsent
-          allowed={allowCloudAnalysis}
-          disabled={busy || (photo && file === null)}
-          onChange={setAllowCloudAnalysis}
-          photo={photo}
-        />
-      ) : null}
-      {photo ? null : (
-        <p className="text-muted-foreground text-lg">
-          LifeLink looks for common warning signs. It doesn’t open links or
-          contact the sender. No check can prove a message is genuine.
+        <p className="text-muted-foreground text-label">
+          An AI service reads this to check it. Leave out passwords and card
+          numbers.
         </p>
-      )}
+      ) : null}
+      {!photo && !cloudAvailable ? (
+        <p className="text-muted-foreground text-label">
+          {practice
+            ? "Practice checks use common warning signs. Nothing is sent to an AI service."
+            : "AI checks are not available right now. LifeLink uses common warning signs instead."}
+        </p>
+      ) : null}
       {formError ? (
         <p className="text-negative text-lg" role="alert">
           {formError}
@@ -484,31 +424,16 @@ const CheckForm = ({
         <Button
           aria-busy={busy}
           aria-describedby={photo && unavailable ? guidanceId : undefined}
-          className="min-h-14 w-full text-lg sm:w-auto"
+          className="w-full sm:w-auto"
           disabled={busy || !ready}
-          size="lg"
           type="submit"
         >
           <ShieldCheckIcon aria-hidden="true" />
           {submitLabel(photo, busy)}
         </Button>
-        {photo ? (
-          <Button
-            className="text-lg"
-            disabled={busy}
-            onClick={() => {
-              changeSource("text");
-              requestAnimationFrame(() => textRef.current?.focus());
-            }}
-            type="button"
-            variant="ghost"
-          >
-            Type the words instead
-          </Button>
-        ) : null}
       </div>
       {busy ? (
-        <output aria-live="polite" className="text-muted-foreground text-lg">
+        <output aria-live="polite" className="text-muted-foreground text-label">
           {photo
             ? "Uploading your photo. Keep this page open; reading the words comes next."
             : "Preparing your check…"}
@@ -589,7 +514,7 @@ const HistoryList = ({
                   ? verdict.label
                   : STATUS_PILL[review.status]}
               </Pill>
-              <span className="flex min-h-12 items-center gap-2 text-lg font-medium">
+              <span className="text-label min-h-control flex items-center gap-2 font-medium">
                 Review
                 <ArrowRightIcon aria-hidden="true" className="size-5" />
               </span>
@@ -672,7 +597,6 @@ const ScamPageIntro = ({ active }: { active: boolean }) => {
           actions={
             <Button
               aria-expanded={explaining}
-              className="text-lg"
               onClick={() => setExplaining((open) => !open)}
               variant="ghost"
             >
@@ -685,11 +609,11 @@ const ScamPageIntro = ({ active }: { active: boolean }) => {
         />
       )}
       {explaining && !active ? (
-        <p className="border-rule max-w-prose border-b pb-5 text-lg">
+        <p className="border-rule text-label max-w-prose border-b pb-5">
           A check looks for common warning signs; it can’t confirm who sent a
-          message or whether it’s true. Photos need your permission to be read
-          by a cloud AI service and stay with your check until you delete it.
-          You choose what to do next.
+          message or whether it’s true. An AI service helps with message and
+          photo checks. Photos stay with your check until you delete it.
+          Practice checks never use AI. You choose what to do next.
         </p>
       ) : null}
     </>

@@ -29,6 +29,33 @@ const sharingScope = v.union(
 
 const quotedItem = v.object({ quote: v.string(), text: v.string() });
 
+const newsKind = v.union(v.literal("good"), v.literal("top"));
+
+const headline = v.object({
+  publishedAt: v.union(v.number(), v.null()),
+  source: v.string(),
+  title: v.string(),
+  url: v.string(),
+});
+
+const forecast = v.object({
+  current: v.object({
+    code: v.number(),
+    isDay: v.boolean(),
+    temperatureC: v.number(),
+  }),
+  days: v.array(
+    v.object({
+      code: v.number(),
+      date: v.string(),
+      highC: v.number(),
+      lowC: v.number(),
+      precipitationChance: v.union(v.number(), v.null()),
+    })
+  ),
+  place: v.string(),
+});
+
 const suggestedReply = v.object({
   draft: v.string(),
   kind: v.union(
@@ -457,6 +484,13 @@ export default defineSchema({
     text: v.string(),
   }).index("by_owner_created", ["ownerId", "createdAt"]),
 
+  // Outside fetches reserved per place, feed, or person, so failures and bursts cannot repeat them.
+  fetchClaims: defineTable({
+    count: v.number(),
+    key: v.string(),
+    windowStartedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   groceryLists: defineTable({
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(
@@ -602,6 +636,13 @@ export default defineSchema({
     .index("by_provider_message", ["providerMessageId"])
     .index("by_action", ["actionId"]),
 
+  // Public headlines, shared by everyone; refreshed on demand at most every 30 minutes.
+  newsCache: defineTable({
+    fetchedAt: v.number(),
+    headlines: v.array(headline),
+    kind: newsKind,
+  }).index("by_kind", ["kind"]),
+
   photos: defineTable({
     caption: v.union(v.string(), v.null()),
     contactId: v.union(v.id("contacts"), v.null()),
@@ -625,9 +666,12 @@ export default defineSchema({
       v.union(v.literal("short"), v.literal("detailed"))
     ),
     groceryNotes: v.union(v.string(), v.null()),
+    // News on Today. Optional so older rows read as good news, shown.
+    newsKind: v.optional(newsKind),
     profileId: v.id("profiles"),
     readAloud: v.boolean(),
     reducedMotion: v.boolean(),
+    showNews: v.optional(v.boolean()),
     speechRate: v.number(),
     stepByStep: v.optional(v.boolean()),
     // One of the offered support languages; checked when saved.
@@ -889,4 +933,12 @@ export default defineSchema({
     .index("by_owner_updated", ["ownerId", "updatedAt"])
     .index("by_owner_status", ["ownerId", "status"])
     .index("by_contact_status", ["contactId", "status"]),
+
+  // One forecast per saved location (postal code, city, time zone), shared by everyone who saved it.
+  // A null forecast with a fetchedAt records that the place was not found, so it is not searched again at once.
+  weatherCache: defineTable({
+    fetchedAt: v.number(),
+    forecast: v.union(forecast, v.null()),
+    locationKey: v.string(),
+  }).index("by_location_key", ["locationKey"]),
 });

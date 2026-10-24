@@ -24,14 +24,13 @@ const CircleLoadingHeader = () => (
 
 const CircleLoadingRows = ({ rows }: { rows: number }) => (
   <div className="flex min-w-0 flex-col gap-4" data-loading-part="circle-rows">
-    <div className="bg-parchment flex items-start gap-3 rounded-xl px-5 py-3">
-      <Skeleton className="mt-1 size-5 shrink-0" />
+    <div className="text-label flex items-start gap-2">
+      <Skeleton className="mt-0.5 size-4 shrink-0" />
       <div className="relative">
         <p className="invisible">
           These are sample people, so you can practice safely.
         </p>
-        <Skeleton className="absolute inset-x-0 top-1 h-4" />
-        <Skeleton className="absolute inset-x-0 bottom-1 h-4" />
+        <Skeleton className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2" />
       </div>
     </div>
     <div className="flex flex-col gap-1">

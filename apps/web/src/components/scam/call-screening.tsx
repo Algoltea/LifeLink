@@ -54,7 +54,7 @@ const CallLanding = ({
         <h2 className="text-section font-semibold" id="call-screening-title">
           Listen to a call
         </h2>
-        <p className="text-muted-foreground text-body mt-2 leading-relaxed">
+        <p className="text-muted-foreground text-label mt-2">
           LifeLink shows the call’s words on screen and warns you out loud if it
           picks up a common scam sign.
         </p>
@@ -64,14 +64,14 @@ const CallLanding = ({
         <li>Press Start listening and allow the microphone.</li>
         <li>Keep this screen open while you talk.</li>
       </ol>
-      <p className="text-muted-foreground text-body">
+      <p className="text-muted-foreground text-label">
         If your phone cannot use the microphone during a call, open LifeLink on
         another device.
       </p>
       <CallPrivacy />
       {!practiceMode && configured ? (
         <label
-          className="text-body min-h-control flex cursor-pointer items-start gap-3"
+          className="text-label min-h-control flex cursor-pointer items-start gap-3"
           htmlFor={consentId}
         >
           <input
@@ -91,18 +91,17 @@ const CallLanding = ({
         className="min-h-control w-full whitespace-normal"
         disabled={!consent || practiceMode || !configured || !me?.profile}
         onClick={() => start(false)}
-        size="lg"
       >
         <MicIcon aria-hidden="true" />
         Start listening
       </Button>
       {practiceMode ? (
-        <p className="text-muted-foreground text-body">
+        <p className="text-muted-foreground text-label">
           Practice mode is on. Try the made-up call below without a microphone.
         </p>
       ) : null}
       {!practiceMode && integrations !== undefined && !configured ? (
-        <p className="text-muted-foreground text-body">
+        <p className="text-muted-foreground text-label">
           Live call checks are not set up yet. You can try a practice call or
           type the caller’s words.
         </p>
@@ -115,7 +114,7 @@ const CallLanding = ({
         <PlayIcon aria-hidden="true" />
         Try a practice call
       </Button>
-      <p className="text-muted-foreground text-body">
+      <p className="text-muted-foreground text-label">
         The practice call uses no microphone or cloud AI. Its short summary is
         saved in Earlier checks.
       </p>

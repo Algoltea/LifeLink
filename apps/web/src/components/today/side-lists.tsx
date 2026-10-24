@@ -1,20 +1,24 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
+import { ChevronRightIcon, MapPinIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { listTime } from "@/components/email/email-bits";
+import { WeatherIcon } from "@/components/today/weather";
 import {
   formatShortDay,
   formatTime,
   formatWhen,
   relativeDay,
 } from "@/lib/format";
+import type { WeatherState } from "@/lib/weather";
 
 type FamilyMessage = FunctionReturnType<
   typeof api.today.summary
@@ -25,10 +29,21 @@ interface WeekRow {
   id: string;
   sub: string;
   title: string;
+  /** Appointments only; reminders stay quiet. */
+  weather?: {
+    advice: string | null;
+    code: number;
+    high: string;
+    label: string;
+  };
 }
 
-/** A side list's heading and rows, inset to line up with the rows like Email and Documents. */
-const SideSection = ({
+/** Rows in a Today group, inset so their text lines up with the part headings. */
+const PANEL_ROW =
+  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 -mx-3 rounded-lg px-3 py-3.5 transition-colors";
+
+/** One Today group: a heading and its rows, flat like News. */
+const TodayPanel = ({
   children,
   headingId,
   title,
@@ -37,17 +52,98 @@ const SideSection = ({
   headingId: string;
   title: string;
 }) => (
-  <section aria-labelledby={headingId} className="flex flex-col">
-    <h2 className="text-section px-3 pb-3 font-semibold" id={headingId}>
+  <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2">
+    <h2 className="text-section font-semibold" id={headingId}>
       {title}
     </h2>
     {children}
   </section>
 );
 
-const SideEmpty = ({ children }: { children: ReactNode }) => (
-  <p className="text-muted-foreground text-body px-3 py-1">{children}</p>
+/** The link to a part's full page, such as "All email". */
+const AllLink = ({ children, href }: { children: string; href: Route }) => (
+  <Link
+    className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1 font-medium"
+    href={href}
+  >
+    {children}
+    <ChevronRightIcon aria-hidden="true" className="size-5" />
+  </Link>
 );
+
+/** A smaller part of a panel, such as "From family and friends" in Messages. */
+const PanelPart = ({
+  action,
+  children,
+  className,
+  headingId,
+  title,
+}: {
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  headingId: string;
+  title: string;
+}) => (
+  <section
+    aria-labelledby={headingId}
+    className={cn("flex min-w-0 flex-col", className)}
+  >
+    <div className="min-h-control flex items-center justify-between gap-4">
+      <h3
+        className="text-muted-foreground text-label font-semibold"
+        id={headingId}
+      >
+        {title}
+      </h3>
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
+const SideEmpty = ({ children }: { children: ReactNode }) => (
+  <p className="text-muted-foreground text-body py-1">{children}</p>
+);
+
+/**
+ * The first row of the week list when weather has no place to use. It lives
+ * there, not in the header, because the weather matters most next to plans.
+ */
+const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
+  if (state?.status !== "no_location" && state?.status !== "not_found") {
+    return null;
+  }
+
+  const missing = state.status === "no_location";
+
+  return (
+    <Link className={PANEL_ROW} href="/settings#profile">
+      <MapPinIcon
+        aria-hidden="true"
+        className="text-muted-foreground size-5 shrink-0"
+      />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="text-body font-semibold">
+          {missing
+            ? "See the weather for your appointments"
+            : "We could not find your town"}
+        </span>
+        <span className="text-muted-foreground text-label">
+          <span className="sr-only">. </span>
+          {missing ? "Add your postal code" : "Check your postal code"}
+        </span>
+      </span>
+      <span
+        aria-hidden="true"
+        className="text-accent-foreground text-label inline-flex shrink-0 items-center gap-0.5 font-medium"
+      >
+        {missing ? "Add" : "Check"}
+        <ChevronRightIcon className="size-4" />
+      </span>
+    </Link>
+  );
+};
 
 /** "Today", "Tomorrow", then the short weekday. */
 const dayLabel = (timestamp: number, timeZone: string): string => {
@@ -62,17 +158,20 @@ const dayLabel = (timestamp: number, timeZone: string): string => {
 const WeekList = ({
   rows,
   timeZone,
+  weather,
 }: {
   rows: WeekRow[];
   timeZone: string;
+  weather: WeatherState | undefined;
 }) => (
-  <SideSection headingId="week-heading" title="This week">
+  <TodayPanel headingId="week-heading" title="Your week">
+    <LocationPrompt state={weather} />
     {rows.length === 0 ? (
       <SideEmpty>Nothing booked this week.</SideEmpty>
     ) : (
       <ul className="flex flex-col gap-1">
         {rows.map((row) => (
-          <li className="flex items-center gap-3.5 px-3 py-3.5" key={row.id}>
+          <li className="flex items-center gap-3.5 py-3.5" key={row.id}>
             <time
               className="flex w-20 shrink-0 flex-col"
               dateTime={new Date(row.at).toISOString()}
@@ -95,12 +194,31 @@ const WeekList = ({
                 <span className="sr-only">, </span>
                 {row.sub}
               </span>
+              {row.weather ? (
+                <span
+                  className={cn(
+                    "text-label flex items-center gap-1.5",
+                    row.weather.advice
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span className="sr-only">
+                    , weather: {row.weather.label}, high{" "}
+                  </span>
+                  <WeatherIcon className="size-4" code={row.weather.code} />
+                  <span className="num">{row.weather.high}</span>
+                  {row.weather.advice ? (
+                    <span className="truncate">· {row.weather.advice}</span>
+                  ) : null}
+                </span>
+              ) : null}
             </span>
           </li>
         ))}
       </ul>
     )}
-  </SideSection>
+  </TodayPanel>
 );
 
 /** One row per person, newest first, the way the Messages list shows conversations. */
@@ -132,7 +250,11 @@ const FamilyList = ({
   const rows = latestPerPerson(messages);
 
   return (
-    <SideSection headingId="family-heading" title="From family">
+    <PanelPart
+      action={<AllLink href="/messages">All messages</AllLink>}
+      headingId="family-heading"
+      title="From family and friends"
+    >
       {rows.length === 0 ? (
         <SideEmpty>No new messages in the last two days.</SideEmpty>
       ) : (
@@ -145,7 +267,7 @@ const FamilyList = ({
             return (
               <li key={message.id}>
                 <Link
-                  className="text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 rounded-lg px-3 py-3.5 transition-colors"
+                  className={PANEL_ROW}
                   // SAFETY: a stored contact id, and /messages/[contactId] is a real route.
                   href={`/messages/${message.contactId}` as Route}
                 >
@@ -187,10 +309,10 @@ const FamilyList = ({
           })}
         </ul>
       )}
-    </SideSection>
+    </PanelPart>
   );
 };
 
-export { FamilyList, WeekList };
+export { AllLink, FamilyList, PANEL_ROW, PanelPart, TodayPanel, WeekList };
 
 export type { WeekRow };

@@ -28,6 +28,11 @@ import { TimeZoneSelect } from "@/components/app/time-zone-select";
 import { saveDisplay } from "@/lib/display";
 import { messageOf } from "@/lib/errors";
 
+/** "LS1 4AP" and "ls1  4ap" are the same code, so the saved town still fits. */
+const samePostalCode = (left: string | null, right: string | null): boolean =>
+  (left ?? "").replaceAll(/\s+/gu, "").toUpperCase() ===
+  (right ?? "").replaceAll(/\s+/gu, "").toUpperCase();
+
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
@@ -209,7 +214,9 @@ const Toggle = ({
   return (
     <div className="border-rule flex flex-col items-start gap-4 border-t py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="flex min-w-0 flex-col gap-1">
-        <Label htmlFor={id}>{label}</Label>
+        <Label className="cursor-pointer" htmlFor={id}>
+          {label}
+        </Label>
         <span className="text-muted-foreground max-w-prose text-lg leading-7">
           {description}
         </span>
@@ -277,6 +284,12 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           description="Turns off sliding and fading."
           label="Less movement"
           onChange={(reducedMotion) => save({ reducedMotion })}
+        />
+        <Toggle
+          checked={value.showNews ?? true}
+          description="Shows three headlines on Today. You choose good news or top news there."
+          label="News on Today"
+          onChange={(showNews) => save({ showNews })}
         />
         <Toggle
           checked={value.readAloud}
@@ -479,7 +492,6 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
   const [saved, setSaved] = useState(false);
 
   const ids = {
-    city: useId(),
     name: useId(),
     preferred: useId(),
     signOff: useId(),
@@ -491,6 +503,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
     <section
       aria-labelledby="profile-heading"
       className="border-rule flex min-w-0 flex-col gap-5 border-t pt-6"
+      id="profile"
     >
       <h2 className="text-2xl leading-8 font-semibold" id="profile-heading">
         About you
@@ -511,15 +524,20 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
           const text = (key: string): string =>
             String(form.get(key) ?? "").trim();
 
+          const postalCode = text("zip") || null;
+
           setBusy(true);
           setFailure(null);
           setSaved(false);
 
           try {
             await update({
-              city: text("city") || null,
+              // Onboarding saves the town that matches the code; a new code makes it stale.
+              city: samePostalCode(postalCode, profile.postalCode)
+                ? profile.city
+                : null,
               displayName: text("name"),
-              postalCode: text("zip") || null,
+              postalCode,
               preferredName: text("preferred"),
               signOffName:
                 profile.role === "owner"
@@ -582,21 +600,11 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.city}>City</Label>
-            <Input
-              autoComplete="address-level2"
-              defaultValue={profile.city ?? ""}
-              id={ids.city}
-              name="city"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.zip}>ZIP code</Label>
+            <Label htmlFor={ids.zip}>Postal code</Label>
             <Input
               autoComplete="postal-code"
               defaultValue={profile.postalCode ?? ""}
               id={ids.zip}
-              inputMode="numeric"
               name="zip"
             />
           </div>
@@ -646,7 +654,9 @@ const DemoSettings = ({
       </p>
       {allowed ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <Label htmlFor={id}>Use practice mode</Label>
+          <Label className={busy ? undefined : "cursor-pointer"} htmlFor={id}>
+            Use practice mode
+          </Label>
           <div className="flex items-center gap-3">
             <span aria-hidden="true" className="w-8 text-base font-semibold">
               {profile.demoMode ? "On" : "Off"}

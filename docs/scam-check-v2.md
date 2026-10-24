@@ -2,6 +2,8 @@
 
 Scam check now offers text, email, photo and speakerphone-call paths. The layout follows the Scam check v2 boards in Paper’s “Hackathon 2026” file, alongside the app’s Email and Trusted circle patterns. It uses plain columns, hairlines, large controls, the current Reach logo and a single warning panel. Photo results use the Email verdict and disclosure patterns. Matching loading layouts cover the landing page, form and earlier checks.
 
+On `feat/ux-pass`, the merged UI uses AI by default for manual text, email and photo checks. The per-check checkbox is replaced by one plain disclosure line. Practice never uses AI, text/email keep their local-rule fallback, and live call screening retains its separate consent checkbox. Photo retention and the backend permission checks below remain in place.
+
 ## Calls
 
 Live call screening uses a separate, passive Gemini session. Only microphone input transcription reaches the screen; assistant output, tools and generated audio are ignored. Real captions have unknown speakers rather than guessing Caller or You. The 24-second practice script uses known speaker labels, no microphone and no cloud AI, with warning signs at 10, 14 and 18 seconds.

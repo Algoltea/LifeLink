@@ -11,6 +11,7 @@ interface SegmentedOption<Value extends string> {
 
 interface SegmentedProps<Value extends string> {
   className?: string;
+  disabled?: boolean;
   label: string;
   onValueChange: (value: Value) => void;
   options: readonly SegmentedOption<Value>[];
@@ -20,6 +21,7 @@ interface SegmentedProps<Value extends string> {
 // A radio group drawn as a segmented control: as wide as its options.
 const Segmented = <Value extends string>({
   className,
+  disabled = false,
   label,
   onValueChange,
   options,
@@ -27,6 +29,7 @@ const Segmented = <Value extends string>({
 }: SegmentedProps<Value>) => (
   <RadioGroup
     aria-label={label}
+    disabled={disabled}
     className={cn(
       "border-border bg-parchment inline-flex w-full max-w-full flex-wrap gap-1 rounded-lg border p-1 sm:w-fit",
       className

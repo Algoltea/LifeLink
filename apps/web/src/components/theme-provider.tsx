@@ -10,6 +10,9 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => (
     defaultTheme="light"
     disableTransitionOnChange
     enableSystem
+    scriptProps={{
+      type: typeof window === "undefined" ? "text/javascript" : "text/plain",
+    }}
     storageKey="lifelink:theme"
   >
     {children}

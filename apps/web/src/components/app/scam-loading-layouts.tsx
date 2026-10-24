@@ -19,19 +19,15 @@ const ScamMessageLoading = () => (
   <div className="flex min-w-0 flex-col gap-5" data-loading-part="scam-message">
     <div className="flex flex-col gap-1">
       <h2 className="text-section font-semibold">Check a message</h2>
-      <p className="text-muted-foreground text-body">
+      <p className="text-muted-foreground text-label">
         A letter, a text, a screenshot or an email. Choose the easiest way to
         show it.
       </p>
     </div>
-    <div className="grid gap-3 sm:grid-cols-3" data-loading-part="scam-sources">
-      {[
-        "Type or paste the words",
-        "Add a photo or screenshot",
-        "Pick an email",
-      ].map((label) => (
+    <div className="flex flex-wrap gap-2" data-loading-part="scam-sources">
+      {["Text", "Photo", "Email"].map((label) => (
         <LoadingButton
-          className="text-body min-h-control sm:min-h-16"
+          className="text-label min-h-control flex-1 basis-24 px-3"
           icon
           key={label}
         >
@@ -40,29 +36,24 @@ const ScamMessageLoading = () => (
       ))}
     </div>
     <div
-      className="border-control bg-parchment flex min-h-[12.223rem] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-5 py-6"
+      className="border-control bg-parchment flex min-h-44 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-5"
       data-loading-part="scam-photo-drop"
     >
-      <Skeleton className="size-10" />
+      <Skeleton className="size-7" />
       <ScamLine className="w-5/6" />
       <ScamLine className="w-2/5" />
-      <LoadingButton className="text-body" icon>
+      <LoadingButton className="text-label" icon>
         Choose a photo
       </LoadingButton>
     </div>
-    <div className="flex items-start gap-3">
-      <Skeleton className="mt-1 size-5 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <ScamLine />
-        <ScamLine className="w-4/5" />
-        <ScamLine className="w-2/3" />
-      </div>
+    <div className="min-w-0">
+      <ScamLine />
+      <ScamLine className="w-4/5" />
     </div>
     <div className="flex flex-wrap items-center gap-3">
-      <LoadingButton className="text-body" icon>
+      <LoadingButton className="text-label" icon>
         Check this photo
       </LoadingButton>
-      <ScamLine className="w-36" />
     </div>
   </div>
 );

@@ -2,6 +2,7 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { findDeveloperIntegration } from "@lifelink/contracts/integrations";
 import type {
   Capability,
   CapabilityStatus,
@@ -17,8 +18,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import { toast } from "sonner";
 
-import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
-import type { IsoIconKind } from "@/components/app/iso-icon";
+import {
+  IsoIcon,
+  permissionIconFor,
+  permissionLabelFor,
+} from "@/components/app/iso-icon";
+import type { PermissionIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
@@ -32,14 +37,13 @@ type ProviderRow = ConnectionsData["providers"][number];
 
 type ProviderId = ProviderRow["definition"]["id"];
 
-const CAPABILITY_WORDS: Record<CapabilityStatus, string> = {
-  available: "Works in LifeLink",
-  not_offered: "Not possible with this service",
-  not_wired: "The service allows it, but LifeLink doesn't use it yet",
+const LIMIT_TAGS: Record<Exclude<CapabilityStatus, "available">, string> = {
+  not_offered: "Not possible",
+  not_wired: "Coming later",
 };
 
 const NOT_SET_UP =
-  "This service isn't set up for this app yet. Whoever runs LifeLink needs to finish the app setup.";
+  "This is not turned on yet. Ask the person who set up LifeLink to turn it on.";
 
 const GROUPS = [
   { ids: ["imessage", "discord"], title: "Message family and friends" },
@@ -49,7 +53,7 @@ const GROUPS = [
 
 const ADDITIONAL_IDS = new Set(["paypal", "facebook", "instagram", "ebay"]);
 
-const ADDITIONAL_TITLE = "Other services";
+const ADDITIONAL_TITLE = "Coming later";
 
 const groupTitleFor = (id: ProviderId): string =>
   GROUPS.find((group) => group.ids.some((groupId) => groupId === id))?.title ??
@@ -72,40 +76,31 @@ const statusFor = (demoMode: boolean, row: ProviderRow): StatusWords => {
   }
 
   if (row.status === "pending") {
-    return { text: "Waiting to finish", tone: "warning" };
+    return { text: "Not finished", tone: "warning" };
   }
 
   if (row.status === "error") {
-    return { text: "Didn’t finish", tone: "negative" };
+    return { text: "Did not connect", tone: "negative" };
   }
 
   if (!row.definition.capabilities.some(isAvailable)) {
-    return { text: "No actions available yet", tone: "neutral" };
+    return { text: "Coming later", tone: "neutral" };
   }
 
   if (demoMode && row.hasSavedRealConnection) {
-    return { text: "Real connection saved", tone: "neutral" };
+    return { text: "Real account saved", tone: "neutral" };
   }
 
   if (demoMode) {
-    return {
-      text:
-        row.definition.connectStyle === "oauth"
-          ? "Practice available"
-          : "Practice messages",
-      tone: "neutral",
-    };
+    return { text: "Practice", tone: "neutral" };
   }
 
   if (!row.developerReady) {
-    return { text: "App setup needed", tone: "warning" };
+    return { text: "Not turned on", tone: "warning" };
   }
 
   return {
-    text:
-      row.definition.connectStyle === "oauth"
-        ? "Ready to connect"
-        : "Available",
+    text: row.definition.connectStyle === "oauth" ? "Not connected" : "Ready",
     tone: "neutral",
   };
 };
@@ -146,28 +141,27 @@ const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
   };
 };
 
-const thingsCount = (count: number): string =>
-  count === 1 ? "1 thing" : `${count} things`;
+/** The card's call to action names only what the window lets the person do. */
+const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
+  if (row.definition.connectStyle === "oauth") {
+    const { canConnect, canDisconnect } = oauthOptionsFor(demoMode, row);
 
-const cardCountFor = (demoMode: boolean, row: ProviderRow): string => {
-  const { capabilities } = row.definition;
-  const available = capabilities.filter(isAvailable).length;
-  const notYet = capabilities.length - available;
+    if (canConnect) {
+      return "Connect";
+    }
 
-  if (available === 0) {
-    return "Nothing it can do yet";
+    return canDisconnect ? "Manage" : "Details";
   }
 
-  if (!row.developerReady && !demoMode) {
-    return `${thingsCount(available)}, after app setup`;
-  }
-
-  return notYet > 0
-    ? `${thingsCount(available)} it can do · ${notYet} not yet`
-    : `${thingsCount(available)} it can do`;
+  // Practice messages need no setup, and Trusted circle holds it back.
+  return row.definition.connectStyle === "handle" &&
+    row.developerReady &&
+    !demoMode
+    ? "Set up"
+    : "Details";
 };
 
-const cardIconsFor = (row: ProviderRow): IsoIconKind[] => {
+const cardIconsFor = (row: ProviderRow): PermissionIconKind[] => {
   const kinds = row.definition.capabilities
     .filter(isAvailable)
     .map((capability) => permissionIconFor(capability.id));
@@ -186,14 +180,17 @@ const ProviderCard = ({
 }) => {
   const { definition } = row;
   const status = statusFor(demoMode, row);
+  const icons = cardIconsFor(row);
 
   const waitingForSetup =
     !row.developerReady && !demoMode && row.status !== "active";
 
+  const canDo = icons.map((kind) => permissionLabelFor(kind)).join(", ");
+
   return (
     <li className="flex">
       <button
-        aria-label={`${definition.label}. ${status.text}. Open to see everything it can do.`}
+        aria-label={`${definition.label}. ${status.text}. ${canDo}. ${cardActionFor(demoMode, row)}.`}
         className="border-border bg-surface hover:border-control hover:bg-parchment flex w-full cursor-pointer flex-col gap-5 rounded-xl border p-5 text-left transition-colors duration-150 motion-reduce:transition-none sm:p-6"
         onClick={() => onOpen(definition.id)}
         type="button"
@@ -207,27 +204,31 @@ const ProviderCard = ({
           </span>
           <Pill tone={status.tone}>{status.text}</Pill>
         </span>
-        <span
-          className={cn(
-            "flex flex-wrap gap-1",
-            waitingForSetup ? "opacity-55" : null
-          )}
-        >
-          {cardIconsFor(row).map((kind) => (
-            <IsoIcon
-              className="size-[52px] sm:size-[64px]"
+        {/* Visible words, not tooltips: touch has no hover, and the button holds the focus. */}
+        <span className="flex flex-wrap gap-x-2 gap-y-3">
+          {icons.map((kind) => (
+            <span
+              className="flex w-[4.5rem] flex-col items-center gap-1 sm:w-20"
               key={kind}
-              kind={kind}
-              size={64}
-            />
+            >
+              <IsoIcon
+                className={cn(
+                  "size-[52px] sm:size-[64px]",
+                  // Only the drawing dims; the word keeps full contrast.
+                  waitingForSetup ? "opacity-55" : null
+                )}
+                kind={kind}
+                size={64}
+              />
+              <span className="text-label text-center font-medium">
+                {permissionLabelFor(kind)}
+              </span>
+            </span>
           ))}
         </span>
-        <span className="border-border mt-auto flex w-full flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <span className="text-muted-foreground text-label">
-            {cardCountFor(demoMode, row)}
-          </span>
+        <span className="border-border mt-auto flex w-full items-center justify-end gap-3 border-t pt-4">
           <span className="text-accent-foreground text-label flex items-center gap-1 font-medium">
-            Open
+            {cardActionFor(demoMode, row)}
             <ChevronRightIcon aria-hidden="true" className="size-5" />
           </span>
         </span>
@@ -257,69 +258,32 @@ const CardGrid = ({
   </ul>
 );
 
-const CapabilityRow = ({
-  capability,
-  developerReady,
-}: {
-  capability: Capability;
-  developerReady: boolean;
-}) => {
-  const available = isAvailable(capability);
-
-  const availability =
-    available && !developerReady
-      ? "Available after app setup"
-      : CAPABILITY_WORDS[capability.status];
-
-  return (
-    <li className="flex items-center gap-4">
-      <IsoIcon
-        className={available ? undefined : "opacity-55"}
-        kind={permissionIconFor(capability.id)}
-      />
-      <span className="flex min-w-0 flex-col">
-        <span
-          className={
-            available ? "text-body" : "text-muted-foreground text-body"
-          }
-        >
-          {capability.label}
-        </span>
-        <span className="text-muted-foreground text-label">
-          {availability}
-          {capability.note ? `. ${capability.note}` : "."}
-        </span>
-      </span>
-    </li>
-  );
-};
-
-const CapabilitySection = ({
+const CanDoSection = ({
   capabilities,
-  developerReady,
-  title,
 }: {
   capabilities: readonly Capability[];
-  developerReady: boolean;
-  title: string;
 }) =>
   capabilities.length === 0 ? null : (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-label font-medium">{title}</h3>
-      <ul className="flex flex-col gap-2">
+    <section className="flex flex-col gap-3">
+      <h3 className="text-body font-semibold">Can do</h3>
+      <ul className="flex flex-col gap-4">
         {capabilities.map((capability) => (
-          <CapabilityRow
-            capability={capability}
-            developerReady={developerReady}
-            key={capability.id}
-          />
+          <li className="flex items-center gap-4" key={capability.id}>
+            <IsoIcon kind={permissionIconFor(capability.id)} />
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body font-medium">{capability.label}</span>
+              {capability.note ? (
+                <span className="text-body">{capability.note}</span>
+              ) : null}
+            </span>
+          </li>
         ))}
       </ul>
     </section>
   );
 
 const IMessageSteps = () => (
-  <div className="bg-parchment flex flex-col gap-4 rounded-lg p-5">
+  <div className="flex flex-col gap-4">
     <p className="text-body">
       Link each person in Trusted circle to their existing Photon contact.
       LifeLink does not register new contacts.
@@ -352,34 +316,27 @@ const HandleNote = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
-  const isIMessage = row.definition.id === "imessage";
-  const service = isIMessage ? "iMessages" : "Discord messages";
+  const service =
+    row.definition.id === "imessage" ? "iMessages" : "Discord messages";
 
   return (
     <>
       {demoMode ? (
         <p className="text-body">
           Practice {service} are simulated. No messages reach your contacts.
-          {isIMessage ? " When you use real iMessage, follow these steps." : ""}
         </p>
       ) : null}
       {!row.developerReady && !demoMode ? (
-        <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>
+        <p className="text-body">{NOT_SET_UP}</p>
       ) : null}
-      {row.developerReady && !demoMode && !isIMessage ? (
-        <p className="text-body">
-          Ready. Add each person’s Discord user ID in Trusted circle.
-        </p>
-      ) : null}
-      {isIMessage ? <IMessageSteps /> : null}
     </>
   );
 };
 
 const introFor = (row: ProviderRow): string =>
   row.definition.capabilities.some(isAvailable)
-    ? `Here is everything LifeLink can do with ${row.definition.label}. Nothing is sent until you approve it.`
-    : `LifeLink can’t do anything with ${row.definition.label} yet. Here is what stands in the way.`;
+    ? `LifeLink can do these things with ${row.definition.label}. Nothing is sent until you approve it.`
+    : `LifeLink can’t do anything with ${row.definition.label} yet.`;
 
 const requirementFor = (row: ProviderRow): string =>
   row.definition.id === "imessage"
@@ -577,6 +534,171 @@ const ConnectionDisclosure = ({
   );
 };
 
+/** A closed section under a rule; the title stays at row size. */
+const Fold = ({ children, title }: { children: ReactNode; title: string }) => (
+  <ConnectionDisclosure className="group/fold border-border border-t pt-2">
+    <summary className="text-body flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
+      {title}
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="text-muted-foreground size-5 shrink-0 transition-transform group-open/fold:rotate-180 motion-reduce:transition-none"
+      />
+    </summary>
+    <div className="pt-2 pb-2">{children}</div>
+  </ConnectionDisclosure>
+);
+
+const LIMITS_TITLE = "What LifeLink can’t do yet";
+
+const LimitRows = ({
+  capabilities,
+}: {
+  capabilities: readonly Capability[];
+}) => (
+  <ul className="flex flex-col gap-4">
+    {capabilities.map((capability) => (
+      <li
+        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+        key={capability.id}
+      >
+        <span className="flex min-w-0 flex-1 basis-56 flex-col">
+          <span className="text-body font-medium">{capability.label}</span>
+          {capability.note ? (
+            <span className="text-body">{capability.note}</span>
+          ) : null}
+        </span>
+        <span className="text-muted-foreground text-label shrink-0">
+          {capability.status === "available"
+            ? null
+            : LIMIT_TAGS[capability.status]}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
+
+/**
+ * Limits stay one tap away so the window leads with what works. A service
+ * with nothing available shows them openly, since they are all there is.
+ */
+const Limits = ({
+  capabilities,
+  collapsed,
+}: {
+  capabilities: readonly Capability[];
+  collapsed: boolean;
+}) => {
+  if (capabilities.length === 0) {
+    return null;
+  }
+
+  if (!collapsed) {
+    return (
+      <section className="flex flex-col gap-3">
+        <h3 className="text-body font-semibold">{LIMITS_TITLE}</h3>
+        <LimitRows capabilities={capabilities} />
+      </section>
+    );
+  }
+
+  return (
+    <Fold title={`${LIMITS_TITLE} (${capabilities.length})`}>
+      <LimitRows capabilities={capabilities} />
+    </Fold>
+  );
+};
+
+const HELPER_TITLE = "Setting this up for someone?";
+
+const OAuthSteps = ({
+  connectLabel,
+  label,
+}: {
+  connectLabel: string;
+  label: string;
+}) => (
+  <div className="flex flex-col gap-4">
+    <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
+      <li>Press {connectLabel} below.</li>
+      <li>Sign in with their account, not yours.</li>
+      <li>Choose Allow on {label}’s page.</li>
+      <li>You come back here and it says Connected.</li>
+    </ol>
+    <p className="text-body">
+      Tip: they can disconnect {label} from this window at any time.
+    </p>
+  </div>
+);
+
+/** What a helper does next, or null when there is nothing to set up. */
+const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
+  const { definition } = row;
+
+  if (!definition.capabilities.some(isAvailable)) {
+    return null;
+  }
+
+  if (!(row.developerReady || demoMode)) {
+    const integration = findDeveloperIntegration(
+      definition.developerIntegration
+    );
+
+    return (
+      <p className="text-body">
+        For whoever runs LifeLink: run <code>bun run dev:setup</code> and choose{" "}
+        {integration?.label ?? definition.label}.
+      </p>
+    );
+  }
+
+  // Practice mode simulates messages, so the real steps say when they apply.
+  if (definition.id === "imessage") {
+    return (
+      <div className="flex flex-col gap-4">
+        {demoMode ? (
+          <p className="text-body">
+            When you use real iMessage, follow these steps.
+          </p>
+        ) : null}
+        <IMessageSteps />
+      </div>
+    );
+  }
+
+  if (definition.id === "discord") {
+    return (
+      <p className="text-body">
+        {demoMode ? "When you use real Discord, add" : "Add"} each person’s
+        Discord user ID in Trusted circle.
+      </p>
+    );
+  }
+
+  if (definition.connectStyle !== "oauth" || demoMode) {
+    // A practice account needs no sign-in, so the real steps would mislead.
+    return null;
+  }
+
+  const { canConnect, connectLabel } = oauthOptionsFor(demoMode, row);
+
+  return canConnect ? (
+    <OAuthSteps connectLabel={connectLabel} label={definition.label} />
+  ) : null;
+};
+
+/** Closed at first: most people set up their own account. */
+const HelperSection = ({
+  demoMode,
+  row,
+}: {
+  demoMode: boolean;
+  row: ProviderRow;
+}) => {
+  const steps = helperStepsFor(demoMode, row);
+
+  return steps === null ? null : <Fold title={HELPER_TITLE}>{steps}</Fold>;
+};
+
 const DialogBody = ({
   demoMode,
   row,
@@ -599,37 +721,26 @@ const DialogBody = ({
   );
 
   return (
-    <div className="flex flex-col gap-6 overflow-y-auto px-5 pb-6 sm:px-8">
+    <div className="flex flex-col gap-7 overflow-y-auto px-5 pb-6 sm:px-8">
       {isOAuth && practiceBlocked ? (
         <p className="bg-parchment text-body rounded-lg p-5">
           Your real {definition.label} connection is saved. Practice accounts
           cannot replace it. Turn off Practice mode in Settings to manage it.
         </p>
       ) : null}
-      {isOAuth && needsSetup ? (
-        <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>
-      ) : null}
+      {isOAuth && needsSetup ? <p className="text-body">{NOT_SET_UP}</p> : null}
       {definition.connectStyle === "handle" ? (
         <HandleNote demoMode={demoMode} row={row} />
       ) : null}
       {row.accountLabel && row.status === "active" ? (
         <p className="text-body break-words">Account: {row.accountLabel}</p>
       ) : null}
-      <CapabilitySection
-        capabilities={available}
-        developerReady={row.developerReady}
-        title={`What ${definition.label} can do`}
-      />
-      <CapabilitySection
-        capabilities={notYet}
-        developerReady={row.developerReady}
-        title="Not available yet"
-      />
-      <div className="bg-parchment flex flex-col gap-1 rounded-lg px-5 py-4">
-        <p className="text-label font-medium">What you need</p>
+      <CanDoSection capabilities={available} />
+      <div className="bg-parchment flex flex-col gap-2 rounded-lg px-5 py-4">
+        <h3 className="text-body font-semibold">What you need</h3>
         <p className="text-body">{requirementFor(row)}</p>
         {isOAuth && canConnect ? (
-          <p className="text-muted-foreground text-label">
+          <p className="text-body">
             {demoMode
               ? "This practice account never connects to the real service."
               : `You’ll sign in on ${definition.label}’s own page. LifeLink never sees your password.`}
@@ -637,40 +748,52 @@ const DialogBody = ({
         ) : null}
         {definition.connectStyle === "developer_only" &&
         available.length > 0 ? (
-          <p className="text-muted-foreground text-label">
+          <p className="text-body">
             {row.developerReady
               ? "This works through the app's own account, so there's nothing for you to sign in to."
               : NOT_SET_UP}
           </p>
         ) : null}
       </div>
+      <Limits capabilities={notYet} collapsed={available.length > 0} />
+      <HelperSection demoMode={demoMode} row={row} />
     </div>
   );
 };
 
+/** The row stays until the closing fade ends, so the window fades out whole. */
 const ConnectionDialog = ({
   demoMode,
   onClose,
+  onClosed,
+  open,
   row,
 }: {
   demoMode: boolean;
   onClose: () => void;
+  onClosed: () => void;
+  open: boolean;
   row: ProviderRow | null;
 }) => {
   const status = row ? statusFor(demoMode, row) : null;
 
   return (
     <DialogPrimitive.Root
-      onOpenChange={(open) => {
-        if (!open) {
+      onOpenChange={(next) => {
+        if (!next) {
           onClose();
         }
       }}
-      open={row !== null}
+      onOpenChangeComplete={(next) => {
+        if (!next) {
+          onClosed();
+        }
+      }}
+      open={open && row !== null}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-        <DialogPrimitive.Popup className="border-border bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-[0_24px_48px_rgb(45_33_24/0.18)]">
+        <DialogPrimitive.Backdrop className="motion-fade fixed inset-0 z-50 bg-black/40" />
+        <DialogPrimitive.Popup className="motion-pop border-border bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-[0_24px_48px_rgb(45_33_24/0.18)]">
           {row && status ? (
             <>
               <header className="flex items-start justify-between gap-4 px-5 pt-6 pb-5 sm:px-8 sm:pt-8">
@@ -684,7 +807,7 @@ const ConnectionDialog = ({
                   <Pill className="self-start" tone={status.tone}>
                     {status.text}
                   </Pill>
-                  <DialogPrimitive.Description className="text-muted-foreground text-body">
+                  <DialogPrimitive.Description className="text-body">
                     {introFor(row)}
                   </DialogPrimitive.Description>
                 </div>
@@ -713,6 +836,12 @@ const ConnectionDialog = ({
 const ConnectionsScreen = () => {
   const data = useQuery(api.connections.list);
   const [openId, setOpenId] = useState<ProviderId | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const openService = (id: ProviderId): void => {
+    setOpenId(id);
+    setOpen(true);
+  };
 
   const openRow =
     data?.providers.find((row) => row.definition.id === openId) ?? null;
@@ -724,7 +853,7 @@ const ConnectionsScreen = () => {
   return (
     <>
       <PageHeader
-        subline="Choose what you want help with. Open a card to see everything it can do before you connect."
+        subline="Connect the services you already use. Open one to see what LifeLink can do with it."
         title="Connections"
       />
       {data === undefined ? (
@@ -758,7 +887,7 @@ const ConnectionsScreen = () => {
                 </h2>
                 <CardGrid
                   demoMode={data.demoMode}
-                  onOpen={setOpenId}
+                  onOpen={openService}
                   rows={rows}
                 />
               </section>
@@ -769,12 +898,9 @@ const ConnectionsScreen = () => {
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-4 rounded-xl px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
             <IsoIcon kind="unavailable" size={48} />
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold">
-                Other services and limitations
-              </span>
+              <span className="text-body font-semibold">Coming later</span>
               <span className="text-muted-foreground text-label">
-                {additionalRows.map((row) => row.definition.label).join(", ")}.
-                See what isn’t available yet.
+                {additionalRows.map((row) => row.definition.label).join(", ")}
               </span>
             </span>
             <ChevronDownIcon
@@ -782,22 +908,39 @@ const ConnectionsScreen = () => {
               className="text-muted-foreground size-5 shrink-0 transition-transform group-open/limitations:rotate-180 motion-reduce:transition-none"
             />
           </summary>
-          <div className="flex flex-col gap-4 px-5 pb-6 sm:px-6">
-            <p className="text-muted-foreground text-body max-w-prose">
-              These services have no actions available in LifeLink yet. Open a
-              card to read its limitations.
-            </p>
-            <CardGrid
-              demoMode={data.demoMode}
-              onOpen={setOpenId}
-              rows={additionalRows}
-            />
-          </div>
+          <ul className="border-border mx-5 mb-4 border-t sm:mx-6">
+            {additionalRows.map((row) => (
+              <li
+                className="border-border border-b last:border-b-0"
+                key={row.definition.id}
+              >
+                <button
+                  aria-label={`${row.definition.label}. ${row.definition.summary} Details.`}
+                  className="hover:text-accent-foreground flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 motion-reduce:transition-none"
+                  onClick={() => openService(row.definition.id)}
+                  type="button"
+                >
+                  <span className="text-body w-28 shrink-0 font-semibold sm:w-36">
+                    {row.definition.label}
+                  </span>
+                  <span className="text-muted-foreground text-label min-w-0 flex-1">
+                    {row.definition.summary}
+                  </span>
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="text-muted-foreground size-5 shrink-0"
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
         </ConnectionDisclosure>
       ) : null}
       <ConnectionDialog
         demoMode={data?.demoMode ?? false}
-        onClose={() => setOpenId(null)}
+        onClose={() => setOpen(false)}
+        onClosed={() => setOpenId(null)}
+        open={open}
         row={openRow}
       />
     </>

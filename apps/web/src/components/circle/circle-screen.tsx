@@ -70,7 +70,9 @@ const ScopePicker = ({
             }
           />
           <div className="flex flex-col">
-            <Label htmlFor={`${baseId}-${scope.id}`}>{scope.label}</Label>
+            <Label className="cursor-pointer" htmlFor={`${baseId}-${scope.id}`}>
+              {scope.label}
+            </Label>
             <span className="text-muted-foreground text-lg leading-7">
               {scope.description}
             </span>
@@ -531,11 +533,8 @@ const SampleNotice = ({ contacts }: { contacts: CircleContact[] }) => {
   }
 
   return (
-    <p className="bg-parchment flex items-start gap-3 rounded-xl px-5 py-3">
-      <InfoIcon
-        aria-hidden="true"
-        className="text-muted-foreground mt-1 size-5 shrink-0"
-      />
+    <p className="text-muted-foreground text-label flex items-start gap-2">
+      <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
       {text}
     </p>
   );
