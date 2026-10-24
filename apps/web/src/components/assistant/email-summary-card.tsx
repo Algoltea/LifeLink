@@ -4,15 +4,93 @@ import { GROUPS } from "@lifelink/contracts/inbox-chat";
 import type { InboxChatSummary } from "@lifelink/contracts/inbox-chat";
 import { ChevronDownIcon, MailIcon } from "lucide-react";
 import Link from "next/link";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import type { ReactNode } from "react";
+
+const DISCLOSURE_MOTION_MS = 180;
+
+const SummaryDisclosure = ({
+  children,
+  className,
+  name,
+}: {
+  children: ReactNode;
+  className: string;
+  name: string;
+}) => {
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (scrollTimer.current !== null) {
+        clearTimeout(scrollTimer.current);
+      }
+    },
+    []
+  );
+
+  return (
+    <details
+      className={`email-summary-disclosure ${className}`}
+      name={name}
+      onToggle={(event) => {
+        const disclosure = event.currentTarget;
+
+        if (event.target !== disclosure) {
+          return;
+        }
+
+        if (scrollTimer.current !== null) {
+          clearTimeout(scrollTimer.current);
+        }
+
+        if (!disclosure.open) {
+          return;
+        }
+
+        // Older mobile browsers may not enforce the native details name group.
+        const siblings = disclosure
+          .closest("[data-email-summary-card]")
+          ?.querySelectorAll<HTMLDetailsElement>("details");
+
+        for (const sibling of siblings ?? []) {
+          if (sibling !== disclosure && sibling.getAttribute("name") === name) {
+            sibling.open = false;
+          }
+        }
+
+        const reducedMotion =
+          document.documentElement.dataset.motion === "reduced" ||
+          globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        // Align after the previous category has collapsed, so the target stays put.
+        scrollTimer.current = setTimeout(
+          () => {
+            if (disclosure.open && disclosure.isConnected) {
+              disclosure.querySelector("summary")?.scrollIntoView({
+                behavior: reducedMotion ? "instant" : "smooth",
+                block: "start",
+              });
+            }
+          },
+          reducedMotion ? 0 : DISCLOSURE_MOTION_MS
+        );
+      }}
+    >
+      {children}
+    </details>
+  );
+};
 
 const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
   const headingId = useId();
+  const disclosureName = useId();
 
   return (
     <section
       aria-labelledby={headingId}
       className="border-border bg-raised overflow-hidden rounded-2xl border"
+      data-email-summary-card=""
     >
       <header className="border-border bg-parchment flex items-start gap-3 border-b px-5 py-4">
         <MailIcon
@@ -48,12 +126,16 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
             );
 
             return (
-              <details className="group" key={group.category}>
+              <SummaryDisclosure
+                className="group scroll-mt-20"
+                key={group.category}
+                name={disclosureName}
+              >
                 <summary className="hover:bg-parchment min-h-control flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
                   <span className="min-w-0 flex-1 font-semibold">
                     {group.title}
                   </span>
-                  <span className="bg-neutral-wash text-label min-w-8 rounded-full px-2 py-1 text-center tabular-nums">
+                  <span className="bg-neutral-wash text-label min-w-8 shrink-0 rounded-full px-2 py-1 text-center tabular-nums">
                     {items.length}
                   </span>
                   <ChevronDownIcon
@@ -101,18 +183,21 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
                     ))}
                   </ul>
                 )}
-              </details>
+              </SummaryDisclosure>
             );
           })}
         </div>
       )}
       <footer className="border-border space-y-3 border-t px-5 py-4">
-        <details className="text-muted-foreground text-label">
+        <SummaryDisclosure
+          className="text-muted-foreground text-label scroll-mt-20"
+          name={disclosureName}
+        >
           <summary className="min-h-control cursor-pointer content-center">
             How this summary was made
           </summary>
           <p className="pb-3 wrap-anywhere">{summary.note}</p>
-        </details>
+        </SummaryDisclosure>
         <p className="text-muted-foreground text-label">
           Suggestions only. Review original messages before acting. Nothing was
           sent or changed in your mailbox.

@@ -2,7 +2,7 @@
 @import "@lifelink/ui/globals.css";
 
 @supports (interpolate-size: allow-keywords) {
-  .connection-disclosure::details-content {
+  :is(.connection-disclosure, .email-summary-disclosure)::details-content {
     interpolate-size: allow-keywords;
     height: 0;
     overflow: clip;
@@ -13,18 +13,22 @@
       content-visibility 180ms allow-discrete;
   }
 
-  .connection-disclosure[open]::details-content {
+  :is(
+      .connection-disclosure,
+      .email-summary-disclosure
+    )[open]::details-content {
     height: auto;
     opacity: 1;
   }
 }
 
-[data-motion="reduced"] .connection-disclosure::details-content {
+[data-motion="reduced"]
+  :is(.connection-disclosure, .email-summary-disclosure)::details-content {
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .connection-disclosure::details-content {
+  :is(.connection-disclosure, .email-summary-disclosure)::details-content {
     transition: none;
   }
 }

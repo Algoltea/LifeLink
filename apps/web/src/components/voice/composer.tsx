@@ -287,7 +287,7 @@ const ComposerSession = ({
           rows={1}
           value={text}
         />
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             aria-pressed={listening}
             className={cn(
@@ -319,7 +319,7 @@ const ComposerSession = ({
           <Button
             aria-busy={submitting}
             aria-label={submitting ? "Sending" : "Send"}
-            className="rounded-full disabled:border-transparent"
+            className="ml-auto rounded-full disabled:border-transparent"
             disabled={submitting || text.trim().length === 0}
             size="icon"
             type="submit"
