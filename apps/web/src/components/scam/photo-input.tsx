@@ -279,7 +279,7 @@ const PhotoInput = ({
               : "Choose or drop a photo of your message"
           }
           className={cn(
-            "border-control bg-parchment hover:border-primary relative flex min-h-55 w-full flex-col items-center justify-center gap-3.5 overflow-hidden rounded-2xl border-2 border-dashed p-7 text-center disabled:cursor-not-allowed",
+            "border-control bg-parchment hover:border-primary relative flex min-h-44 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border-2 border-dashed p-5 text-center disabled:cursor-not-allowed",
             dragging && "border-primary bg-neutral-wash",
             file && preview && "h-59 p-0"
           )}
@@ -328,15 +328,13 @@ const PhotoInput = ({
             <>
               <ImageIcon
                 aria-hidden="true"
-                className="text-muted-foreground size-9"
+                className="text-muted-foreground size-7"
               />
-              <span className="text-xl font-semibold">
-                Drop a photo of a letter, a text or a website here
-              </span>
-              <span className="text-muted-foreground text-lg">
+              <span className="text-body font-semibold">Drop a photo here</span>
+              <span className="text-muted-foreground text-label">
                 JPEG, PNG or WebP · up to 6 MB
               </span>
-              <span className="font-medium underline underline-offset-4">
+              <span className="text-label font-medium underline underline-offset-4">
                 Choose a photo
               </span>
             </>
@@ -346,7 +344,7 @@ const PhotoInput = ({
 
       {file ? (
         <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 text-lg break-all">{file.name}</p>
+          <p className="text-label min-w-0 break-all">{file.name}</p>
           <Button
             disabled={disabled}
             onClick={() => onFile(null)}
@@ -359,9 +357,9 @@ const PhotoInput = ({
           </Button>
         </div>
       ) : null}
-      <p className="flex items-start gap-2.5 text-lg" id={guidanceId}>
-        <LightbulbIcon aria-hidden="true" className="mt-1 size-5 shrink-0" />
-        Hold the letter flat in good light, with all the words in view.
+      <p className="text-label flex items-start gap-2" id={guidanceId}>
+        <LightbulbIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
+        Keep all the words in view.
       </p>
       {error ? (
         <p className="text-negative text-lg" role="alert">
@@ -372,7 +370,7 @@ const PhotoInput = ({
         <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
           <Button
             aria-busy={cameraPending}
-            className="min-h-15 text-lg sm:flex-1"
+            className="sm:flex-1"
             disabled={disabled || cameraPending}
             onClick={openCamera}
             type="button"
@@ -382,7 +380,7 @@ const PhotoInput = ({
             {cameraPending ? "Opening camera…" : "Take a photo"}
           </Button>
           <Button
-            className="min-h-13 text-lg underline underline-offset-4 sm:flex-1"
+            className="underline underline-offset-4 sm:flex-1"
             disabled={disabled}
             onClick={() => chooserRef.current?.click()}
             type="button"
