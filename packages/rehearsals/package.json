@@ -1,0 +1,23 @@
+{
+  "name": "@lifelink/rehearsals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Scripted practice conversations: everyday situations to rehearse, with no providers and no real-world effects.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

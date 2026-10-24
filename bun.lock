@@ -44,6 +44,7 @@
         "@google/genai": "2.30.0",
         "@lifelink/backend": "workspace:*",
         "@lifelink/contracts": "workspace:*",
+        "@lifelink/rehearsals": "workspace:*",
         "@lifelink/solitaire": "workspace:*",
         "@lifelink/ui": "workspace:*",
         "@swc/helpers": "^0.5.23",
@@ -108,6 +109,19 @@
     },
     "packages/contracts": {
       "name": "@lifelink/contracts",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@lifelink/config": "workspace:*",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
+    "packages/rehearsals": {
+      "name": "@lifelink/rehearsals",
       "version": "0.0.0",
       "dependencies": {
         "zod": "catalog:",
@@ -429,6 +443,8 @@
     "@lifelink/contracts": ["@lifelink/contracts@workspace:packages/contracts"],
 
     "@lifelink/discord-bridge": ["@lifelink/discord-bridge@workspace:apps/discord-bridge"],
+
+    "@lifelink/rehearsals": ["@lifelink/rehearsals@workspace:packages/rehearsals"],
 
     "@lifelink/solitaire": ["@lifelink/solitaire@workspace:packages/solitaire"],
 

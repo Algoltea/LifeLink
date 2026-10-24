@@ -6,7 +6,12 @@ import { Button } from "@lifelink/ui/components/button";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation, useQuery } from "convex/react";
-import { ImagePlusIcon, XIcon } from "lucide-react";
+import {
+  ImagePlusIcon,
+  LightbulbIcon,
+  ListChecksIcon,
+  XIcon,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,6 +23,8 @@ import { Avatar, ModePill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { ExplanationPanel } from "@/components/explain/explanation-panel";
+import { RecapPanel } from "@/components/messages/recap-panel";
 import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
@@ -89,7 +96,12 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
   const [body, setBody] = useState("");
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [busy, setBusy] = useState(false);
+  const [explaining, setExplaining] = useState<Id<"messages"> | null>(null);
+  const [recapOpen, setRecapOpen] = useState(false);
+  const [fromSuggestion, setFromSuggestion] = useState(false);
+  const [notice, setNotice] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const bodyId = useId();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
@@ -178,9 +190,26 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
           aria-labelledby="history-heading"
           className="flex min-w-0 flex-col gap-4"
         >
-          <h2 className="text-2xl leading-8 font-semibold" id="history-heading">
-            Conversation
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2
+              className="text-2xl leading-8 font-semibold"
+              id="history-heading"
+            >
+              Conversation
+            </h2>
+            {thread.messages.length > 0 ? (
+              <Button
+                aria-controls="recap-panel"
+                aria-expanded={recapOpen}
+                onClick={() => setRecapOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <ListChecksIcon aria-hidden="true" />
+                Recap this conversation
+              </Button>
+            ) : null}
+          </div>
           {thread.messages.length === 0 ? (
             <EmptyNote>No messages with {firstName} yet.</EmptyNote>
           ) : (
@@ -227,6 +256,20 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
                         : ""}
                       <ModePill mode={message.mode} />
                     </p>
+                    {message.direction === "incoming" &&
+                    message.body.trim().length > 0 ? (
+                      <Button
+                        aria-controls="explanation-panel"
+                        aria-expanded={explaining === message._id}
+                        className="self-start whitespace-normal"
+                        onClick={() => setExplaining(message._id)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <LightbulbIcon aria-hidden="true" />
+                        Help me understand
+                      </Button>
+                    ) : null}
                     {message.taskId &&
                     message.direction === "outgoing" &&
                     (message.status === "unknown" ||
@@ -245,113 +288,150 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
             </ol>
           )}
         </section>
-        <section
-          aria-labelledby="write-heading"
-          className="bg-surface flex min-w-0 flex-col gap-4 rounded-xl px-5 py-6"
-        >
-          <h2 className="text-2xl leading-8 font-semibold" id="write-heading">
-            Write to {firstName}
-          </h2>
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              setBusy(true);
-
-              try {
-                const taskId = await draft({
-                  body,
-                  contactId: contact._id,
-                  photoIds: photos.map((photo) => photo.id),
-                });
-
-                setBody("");
-                setPhotos([]);
-                // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
-                router.push(`/tasks/${taskId}` as Route);
-              } catch (error) {
-                toast.error(messageOf(error instanceof Error ? error : null));
-              }
-
-              setBusy(false);
-            }}
-          >
-            <Label htmlFor={bodyId}>Your message</Label>
-            <Textarea
-              className="bg-raised"
-              id={bodyId}
-              onChange={(event) => setBody(event.target.value)}
-              rows={5}
-              value={body}
+        <div className="flex min-w-0 flex-col gap-6">
+          {recapOpen ? (
+            <RecapPanel
+              contactId={contact._id}
+              contactName={contact.name}
+              onClose={() => setRecapOpen(false)}
             />
-            {photos.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {photos.map((photo) => (
-                  <li
-                    className="bg-raised flex items-center justify-between gap-2 rounded-lg px-4 py-2 text-base"
-                    key={photo.id}
-                  >
-                    <span className="truncate">{photo.name}</span>
-                    <Button
-                      aria-label={`Remove ${photo.name}`}
-                      onClick={() =>
-                        setPhotos((existing) =>
-                          existing.filter((item) => item.id !== photo.id)
-                        )
-                      }
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <XIcon />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <input
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              className="sr-only"
-              multiple
-              onChange={(event) => {
-                void addPhotos(event.target.files);
+          ) : null}
+          {explaining === null ? null : (
+            <ExplanationPanel
+              key={explaining}
+              onClose={() => setExplaining(null)}
+              onUseReply={(suggestion) => {
+                setBody(suggestion);
+                setFromSuggestion(true);
+                setNotice(
+                  "Reply added to your message. You can change it before reviewing."
+                );
+                bodyRef.current?.focus();
               }}
-              ref={fileInput}
-              tabIndex={-1}
-              type="file"
+              source={{ messageId: explaining }}
             />
-            <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:flex-wrap">
-              <Button
-                className="max-w-full py-3 whitespace-normal"
-                disabled={photos.length >= MAX_PHOTOS}
-                onClick={() => fileInput.current?.click()}
-                type="button"
-                variant="outline"
-              >
-                <ImagePlusIcon />
-                Add a photo
-              </Button>
-              <Button
-                aria-busy={busy}
-                className="max-w-full py-3 whitespace-normal"
-                disabled={
-                  busy ||
-                  (body.trim().length === 0 && photos.length === 0) ||
-                  !preferred
+          )}
+          <section
+            aria-labelledby="write-heading"
+            className="bg-surface flex min-w-0 flex-col gap-4 rounded-xl px-5 py-6"
+          >
+            <h2 className="text-2xl leading-8 font-semibold" id="write-heading">
+              Write to {firstName}
+            </h2>
+            <form
+              className="flex flex-col gap-4"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setBusy(true);
+
+                try {
+                  const taskId = await draft({
+                    body,
+                    contactId: contact._id,
+                    photoIds: photos.map((photo) => photo.id),
+                    startedFrom: fromSuggestion ? "suggestion" : undefined,
+                  });
+
+                  setBody("");
+                  setPhotos([]);
+                  setFromSuggestion(false);
+                  setNotice("");
+                  // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
+                  router.push(`/tasks/${taskId}` as Route);
+                } catch (error) {
+                  toast.error(messageOf(error instanceof Error ? error : null));
                 }
-                type="submit"
-              >
-                Review before sending
-              </Button>
-            </div>
-            <MessageGuidance
-              firstName={firstName}
-              hasChannel={Boolean(preferred)}
-              photoCount={photos.length}
-              practice={Boolean(me?.profile?.demoMode)}
-            />
-          </form>
-        </section>
+
+                setBusy(false);
+              }}
+            >
+              <Label htmlFor={bodyId}>Your message</Label>
+              <Textarea
+                className="bg-raised"
+                id={bodyId}
+                onChange={(event) => {
+                  setBody(event.target.value);
+
+                  if (event.target.value.trim().length === 0) {
+                    setFromSuggestion(false);
+                  }
+                }}
+                ref={bodyRef}
+                rows={5}
+                value={body}
+              />
+              <output aria-live="polite" className="text-base">
+                {notice}
+              </output>
+              {photos.length > 0 ? (
+                <ul className="flex flex-col gap-2">
+                  {photos.map((photo) => (
+                    <li
+                      className="bg-raised flex items-center justify-between gap-2 rounded-lg px-4 py-2 text-base"
+                      key={photo.id}
+                    >
+                      <span className="truncate">{photo.name}</span>
+                      <Button
+                        aria-label={`Remove ${photo.name}`}
+                        onClick={() =>
+                          setPhotos((existing) =>
+                            existing.filter((item) => item.id !== photo.id)
+                          )
+                        }
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <XIcon />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <input
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                className="sr-only"
+                multiple
+                onChange={(event) => {
+                  void addPhotos(event.target.files);
+                }}
+                ref={fileInput}
+                tabIndex={-1}
+                type="file"
+              />
+              <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:flex-wrap">
+                <Button
+                  className="max-w-full py-3 whitespace-normal"
+                  disabled={photos.length >= MAX_PHOTOS}
+                  onClick={() => fileInput.current?.click()}
+                  type="button"
+                  variant="outline"
+                >
+                  <ImagePlusIcon />
+                  Add a photo
+                </Button>
+                <Button
+                  aria-busy={busy}
+                  className="max-w-full py-3 whitespace-normal"
+                  disabled={
+                    busy ||
+                    (body.trim().length === 0 && photos.length === 0) ||
+                    !preferred
+                  }
+                  type="submit"
+                >
+                  Review before sending
+                </Button>
+              </div>
+              <MessageGuidance
+                firstName={firstName}
+                hasChannel={Boolean(preferred)}
+                photoCount={photos.length}
+                practice={Boolean(me?.profile?.demoMode)}
+              />
+            </form>
+          </section>
+        </div>
       </div>
     </>
   );

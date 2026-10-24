@@ -6,15 +6,17 @@ import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation, useQuery } from "convex/react";
-import { ShieldQuestionIcon } from "lucide-react";
+import { LightbulbIcon, ShieldQuestionIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { ExplanationPanel } from "@/components/explain/explanation-panel";
 import { messageOf } from "@/lib/errors";
 import { formatWhen } from "@/lib/format";
 
@@ -122,18 +124,31 @@ const SummaryPanel = ({ emailId }: { emailId: Id<"emails"> }) => {
   );
 };
 
+interface ReplyDraft {
+  body: string;
+  fromSuggestion: boolean;
+  notice: string;
+}
+
+const EMPTY_REPLY: ReplyDraft = { body: "", fromSuggestion: false, notice: "" };
+
 const ReplyForm = ({
   emailId,
+  inputRef,
+  onChange,
   provider,
+  reply,
   to,
 }: {
   emailId: Id<"emails">;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  onChange: (reply: ReplyDraft) => void;
   provider: "gmail" | "outlook";
+  reply: ReplyDraft;
   to: string;
 }) => {
   const draftReply = useMutation(api.emails.draftReply);
   const router = useRouter();
-  const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const inputId = useId();
   const hintId = useId();
@@ -146,7 +161,11 @@ const ReplyForm = ({
         setBusy(true);
 
         try {
-          const taskId = await draftReply({ body, emailId });
+          const taskId = await draftReply({
+            body: reply.body,
+            emailId,
+            startedFrom: reply.fromSuggestion ? "suggestion" : undefined,
+          });
 
           // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
           router.push(`/tasks/${taskId}` as Route);
@@ -160,10 +179,21 @@ const ReplyForm = ({
       <Textarea
         aria-describedby={hintId}
         id={inputId}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={(event) =>
+          onChange({
+            body: event.target.value,
+            fromSuggestion:
+              reply.fromSuggestion && event.target.value.trim().length > 0,
+            notice: reply.notice,
+          })
+        }
+        ref={inputRef}
         rows={4}
-        value={body}
+        value={reply.body}
       />
+      <output aria-live="polite" className="text-base">
+        {reply.notice}
+      </output>
       <p className="text-muted-foreground text-base" id={hintId}>
         Nothing is sent. You’ll review it first, then it’s saved as a draft in
         your {provider === "gmail" ? "Gmail" : "Outlook"}.
@@ -171,7 +201,7 @@ const ReplyForm = ({
       <Button
         aria-busy={busy}
         className="hover:text-primary-foreground self-start rounded-md whitespace-normal"
-        disabled={busy || body.trim().length === 0}
+        disabled={busy || reply.body.trim().length === 0}
         type="submit"
       >
         Review the draft
@@ -190,6 +220,9 @@ const EmailReader = ({
 }) => {
   const detail = useQuery(api.emails.get, { emailId });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [reply, setReply] = useState<ReplyDraft>(EMPTY_REPLY);
   const loadedId = detail?.email._id;
   useEffect(() => {
     if (loadedId !== undefined) {
@@ -306,11 +339,22 @@ const EmailReader = ({
             <p className="max-w-prose text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
               {email.bodyText}
             </p>
-            <ReadAloudButton
-              className="self-start"
-              label="Read the email aloud"
-              text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
-            />
+            <div className="flex flex-wrap gap-3">
+              <ReadAloudButton
+                label="Read the email aloud"
+                text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
+              />
+              <Button
+                aria-controls="explanation-panel"
+                aria-expanded={explaining}
+                onClick={() => setExplaining(true)}
+                size="sm"
+                variant="outline"
+              >
+                <LightbulbIcon aria-hidden="true" />
+                Help me understand
+              </Button>
+            </div>
           </>
         )}
         <p className="text-muted-foreground text-base">
@@ -318,6 +362,23 @@ const EmailReader = ({
           private details, check it first.
         </p>
       </section>
+
+      {explaining ? (
+        <ExplanationPanel
+          level={3}
+          onClose={() => setExplaining(false)}
+          onUseReply={(suggestion) => {
+            setReply({
+              body: suggestion,
+              fromSuggestion: true,
+              notice:
+                "Reply added to your draft. You can change it before reviewing.",
+            });
+            replyRef.current?.focus();
+          }}
+          source={{ emailId }}
+        />
+      ) : null}
 
       <section
         aria-labelledby="reply-heading"
@@ -328,7 +389,10 @@ const EmailReader = ({
         </h3>
         <ReplyForm
           emailId={emailId}
+          inputRef={replyRef}
+          onChange={setReply}
           provider={email.provider}
+          reply={reply}
           to={email.fromName ?? email.fromAddress}
         />
       </section>

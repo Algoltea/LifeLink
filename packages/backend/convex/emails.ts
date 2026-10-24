@@ -34,6 +34,7 @@ import { createTask } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
 import { isoWithOffset, parseAbsoluteIso } from "./lib/time";
+import { SUGGESTION_RATIONALE } from "./messages";
 import { ensureEmailCheck, LOCAL_SCAN_VERSION } from "./scam";
 
 const LIST_LIMIT = 25;
@@ -485,6 +486,7 @@ export const saveSummary = internalMutation({
       await ctx.db.patch(args.emailId, {
         actionNeeded: summary.actionNeeded,
         summary: summary.summary,
+        summaryFlagged: email.summaryFlagged === true || summary.suspicious,
         suspicious: email.suspicious === true || summary.suspicious,
       });
     }
@@ -593,7 +595,11 @@ export const saveAppointment = internalMutation({
 
 /** Draft a reply for the person to review. It is saved as a draft in their mailbox only after approval. */
 export const draftReply = mutation({
-  args: { body: v.string(), emailId: v.id("emails") },
+  args: {
+    body: v.string(),
+    emailId: v.id("emails"),
+    startedFrom: v.optional(v.literal("suggestion")),
+  },
   handler: async (ctx, args): Promise<Id<"tasks">> => {
     const owner = await requireOwner(ctx);
     const email = requireOwned(await ctx.db.get(args.emailId), owner, "email");
@@ -643,8 +649,12 @@ export const draftReply = mutation({
       mode,
       ownerId: owner._id,
       proposedBy: "person",
-      rationale:
+      rationale: [
+        args.startedFrom === "suggestion" ? SUGGESTION_RATIONALE : null,
         "Saved as a draft in your mailbox. You send it from there when you are ready.",
+      ]
+        .filter((part) => part !== null)
+        .join(" "),
       stepId: stepIds[0] ?? null,
       taskId,
     });

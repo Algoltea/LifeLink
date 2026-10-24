@@ -29,6 +29,34 @@ export default defineConfig({
   jsPlugins: [
     { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },
   ],
+  // Rehearsals are fiction: their code may not reach the backend or the
+  // offline queue, so a practice conversation can never book, send, or save.
+  overrides: [
+    {
+      files: ["apps/web/src/features/rehearsals/**", "packages/rehearsals/**"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: [
+                  "convex",
+                  "convex/*",
+                  "@lifelink/backend",
+                  "@lifelink/backend/*",
+                  "@/lib/offline-queue",
+                  "@/components/app/offline-queue",
+                ],
+                message:
+                  "Rehearsals must not reach the backend or the offline queue.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ],
   rules: {
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-chained-type-assertions": "error",

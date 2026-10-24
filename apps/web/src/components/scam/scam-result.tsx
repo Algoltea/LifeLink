@@ -12,6 +12,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
+import { OneAtATime } from "@/components/app/one-at-a-time";
+import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
@@ -60,6 +62,62 @@ const checkMethod = (review: Doc<"scamReviews">): string => {
 
   return "Checked locally with common warning rules. No content was sent to an AI provider for this result.";
 };
+
+const REMOVED_QUOTES =
+  "Some words the assistant pointed to were not found in the message, so they are not shown.";
+
+const IMAGE_UNVERIFIED =
+  "Read from the screenshot. LifeLink could not check these words against the original text.";
+
+type Signal = Doc<"scamReviews">["signals"][number];
+
+const SignalList = ({
+  heading,
+  id,
+  short,
+  signals,
+}: {
+  heading: string;
+  id: string;
+  /** Short help keeps the reason one press away instead of always open. */
+  short: boolean;
+  signals: Signal[];
+}) => (
+  <section aria-labelledby={id} className="flex flex-col gap-3">
+    <h3 className="text-xl font-semibold" id={id}>
+      {heading}
+    </h3>
+    <ul className="flex flex-col gap-4">
+      {signals.map((signal, index) => (
+        <li
+          className="border-rule flex flex-col gap-1 border-b pb-4"
+          // Labels can repeat, and the list never reorders once saved.
+          key={`${signal.label}-${index}`}
+        >
+          <span className="text-lg font-bold">{signal.label}</span>
+          {short ? (
+            <details className="text-lg">
+              <summary className="min-h-12 cursor-pointer py-2 font-semibold underline underline-offset-4">
+                Why this matters
+              </summary>
+              {signal.detail}
+            </details>
+          ) : (
+            <span className="text-lg">{signal.detail}</span>
+          )}
+          {signal.quote ? (
+            <blockquote className="text-muted-foreground text-base italic">
+              “{signal.quote}”
+            </blockquote>
+          ) : null}
+          {signal.quote && signal.evidence === "image_unverified" ? (
+            <span className="text-base font-semibold">{IMAGE_UNVERIFIED}</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  </section>
+);
 
 /** Ask someone trusted to double-check. The suspicious message itself is never forwarded. */
 const AskSomeone = ({ review }: { review: Doc<"scamReviews"> }) => {
@@ -175,6 +233,7 @@ const ScamResult = ({
   timeZone: string;
 }) => {
   const resultRef = useRef<HTMLElement>(null);
+  const { preferences } = usePreferences();
   useEffect(() => {
     if (review.status !== "reviewing") {
       resultRef.current?.focus();
@@ -214,11 +273,28 @@ const ScamResult = ({
 
   const verdict = VERDICT_WORDS[review.verdict];
 
+  const stoodOut = review.signals.filter(
+    (signal) => signal.stance !== "warns_against"
+  );
+
+  const warnings = review.signals.filter(
+    (signal) => signal.stance === "warns_against"
+  );
+
+  const removedQuotes = (review.unverifiedQuoteCount ?? 0) > 0;
+
   const spoken = [
     `${verdict.label}.`,
     review.explanation,
+    removedQuotes ? REMOVED_QUOTES : "",
+    ...stoodOut.map(
+      (signal) =>
+        `${signal.label}.${signal.evidence === "image_unverified" ? ` ${IMAGE_UNVERIFIED}` : ""}`
+    ),
     ...review.nextSteps,
-  ].join(" ");
+  ]
+    .filter((part) => part.length > 0)
+    .join(" ");
 
   return (
     <article
@@ -244,6 +320,9 @@ const ScamResult = ({
         <p className="max-w-prose text-lg leading-relaxed">
           {review.explanation}
         </p>
+        {removedQuotes ? (
+          <p className="text-base font-semibold">{REMOVED_QUOTES}</p>
+        ) : null}
         <p className="text-base font-semibold">{checkMethod(review)}</p>
         <p className="text-muted-foreground text-base">
           This result cannot prove that a message is genuine. Confirm unexpected
@@ -259,31 +338,22 @@ const ScamResult = ({
         />
       </header>
 
-      {review.signals.length > 0 ? (
-        <section
-          aria-labelledby={`signals-${review._id}`}
-          className="flex flex-col gap-3"
-        >
-          <h3 className="text-xl font-semibold" id={`signals-${review._id}`}>
-            What stood out
-          </h3>
-          <ul className="flex flex-col gap-4">
-            {review.signals.map((signal) => (
-              <li
-                className="border-rule flex flex-col gap-1 border-b pb-4"
-                key={signal.label}
-              >
-                <span className="text-lg font-bold">{signal.label}</span>
-                <span className="text-lg">{signal.detail}</span>
-                {signal.quote ? (
-                  <blockquote className="text-muted-foreground text-base italic">
-                    “{signal.quote}”
-                  </blockquote>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
+      {stoodOut.length > 0 ? (
+        <SignalList
+          heading="What stood out"
+          id={`signals-${review._id}`}
+          short={preferences.explanationDetail === "short"}
+          signals={stoodOut}
+        />
+      ) : null}
+
+      {warnings.length > 0 ? (
+        <SignalList
+          heading="Advice in the message itself"
+          id={`warnings-${review._id}`}
+          short={preferences.explanationDetail === "short"}
+          signals={warnings}
+        />
       ) : null}
 
       {review.nextSteps.length > 0 ? (
@@ -294,11 +364,21 @@ const ScamResult = ({
           <h3 className="text-xl font-semibold" id={`steps-${review._id}`}>
             What to do now
           </h3>
-          <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
-            {review.nextSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
+          {preferences.stepByStep ? (
+            <OneAtATime
+              noun="Step"
+              steps={review.nextSteps.map((step) => ({
+                content: <p className="text-lg">{step}</p>,
+                key: step,
+              }))}
+            />
+          ) : (
+            <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
+              {review.nextSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          )}
         </section>
       ) : null}
 

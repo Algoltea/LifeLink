@@ -12,6 +12,7 @@ import {
   LogOutIcon,
   MailIcon,
   MenuIcon,
+  MessageCircleQuestionIcon,
   MessageSquareTextIcon,
   MessagesSquareIcon,
   PlugIcon,
@@ -72,6 +73,11 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
   {
     items: [
       { href: "/scam", icon: ShieldCheckIcon, label: "Scam check" },
+      {
+        href: "/practice",
+        icon: MessageCircleQuestionIcon,
+        label: "Conversation practice",
+      },
       { href: "/groceries", icon: ShoppingBasketIcon, label: "Groceries" },
       { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
     ],

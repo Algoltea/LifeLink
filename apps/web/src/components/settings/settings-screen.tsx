@@ -2,11 +2,17 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import {
+  MAX_NOTES_LENGTH,
+  helpStyleOf,
+  supportLanguages,
+} from "@lifelink/contracts/help-style";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Segmented } from "@lifelink/ui/components/segmented";
 import { Switch } from "@lifelink/ui/components/switch";
+import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useId, useState } from "react";
@@ -41,6 +47,11 @@ const THEMES = [
   { label: "Light", value: "light" },
   { label: "Dark", value: "dark" },
   { label: "Match my device", value: "system" },
+] as const;
+
+const DETAILS = [
+  { label: "Short", value: "short" },
+  { label: "Detailed", value: "detailed" },
 ] as const;
 
 const CONTRASTS = [
@@ -235,6 +246,131 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   );
 };
 
+/** The person's own words about how they like help. Private, and never put in anything sent to others. */
+const NotesSetting = ({ saved }: { saved: string }) => {
+  const update = useMutation(api.profiles.updatePreferences);
+  const [notes, setNotes] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  const notesId = useId();
+  const hintId = useId();
+
+  return (
+    <form
+      className="border-rule flex flex-col gap-3 border-t py-5"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+
+        try {
+          await update({ communicationNotes: notes });
+          toast.success("Your notes are saved.");
+        } catch (error) {
+          toast.error(errorText(error));
+        }
+
+        setBusy(false);
+      }}
+    >
+      <Label htmlFor={notesId}>Notes about how I like help</Label>
+      <span
+        className="text-muted-foreground max-w-prose text-lg leading-7"
+        id={hintId}
+      >
+        For example, “Give me one step at a time.” Only LifeLink’s explanations
+        to you use these. They are never shown to family or put in a message. If
+        you allow a cloud explanation, these notes go to the AI provider with
+        the message.
+      </span>
+      <Textarea
+        aria-describedby={hintId}
+        className="bg-raised"
+        id={notesId}
+        maxLength={MAX_NOTES_LENGTH}
+        onChange={(event) => setNotes(event.target.value)}
+        rows={3}
+        value={notes}
+      />
+      <span className="text-muted-foreground text-base">
+        {notes.length} of {MAX_NOTES_LENGTH} characters
+      </span>
+      <Button
+        aria-busy={busy}
+        className="self-start"
+        disabled={busy || notes.trim() === saved}
+        type="submit"
+        variant="outline"
+      >
+        Save notes
+      </Button>
+    </form>
+  );
+};
+
+/** How LifeLink explains messages, scam checks, briefings, and practice. */
+const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
+  const update = useMutation(api.profiles.updatePreferences);
+  const style = helpStyleOf(stored);
+
+  const save = async (patch: Parameters<typeof update>[0]): Promise<void> => {
+    try {
+      await update(patch);
+    } catch (error) {
+      toast.error(errorText(error));
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby="help-heading"
+      className="border-rule flex min-w-0 flex-col border-t pt-6"
+      id="help"
+    >
+      <h2 className="pb-2 text-2xl leading-8 font-semibold" id="help-heading">
+        How I like help
+      </h2>
+      <p className="text-muted-foreground pb-6 text-lg leading-7">
+        Used when LifeLink explains a message, a scam check, or your morning
+        briefing, and in conversation practice. Only you see these.
+      </p>
+      <Row
+        description="Short gives the main points. Detailed explains a little more."
+        label="Explanations"
+      >
+        <Segmented
+          label="Explanations"
+          onValueChange={(explanationDetail) => save({ explanationDetail })}
+          options={DETAILS}
+          value={style.detail}
+        />
+      </Row>
+      <Toggle
+        checked={style.stepByStep}
+        description="Shows explanations and next steps one at a time, with a Next button."
+        label="One step at a time"
+        onChange={(stepByStep) => save({ stepByStep })}
+      />
+      <Row
+        description="LifeLink’s cloud explanations and scam checks are written in this language. Quotes stay in the message’s own words, local readings stay in English, and suggested replies follow the message’s language. Read-aloud and voice typing stay in English for now."
+        label="Language for help"
+      >
+        <select
+          aria-label="Language for help"
+          className="border-control bg-raised text-foreground min-h-12 max-w-full self-start rounded-md border px-4 text-base"
+          onChange={(event) => save({ supportLanguage: event.target.value })}
+          value={style.language}
+        >
+          {supportLanguages.map((language) => (
+            <option key={language.id} lang={language.id} value={language.id}>
+              {language.label}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <NotesSetting saved={style.notes} />
+    </section>
+  );
+};
+
 const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
   const update = useMutation(api.profiles.updateProfile);
   const [busy, setBusy] = useState(false);
@@ -417,6 +553,13 @@ const DemoSettings = ({
         Anything prepared in one mode has to be reviewed again before it runs in
         the other.
       </p>
+      <p className="text-lg leading-7">
+        To rehearse a phone call or a conversation with made-up people, try{" "}
+        <Link className="font-semibold underline" href="/practice">
+          Conversation practice
+        </Link>
+        . It works in either mode, and nothing in it is sent or saved.
+      </p>
     </section>
   );
 };
@@ -445,6 +588,7 @@ const SettingsScreen = () => {
         <DisplaySettings stored={me.preferences} />
         <div className="flex flex-col gap-8">
           <ProfileSettings profile={me.profile} />
+          {isOwner ? <HelpSettings stored={me.preferences} /> : null}
           {isOwner ? (
             <DemoSettings allowed={me.demoModeAllowed} profile={me.profile} />
           ) : null}

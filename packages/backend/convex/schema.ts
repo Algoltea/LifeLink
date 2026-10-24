@@ -27,6 +27,33 @@ const sharingScope = v.union(
   v.literal("groceries.view")
 );
 
+const quotedItem = v.object({ quote: v.string(), text: v.string() });
+
+const suggestedReply = v.object({
+  draft: v.string(),
+  kind: v.union(
+    v.literal("accept"),
+    v.literal("clarify"),
+    v.literal("decline")
+  ),
+  label: v.string(),
+});
+
+const quotedFrom = v.object({
+  from: v.union(v.literal("them"), v.literal("you")),
+  quote: v.string(),
+});
+
+// Why a reading was local rather than from the cloud assistant.
+const localReason = v.union(
+  v.literal("chosen"),
+  v.literal("practice"),
+  v.literal("unavailable"),
+  v.literal("limit"),
+  v.literal("failed"),
+  v.null()
+);
+
 const groceryItem = v.object({
   name: v.string(),
   quantity: v.union(v.number(), v.null()),
@@ -214,6 +241,16 @@ export default defineSchema({
     .index("by_ownerId_and_threadId", ["ownerId", "threadId"])
     .index("by_ownerId_and_updatedAt", ["ownerId", "updatedAt"]),
 
+  // Per-person limits on cloud-assistant readings, reserved before each paid call.
+  assistantUsage: defineTable({
+    dayRequests: v.number(),
+    dayStartedAt: v.number(),
+    kind: v.union(v.literal("explanation"), v.literal("recap")),
+    minuteRequests: v.number(),
+    minuteStartedAt: v.number(),
+    profileId: v.id("profiles"),
+  }).index("by_profile_and_kind", ["profileId", "kind"]),
+
   auditLog: defineTable({
     actor: v.union(
       v.literal("person"),
@@ -290,6 +327,56 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_linked_profile", ["linkedProfileId"]),
 
+  // Recaps of text conversations: private to the owner, never read by any family query.
+  conversationRecaps: defineTable({
+    agreements: v.array(
+      v.object({
+        acceptance: quotedFrom,
+        offer: quotedFrom,
+        text: v.string(),
+      })
+    ),
+    cloudRequested: v.boolean(),
+    contactId: v.id("contacts"),
+    createdAt: v.number(),
+    droppedCount: v.number(),
+    // The help style this recap was written for. Private notes are never used for recaps.
+    helpStyleKey: v.string(),
+    // The newest message the recap covers; a newer message means a new recap.
+    lastMessageId: v.id("messages"),
+    lines: v.array(
+      v.object({
+        body: v.string(),
+        from: v.union(v.literal("them"), v.literal("you")),
+        ref: v.string(),
+      })
+    ),
+    localReason,
+    method: v.union(v.literal("cloud"), v.literal("local")),
+    mode,
+    model: v.string(),
+    offers: v.array(v.object({ offer: quotedFrom, text: v.string() })),
+    ownerId: v.id("profiles"),
+    proposedSteps: v.array(
+      v.object({
+        kind: v.union(v.literal("send_message"), v.literal("create_reminder")),
+        messageDraft: v.union(v.string(), v.null()),
+        remindAt: v.union(v.number(), v.null()),
+        reminderTitle: v.union(v.string(), v.null()),
+        // Set once the person prepares this step for review.
+        taskId: v.union(v.id("tasks"), v.null()),
+        why: v.string(),
+      })
+    ),
+    status: v.union(
+      v.literal("recapping"),
+      v.literal("done"),
+      v.literal("failed")
+    ),
+    summary: v.string(),
+    unclear: v.array(v.string()),
+  }).index("by_owner_and_contact", ["ownerId", "contactId"]),
+
   emails: defineTable({
     actionNeeded: v.union(v.string(), v.null()),
     bodyText: v.string(),
@@ -319,6 +406,8 @@ export default defineSchema({
     selectedForReview: v.boolean(),
     subject: v.string(),
     summary: v.union(v.string(), v.null()),
+    // A consented cloud summary flagged this email; kept apart from local checks so a rules update can clear only its own flag.
+    summaryFlagged: v.optional(v.boolean()),
     suspicious: v.union(v.boolean(), v.null()),
   })
     .index("by_owner_received", ["ownerId", "receivedAt"])
@@ -440,6 +529,48 @@ export default defineSchema({
     verified: v.boolean(),
   }).index("by_dedupe_key", ["provider", "dedupeKey"]),
 
+  // "Help me understand this": private to the owner, never read by any family query.
+  messageExplanations: defineTable({
+    cloudRequested: v.boolean(),
+    createdAt: v.number(),
+    dates: v.array(
+      v.object({ isoDate: v.union(v.string(), v.null()), quote: v.string() })
+    ),
+    droppedCount: v.number(),
+    emailId: v.union(v.id("emails"), v.null()),
+    // The help style this explanation was written for, kept so a scheduled run uses the same one.
+    helpStyle: v.optional(
+      v.object({
+        detail: v.union(v.literal("short"), v.literal("detailed")),
+        language: v.string(),
+        notes: v.string(),
+        stepByStep: v.boolean(),
+      })
+    ),
+    helpStyleKey: v.optional(v.string()),
+    interpretations: v.array(v.object({ text: v.string(), why: v.string() })),
+    localReason,
+    messageId: v.union(v.id("messages"), v.null()),
+    method: v.union(v.literal("cloud"), v.literal("local")),
+    missingDetails: v.array(v.string()),
+    mode,
+    model: v.string(),
+    ownerId: v.id("profiles"),
+    plainSummary: v.string(),
+    requests: v.array(quotedItem),
+    senderName: v.string(),
+    sourceText: v.string(),
+    statedFacts: v.array(quotedItem),
+    status: v.union(
+      v.literal("explaining"),
+      v.literal("done"),
+      v.literal("failed")
+    ),
+    suggestedReplies: v.array(suggestedReply),
+  })
+    .index("by_owner_and_message", ["ownerId", "messageId"])
+    .index("by_owner_and_email", ["ownerId", "emailId"]),
+
   messages: defineTable({
     actionId: v.union(v.id("actions"), v.null()),
     body: v.string(),
@@ -484,12 +615,21 @@ export default defineSchema({
 
   preferences: defineTable({
     captions: v.boolean(),
+    // The owner's own words about how they like help. Owner-only; used only for explanations written to them.
+    communicationNotes: v.optional(v.union(v.string(), v.null())),
     contrast: v.union(v.literal("standard"), v.literal("more")),
+    // How LifeLink explains things. Optional so older rows read as the defaults.
+    explanationDetail: v.optional(
+      v.union(v.literal("short"), v.literal("detailed"))
+    ),
     groceryNotes: v.union(v.string(), v.null()),
     profileId: v.id("profiles"),
     readAloud: v.boolean(),
     reducedMotion: v.boolean(),
     speechRate: v.number(),
+    stepByStep: v.optional(v.boolean()),
+    // One of the offered support languages; checked when saved.
+    supportLanguage: v.optional(v.string()),
     textScale: v.number(),
     theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     updatedAt: v.number(),
@@ -584,8 +724,19 @@ export default defineSchema({
     signals: v.array(
       v.object({
         detail: v.string(),
+        // verified: found word for word in the checked text. image_unverified: read from a screenshot.
+        evidence: v.optional(
+          v.union(v.literal("verified"), v.literal("image_unverified"))
+        ),
         label: v.string(),
         quote: v.union(v.string(), v.null()),
+        stance: v.optional(
+          v.union(
+            v.literal("requests"),
+            v.literal("warns_against"),
+            v.literal("mentions")
+          )
+        ),
       })
     ),
     status: v.union(
@@ -593,6 +744,8 @@ export default defineSchema({
       v.literal("done"),
       v.literal("failed")
     ),
+    // Quotes the model gave that were not in the text, so they were removed.
+    unverifiedQuoteCount: v.optional(v.number()),
     verdict: v.union(
       v.literal("likely_scam"),
       v.literal("suspicious"),
@@ -600,7 +753,9 @@ export default defineSchema({
       v.literal("unsure")
     ),
     verificationTaskId: v.union(v.id("tasks"), v.null()),
-  }).index("by_owner_created", ["ownerId", "createdAt"]),
+  })
+    .index("by_owner_created", ["ownerId", "createdAt"])
+    .index("by_email", ["emailId"]),
 
   sharingGrants: defineTable({
     acceptedAt: v.union(v.number(), v.null()),

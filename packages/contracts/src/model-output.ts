@@ -7,6 +7,8 @@
  */
 import { z } from "zod";
 
+import { signalStances } from "./evidence";
+
 const nullableString = z.string().nullable();
 
 const assistantIntents = [
@@ -109,13 +111,169 @@ const scamReviewSchema = z.strictObject({
     z.strictObject({
       detail: z.string(),
       label: z.string(),
-      quote: nullableString,
+      quote: nullableString.describe(
+        "The exact words from the message, copied character for character, or null."
+      ),
+      stance: z
+        .enum(signalStances)
+        .describe(
+          "requests: the message asks the reader to do this. warns_against: the message tells the reader not to do this. mentions: anything else."
+        ),
     })
   ),
   verdict: z.enum(scamVerdicts),
 });
 
 type ScamReviewResult = z.infer<typeof scamReviewSchema>;
+
+const replyKinds = ["accept", "clarify", "decline"] as const;
+
+const quotedItem = z.strictObject({
+  quote: z
+    .string()
+    .describe(
+      "The exact words from the message, copied character for character."
+    ),
+  text: z.string().describe("One short, plain sentence."),
+});
+
+/**
+ * "Help me understand this": a private, plain-language reading of one message.
+ * Every request, date, and stated fact must quote the message; the backend
+ * moves anything it cannot find word for word into interpretations.
+ */
+const messageExplanationSchema = z.strictObject({
+  dates: z
+    .array(
+      z.strictObject({
+        isoDate: nullableString.describe(
+          "The calendar date as YYYY-MM-DD only if it is certain; otherwise null."
+        ),
+        quote: z
+          .string()
+          .describe(
+            "The exact words for the date or time, copied character for character."
+          ),
+      })
+    )
+    .describe("Dates and times the message mentions."),
+  interpretations: z
+    .array(z.strictObject({ text: z.string(), why: z.string() }))
+    .describe(
+      "Possible meanings the message does not state. Each is a guess, and why says what suggests it."
+    ),
+  missingDetails: z
+    .array(z.string())
+    .describe("Details a reply would need that the message does not give."),
+  plainSummary: z
+    .string()
+    .describe(
+      "Two or three short, plain sentences saying what the message is about."
+    ),
+  requests: z
+    .array(quotedItem)
+    .describe("What the sender explicitly asks the reader to do or answer."),
+  statedFacts: z
+    .array(quotedItem)
+    .describe("Things the message states as fact."),
+  suggestedReplies: z
+    .array(
+      z.strictObject({
+        draft: z
+          .string()
+          .describe(
+            "The full reply in the reader's own voice: short, warm, and signed with their name."
+          ),
+        kind: z.enum(replyKinds),
+        label: z.string().describe("Two to four words, such as Say yes."),
+      })
+    )
+    .describe("Up to three optional replies: accept, clarify, or decline."),
+});
+
+type MessageExplanation = z.infer<typeof messageExplanationSchema>;
+
+/**
+ * The two halves are written by separate model calls: guidance for the owner
+ * (which may use their private notes) and reply drafts (which never see them).
+ */
+const explanationGuidanceSchema = messageExplanationSchema.omit({
+  suggestedReplies: true,
+});
+
+const suggestedRepliesSchema = messageExplanationSchema.pick({
+  suggestedReplies: true,
+});
+
+type ExplanationGuidance = z.infer<typeof explanationGuidanceSchema>;
+
+type SuggestedReplies = z.infer<typeof suggestedRepliesSchema>;
+
+const recapEvidence = z.strictObject({
+  messageRef: z
+    .string()
+    .describe("The ref of the message the words come from, such as m3."),
+  quote: z
+    .string()
+    .describe(
+      "The exact words from that message, copied character for character."
+    ),
+});
+
+const recapStepKinds = ["send_message", "create_reminder"] as const;
+
+/**
+ * A recap of a text conversation. An offer is not an agreement, and the model
+ * can never say something is done: LifeLink's own records decide that.
+ */
+const conversationRecapSchema = z.strictObject({
+  agreements: z
+    .array(
+      z.strictObject({
+        acceptance: recapEvidence,
+        offer: recapEvidence,
+        text: z.string().describe("What was agreed, in one plain sentence."),
+      })
+    )
+    .describe(
+      "Only where one person offered or asked and the other clearly accepted later."
+    ),
+  offers: z
+    .array(
+      z.strictObject({
+        offer: recapEvidence,
+        text: z.string().describe("What was offered, in one plain sentence."),
+      })
+    )
+    .describe("Offers or requests that have not been clearly accepted."),
+  proposedSteps: z
+    .array(
+      z.strictObject({
+        kind: z.enum(recapStepKinds),
+        messageDraft: nullableString.describe(
+          "For send_message: the exact words, in the conversation's language and the person's voice. Otherwise null."
+        ),
+        remindAtIso: nullableString.describe(
+          "For create_reminder: an absolute ISO 8601 time with offset. Otherwise null."
+        ),
+        reminderTitle: nullableString.describe(
+          "For create_reminder: a short title. Otherwise null."
+        ),
+        why: z.string().describe("One plain sentence on why this might help."),
+      })
+    )
+    .describe(
+      "At most three possible next steps; the person reviews each one."
+    ),
+  summary: z
+    .string()
+    .describe("Two or three short, plain sentences about the conversation."),
+  unclear: z
+    .array(z.string())
+    .describe("Things that are not settled yet, one short sentence each."),
+});
+
+type ConversationRecap = z.infer<typeof conversationRecapSchema>;
 
 const appointmentExtractionSchema = z.strictObject({
   ambiguity: nullableString.describe(
@@ -176,10 +334,16 @@ export {
   assistantIntents,
   assistantPlanSchema,
   briefingSchema,
+  conversationRecapSchema,
+  recapStepKinds,
   proposalIntents,
   proposalSchema,
   emailSummarySchema,
+  explanationGuidanceSchema,
+  messageExplanationSchema,
   replyClassificationSchema,
+  replyKinds,
+  suggestedRepliesSchema,
   replyDecisions,
   scamReviewSchema,
   scamVerdicts,
@@ -189,8 +353,12 @@ export type {
   AppointmentExtraction,
   AssistantPlan,
   Briefing,
+  ConversationRecap,
   Proposal,
   EmailSummary,
+  ExplanationGuidance,
+  MessageExplanation,
   ReplyClassification,
   ScamReviewResult,
+  SuggestedReplies,
 };

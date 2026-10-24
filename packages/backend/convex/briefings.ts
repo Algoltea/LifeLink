@@ -1,3 +1,5 @@
+import { helpStyleOf } from "@lifelink/contracts/help-style";
+import type { ExplanationDetail } from "@lifelink/contracts/help-style";
 import { briefingSchema } from "@lifelink/contracts/model-output";
 import type { Briefing } from "@lifelink/contracts/model-output";
 import { v } from "convex/values";
@@ -78,6 +80,11 @@ export const facts = internalQuery({
       )
       .collect();
 
+    const preferences = await ctx.db
+      .query("preferences")
+      .withIndex("by_profile", (index) => index.eq("profileId", owner._id))
+      .unique();
+
     const waiting = await ctx.db
       .query("tasks")
       .withIndex("by_owner_status", (index) =>
@@ -93,6 +100,7 @@ export const facts = internalQuery({
         title: appointment.title,
       })),
       demoMode: owner.demoMode,
+      detail: helpStyleOf(preferences).detail,
       name: owner.preferredName,
       reminders: reminders
         .filter((reminder) => reminder.dismissedAt === null)
@@ -109,11 +117,16 @@ export const facts = internalQuery({
 interface Facts {
   appointments: { day: string; ride: string; time: string; title: string }[];
   demoMode: boolean;
+  detail: ExplanationDetail;
   name: string;
   reminders: { time: string; title: string }[];
   today: string;
   waitingCount: number;
 }
+
+/** Short help keeps the briefing to the few things that matter most today. */
+const maxLines = (detail: ExplanationDetail): number =>
+  detail === "short" ? 3 : 5;
 
 const rulesBriefing = (input: Facts): Briefing => {
   const [next] = input.appointments;
@@ -143,7 +156,7 @@ const rulesBriefing = (input: Facts): Briefing => {
     );
   }
 
-  return { greetingFact, lines };
+  return { greetingFact, lines: lines.slice(0, maxLines(input.detail)) };
 };
 
 export const generate = internalAction({
@@ -167,6 +180,9 @@ export const generate = internalAction({
             content: [
               `Write ${input.name}'s short morning briefing for ${input.today}. Return only JSON.`,
               "Use only the facts given. Do not add or guess anything. Short, warm, plain sentences. No emoji.",
+              input.detail === "short"
+                ? "Keep it brief: at most three lines after the greeting fact."
+                : "You may use up to five lines after the greeting fact.",
             ].join("\n"),
             role: "system",
           },
@@ -186,7 +202,7 @@ export const generate = internalAction({
     await ctx.runMutation(internal.briefings.save, {
       dateKey: args.dateKey,
       greetingFact: briefing.greetingFact,
-      lines: briefing.lines.slice(0, 5),
+      lines: briefing.lines.slice(0, maxLines(input.detail)),
       mode: input.demoMode ? "simulated" : "live",
       ownerId: args.ownerId,
       source,

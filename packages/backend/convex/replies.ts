@@ -5,6 +5,7 @@
  */
 import { replyClassificationSchema } from "@lifelink/contracts/model-output";
 import type { ReplyClassification } from "@lifelink/contracts/model-output";
+import { readReply } from "@lifelink/contracts/reply-reading";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -63,21 +64,18 @@ export const replyContext = internalQuery({
   },
 });
 
-const YES_PATTERN =
-  /\b(?:yes|sure|of course|happy to|no problem|i can|i'll|i will|absolutely|ok|okay)\b/iu;
-
-const NO_PATTERN = /\b(?:no|can't|cannot|sorry|unable|won't)\b/iu;
-
 const TIME_PATTERN =
   /\b(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<meridiem>am|pm)\b/iu;
 
-/** Demo-only reply reader: a clear yes or no and a stated time, on the appointment's day. */
-const rulesClassify = (
+/**
+ * Demo-only reply reader: a clear yes or no and a stated time, on the
+ * appointment's day. A refusal is checked first and a hedge is never a yes.
+ */
+export const rulesClassify = (
   text: string,
   appointmentStartIso: string | null
 ): ReplyClassification => {
-  const accepted = YES_PATTERN.test(text);
-  const declined = NO_PATTERN.test(text) && !accepted;
+  const reading = readReply(text);
   const time = TIME_PATTERN.exec(text);
   let pickupTimeIso: string | null = null;
 
@@ -93,13 +91,7 @@ const rulesClassify = (
     pickupTimeIso = `${datePart}${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00${offsetPart}`;
   }
 
-  let decision: ReplyClassification["decision"] = "unclear";
-
-  if (declined) {
-    decision = "declined";
-  } else if (accepted) {
-    decision = "accepted";
-  }
+  const decision: ReplyClassification["decision"] = reading;
 
   const summaries = {
     accepted: "They said yes.",
