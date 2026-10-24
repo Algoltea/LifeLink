@@ -47,7 +47,7 @@ const TodayHeader = ({
   return (
     <header className="flex flex-col gap-4">
       <div className="flex max-w-3xl min-w-0 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {date ? (
             <p className="text-muted-foreground text-label">{date}</p>
           ) : null}
