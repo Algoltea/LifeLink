@@ -41,9 +41,11 @@ const MessageSlip = ({
   <div className="border-border bg-raised overflow-hidden rounded-xl border">
     <div className="border-border flex items-center gap-4 border-b px-6 py-5">
       <Avatar hue={hue} name={details.contactName} />
-      <div className="flex flex-col">
-        <span className="text-xl font-bold">To {details.contactName}</span>
-        <span className="text-muted-foreground text-base">
+      <div className="flex min-w-0 flex-col">
+        <span className="text-xl font-bold [overflow-wrap:anywhere]">
+          To {details.contactName}
+        </span>
+        <span className="text-muted-foreground text-base [overflow-wrap:anywhere]">
           By {CHANNEL_WORDS[details.channel]}
           {details.channel === "in_app"
             ? ""
@@ -77,9 +79,11 @@ const Fact = ({
   children: React.ReactNode;
   label: string;
 }) => (
-  <div className="flex flex-col gap-1">
+  <div className="flex min-w-0 flex-col gap-1">
     <dt className="text-muted-foreground text-base">{label}</dt>
-    <dd className="text-xl font-semibold">{children}</dd>
+    <dd className="text-xl font-semibold [overflow-wrap:anywhere]">
+      {children}
+    </dd>
   </div>
 );
 
@@ -262,11 +266,16 @@ const DetailsView = ({
             className
           )}
         >
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <Fact label="To">{details.to}</Fact>
-            <Fact label="Subject">{details.subject}</Fact>
+          {/* Stacked like an email header, so long addresses never crowd the subject. */}
+          <dl className="border-border grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 border-b pb-4 text-base">
+            <dt className="text-muted-foreground">To</dt>
+            <dd className="[overflow-wrap:anywhere]">{details.to}</dd>
+            <dt className="text-muted-foreground">Subject</dt>
+            <dd className="font-medium [overflow-wrap:anywhere]">
+              {details.subject}
+            </dd>
           </dl>
-          <p className="text-xl leading-snug whitespace-pre-wrap">
+          <p className="text-lg leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap">
             {details.body}
           </p>
           <ReadAloudButton
@@ -314,7 +323,7 @@ const DetailsView = ({
           <dl className="grid gap-4">
             <Fact label="Document">{details.title}</Fact>
           </dl>
-          <p className="text-xl leading-snug whitespace-pre-wrap">
+          <p className="text-xl leading-snug [overflow-wrap:anywhere] whitespace-pre-wrap">
             {details.body}
           </p>
           <ReadAloudButton
