@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 
 import "../index.css";
 
+import { DisplayBootScript } from "@/components/display-boot-script";
 import { PwaRegistration } from "@/components/pwa-registration";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DISPLAY_BOOT_SCRIPT } from "@/lib/display";
 
 // One self-hosted face for headings and body, with an explicit system fallback.
 const bodyFont = IBM_Plex_Sans({
@@ -36,8 +36,7 @@ const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => (
   <html className={bodyFont.variable} lang="en" suppressHydrationWarning>
     <head>
       {/* Applies the person's text size, contrast, and motion settings before first paint. */}
-      {/* oxlint-disable-next-line react/no-danger -- static, first-party script with no user input. */}
-      <script dangerouslySetInnerHTML={{ __html: DISPLAY_BOOT_SCRIPT }} />
+      <DisplayBootScript />
     </head>
     <body>
       <ThemeProvider>
