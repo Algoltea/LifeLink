@@ -1,6 +1,6 @@
 # LifeLink route design and evidence
 
-Updated 2026-10-24 after Instacart retirement. The original agreed coverage comprises **25 artboards: 21 desktop route/state views and 4 phone views**. All 25 were screenshot-reviewed at the original design handoff; the seven changed artboards were reviewed again for retirement. The retirement pass added no artboards. This document separates Paper artifact review from live implementation verification.
+Updated 2026-10-24 after Instacart retirement and the approved Solitaire guest extension. The original agreed coverage comprises **25 artboards: 21 desktop route/state views and 4 phone views**. All 25 were screenshot-reviewed at the original design handoff; the seven changed artboards were reviewed again for retirement. The retirement pass added no artboards. The guest extension retains those 25 and adds one desktop state, for **26 artboards: 22 desktop and 4 phone views**. This document separates Paper artifact review from live implementation verification.
 
 ## Direction and handoff
 
@@ -10,7 +10,7 @@ Paper page: [LifeLink — Drafting Room](https://app.paper.design/file/01M5E0FMP
 
 Review metadata: file `01M5E0FMPJ5SFRDW65NMHE45W7`; page `p-6-0`; **Desktop — Connections** artboard `4KJ-0`. IDs are handoff metadata, not product copy. The canvas is arranged into desktop rows with phone states below.
 
-The original handoff confirmed 25 artboards, and `finish_working_on_nodes` returned OK for all 25. The retirement pass preserves those artboards and also completed `finish_working_on_nodes` successfully.
+The original handoff confirmed 25 artboards, and `finish_working_on_nodes` returned OK for all 25. The retirement pass preserves those artboards and also completed `finish_working_on_nodes` successfully. Final page read-back showed 26 artboards: an additional **Desktop — Solitaire signed out** (`5WS-0`) appeared during concurrent work. It was not created, edited, or screenshot-reviewed by this retirement pass and is outside the original coverage table below.
 
 ## Instacart retirement — 2026-10-24
 
@@ -27,6 +27,18 @@ LifeLink's live Instacart integration is retired. Grocery lists, preferences, bu
 | Desktop — Onboarding · `5AD-0` | Removed the optional grocery-store ZIP field. |
 
 All seven changed artboards were inspected before and after editing. Review verdict: spacing remains deliberate, type and contrast are readable, repeated rows align, content fits, and the recovery screen has one clear primary action. The phone Connections and onboarding frames fit their reduced content. Page-scoped text searches found no remaining Instacart, checkout, retailer, standing-permission, purchase-practice, or ZIP promotion. Remaining shopping/store wording describes the retained list, price estimates, or unavailability. No new artboards or live app/provider checks were used for this pass.
+
+## Approved Solitaire guest extension — 2026-10-24
+
+The user approved **Desktop — Solitaire signed out**, artboard `5WS-0`, and requested implementation. It is on the existing [LifeLink — Drafting Room Paper page](https://app.paper.design/file/01M5E0FMPJ5SFRDW65NMHE45W7/p-6-0), file `01M5E0FMPJ5SFRDW65NMHE45W7`, page `p-6-0`. It extends the original coverage below; all prior artboards and tokens remain unchanged by this guest extension.
+
+- On `/solitaire`, signed-out or pending/unavailable session state shows a **Join LifeLink** rail at 1101px and above, and **Sign up** plus **Sign in** in the top bar below 1101px. Guests see no private account navigation or Menu. Confirmed signed-in sessions retain the prior play navigation.
+- **Sign up** opens `/sign-in?mode=sign-up`; **Sign in** remains `/sign-in`. The game is never gated or remounted by authentication. Saves stay local to the device in `localStorage`.
+- Public server-rendered/cacheable HTML remains guest-only. Client `useSession` discovers signed-in state without delaying the browser-only game mount or resetting its save.
+
+Implementation verification passed `bun run check`, `bun run check-types`, and `bun run test`. Local Chrome checks covered the guest navigation, direct signup entry, sign-in and invalid/duplicate mode fallback, Draw/Undo/Hint, local save and reload/resume, and 390px/320px layouts without page overflow. A delayed simulated signed-in session restored desktop navigation and the mobile Menu without remounting the game or losing moves. The loaded game remained playable and saved with the network disabled. No real authentication was performed; production offline reload remains unverified because the service worker is disabled in development.
+
+Final desktop 1440px and phone 390px captures were visually inspected, including the corrected account-link colors. Local evidence is in `.taste-skill/solitaire-guest/desktop.png`, `mobile.png`, and `verification.json`; these ignored artifacts are not part of a fresh checkout. Independent review found no material issues in the guest sidebar/header, authentication-mode routing, or game continuity. Existing card-table styling remains outside this change. DESIGN.md records the guest exception; `.impeccable/design.json` is unchanged because no tokens changed.
 
 ## Evidence actually inspected
 
