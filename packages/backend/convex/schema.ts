@@ -1,3 +1,4 @@
+import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -273,7 +274,11 @@ export default defineSchema({
   assistantUsage: defineTable({
     dayRequests: v.number(),
     dayStartedAt: v.number(),
-    kind: v.union(v.literal("explanation"), v.literal("recap")),
+    kind: v.union(
+      v.literal("aisles"),
+      v.literal("explanation"),
+      v.literal("recap")
+    ),
     minuteRequests: v.number(),
     minuteStartedAt: v.number(),
     profileId: v.id("profiles"),
@@ -303,6 +308,15 @@ export default defineSchema({
     ownerId: v.id("profiles"),
     source: v.union(v.literal("model"), v.literal("rules")),
   }).index("by_owner_date", ["ownerId", "dateKey"]),
+
+  // Per-owner budget for live-call AI checks.
+  callCheckUsage: defineTable({
+    dayRequests: v.number(),
+    dayStartedAt: v.number(),
+    minuteRequests: v.number(),
+    minuteStartedAt: v.number(),
+    profileId: v.id("profiles"),
+  }).index("by_profile", ["profileId"]),
 
   connections: defineTable({
     accountLabel: v.union(v.string(), v.null()),
@@ -513,6 +527,8 @@ export default defineSchema({
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(
       v.object({
+        // Store section from `@lifelink/contracts/grocery-aisles`; unset until sorted.
+        aisle: v.optional(v.string()),
         checked: v.boolean(),
         estimatedCents: v.union(v.number(), v.null()),
         id: v.string(),
@@ -679,6 +695,8 @@ export default defineSchema({
     .index("by_storage", ["storageId"]),
 
   preferences: defineTable({
+    // AI scam checks on newly arrived email. Optional so older rows read as on.
+    aiEmailChecks: v.optional(v.boolean()),
     captions: v.boolean(),
     // The owner's own words about how they like help. Owner-only; used only for explanations written to them.
     communicationNotes: v.optional(v.union(v.string(), v.null())),
@@ -695,6 +713,10 @@ export default defineSchema({
     reducedMotion: v.boolean(),
     showNews: v.optional(v.boolean()),
     speechRate: v.number(),
+    // Missing or null uses the deployment's default read-aloud voice.
+    speechVoice: v.optional(
+      v.union(v.null(), ...SPEECH_VOICES.map(({ value }) => v.literal(value)))
+    ),
     stepByStep: v.optional(v.boolean()),
     // One of the offered support languages; checked when saved.
     supportLanguage: v.optional(v.string()),
@@ -767,6 +789,8 @@ export default defineSchema({
     .index("by_source_action", ["sourceActionId"]),
 
   scamCallSummaries: defineTable({
+    // Some speech was never checked for warning signs (AI unavailable or failed).
+    checkIncomplete: v.optional(v.boolean()),
     createdAt: v.number(),
     durationMs: v.number(),
     flags: v.array(
@@ -778,6 +802,8 @@ export default defineSchema({
         timeMs: v.number(),
       })
     ),
+    // Absent on summaries saved before word counts existed.
+    heardWords: v.optional(v.number()),
     interrupted: v.boolean(),
     mode,
     ownerId: v.id("profiles"),

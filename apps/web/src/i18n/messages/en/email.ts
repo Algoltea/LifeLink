@@ -10,17 +10,17 @@ const email = {
   checkForNew: "Check for new email",
   checkManually: " You can check it manually below.",
   checkThis: "Check this email",
-  checkUsesSigns:
-    "This automatic check uses English-only rules, without cloud AI. It can miss scams in Spanish or other languages and cannot confirm who sent the email or whether its claims are true.",
-  checked: (when: string) => `Checked ${when} · done in LifeLink`,
+  checked: (when: string) => `Checked ${when}`,
   checkedAt: (when: string) => ` Checked ${when}.`,
   checking: "Checking…",
   checksAutomatic:
-    "Automatic checks don’t send email to an AI provider. Their rules cover English only and can miss scams in other languages. They can’t confirm who sent an email or whether what it says is true. “Check for new email” brings in your recent emails and checks them the same way.",
+    "With AI email checks enabled in Settings, new live email may be sent to a cloud AI provider. Practice email stays in LifeLink. Local English-only rules are used when cloud AI is off, unavailable, or does not finish. A failed cloud request may still have sent the email to the provider. Neither method can verify the sender or prove an email is safe.",
   checksIntro:
     "New email is checked in LifeLink for common scam signs. Pick a message to read it and see what stood out.",
   checksTitle: "How the email checks work",
   chooseEmail: "Choose an email to read it and see its scam check.",
+  cloudCheckNotice:
+    "Cloud AI helped check this email. It can make mistakes and cannot verify the sender. No warning signs does not mean the email is safe.",
   cloudConsent:
     "Send this email to a cloud AI service for a summary and to spot any appointment in it. Leave unchecked for a short preview made in LifeLink.",
   concern: "This email raised a concern. Check the request before acting.",
@@ -38,7 +38,7 @@ const email = {
   loadingEmail: "Loading email",
   loadingEmails: "Loading emails",
   localLanguageNotice:
-    "Automatic scam checks are designed for English only. They can miss scams in Spanish and other languages. No warning signs does not mean an email is safe.",
+    "This email check used local rules designed for English only. They can miss scams in Spanish and other languages. No warning signs does not mean an email is safe.",
   lowerPriority: "Lower priority",
   mailboxes: "Your mailboxes",
   mayNeedReply: "May need a reply",
@@ -55,7 +55,7 @@ const email = {
   noText: "This email has no text.",
   notChecked: "Not checked yet",
   notCheckedEmail: "This email has not been checked yet.",
-  notCheckedNote: "Not checked yet · done in LifeLink",
+  notCheckedNote: "Not checked yet",
   nowTheEmail: "Now, the email.",
   openManualCheck: "Open the manual scam check",
   opened: (subject: string) => `Opened: ${subject}`,
@@ -103,6 +103,8 @@ const email = {
   summarySpoken: "Email summary.",
   theEmail: "The email",
   title: "Email",
+  unknownCheckNotice:
+    "This saved check does not say whether it used cloud AI or local rules. Local rules cover English only and can miss scams in other languages. No warning signs does not mean the email is safe.",
   warning: {
     concern: "This email raised a concern. Check the request before acting.",
     intro: (reason: string) =>

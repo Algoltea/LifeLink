@@ -27,9 +27,10 @@ import {
   callTime,
   useCallScreeningMessages,
 } from "./call-screening-parts";
-import { CallSummary } from "./call-summary";
+import { CallSummary, outcomeOf } from "./call-summary";
 import { TrustedPeople } from "./trusted-people";
 import { useCallScreening } from "./use-call-screening";
+import type { CallState } from "./use-call-screening";
 
 const CallLanding = ({
   start,
@@ -163,6 +164,37 @@ const callErrorText = (
   return messages.connectionError;
 };
 
+const CallEnded = ({
+  onBack,
+  onRetry,
+  state,
+}: {
+  onBack: () => void;
+  onRetry: () => Promise<void>;
+  state: CallState;
+}) => {
+  const messages = useCallScreeningMessages();
+
+  return (
+    <div className="space-y-5">
+      {state.checking ? (
+        <output className="text-body">{messages.checkingLastPart}</output>
+      ) : null}
+      {state.notice ? (
+        <output className="text-body">{messages.timeLimit}</output>
+      ) : null}
+      <CallSummary
+        onBack={onBack}
+        onRetry={onRetry}
+        saveError={state.saveError}
+        saving={state.saving || state.checking}
+        summary={state}
+        summaryId={state.summaryId}
+      />
+    </div>
+  );
+};
+
 const CallScreening = ({
   onActiveChange,
 }: {
@@ -184,21 +216,7 @@ const CallScreening = ({
   }
 
   if (state.status === "ended") {
-    return (
-      <div className="space-y-5">
-        {state.notice ? (
-          <output className="text-body">{messages.timeLimit}</output>
-        ) : null}
-        <CallSummary
-          onBack={reset}
-          onRetry={retrySave}
-          saveError={state.saveError}
-          saving={state.saving}
-          summary={state}
-          summaryId={state.summaryId}
-        />
-      </div>
-    );
+    return <CallEnded onBack={reset} onRetry={retrySave} state={state} />;
   }
 
   const lastFlag = state.flags.at(-1);
@@ -282,6 +300,9 @@ const CallScreening = ({
           {messages.paused}
         </output>
       ) : null}
+      {state.checksUnavailable ? (
+        <output className="text-body">{messages.checksUnavailable}</output>
+      ) : null}
       {state.alertStatus === "unavailable" && !lastFlag ? (
         <output className="text-body">{messages.soundUnavailable}</output>
       ) : null}
@@ -294,9 +315,7 @@ const CallScreening = ({
             <p className="text-muted-foreground text-body">
               {messages.hangUpFirst}
             </p>
-            <TrustedPeople
-              message={state.practice ? messages.practiceHelp : undefined}
-            />
+            <TrustedPeople practiceCall={state.practice} />
           </aside>
         ) : null}
         <CallCaptions
@@ -332,6 +351,7 @@ const CallHistory = () => {
     <div className="flex flex-col gap-6">
       {current ? (
         <CallSummary
+          backLabel={messages.close}
           onBack={() => setSelected(null)}
           summary={{ ...current, practice: current.mode === "simulated" }}
           summaryId={current._id}
@@ -339,7 +359,7 @@ const CallHistory = () => {
       ) : null}
       <ul aria-label={messages.earlierAria}>
         {summaries.map((summary) => (
-          <li className="border-rule border-messages" key={summary._id}>
+          <li className="border-rule border-t" key={summary._id}>
             <button
               className="hover:bg-surface min-h-control flex w-full items-center gap-4 rounded-md px-2 py-4 text-left"
               onClick={() => setSelected(summary._id)}
@@ -357,9 +377,14 @@ const CallHistory = () => {
                   · {callTime(summary.durationMs)}
                 </span>
                 <span className="text-muted-foreground text-body">
-                  {summary.flags.length > 0
-                    ? messages.warnings
-                    : messages.noWarnings}{" "}
+                  {
+                    messages.outcomeLabels[
+                      outcomeOf({
+                        ...summary,
+                        practice: summary.mode === "simulated",
+                      })
+                    ]
+                  }{" "}
                   ·{" "}
                   {ago(
                     summary.createdAt,

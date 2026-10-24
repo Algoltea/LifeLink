@@ -14,6 +14,7 @@ const threads: Messages["threads"] = {
     in_app: "Mensaje de LifeLink",
     telegram: "Telegram",
   },
+  chooseConversation: "Elija a alguien para leer su conversación y responder.",
   conversationWith: (name) => `Conversación con ${name}`,
   conversationWithPrefix: "Conversación con ",
   conversations: "Conversaciones",
@@ -29,6 +30,7 @@ const threads: Messages["threads"] = {
   maxPhotos: (count) =>
     `Puede adjuntar hasta ${count} fotos. Quite una para agregar otra.`,
   messageTo: (firstName) => `Mensaje para ${firstName}`,
+  messagesWith: (name) => `Mensajes con ${name}`,
   noWayToReach: "Todavía no hay forma de comunicarse",
   noWayToReachName: (firstName) =>
     `Todavía no hay forma de comunicarse con ${firstName}`,
@@ -40,6 +42,7 @@ const threads: Messages["threads"] = {
     `${count} mensajes para ${firstName} esperan su aprobación.`,
   pendingOne: (firstName) =>
     `Un mensaje para ${firstName} espera su aprobación.`,
+  peopleCount: (count) => `${count} ${count === 1 ? "persona" : "personas"}`,
   photoCount: (count) => `${count} ${count === 1 ? "foto" : "fotos"}`,
   photoInvalid: (name) =>
     `${name}: Por favor, elija una foto (JPEG, PNG, WebP o HEIC).`,
@@ -78,6 +81,8 @@ const threads: Messages["threads"] = {
     "Escriba a las personas de su círculo de confianza. Usted ve cada mensaje antes de que se envíe.",
   title: "Mensajes",
   toAddress: (address) => ` a ${address}`,
+  waitingForApproval: (count) =>
+    count === 1 ? "Espera su aprobación" : `${count} esperan su aprobación`,
   writeTo: (firstName) => `Escribir a ${firstName}`,
   writeToPlaceholder: (firstName) => `Escribir a ${firstName}…`,
 };

@@ -12,6 +12,8 @@ const threads = {
     in_app: "LifeLink message",
     telegram: "Telegram",
   },
+  chooseConversation:
+    "Choose someone to read your conversation and write back.",
   conversationWith: (name: string) => `Conversation with ${name}`,
   conversationWithPrefix: "Conversation with ",
   conversations: "Conversations",
@@ -27,6 +29,7 @@ const threads = {
   maxPhotos: (count: number) =>
     `You can attach up to ${count} photos. Remove one to add another.`,
   messageTo: (firstName: string) => `Message to ${firstName}`,
+  messagesWith: (name: string) => `Messages with ${name}`,
   noWayToReach: "No way to reach them yet",
   noWayToReachName: (firstName: string) => `No way to reach ${firstName} yet`,
   notSent: "Not sent",
@@ -37,6 +40,8 @@ const threads = {
     `${count} messages to ${firstName} are waiting for your approval.`,
   pendingOne: (firstName: string) =>
     `A message to ${firstName} is waiting for your approval.`,
+  peopleCount: (count: number) =>
+    `${count} ${count === 1 ? "person" : "people"}`,
   photoCount: (count: number) => `${count} ${count === 1 ? "photo" : "photos"}`,
   photoInvalid: (name: string) =>
     `${name}: Please choose a photo (JPEG, PNG, WebP, or HEIC).`,
@@ -75,6 +80,10 @@ const threads = {
     "Write to the people in your trusted circle. You see every message before it’s sent.",
   title: "Messages",
   toAddress: (address: string) => ` to ${address}`,
+  waitingForApproval: (count: number) =>
+    count === 1
+      ? "Waiting for your approval"
+      : `${count} waiting for your approval`,
   writeTo: (firstName: string) => `Write to ${firstName}`,
   writeToPlaceholder: (firstName: string) => `Write to ${firstName}…`,
 };

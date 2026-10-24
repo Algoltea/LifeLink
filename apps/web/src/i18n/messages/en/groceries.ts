@@ -2,6 +2,21 @@ const groceries = {
   about: (amount: string) => `about ${amount}`,
   addItem: "Add item",
   addItems: "Add items",
+  aisles: {
+    bakery: "Bakery",
+    dairy: "Dairy and eggs",
+    deli: "Deli",
+    drinks: "Drinks",
+    frozen: "Frozen",
+    household: "Household",
+    meat: "Meat and fish",
+    other: "Everything else",
+    pantry: "Pantry",
+    personal: "Health and personal care",
+    pets: "Pets",
+    produce: "Fruit and vegetables",
+    snacks: "Snacks",
+  },
   allInCart: "Everything is in your cart.",
   backToGroceries: "Back to groceries",
   backToLists: "Back to your lists",
@@ -11,6 +26,7 @@ const groceries = {
   budgetLabel: "Budget for this list ($)",
   cancel: "Cancel",
   chooseList: "Choose a list",
+  clearItemSearch: "Clear search",
   copied: "List copied. You can paste it into a message.",
   copyAsText: "Copy as text",
   copyFailed: "Copying didn't work in this browser. Try printing instead.",
@@ -50,6 +66,10 @@ const groceries = {
   item: "Item",
   itemCount: (count: number) => `${count} ${count === 1 ? "item" : "items"}`,
   itemPlaceholder: "Bananas",
+  itemSearch: "Find an item on this list",
+  itemSearchCount: (shown: number, total: number) =>
+    `${shown} of ${total} ${total === 1 ? "item matches" : "items match"}`,
+  itemSearchPlaceholder: "Find an item, like milk",
   items: "Items",
   itemsOn: (name: string) => `Items on ${name}`,
   itemsToBuy: "Items to buy",
@@ -70,13 +90,21 @@ const groceries = {
   moreAbove: "More lists above",
   moreBelow: "Scroll for more lists",
   moveBack: "Move back to current lists",
+  moveHint: "Move any item that's in the wrong place.",
+  moveItem: (name: string, direction: "up" | "down", aisle: string | null) =>
+    `Move ${name} ${direction}${aisle === null ? "" : `, into ${aisle}`}`,
+  movedItem: (name: string, direction: "up" | "down", aisle: string | null) =>
+    `Moved ${name} ${direction}${aisle === null ? "" : `, into ${aisle}`}.`,
   movedToPast: (name: string) => `Moved “${name}” to past lists.`,
   newEmptyList: "New empty list",
   newList: "New list",
   noBudget: "No budget",
   noGuess: "no guess",
+  noMatchingItems: (query: string) =>
+    `Nothing on this list matches “${query}”.`,
   noMatchingUnit: "No matching unit.",
   notSet: "Not set",
+  notSorted: "Not sorted yet",
   notes: (notes: string) => `Notes: ${notes}`,
   nothingOnList: "Nothing on this list yet.",
   nothingOnListHint:
@@ -131,6 +159,18 @@ const groceries = {
   saveDetails: "Save details",
   scrollList: "Scroll the list to see every item.",
   showAllUnits: "Show all units",
+  sortByAisle: "Sort by aisle",
+  sortFallback: {
+    failed:
+      "The assistant didn't answer, so LifeLink's built-in guide was used.",
+    limit:
+      "The assistant has sorted a lot of lists recently, so LifeLink's built-in guide was used.",
+    unavailable: "Sorted with LifeLink's built-in guide.",
+  },
+  sortNewByAisle: "Sort new items by aisle",
+  sortedByAisle: (count: number) =>
+    `Sorted ${count} ${count === 1 ? "item" : "items"} by aisle.`,
+  sorting: "Sorting…",
   startFromThis: "Start a new list from this one",
   startFromUsual: "Start from your usual list",
   startedFrom: (name: string) =>
@@ -141,7 +181,7 @@ const groceries = {
   takeWithYou: "Take your list with you",
   thisIsUsual: "This is your usual list",
   tickHint:
-    "Tick an item when it is in your cart. It moves to the bottom, stays in the total, and is left out when you copy or print the list.",
+    "Tick an item when it is in your cart. It moves to the bottom, stays in the total, and is left out when you copy or print the list. Use the arrows to move an item up or down. Sort by aisle puts items in the order you reach them in a typical store, with frozen food last.",
   title: "Groceries",
   toGet: (count: number) => `${count} ${count === 1 ? "item" : "items"} to get`,
   totalEstimate: "Total estimate ($)",

@@ -1,18 +1,18 @@
 // LifeLink service worker.
 //
 // What is cached, and why it is safe:
-// - /offline.html and /solitaire: public pages with no personal data.
+// - /offline.html, /solitaire, and /mahjong: public pages with no personal data.
 // - /_next/static/*: content-hashed code, fonts, and styles; identical for everyone.
 // - /icons/*: app icons.
 // Nothing else is ever cached: signed-in pages, React Server Component
 // payloads, Convex traffic, files, and API routes always go to the network.
 //
 // Bump VERSION when changing this file or offline.html so installed apps refresh.
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `lifelink-shell-${VERSION}`;
 const STATIC_CACHE = `lifelink-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
-const PUBLIC_PAGES = ["/solitaire"];
+const PUBLIC_PAGES = ["/solitaire", "/mahjong"];
 const STATIC_ASSET = /\/_next\/static\/[^"'\s)]+/gu;
 
 // Caching is best effort: a failure only means less is available offline.

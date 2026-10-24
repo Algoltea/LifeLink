@@ -2,10 +2,11 @@
 
 Start with [README.md](README.md) for setup, architecture, and current verification limits. [docs/repository-guide.md](docs/repository-guide.md) maps code ownership, initial commit boundaries, and generated files for agents joining the project.
 
-- `apps/web`: Next.js app, accessible screens, offline support, and solitaire UI.
+- `apps/web`: Next.js app, accessible screens, offline support, and the Solitaire and Mahjong UIs.
 - `packages/backend`: Convex data, authorization, approval/execution workflows, provider adapters, and backend tests. Read its `AGENTS.md` before editing.
 - `packages/contracts`: shared schemas, action fingerprints, and sharing scopes.
 - `packages/solitaire`: pure game rules, serialization, and engine tests.
+- `packages/mahjong`: pure Mahjong solitaire rules, layouts, winnable deals, serialization, and engine tests.
 - `packages/ui`: shared components and design tokens.
 - `apps/discord-bridge`: Discord Gateway client and signed forwarding to Convex.
 - `scripts/setup`: dependency-free, repeatable developer setup.

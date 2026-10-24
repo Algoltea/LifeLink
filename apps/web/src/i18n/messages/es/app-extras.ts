@@ -24,6 +24,7 @@ const appExtras: typeof EnglishAppExtras = {
     connectionsTitle: "Conexiones",
     conversation: "Cargando la conversación",
     conversations: "Cargando conversaciones",
+    conversationsTitle: "Conversaciones",
     documentsTitle: "Documentos",
     drive: "Cargando sus archivos de Drive",
     driveNotice:
@@ -102,11 +103,13 @@ const appExtras: typeof EnglishAppExtras = {
       "El correo y la contraseña no coinciden. Revíselos e inténtelo de nuevo.",
     modeLabel: "Iniciar sesión o crear una cuenta",
     name: "Su nombre completo",
+    or: ", o ",
     password: "Contraseña",
     passwordHint: (count: number): string => `Al menos ${count} caracteres.`,
     passwordMinimum: (count: number): string =>
       `Elija una contraseña de al menos ${count} caracteres.`,
     play: "Jugar al solitario sin iniciar sesión",
+    playMahjong: "jugar al Mahjong",
     show: "Mostrar",
     showPassword: "Mostrar contraseña",
     signIn: "Iniciar sesión",

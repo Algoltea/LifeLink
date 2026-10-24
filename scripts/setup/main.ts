@@ -601,6 +601,7 @@ const validate = async (
       return await checkOpenRouter(value("OPENROUTER_API_KEY"), [
         value("OPENROUTER_MODEL"),
         value("OPENROUTER_FAST_MODEL"),
+        value("OPENROUTER_SCAM_MODEL") || "openai/gpt-6-luna",
         value("OPENROUTER_TTS_MODEL"),
       ]);
     }

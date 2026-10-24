@@ -7,6 +7,7 @@ import { Segmented } from "@lifelink/ui/components/segmented";
 import Link from "next/link";
 import { useId, useState } from "react";
 
+import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { authClient } from "@/lib/auth-client";
@@ -181,6 +182,15 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
         >
           {words.play}
         </Link>
+        <span className={HIDE_ON_PHONES}>
+          {words.or}
+          <Link
+            className="text-accent-foreground inline-flex min-h-12 items-center font-medium underline"
+            href="/mahjong"
+          >
+            {words.playMahjong}
+          </Link>
+        </span>
       </p>
     </main>
   );

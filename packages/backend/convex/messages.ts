@@ -22,7 +22,7 @@ const ALLOWED_PHOTO_TYPES = new Set([
   "image/heic",
 ]);
 
-/** People with their last message, for the Messages list. */
+/** People with their last message and how many messages to them await approval, for the Messages list. */
 export const threads = query({
   args: {},
   handler: async (ctx) => {
@@ -43,6 +43,13 @@ export const threads = query({
           .order("desc")
           .first();
 
+        const pending = await ctx.db
+          .query("tasks")
+          .withIndex("by_contact_status", (index) =>
+            index.eq("contactId", contact._id).eq("status", "awaiting_approval")
+          )
+          .collect();
+
         return {
           channel: channelFor(contact)?.channel ?? null,
           contact: {
@@ -56,6 +63,7 @@ export const threads = query({
             trusted: contact.trusted,
           },
           last,
+          waiting: pending.filter((task) => task.ownerId === owner._id).length,
         };
       })
     );

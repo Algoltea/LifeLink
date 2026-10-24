@@ -196,7 +196,7 @@ const solitaire: typeof english = {
   hintMove: (source: string, target: string) =>
     `Pista: mueva ${source} ${target}.`,
   howToPlay: "Cómo jugar",
-  intro: "Un juego tranquilo. Disponible sin conexión.",
+  intro: "Un juego tranquilo.",
   key: "Tecla",
   keyboard: "Teclas del teclado",
   keys: [
@@ -245,8 +245,7 @@ const solitaire: typeof english = {
   ],
   ready: "Hay una nueva partida lista. Elija una carta para empezar.",
   resumed: "Se reanudó su última partida.",
-  resumedAt: (date: string) =>
-    `Se reanudó su última partida, guardada el ${date}.`,
+  resumedAt: (date: string) => `Se reanudó su partida, guardada ${date}.`,
   rules:
     "Forme cuatro montones del as al rey, cada uno en el lugar marcado con su palo (♠ ♥ ♣ ♦). En las siete columnas, coloque cada carta sobre otra de valor inmediatamente superior y de distinto color: un 7 rojo sobre un 8 negro. Solo un rey puede ir en una columna vacía. Robe del mazo cuando no pueda avanzar.",
   safeCards: "Enviar cartas seguras a las bases",
@@ -254,6 +253,8 @@ const solitaire: typeof english = {
     "Este navegador no permite guardar la partida. Perderá su progreso si cierra esta página.",
   savedHint:
     "Su partida se guarda en este dispositivo después de cada movimiento, incluso sin conexión a internet.",
+  savedOn: (day: string, time: string) => `el ${day} a las ${time}`,
+  savedToday: (time: string) => `hoy a las ${time}`,
   scrollHint:
     "Desplace la mesa hacia los lados para llegar a cada montón o gire su teléfono para tener más espacio.",
   selected: " Seleccionada.",

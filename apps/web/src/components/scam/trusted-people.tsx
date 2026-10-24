@@ -23,6 +23,8 @@ import { messageOf } from "@/lib/errors";
 interface TrustedPeopleProps {
   reviewId?: Id<"scamReviews">;
   message?: string;
+  /** Select the practice template in the recipient’s language when no body is provided. */
+  practiceCall?: boolean;
   disabled?: boolean;
 }
 
@@ -182,6 +184,7 @@ const TrustedPersonRow = ({
 const TrustedPeople = ({
   reviewId,
   message,
+  practiceCall = false,
   disabled = false,
 }: TrustedPeopleProps) => {
   const contacts = useQuery(api.contacts.list);
@@ -201,12 +204,20 @@ const TrustedPeople = ({
   const t = useMessages().trustedPeople;
   const canCall = me?.profile?.demoMode === false;
 
-  // A message they will read, so in their language.
-  const bodyFor = (contact: CircleContact): string =>
-    message ??
-    messagesFor(
+  const bodyFor = (contact: CircleContact): string => {
+    // Authored bodies are exact; only new templates follow the recipient’s language.
+    if (message !== undefined) {
+      return message;
+    }
+
+    const recipientMessages = messagesFor(
       contact.language ?? interfaceLocaleOf(me?.preferences?.supportLanguage)
-    ).trustedPeople.callHelpMessage;
+    );
+
+    return practiceCall
+      ? recipientMessages.callScreening.practiceHelp
+      : recipientMessages.trustedPeople.callHelpMessage;
+  };
 
   const trusted = contacts?.filter(
     (contact) => contact.trusted && !contact.sample

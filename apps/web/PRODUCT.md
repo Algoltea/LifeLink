@@ -16,7 +16,7 @@ LifeLink prepares useful actions and lets the person understand and approve the 
 
 ## Operating Context
 
-The existing Next.js app includes Today, Ask LifeLink, task detail, Messages, Email, Scam check, Trusted circle, Family, Groceries, Connections, Settings, onboarding, authentication, and offline Solitaire. Preserve these supported screens and their behavior during the visual replacement; retired shopping flows follow the recovery behavior below.
+The existing Next.js app includes Today, Ask LifeLink, task detail, Messages, Email, Scam check, Trusted circle, Family, Groceries, Connections, Settings, onboarding, authentication, and offline Solitaire and Mahjong. Preserve these supported screens and their behavior during the visual replacement; retired shopping flows follow the recovery behavior below.
 
 ## Capabilities and Constraints
 
@@ -29,7 +29,7 @@ The existing Next.js app includes Today, Ask LifeLink, task detail, Messages, Em
 - Groceries retain lists, preferences, budgets, and copy and print options. No shopping actions or Instacart integration controls are shown.
 - LifeLink's live Instacart integration was retired on 2026-10-24. The unused internal adapter is retained, but no live shopping handoff is available. The obsolete `/groceries/practice` shopping route provides recovery to grocery lists at `/groceries`.
 - Family is read-only: a family member cannot send, approve, or spend for the owner.
-- Solitaire remains available offline and retains its navigation context. The offline fallback gives a clear retry path and access to the game.
+- Solitaire and Mahjong remain available offline and retain their navigation context. The offline fallback gives a clear retry path and access to the games. Mahjong is for tablets and computers; phones see a note that points to Solitaire.
 - No external messages or live transactions are authorized by the design exercise.
 
 ## Brand Commitments

@@ -3,6 +3,9 @@ import type { Messages } from "../en";
 const settings: Messages["settings"] = {
   accountsAndPermissions: "Cuentas y permisos",
   accountsLink: "Cuentas que LifeLink puede usar",
+  aiEmailChecks: "Revisar correos nuevos con IA",
+  aiEmailChecksDescription:
+    "Cuando llega un correo nuevo, un servicio de IA en la nube lo revisa en busca de señales de estafa. Los correos antiguos y los de práctica nunca se envían.",
   captions: "Subtítulos al hablar",
   captionsDescription: "Muestra las palabras mientras habla con LifeLink.",
   characterCount: (count, maximum) => `${count} de ${maximum} caracteres`,
@@ -13,6 +16,7 @@ const settings: Messages["settings"] = {
     "Más contraste hace el texto más oscuro y los bordes más marcados.",
   contrastMore: "Más contraste",
   contrastStandard: "Normal",
+  defaultVoice: "Voz predeterminada de LifeLink",
   demoAllowedHint: "Este interruptor se guarda automáticamente.",
   demoBetweenModes:
     "Todo lo que se prepare en un modo debe revisarse de nuevo antes de usarse en el otro.",
@@ -39,7 +43,7 @@ const settings: Messages["settings"] = {
   helpTitle: "Cómo me gusta recibir ayuda",
   language: "Idioma",
   languageDescription:
-    "Elija el idioma de las pantallas de LifeLink y de la ayuda en la nube. Las pantallas están disponibles en inglés y español; con otras opciones, quedan en inglés. La ayuda en la nube puede usar otros idiomas cuando esté disponible. Las revisiones locales de estafas y las revisiones automáticas del correo usan reglas solo para el inglés y pueden pasar por alto estafas en otros idiomas. Las citas y los mensajes conservan sus palabras originales.",
+    "Elija el idioma de las pantallas de LifeLink y de la ayuda en la nube. Las pantallas principales están disponibles en inglés y español; con otras opciones, quedan en inglés. La ayuda en la nube puede usar otros idiomas cuando esté disponible. Las revisiones de estafas y de correo que usan reglas locales solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. Las citas y los mensajes conservan sus palabras originales.",
   lessMovement: "Menos movimiento",
   lessMovementDescription: "Quita los deslizamientos y desvanecimientos.",
   loading: "Cargando los ajustes",
@@ -68,6 +72,9 @@ const settings: Messages["settings"] = {
   readAloudAuto: "Leer en voz alta automáticamente",
   readAloudAutoDescription:
     "LifeLink lee en voz alta los resúmenes y las respuestas nuevas.",
+  readAloudVoice: "Voz de lectura en voz alta",
+  readAloudVoiceDescription:
+    "Elija quién le lee. La opción predeterminada de LifeLink usa la voz estándar.",
   saveNotes: "Guardar notas",
   saveProfile: "Guardar perfil",
   saved: "Guardado.",

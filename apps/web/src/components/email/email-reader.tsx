@@ -24,8 +24,12 @@ import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
 import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
-import { translateServerMessage } from "@/i18n/server-messages";
-import { emailWarningIntro, hasEmailWarning } from "@/lib/email-warning";
+import {
+  emailCheckNotice,
+  emailWarningIntro,
+  emailWarningSign,
+  hasEmailWarning,
+} from "@/lib/email-warning";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay, formatTime, formatWhen } from "@/lib/format";
 
@@ -56,7 +60,7 @@ const checkLinkClass = buttonVariants({
   variant: "outline",
 });
 
-/** The local check's result, said once, where it can't be missed. */
+/** The saved check's result and limits, where they can't be missed. */
 const ScanBanner = ({
   email,
   warningSigns,
@@ -67,6 +71,7 @@ const ScanBanner = ({
   const locale = useLocale();
   const t = useMessages().email;
   const scanSummary = scanSummaryFor(email, t);
+  const checkNotice = emailCheckNotice(email, locale);
   const checkHref = { pathname: "/scam", query: { email: email._id } };
 
   if (email.scamCheck !== undefined && !hasEmailWarning(email)) {
@@ -77,7 +82,7 @@ const ScanBanner = ({
           className="mt-0.5 size-5 shrink-0"
         />
         <span>
-          {scanSummary} {t.localLanguageNotice}
+          {scanSummary} {checkNotice}
         </span>
       </p>
     );
@@ -111,14 +116,14 @@ const ScanBanner = ({
         {!pending && warningSigns.length > 0 ? (
           <ul className="text-body mt-2 flex list-disc flex-col gap-1 pl-5">
             {warningSigns.map((sign) => (
-              <li key={sign}>{translateServerMessage(sign, locale)}</li>
+              <li key={sign}>{emailWarningSign(email, sign, locale)}</li>
             ))}
           </ul>
         ) : null}
         {!pending && warningSigns.length === 0 ? (
           <p className="text-body">{t.concern}</p>
         ) : null}
-        <p className="text-body mt-2">{t.localLanguageNotice}</p>
+        {checkNotice ? <p className="text-body mt-2">{checkNotice}</p> : null}
       </div>
       <Link
         className={buttonVariants({ className: "self-start", size: "sm" })}
@@ -338,7 +343,7 @@ const CheckDisclosure = ({
     >
       <p className="font-semibold">{scanSummaryFor(email, t)}</p>
       <p className="text-muted-foreground text-label">
-        {t.checkUsesSigns}
+        {emailCheckNotice(email, locale) || t.checksAutomatic}
         {email.scamCheck === undefined
           ? t.checkManually
           : t.checkedAt(

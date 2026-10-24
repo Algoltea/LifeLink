@@ -11,6 +11,7 @@ import {
   MESSAGES_TRANSCRIPT,
   MESSAGES_WORKSPACE,
 } from "@/components/messages/chat-layout";
+import { MessagesNotice } from "@/components/messages/messages-notice";
 import { useMessages } from "@/i18n/locale";
 
 import { LoadingButton } from "./loading-button";
@@ -26,22 +27,6 @@ const MessageLine = ({ className }: { className?: string }) => (
     <Skeleton className="h-4 w-full" />
   </div>
 );
-
-const MessagesLoadingHeader = () => {
-  const { appExtras } = useMessages();
-
-  return (
-    <PageHeader
-      actions={
-        <LoadingButton icon size="default">
-          {appExtras.loading.addPerson}
-        </LoadingButton>
-      }
-      subline={appExtras.loading.messagesBody}
-      title={appExtras.loading.messagesTitle}
-    />
-  );
-};
 
 const MessagesLoadingRows = ({ rows }: { rows: number }) => (
   <div
@@ -174,7 +159,7 @@ const MessagesLoadingWorkspace = ({
     >
       <output className="sr-only">{label}</output>
       <header aria-hidden="true" className={MESSAGES_HEADER}>
-        <Skeleton className="min-h-control min-w-control inline-flex items-center gap-2 border border-transparent px-2 py-2 text-[0.889rem] font-medium sm:pr-4">
+        <Skeleton className="min-h-control min-w-control inline-flex items-center gap-2 border border-transparent px-2 py-2 text-[0.889rem] font-medium sm:pr-4 @3xl/content:hidden">
           <span className="invisible size-6 shrink-0 sm:size-5" />
           <span className="invisible hidden sm:inline">
             {appExtras.loading.messagesTitle}
@@ -187,10 +172,6 @@ const MessagesLoadingWorkspace = ({
         </div>
         <LoadingButton className="px-3 text-[0.889rem] sm:px-4" icon>
           {appExtras.loading.recap}
-          <span className="hidden lg:inline">
-            {" "}
-            {appExtras.loading.thisConversation}
-          </span>
         </LoadingButton>
       </header>
       <section
@@ -204,6 +185,45 @@ const MessagesLoadingWorkspace = ({
         <MessagesLoadingComposer />
       </div>
     </div>
+  );
+};
+
+/** The real frame's header, notice, and panes, so a hard refresh lands where the page will be. */
+const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
+  const { appExtras } = useMessages();
+  const besideOnly = open ? "hidden @3xl/content:flex" : undefined;
+
+  return (
+    <>
+      <PageHeader
+        actions={
+          <LoadingButton icon size="default">
+            {appExtras.loading.addPerson}
+          </LoadingButton>
+        }
+        className={cn("items-center", besideOnly)}
+        title={appExtras.loading.messagesTitle}
+      />
+      <MessagesNotice className={besideOnly} />
+      <div className="grid gap-6 @3xl/content:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] @3xl/content:gap-0">
+        <div
+          className={cn(
+            "min-w-0 flex-col @3xl/content:self-stretch @3xl/content:border-r @3xl/content:pr-4",
+            besideOnly ?? "flex"
+          )}
+        >
+          <p className="text-section px-3 pb-3 font-semibold">
+            {appExtras.loading.conversationsTitle}
+          </p>
+          <MessagesLoadingRows rows={3} />
+        </div>
+        {open ? (
+          <div className="flex min-w-0 flex-col @3xl/content:pl-10">
+            <MessagesLoadingWorkspace label={appExtras.loading.conversation} />
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 };
 
@@ -233,7 +253,7 @@ const RecapLoadingBody = () => {
 };
 
 export {
-  MessagesLoadingHeader,
+  MessagesLoadingFrame,
   MessagesLoadingRows,
   MessagesLoadingTranscript,
   MessagesLoadingWorkspace,

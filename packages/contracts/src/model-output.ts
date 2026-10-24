@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 
+import { callWarningKinds } from "./call-screening";
 import { signalStances } from "./evidence";
 
 const nullableString = z.string().nullable();
@@ -125,6 +126,22 @@ const scamReviewSchema = z.strictObject({
 });
 
 type ScamReviewResult = z.infer<typeof scamReviewSchema>;
+
+/** Warning signs in a rolling, unlabeled live-call transcript. */
+const callWarningSchema = z.strictObject({
+  signs: z
+    .array(
+      z.strictObject({
+        kind: z.enum(callWarningKinds),
+        quote: z
+          .string()
+          .describe(
+            "The exact words from the transcript, copied character for character."
+          ),
+      })
+    )
+    .describe("Empty when nothing in the transcript is a clear warning sign."),
+});
 
 const replyKinds = ["accept", "clarify", "decline"] as const;
 
@@ -331,6 +348,7 @@ type Briefing = z.infer<typeof briefingSchema>;
 
 export {
   appointmentExtractionSchema,
+  callWarningSchema,
   assistantIntents,
   assistantPlanSchema,
   briefingSchema,

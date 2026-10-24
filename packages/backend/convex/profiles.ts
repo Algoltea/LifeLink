@@ -9,6 +9,7 @@ import { audit } from "./lib/audit";
 import { demoModeAllowed } from "./lib/env";
 import { authUserIdOf, findProfile, requireProfile } from "./lib/session";
 import { isValidTimeZone } from "./lib/time";
+import schema from "./schema";
 
 const DEFAULT_SPEECH_RATE = 0.9;
 
@@ -31,6 +32,7 @@ const defaultPreferences = (
   readAloud: false,
   reducedMotion: false,
   speechRate: DEFAULT_SPEECH_RATE,
+  speechVoice: null,
   textScale: 1,
   theme: "light",
   updatedAt: Date.now(),
@@ -226,6 +228,7 @@ export const updateProfile = mutation({
 
 export const updatePreferences = mutation({
   args: {
+    aiEmailChecks: v.optional(v.boolean()),
     captions: v.optional(v.boolean()),
     communicationNotes: v.optional(v.union(v.string(), v.null())),
     contrast: v.optional(v.union(v.literal("standard"), v.literal("more"))),
@@ -238,6 +241,7 @@ export const updatePreferences = mutation({
     reducedMotion: v.optional(v.boolean()),
     showNews: v.optional(v.boolean()),
     speechRate: v.optional(v.number()),
+    speechVoice: schema.tables.preferences.validator.fields.speechVoice,
     stepByStep: v.optional(v.boolean()),
     supportLanguage: v.optional(v.string()),
     textScale: v.optional(v.number()),
@@ -249,6 +253,10 @@ export const updatePreferences = mutation({
     const profile = await requireProfile(ctx);
     const preferences = await preferencesOf(ctx, profile);
     const patch: Partial<Doc<"preferences">> = { updatedAt: Date.now() };
+
+    if (args.aiEmailChecks !== undefined) {
+      patch.aiEmailChecks = args.aiEmailChecks;
+    }
 
     if (args.captions !== undefined) {
       patch.captions = args.captions;
@@ -299,6 +307,10 @@ export const updatePreferences = mutation({
 
     if (args.speechRate !== undefined) {
       patch.speechRate = Math.min(1.5, Math.max(0.5, args.speechRate));
+    }
+
+    if (args.speechVoice !== undefined) {
+      patch.speechVoice = args.speechVoice;
     }
 
     if (args.textScale !== undefined) {

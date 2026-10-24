@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  CALL_WARNING_REASONS,
+  callWarningKinds,
+} from "@lifelink/contracts/call-screening";
 import type { CallCaption, CallFlag } from "@lifelink/contracts/call-screening";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
@@ -25,6 +29,10 @@ const callFlagReason = (reason: string, messages: typeof en): string => {
     [en.credentialsReason, messages.credentialsReason],
     [en.remoteReason, messages.remoteReason],
     [en.secrecyReason, messages.secrecyReason],
+    ...callWarningKinds.map(
+      (kind) =>
+        [CALL_WARNING_REASONS[kind], messages.warningReasons[kind]] as const
+    ),
   ]);
 
   return reasons.get(reason) ?? reason;
@@ -247,9 +255,7 @@ const CallWarningGuide = () => {
         <li>{messages.remote}</li>
         <li>{messages.urgency}</li>
       </ul>
-      <p className="border-rule border-messages pt-4">
-        {messages.guideCaution}
-      </p>
+      <p className="border-rule border-t pt-4">{messages.guideCaution}</p>
     </aside>
   );
 };

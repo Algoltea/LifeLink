@@ -45,7 +45,6 @@ describe("Solitaire language changes", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    act(() => root.render(<SolitaireTable />));
   });
 
   afterEach(() => {
@@ -53,10 +52,93 @@ describe("Solitaire language changes", () => {
     container.remove();
     localStorage.clear();
     setLocale("en");
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it("updates board labels, saved dates and narration without losing progress or undo", () => {
+  it.each(["today", "an earlier day"] as const)(
+    "translates the single opening notice for a game saved %s without remounting",
+    (when) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(
+        when === "today" ? SAVED_AT : new Date("2026-11-01T12:00:00.000Z")
+      );
+      act(() => root.render(<SolitaireTable />));
+
+      const announcement = container.querySelector("output span");
+      const stock = buttonNamed("Stock, 24 cards. Press to draw.");
+      const saved = localStorage.getItem(STORAGE_KEY);
+
+      const englishTime = SAVED_AT.toLocaleTimeString("en-US", {
+        timeStyle: "short",
+      });
+
+      const spanishTime = SAVED_AT.toLocaleTimeString("es-US", {
+        timeStyle: "short",
+      });
+
+      const englishDay =
+        when === "today"
+          ? "today"
+          : `on ${SAVED_AT.toLocaleDateString("en-US", { day: "numeric", month: "short" })}`;
+
+      const spanishDay =
+        when === "today"
+          ? "hoy"
+          : `el ${SAVED_AT.toLocaleDateString("es-US", { day: "numeric", month: "short" })}`;
+
+      const englishNotice = `Resumed your game, saved ${englishDay} at ${englishTime}.`;
+      const spanishNotice = `Se reanudó su partida, guardada ${spanishDay} a las ${spanishTime}.`;
+
+      expect({
+        message: announcement?.textContent,
+        noticeCount:
+          (container.textContent?.split(englishNotice).length ?? 1) - 1,
+        offersFresh: container.textContent?.includes(EN.startFresh),
+      }).toStrictEqual({
+        message: englishNotice,
+        noticeCount: 1,
+        offersFresh: false,
+      });
+      act(() => stock.focus());
+
+      act(() => setLocale("es"));
+
+      expect({
+        announcement: container.querySelector("output span") === announcement,
+        focused: document.activeElement === stock,
+        message: announcement?.textContent,
+        noticeCount:
+          (container.textContent?.split(spanishNotice).length ?? 1) - 1,
+        saved: localStorage.getItem(STORAGE_KEY),
+        stock: buttonNamed(ES.stock(ES.cards(24))) === stock,
+      }).toStrictEqual({
+        announcement: true,
+        focused: true,
+        message: spanishNotice,
+        noticeCount: 1,
+        saved,
+        stock: true,
+      });
+
+      act(() => setLocale("en"));
+
+      expect({
+        announcement: container.querySelector("output span") === announcement,
+        focused: document.activeElement === stock,
+        message: announcement?.textContent,
+        saved: localStorage.getItem(STORAGE_KEY),
+      }).toStrictEqual({
+        announcement: true,
+        focused: true,
+        message: englishNotice,
+        saved,
+      });
+    }
+  );
+
+  it("updates board labels and narration without losing progress or undo, or repeating the resume notice", () => {
+    act(() => root.render(<SolitaireTable />));
     act(() => buttonNamed(EN.draw).click());
     const saved = localStorage.getItem(STORAGE_KEY);
     const stock = buttonNamed("Stock, 23 cards. Press to draw.");
@@ -98,14 +180,7 @@ describe("Solitaire language changes", () => {
       stock: true,
       waste: true,
     });
-    expect(container.textContent).toContain(
-      ES.resumedAt(
-        SAVED_AT.toLocaleString("es-US", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
-      )
-    );
+    expect(container.textContent).not.toContain("Se reanudó");
     expect(localStorage.getItem(STORAGE_KEY)).toBe(saved);
 
     act(() => {
@@ -126,6 +201,7 @@ describe("Solitaire language changes", () => {
   });
 
   it("retains the selected card, focus and draw preference in both directions", () => {
+    act(() => root.render(<SolitaireTable />));
     act(() => buttonNamed(EN.draw).click());
 
     const threeCards =
@@ -180,6 +256,7 @@ describe("Solitaire language changes", () => {
   });
 
   it("retains the hinted move and translates its marks and announcement", () => {
+    act(() => root.render(<SolitaireTable />));
     act(() => buttonNamed(EN.hint).click());
 
     const marked = [...container.querySelectorAll("button")].filter((button) =>
@@ -203,5 +280,58 @@ describe("Solitaire language changes", () => {
 
     expect(container.querySelector("output")?.textContent).toContain("Pista:");
     expect(localStorage.getItem(STORAGE_KEY)).toBe(saved);
+  });
+
+  it("starts a new game with the preferred draw count and keeps its announcement when the language changes", () => {
+    act(() => root.render(<SolitaireTable />));
+    act(() => buttonNamed(EN.draw).click());
+
+    const threeCards =
+      container.querySelector<HTMLInputElement>('input[value="3"]');
+
+    act(() => threeCards?.click());
+    act(() => buttonNamed(EN.newGame).click());
+
+    const announcement = container.querySelector("output span");
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    expect({
+      message: announcement?.textContent,
+      resumed: container.textContent?.includes("Resumed your game"),
+      undoDisabled: buttonNamed(EN.undo).disabled,
+    }).toStrictEqual({
+      message: "Dealt a new game, drawing three cards at a time.",
+      resumed: false,
+      undoDisabled: true,
+    });
+
+    act(() => setLocale("es"));
+
+    expect({
+      announcement: container.querySelector("output span") === announcement,
+      drawingThree: container.textContent?.includes(
+        "Robando tres cartas a la vez"
+      ),
+      hasNoMoves: container.textContent?.includes("0 movimientos"),
+      message: announcement?.textContent,
+      preferredDraw: threeCards?.checked,
+      resumed: container.textContent?.includes("Se reanudó"),
+      saved: localStorage.getItem(STORAGE_KEY),
+      undoDisabled: buttonNamed(ES.undo).disabled,
+    }).toStrictEqual({
+      announcement: true,
+      drawingThree: true,
+      hasNoMoves: true,
+      message: "Se repartió una nueva partida, robando tres cartas a la vez.",
+      preferredDraw: true,
+      resumed: false,
+      saved,
+      undoDisabled: true,
+    });
+
+    act(() => buttonNamed(ES.draw).click());
+
+    expect(buttonNamed(ES.stock(ES.cards(21)))).toBeDefined();
+    expect(container.textContent).toContain("1 movimiento");
   });
 });

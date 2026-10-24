@@ -129,8 +129,9 @@ Secrets never touch the browser or a committed file. There are three places:
 | **Family** (family member's view) | Only what was shared, re-checked on every read. Photos come through a permission-checked file route; there is an in-app reply |
 | **Groceries** | Saved lists, preferences, estimated costs, list budgets, and copy or print for shopping yourself |
 | **Solitaire** | Klondike with keyboard play, tap-to-move, undo, hints, and local save and resume. Works offline |
+| **Mahjong** | Mahjong solitaire with real Chinese tiles drawn as large, readable text. Tap two matching free tiles; Undo, Hint, and Shuffle are buttons beside the board. Easy (72 tiles) or Classic (the 144-tile Turtle). Every deal and every shuffle can be cleared. Saves locally and works offline. Tablet and computer only: phones see a note pointing to Solitaire |
 | **Connections** | Each person's own accounts, with a plain capability list: works, not wired yet, or not offered |
-| **Settings** | Text size, contrast, light or dark, less movement, read-aloud, speaking speed, captions, profile, Practice mode, and **How I like help**: short or detailed, one step at a time, a help language, and private notes |
+| **Settings** | Text size, contrast, light or dark, less movement, read-aloud voice, speaking speed, captions, profile, Practice mode, and **How I like help**: short or detailed, one step at a time, a help language, and private notes |
 
 **Principles.**
 
@@ -141,11 +142,11 @@ Secrets never touch the browser or a committed file. There are three places:
 
 ### Language support
 
-LifeLink's screens support English and Spanish. The device remembers the selected language before sign-in; without a saved choice, it follows the browser. Settings saves the account's help language, and onboarding carries the current screen language into the new profile. Other help languages keep English screens and fixed templates while cloud explanations can use the requested language.
+LifeLink's core app screens support English and Spanish. The device remembers the selected language before sign-in; without a saved choice, it follows the browser. Settings saves the account's help language, and onboarding carries the current screen language into the new profile. Other help languages keep English screens and fixed templates while cloud explanations can use the requested language. The newer public welcome page and Mahjong game currently retain English copy.
 
 Changing language updates labels and date/time formatting without resetting unsaved fields, keyboard focus, or the Solitaire game. A failed account save keeps the attempted selection and an explicit retry. Contact invitations and new message drafts follow the contact's language, with linked-profile or owner fallback. Saved messages, quotes, approved action details, email excerpts, and authored conversation titles remain as written. Existing daily briefings keep the language in which they were generated.
 
-Local scam checks, automatic email checks, local explanations, reply interpretation, and Practice request parsing still rely on English patterns. Translated controls and results do not add Spanish detection coverage. Practice call audio remains English; unknown provider errors retain their original details. Spanish interface copy uses respectful **usted**; family-message drafts retain their conversational tone.
+Local scam checks, email checks that use local rules, local explanations, reply interpretation, and Practice request parsing still rely on English patterns. Translated controls and results do not add Spanish detection coverage. Automatic cloud AI email checks identify their method separately. Practice call audio remains English; unknown provider errors retain their original details. Spanish interface copy uses respectful **usted**; family-message drafts retain their conversational tone.
 
 See [language verification and remaining limits](docs/language-support-handoff.md#pr-16-follow-up) for the tested scope, including offline Solitaire, and what still requires live-provider or native-speaker review.
 
@@ -159,7 +160,7 @@ The **Drafting Room** direction follows the Victorian inventor and brass-machine
 
 **Type.** IBM Plex Sans throughout: 18px body, 24px section titles, and 32px page titles. User text-size, contrast, color-theme, and reduced-motion preferences remain available.
 
-**Interaction.** Navigation stays consistent across routes, including Solitaire. Chat reviews display the latest action version directly in the conversation; chat history opens in a right-side drawer. Instrument markings and ticket edges carry the workshop character without covering content.
+**Interaction.** Navigation stays consistent across routes, including the games. Chat reviews display the latest action version directly in the conversation; chat history opens in a right-side drawer. Instrument markings and ticket edges carry the workshop character without covering content.
 
 **Accessibility commitments.**
 
@@ -184,7 +185,7 @@ The **Drafting Room** direction follows the Victorian inventor and brass-machine
 flowchart LR
   subgraph Browser["Browser (PWA)"]
     UI["Next.js App Router<br/>React 19 + Tailwind v4"]
-    SW["Service worker<br/>offline page + solitaire"]
+    SW["Service worker<br/>offline page + games"]
     Q["Offline queue<br/>(localStorage)"]
     Live["Gemini Live<br/>(ephemeral token)"]
   end
@@ -269,14 +270,14 @@ flowchart TB
   turbo --> web["apps/web<br/>next dev :3001"]
   turbo --> backend["packages/backend<br/>convex dev"]
   turbo --> bridge["apps/discord-bridge<br/>(exits if unconfigured)"]
-  web -.-> ui["packages/ui"] & contracts["packages/contracts"] & sol["packages/solitaire"]
+  web -.-> ui["packages/ui"] & contracts["packages/contracts"] & sol["packages/solitaire"] & mj["packages/mahjong"]
   backend -.-> contracts
 ```
 
 ### Offline and PWA
 
 - **Install:** the web app manifest provides icons (including maskable) and shortcuts to Today, Ask, and Solitaire.
-- **What is cached:** only `/offline.html`, `/solitaire`, content-hashed `/_next/static/*`, and icons. Signed-in pages, RSC payloads, Convex traffic, and files are never cached.
+- **What is cached:** only `/offline.html`, `/solitaire`, `/mahjong`, content-hashed `/_next/static/*`, and icons. Signed-in pages, RSC payloads, Convex traffic, and files are never cached.
 - **Offline work:** approvals and requests made offline wait in a local queue. On reconnect each is sent with `method: "offline_queue"` and goes through the full server checks again, so a stale approval of an old version is refused, not executed.
 
 ---
@@ -318,7 +319,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 
 - **Telegram:** create a bot with @BotFather and paste its token when setup asks (`bun run dev:setup --only=telegram`). Setup reads the bot's username, generates a webhook secret, and calls `setWebhook` for `<deployment>.convex.site/webhooks/telegram`. Every update must carry that secret in `X-Telegram-Bot-Api-Secret-Token`. A chat is only saved for a contact after it opens that contact's single-use link, and only that chat can be sent to.
 - **Photon Spectrum Stable:** use the UUID project ID and project secret from your existing dashboard. Beta `pho_prj_...` / `pho_sk_...` credentials belong to a different API. Setup uses Basic authentication, keeps existing shared-line users, and configures the Stable webhook. See the [Spectrum API](https://photon.codes/docs/api-reference/introduction).
-- **Read-aloud:** ElevenLabs speech is served by OpenRouter's audio endpoint with the same OpenRouter key. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
+- **Read-aloud:** ElevenLabs v4 turbo speech is served by OpenRouter's audio endpoint with the same OpenRouter key. Choose from 21 voices in **Settings**; the choice is saved to your account. Leaving the voice at the app default uses `OPENROUTER_TTS_VOICE`, or Sarah when unset. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
 - **Composio:**
   - Setup reuses or creates a Composio-managed auth config for Gmail, Outlook, Google Calendar, Google Drive, Facebook, and Instagram.
   - It points the project webhook at `<deployment>.convex.site/webhooks/composio`. It rotates the signing secret only if it doesn't already hold one, because rotating breaks other listeners.
@@ -359,12 +360,13 @@ Built at SBUHacks 2026 (October 23 to 25) with Claude Code and Codex.
 
 ```
 apps/
-  web/               Next.js 16 App Router PWA (src/app, src/components, src/features/solitaire)
+  web/               Next.js 16 App Router PWA (src/app, src/components, src/features/{solitaire,mahjong})
   discord-bridge/    Bun Gateway client → signed POST to Convex /bridge/discord
 packages/
   backend/           Convex: schema, functions, lib/ (permissions, lifecycle, journey…), integrations/, tests/
   contracts/         Shared, dependency-light types: actions, fingerprints, sharing scopes, integration catalog, model-output schemas
   solitaire/         Pure Klondike engine (deal, rules, undo, serialization) with tests
+  mahjong/           Pure Mahjong solitaire engine (layouts, winnable deals, matching, shuffle, undo, serialization) with tests
   ui/                shadcn/ui (Base UI) components restyled to the LifeLink tokens
   config/            Shared tsconfig
 scripts/setup/       bun run dev:setup
@@ -384,6 +386,7 @@ tools/oxlint/anti-slop/  Vendored anti-slop plugin (MIT, provenance in UPSTREAM.
   - `explanations` and `recaps` cover word-for-word evidence, offers versus agreements, Practice and cloud consent, privacy from family, and preparing steps for review.
   - `replies` covers refusals and maybes in the Practice reply reader.
 - **Solitaire:** rules, undo, and serialization.
+- **Mahjong:** layouts, the free-tile rule, matching, hints, shuffle, undo, and serialization. Every Easy and Classic deal for 100 seeds is replayed along its own solution to prove it can be cleared.
 - **Contracts:** fingerprints, quote evidence and stance, explanation and recap checks, draft safety, and the boundary that keeps private notes out of reply drafts.
 - **Discord bridge:** signing and DM filtering.
 - **Setup:** masked input, env merging, deployment detection, and mocked Photon project validation (read-only request, rejected credentials, and network failure).

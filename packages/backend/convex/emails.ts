@@ -38,7 +38,11 @@ import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
 import { isoWithOffset, parseAbsoluteIso } from "./lib/time";
 import { SUGGESTION_RATIONALE } from "./messages";
-import { ensureEmailCheck, LOCAL_SCAN_VERSION } from "./scam";
+import {
+  ensureEmailCheck,
+  LOCAL_SCAN_VERSION,
+  NEW_EMAIL_WINDOW_MS,
+} from "./scam";
 
 const LIST_LIMIT = INBOX_PAGE_SIZE;
 
@@ -183,6 +187,14 @@ export const checkRecent = mutation({
   },
 });
 
+const emailCheckMethod = (model: string): "local" | "cloud" | undefined => {
+  if (model.trim().length === 0) {
+    return undefined;
+  }
+
+  return model.startsWith("rules") ? "local" : "cloud";
+};
+
 export const get = query({
   args: { emailId: v.id("emails") },
   handler: async (ctx, args) => {
@@ -200,14 +212,28 @@ export const get = query({
       ? await ctx.db.get(email.scamCheck.reviewId)
       : null;
 
-    const warningSigns =
+    const linkedReview =
       review?.ownerId === owner._id && review.emailId === email._id
-        ? review.signals
-            .filter((signal) => signal.stance !== "warns_against")
-            .map((signal) => signal.label)
-        : [];
+        ? review
+        : null;
 
-    return { appointment, email, warningSigns };
+    // Automatic cloud checks retain rulesVersion, so only the linked result
+    // identifies which method produced the saved check. Missing metadata stays unknown.
+    const scamCheck =
+      email.scamCheck !== undefined && linkedReview !== null
+        ? {
+            ...email.scamCheck,
+            method: emailCheckMethod(linkedReview.model),
+            model: linkedReview.model,
+          }
+        : email.scamCheck;
+
+    const warningSigns =
+      linkedReview?.signals
+        .filter((signal) => signal.stance !== "warns_against")
+        .map((signal) => signal.label) ?? [];
+
+    return { appointment, email: { ...email, scamCheck }, warningSigns };
   },
 });
 
@@ -342,6 +368,11 @@ const upsertMail = async (
 
   if (email !== null) {
     await ensureEmailCheck(ctx, email);
+  }
+
+  // Only newly arrived mail gets the AI check, once; re-syncs and old mail never do.
+  if (mail.receivedAt >= Date.now() - NEW_EMAIL_WINDOW_MS) {
+    await ctx.scheduler.runAfter(0, internal.scam.checkNewEmail, { emailId });
   }
 
   return emailId;

@@ -10,6 +10,7 @@ import {
   FolderOpenIcon,
   HeartHandshakeIcon,
   HomeIcon,
+  LayersIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -31,6 +32,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
@@ -48,6 +50,8 @@ interface NavItem {
   href: Route;
   icon: LucideIcon;
   label: string;
+  /** Left out of the phone menu, because the page needs a tablet-sized screen. */
+  wideOnly?: boolean;
 }
 
 interface NavGroup {
@@ -68,10 +72,15 @@ const settingsGroup = (nav: Messages["shell"]["nav"]): NavGroup => ({
 const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
   const { nav } = t;
 
+  const games: NavItem[] = [
+    { href: "/solitaire", icon: SpadeIcon, label: nav.solitaire },
+    { href: "/mahjong", icon: LayersIcon, label: nav.mahjong, wideOnly: true },
+  ];
+
   if (kind === "play") {
     return [
       {
-        items: [{ href: "/solitaire", icon: SpadeIcon, label: nav.solitaire }],
+        items: games,
         label: null,
       },
       settingsGroup(nav),
@@ -83,7 +92,7 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
       {
         items: [
           { href: "/family", icon: UsersRoundIcon, label: nav.family },
-          { href: "/solitaire", icon: SpadeIcon, label: nav.solitaire },
+          ...games,
         ],
         label: null,
       },
@@ -106,10 +115,10 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
       items: [
         { href: "/scam", icon: ShieldCheckIcon, label: nav.scam },
         { href: "/groceries", icon: ShoppingBasketIcon, label: nav.groceries },
-        { href: "/solitaire", icon: SpadeIcon, label: nav.solitaire },
       ],
       label: t.groupHelpWith,
     },
+    { items: games, label: t.groupGames },
     {
       items: [
         { href: "/circle", icon: HeartHandshakeIcon, label: nav.circle },
@@ -120,6 +129,9 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
     settingsGroup(nav),
   ];
 };
+
+/** Public games are prefetched for offline play. */
+const PUBLIC_GAMES = new Set<string>(["/solitaire", "/mahjong"]);
 
 const isActive = (pathname: string, href: string): boolean =>
   href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -155,7 +167,10 @@ const NavList = ({
               const Icon = item.icon;
 
               return (
-                <li key={item.href}>
+                <li
+                  className={item.wideOnly ? HIDE_ON_PHONES : undefined}
+                  key={item.href}
+                >
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -165,7 +180,7 @@ const NavList = ({
                     )}
                     href={item.href}
                     onClick={onNavigate}
-                    prefetch={item.href === "/solitaire" ? true : undefined}
+                    prefetch={PUBLIC_GAMES.has(item.href) ? true : undefined}
                   >
                     <Icon
                       aria-hidden="true"
@@ -507,8 +522,8 @@ const PlayAccount = () => {
 };
 
 /**
- * One frame for every signed-in screen and public Solitaire, so navigating
- * between them only swaps the page. The cached Solitaire HTML is always public:
+ * One frame for every signed-in screen and the public games, so navigating
+ * between them only swaps the page. The cached game HTML is always public:
  * session discovery only changes the chrome and never blocks or remounts the
  * locally saved game, including while offline.
  */

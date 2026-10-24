@@ -29,13 +29,14 @@ import { messageOf } from "@/lib/errors";
 import { formatShortDay } from "@/lib/format";
 
 import { DeleteListDialog } from "./delete-list-dialog";
+import { ListEditor } from "./list-editor";
+import { ListPicker } from "./list-picker";
 import {
-  ListEditor,
   UNDO_WINDOW_MS,
   listAsText,
+  openSections,
   quantityWords,
-} from "./list-editor";
-import { ListPicker } from "./list-picker";
+} from "./list-text";
 import { Receipt, ReceiptBar } from "./receipt";
 
 const errorText = (cause: unknown): string =>
@@ -55,16 +56,21 @@ const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
   return (
     <div aria-hidden="true" className="hidden" id="grocery-print">
       <h2 className="pb-4 text-3xl">{list.name}</h2>
-      <ul className="flex flex-col gap-3">
-        {list.items
-          .filter((item) => !item.checked)
-          .map((item) => (
-            <li key={item.id}>
-              <SquareIcon aria-hidden="true" className="mr-3 inline size-5" />
-              {item.name} {quantityWords(item, locale)}
-            </li>
-          ))}
-      </ul>
+      {openSections(list, t).map((section) => (
+        <section className="pb-4" key={section.items[0]?.id}>
+          {section.heading === null ? null : (
+            <h3 className="pb-2 font-semibold">{section.heading}</h3>
+          )}
+          <ul className="flex flex-col gap-3">
+            {section.items.map((item) => (
+              <li key={item.id}>
+                <SquareIcon aria-hidden="true" className="mr-3 inline size-5" />
+                {item.name} {quantityWords(item, locale)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
       {list.preferences.length > 0 ? (
         <p className="pt-6">{t.notes(list.preferences.join("; "))}</p>
       ) : null}

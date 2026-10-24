@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import type { SpeechVoice } from "@lifelink/contracts/speech";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexError } from "convex/values";
 import { act } from "react";
@@ -12,8 +13,14 @@ import { setLocale } from "@/i18n/locale";
 
 import { useSpeech } from "./speech";
 
-const SpeechControl = ({ text = "Read this passage." }: { text?: string }) => {
-  const { error, read, status, stop } = useSpeech();
+const SpeechControl = ({
+  text = "Read this passage.",
+  voice,
+}: {
+  text?: string;
+  voice?: SpeechVoice | null;
+}) => {
+  const { error, read, status, stop } = useSpeech(voice);
 
   return (
     <div>
@@ -41,11 +48,11 @@ describe("read-aloud failures", () => {
   let synthesize: MockInstance<ConvexReactClient["action"]>;
   let playback: MockInstance<HTMLMediaElement["play"]>;
 
-  const render = async (text?: string) => {
+  const render = async (text?: string, voice?: SpeechVoice | null) => {
     await act(() => {
       root.render(
         <ConvexProvider client={client}>
-          <SpeechControl text={text} />
+          <SpeechControl text={text} voice={voice} />
         </ConvexProvider>
       );
     });
@@ -227,5 +234,33 @@ describe("read-aloud failures", () => {
       error: container.querySelector("output")?.textContent,
       status: container.querySelector("[data-status]")?.textContent,
     }).toStrictEqual({ error: "", status: "idle" });
+  });
+
+  it("replaces prepared audio when the selected voice changes", async () => {
+    synthesize.mockResolvedValue({ audio: new ArrayBuffer(1) });
+    playback.mockRejectedValueOnce(
+      new DOMException("A user gesture is required", "NotAllowedError")
+    );
+    await render("Read this passage.", "sarah");
+    await read();
+
+    expect(container.querySelector("[data-status]")?.textContent).toBe("ready");
+    expect(synthesize.mock.calls[0]?.[1]).toStrictEqual({
+      text: "Read this passage.",
+      voice: "sarah",
+    });
+
+    await render("Read this passage.", "george");
+    expect(container.querySelector("[data-status]")?.textContent).toBe("idle");
+    await read();
+
+    expect(synthesize.mock.calls.map((call) => call[1])).toStrictEqual([
+      { text: "Read this passage.", voice: "sarah" },
+      { text: "Read this passage.", voice: "george" },
+    ]);
+    expect({
+      error: container.querySelector("output")?.textContent,
+      status: container.querySelector("[data-status]")?.textContent,
+    }).toStrictEqual({ error: "", status: "speaking" });
   });
 });

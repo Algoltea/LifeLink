@@ -21,6 +21,7 @@ const appExtras = {
     connectionsTitle: "Connections",
     conversation: "Loading conversation",
     conversations: "Loading conversations",
+    conversationsTitle: "Conversations",
     documentsTitle: "Documents",
     drive: "Loading your Drive files",
     driveNotice:
@@ -99,11 +100,13 @@ const appExtras = {
       "That email and password did not match. Please check them and try again.",
     modeLabel: "Sign in or create an account",
     name: "Your full name",
+    or: ", or ",
     password: "Password",
     passwordHint: (count: number): string => `At least ${count} characters.`,
     passwordMinimum: (count: number): string =>
       `Please choose a password of at least ${count} characters.`,
     play: "Play Solitaire without signing in",
+    playMahjong: "play Mahjong",
     show: "Show",
     showPassword: "Show password",
     signIn: "Sign in",

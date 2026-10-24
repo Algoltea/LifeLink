@@ -58,7 +58,7 @@ const solitaire = {
   hintMove: (source: string, target: string) =>
     `Hint: move ${source} ${target}.`,
   howToPlay: "How to play",
-  intro: "A quiet game. Available offline.",
+  intro: "A quiet game.",
   key: "Key",
   keyboard: "Keyboard keys",
   keys: [
@@ -105,7 +105,7 @@ const solitaire = {
   ],
   ready: "A new game is ready. Choose a card to begin.",
   resumed: "Resumed your last game.",
-  resumedAt: (date: string) => `Resumed your last game, saved ${date}.`,
+  resumedAt: (date: string) => `Resumed your game, saved ${date}.`,
   rules:
     "Build four piles from ace up to king, each in the spot marked with its suit (♠ ♥ ♣ ♦). In the seven columns, place a card on one that is one higher and the other colour: a red 7 on a black 8. Only a king can go into an empty column. Draw from the stock when you are stuck.",
   safeCards: "Send safe cards home",
@@ -113,6 +113,8 @@ const solitaire = {
     "This browser is not letting the game save, so your progress will be lost if you close this page.",
   savedHint:
     "Your game saves on this device after every move, even without an internet connection.",
+  savedOn: (day: string, time: string) => `on ${day} at ${time}`,
+  savedToday: (time: string) => `today at ${time}`,
   scrollHint:
     "Scroll the table sideways to reach every pile, or turn your phone sideways for more room.",
   selected: " Selected.",

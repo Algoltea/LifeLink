@@ -41,7 +41,7 @@ const GuestAccountLinks = ({ compact = false }: { compact?: boolean }) => {
 };
 
 const GuestPlayInvitation = () => {
-  const t = useMessages().guest;
+  const { guest: t, shell } = useMessages();
 
   return (
     <section
@@ -55,7 +55,16 @@ const GuestPlayInvitation = () => {
         <p className="text-muted-foreground text-body">{t.joinBody}</p>
       </div>
       <GuestAccountLinks />
-      <p className="text-muted-foreground text-label">{t.solitaireFree}</p>
+      <p className="text-muted-foreground text-label">
+        <Link className="text-accent-foreground underline" href="/solitaire">
+          {shell.nav.solitaire}
+        </Link>{" "}
+        {t.and}{" "}
+        <Link className="text-accent-foreground underline" href="/mahjong">
+          {shell.nav.mahjong}
+        </Link>{" "}
+        {t.gamesFree}
+      </p>
     </section>
   );
 };

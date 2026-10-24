@@ -48,7 +48,10 @@ import type { SolitaireMessages } from "./localization";
 import { freshGame, loadGame, saveGame } from "./storage";
 import type { LoadedGame } from "./storage";
 
-type AnnouncementMessage = (messages: SolitaireMessages) => string;
+type AnnouncementMessage = (
+  messages: SolitaireMessages,
+  locale: InterfaceLocale
+) => string;
 
 interface Announcement {
   readonly id: number;
@@ -146,15 +149,32 @@ const emptyReason = (
   return t.faceDown;
 };
 
-const formatSavedAt = (savedAt: string, locale: InterfaceLocale): string => {
+/** When the game was saved, as it reads in a sentence: "today at 5:43 PM" or "on Oct 24 at 5:43 PM". */
+const savedWhen = (
+  savedAt: string,
+  t: SolitaireMessages,
+  locale: InterfaceLocale
+): string => {
   const date = new Date(savedAt);
 
-  return Number.isNaN(date.getTime())
-    ? messagesFor(locale).solitaire.earlier
-    : date.toLocaleString(intlLocaleOf(locale), {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+  if (Number.isNaN(date.getTime())) {
+    return t.earlier;
+  }
+
+  const time = date.toLocaleTimeString(intlLocaleOf(locale), {
+    timeStyle: "short",
+  });
+
+  if (date.toDateString() === new Date().toDateString()) {
+    return t.savedToday(time);
+  }
+
+  const day = date.toLocaleDateString(intlLocaleOf(locale), {
+    day: "numeric",
+    month: "short",
+  });
+
+  return t.savedOn(day, time);
 };
 
 const outcomeNote = (state: GameState, t: SolitaireMessages): string => {
@@ -181,9 +201,13 @@ const isUndoChord = (event: KeyChord): boolean =>
   !event.altKey &&
   event.key.toLowerCase() === "z";
 
-const openingMessage = (loaded: LoadedGame, t: SolitaireMessages): string => {
+const openingMessage = (
+  loaded: LoadedGame,
+  t: SolitaireMessages,
+  locale: InterfaceLocale
+): string => {
   if (loaded.resumedFrom) {
-    return t.resumed;
+    return t.resumedAt(savedWhen(loaded.resumedFrom, t, locale));
   }
 
   return loaded.discarded
@@ -202,7 +226,9 @@ const isInside = (
 export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   const locale = useLocale();
   const t = messagesFor(locale).solitaire;
-  const [opening, setOpening] = useState(() => loadGame(1));
+  // Read once when the table mounts; the opening state never changes afterwards.
+  // oxlint-disable-next-line react/hook-use-state -- Only the first value is needed.
+  const [opening] = useState(() => loadGame(1));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState<Slot>(STOCK_SLOT);
   const [selected, setSelected] = useState<MoveSource | null>(null);
@@ -212,7 +238,8 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   // preserve the last announcement along with the game and selection.
   const [announcement, setAnnouncement] = useState<Announcement>(() => ({
     id: 0,
-    message: (messages) => openingMessage(opening, messages),
+    message: (messages, currentLocale) =>
+      openingMessage(opening, messages, currentLocale),
   }));
 
   const [saveFailed, setSaveFailed] = useState(false);
@@ -247,7 +274,8 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     setHint(null);
     setCursor(clampSlot(next, nextCursor));
     announce(
-      (messages) => `${message(messages)}${outcomeNote(next, messages)}`
+      (messages, currentLocale) =>
+        `${message(messages, currentLocale)}${outcomeNote(next, messages)}`
     );
   };
 
@@ -401,11 +429,6 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   };
 
   const startNewGame = (drawCount: DrawCount = preferredDraw) => {
-    setOpening((current) => ({
-      ...current,
-      discarded: null,
-      resumedFrom: null,
-    }));
     commit(
       freshGame(drawCount),
       (messages) => messages.dealt(messages.drawWords(drawCount)),
@@ -534,17 +557,6 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
         </p>
       </header>
 
-      {opening.resumedFrom === null ? null : (
-        <div className="bg-parchment flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
-          <p className="text-body">
-            {t.resumedAt(formatSavedAt(opening.resumedFrom, locale))}
-          </p>
-          <Button onClick={() => startNewGame()} size="sm" variant="outline">
-            {t.startFresh}
-          </Button>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -592,7 +604,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
         aria-live="polite"
         className="bg-parchment text-body block min-h-14 rounded-lg px-4 py-3"
       >
-        <span key={announcement.id}>{announcement.message(t)}</span>
+        <span key={announcement.id}>{announcement.message(t, locale)}</span>
       </output>
 
       {won ? (

@@ -9,7 +9,7 @@ import { useCallback, useState } from "react";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { money } from "@/lib/format";
 
-import { quantityWords, shoppingOrder } from "./list-editor";
+import { quantityWords, shoppingOrder } from "./list-text";
 
 const Rule = () => (
   <hr aria-hidden="true" className="border-control border-t border-dashed" />

@@ -6,6 +6,7 @@ import { helpStyleOf } from "@lifelink/contracts/help-style";
 import type { ExplanationDetail } from "@lifelink/contracts/help-style";
 import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import type { NewsKind } from "@lifelink/contracts/news";
+import type { SpeechVoice } from "@lifelink/contracts/speech";
 import { useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 import { createContext, use, useEffect, useMemo } from "react";
@@ -21,6 +22,7 @@ interface Preferences {
   readAloud: boolean;
   showNews: boolean;
   speechRate: number;
+  speechVoice: SpeechVoice | null;
   stepByStep: boolean;
 }
 
@@ -31,6 +33,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   readAloud: false,
   showNews: true,
   speechRate: 0.9,
+  speechVoice: null,
   stepByStep: helpStyleOf(null).stepByStep,
 };
 
@@ -92,6 +95,7 @@ const PreferencesProvider = ({ children }: { children: ReactNode }) => {
               readAloud: stored.readAloud,
               showNews: stored.showNews ?? true,
               speechRate: stored.speechRate,
+              speechVoice: stored.speechVoice ?? null,
               stepByStep: helpStyleOf(stored).stepByStep,
             },
     }),

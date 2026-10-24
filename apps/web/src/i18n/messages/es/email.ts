@@ -12,17 +12,17 @@ const email: Messages["email"] = {
   checkForNew: "Buscar correo nuevo",
   checkManually: " Puede revisarlo a mano abajo.",
   checkThis: "Revisar este correo",
-  checkUsesSigns:
-    "Esta revisión automática usa reglas solo para el inglés, sin IA en la nube. Puede pasar por alto estafas en español u otros idiomas y no puede confirmar quién envió el correo ni si lo que dice es cierto.",
-  checked: (when) => `Revisado el ${when} · hecho en LifeLink`,
+  checked: (when) => `Revisado el ${when}`,
   checkedAt: (when) => ` Revisado el ${when}.`,
   checking: "Buscando…",
   checksAutomatic:
-    "Las revisiones automáticas no envían el correo a un proveedor de IA. Sus reglas solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. No pueden confirmar quién envió un correo ni si lo que dice es cierto. «Buscar correo nuevo» trae sus correos recientes y los revisa de la misma manera.",
+    "Con las revisiones de correo con IA activadas en Ajustes, los correos reales nuevos pueden enviarse a un proveedor de IA en la nube. Los correos de práctica se quedan en LifeLink. Cuando la IA está desactivada, no está disponible o no termina, se usan reglas locales solo para el inglés. Si una solicitud en la nube falla, es posible que el proveedor ya haya recibido el correo. Ninguno de los dos métodos puede verificar al remitente ni demostrar que un correo sea seguro.",
   checksIntro:
     "El correo nuevo se revisa en LifeLink buscando señales comunes de estafa. Elija un mensaje para leerlo y ver qué llamó la atención.",
   checksTitle: "Cómo funcionan las revisiones del correo",
   chooseEmail: "Elija un correo para leerlo y ver su revisión de estafas.",
+  cloudCheckNotice:
+    "La IA en la nube ayudó a revisar este correo. Puede cometer errores y no puede verificar al remitente. Que no haya señales de alerta no significa que el correo sea seguro.",
   cloudConsent:
     "Enviar este correo a un servicio de IA en la nube para resumirlo y encontrar alguna cita. Déjelo sin marcar para una vista previa breve hecha en LifeLink.",
   concern: "Este correo causó una duda. Revise lo que pide antes de actuar.",
@@ -39,7 +39,7 @@ const email: Messages["email"] = {
   loadingEmail: "Cargando el correo",
   loadingEmails: "Cargando los correos",
   localLanguageNotice:
-    "Las revisiones automáticas de estafas solo están preparadas para analizar mensajes en inglés. Pueden pasar por alto estafas en español y otros idiomas. Que no haya señales de alerta no significa que el correo sea seguro.",
+    "Esta revisión de correo usó reglas locales preparadas solo para el inglés. Pueden pasar por alto estafas en español y otros idiomas. Que no haya señales de alerta no significa que el correo sea seguro.",
   lowerPriority: "Menos importante",
   mailboxes: "Sus buzones",
   mayNeedReply: "Puede necesitar respuesta",
@@ -56,7 +56,7 @@ const email: Messages["email"] = {
   noText: "Este correo no tiene texto.",
   notChecked: "Sin revisar todavía",
   notCheckedEmail: "Este correo todavía no se ha revisado.",
-  notCheckedNote: "Sin revisar todavía · hecho en LifeLink",
+  notCheckedNote: "Sin revisar todavía",
   nowTheEmail: "Ahora, el correo.",
   openManualCheck: "Abrir la revisión manual de estafas",
   opened: (subject) => `Abierto: ${subject}`,
@@ -105,6 +105,8 @@ const email: Messages["email"] = {
   summarySpoken: "Resumen del correo.",
   theEmail: "El correo",
   title: "Correo",
+  unknownCheckNotice:
+    "Esta revisión guardada no indica si usó IA en la nube o reglas locales. Las reglas locales solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. Que no haya señales de alerta no significa que el correo sea seguro.",
   warning: {
     concern: "Este correo causó una duda. Revise lo que pide antes de actuar.",
     intro: (reason) =>

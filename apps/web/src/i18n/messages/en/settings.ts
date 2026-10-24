@@ -1,6 +1,9 @@
 const settings = {
   accountsAndPermissions: "Accounts and permissions",
   accountsLink: "Accounts LifeLink can use",
+  aiEmailChecks: "Check new emails with AI",
+  aiEmailChecksDescription:
+    "When a new email arrives, a cloud AI service checks it for scam warning signs. Older emails and practice emails are never sent.",
   captions: "Captions when speaking",
   captionsDescription: "Shows the words while you talk with LifeLink.",
   characterCount: (count: number, maximum: number) =>
@@ -11,6 +14,7 @@ const settings = {
   contrastDescription: "More contrast makes text darker and borders stronger.",
   contrastMore: "More contrast",
   contrastStandard: "Standard",
+  defaultVoice: "LifeLink default",
   demoAllowedHint: "This switch saves automatically.",
   demoBetweenModes:
     "Anything prepared in one mode has to be reviewed again before it runs in the other.",
@@ -36,7 +40,7 @@ const settings = {
   helpTitle: "How I like help",
   language: "Language",
   languageDescription:
-    "Choose the language for LifeLink’s screens and cloud help. Screens are available in English and Spanish; other choices use English screens. Cloud help can use other languages when available. Local scam checks and automatic email checks use English-only rules and can miss scams in other languages. Quotes and messages keep their original words.",
+    "Choose the language for LifeLink’s screens and cloud help. Core screens are available in English and Spanish; other choices use English screens. Cloud help can use other languages when available. Scam and email checks that use local rules cover only English and can miss scams in other languages. Quotes and messages keep their original words.",
   lessMovement: "Less movement",
   lessMovementDescription: "Turns off sliding and fading.",
   loading: "Loading settings",
@@ -63,6 +67,9 @@ const settings = {
   readAloudAuto: "Read aloud automatically",
   readAloudAutoDescription:
     "LifeLink reads new briefings and replies out loud.",
+  readAloudVoice: "Read-aloud voice",
+  readAloudVoiceDescription:
+    "Choose who reads to you. LifeLink default uses the standard voice.",
   saveNotes: "Save notes",
   saveProfile: "Save profile",
   saved: "Saved.",

@@ -1,0 +1,110 @@
+/*
+ * The public landing page keeps the light workshop palette in every theme:
+ * it is read before anyone has chosen dark mode, and its paintings and ink
+ * fields are composed for paper. Text size still follows the root rem.
+ */
+.landing {
+  --ground: #fffdf8;
+  --surface: #fffdf8;
+  --parchment: #faf4e8;
+  --raised: #fffdf8;
+  --border: #dccfba;
+  --control: #9d8971;
+  --text: #2d2118;
+  --muted-text: #6c5c4c;
+  --accent-ink: #8f3f25;
+  --accent-wash: #f6e6dd;
+  --negative-ink: #8d2f28;
+  --negative-wash: #fcebe5;
+  --warning-wash: #f9e9cf;
+  --neutral-wash: #ebe1d0;
+  --focus: #8f3f25;
+
+  background: var(--ground);
+  color: var(--text);
+}
+
+/* On ink fields the person's hook in the mark, focus rings, and text turn to paper. */
+.landing-ink {
+  --text: #fffdf8;
+  --focus: #f9e9cf;
+
+  background: #2d2118;
+  color: #fffdf8;
+}
+
+/* A folder tab: the trapezoid that rises from the top of each section. */
+.landing-tab {
+  clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
+}
+
+/* Arrival: heading, then text, then picture, each lifted a little and faded in. */
+.landing [data-reveal] {
+  transition:
+    opacity 560ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms),
+    translate 560ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms);
+}
+
+.landing [data-reveal="waiting"] {
+  opacity: 0;
+  translate: 0 1.25rem;
+}
+
+/* A group that arrives as one, its parts in order: the ride slip's steps. */
+.landing .landing-stagger[data-reveal="waiting"] {
+  opacity: 1;
+  translate: none;
+}
+
+.landing-stagger .landing-step {
+  transition:
+    opacity 480ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    translate 480ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.landing-stagger[data-reveal="waiting"] .landing-step {
+  opacity: 0;
+  translate: 0 0.75rem;
+}
+
+/* The painting in the hero drifts closer, slowly enough to read as stillness. */
+@keyframes landing-drift {
+  from {
+    scale: 1;
+  }
+
+  to {
+    scale: 1.05;
+  }
+}
+
+.landing-drift {
+  animation: landing-drift 28s ease-in-out infinite alternate;
+  transform-origin: 62% 40%;
+}
+
+/* One Solitaire move: the eight of spades travels onto the nine of hearts. */
+@keyframes landing-card-move {
+  from {
+    translate: var(--move-from-x) var(--move-from-y);
+  }
+}
+
+[data-reveal="shown"] .landing-card-move {
+  animation: landing-card-move 900ms cubic-bezier(0.3, 0.7, 0.2, 1) 500ms both;
+}
+
+[data-reveal="waiting"] .landing-card-move {
+  translate: var(--move-from-x) var(--move-from-y);
+}
+
+/* The motion setting and the system preference both remove travel and drift. */
+[data-motion="reduced"] :is(.landing-drift, .landing-card-move) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.landing-drift, .landing-card-move) {
+    animation: none;
+  }
+}

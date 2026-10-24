@@ -1,3 +1,6 @@
+import { isSpeechVoice } from "@lifelink/contracts/speech";
+import type { SpeechVoice } from "@lifelink/contracts/speech";
+
 import { readEnv, readEnvOr } from "../lib/env";
 
 const SPEECH_ENDPOINT = "https://openrouter.ai/api/v1/audio/speech";
@@ -18,30 +21,6 @@ const SPEECH_MODELS = new Set([
   "elevenlabs/eleven-flash-v2",
 ]);
 
-const SPEECH_VOICES = new Set([
-  "george",
-  "sarah",
-  "adam",
-  "alice",
-  "bella",
-  "bill",
-  "brian",
-  "callum",
-  "charlie",
-  "chris",
-  "daniel",
-  "eric",
-  "harry",
-  "jessica",
-  "laura",
-  "liam",
-  "lily",
-  "matilda",
-  "river",
-  "roger",
-  "will",
-]);
-
 interface SpeechAudio {
   audio: ArrayBuffer;
   contentType: "audio/mpeg";
@@ -52,7 +31,7 @@ type SpeechResult =
   | { ok: true; value: SpeechAudio }
   | { ok: false; error: string };
 
-const speechConfigurationError = (): string | null => {
+const speechConfigurationError = (voice?: SpeechVoice): string | null => {
   if (readEnv("OPENROUTER_API_KEY") === null) {
     return "Read-aloud is not set up yet. An OpenRouter key is needed.";
   }
@@ -65,7 +44,7 @@ const speechConfigurationError = (): string | null => {
     return "The configured read-aloud model is not a verified ElevenLabs model on OpenRouter.";
   }
 
-  if (!SPEECH_VOICES.has(readEnvOr("OPENROUTER_TTS_VOICE", "sarah"))) {
+  if (!isSpeechVoice(voice ?? readEnvOr("OPENROUTER_TTS_VOICE", "sarah"))) {
     return "The configured read-aloud voice is not supported. Please check the speech settings.";
   }
 
@@ -124,7 +103,10 @@ const readAudio = async (response: Response): Promise<ArrayBuffer> => {
 };
 
 /** ElevenLabs synthesis through OpenRouter only. No direct vendor or browser fallback. */
-const synthesizeSpeech = async (text: string): Promise<SpeechResult> => {
+const synthesizeSpeech = async (
+  text: string,
+  voice?: SpeechVoice
+): Promise<SpeechResult> => {
   const input = text.trim();
 
   if (input.length === 0 || input.length > MAX_SPEECH_CHARACTERS) {
@@ -134,7 +116,7 @@ const synthesizeSpeech = async (text: string): Promise<SpeechResult> => {
     };
   }
 
-  const configurationError = speechConfigurationError();
+  const configurationError = speechConfigurationError(voice);
   const apiKey = readEnv("OPENROUTER_API_KEY");
 
   if (configurationError !== null || apiKey === null) {
@@ -154,7 +136,7 @@ const synthesizeSpeech = async (text: string): Promise<SpeechResult> => {
         input,
         model,
         response_format: "mp3",
-        voice: readEnvOr("OPENROUTER_TTS_VOICE", "sarah"),
+        voice: voice ?? readEnvOr("OPENROUTER_TTS_VOICE", "sarah"),
       }),
       headers: {
         Authorization: `Bearer ${apiKey}`,

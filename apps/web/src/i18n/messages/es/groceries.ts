@@ -4,6 +4,21 @@ const groceries: Messages["groceries"] = {
   about: (amount) => `unos ${amount}`,
   addItem: "Agregar artículo",
   addItems: "Agregar artículos",
+  aisles: {
+    bakery: "Panadería",
+    dairy: "Lácteos y huevos",
+    deli: "Fiambres y comida preparada",
+    drinks: "Bebidas",
+    frozen: "Congelados",
+    household: "Artículos para el hogar",
+    meat: "Carne y pescado",
+    other: "Todo lo demás",
+    pantry: "Despensa",
+    personal: "Salud y cuidado personal",
+    pets: "Mascotas",
+    produce: "Frutas y verduras",
+    snacks: "Botanas",
+  },
   allInCart: "Todo está en su carrito.",
   backToGroceries: "Volver a compras",
   backToLists: "Volver a sus listas",
@@ -13,6 +28,7 @@ const groceries: Messages["groceries"] = {
   budgetLabel: "Presupuesto para esta lista ($)",
   cancel: "Cancelar",
   chooseList: "Elija una lista",
+  clearItemSearch: "Borrar búsqueda",
   copied: "Lista copiada. Puede pegarla en un mensaje.",
   copyAsText: "Copiar como texto",
   copyFailed:
@@ -54,6 +70,10 @@ const groceries: Messages["groceries"] = {
   item: "Artículo",
   itemCount: (count) => `${count} ${count === 1 ? "artículo" : "artículos"}`,
   itemPlaceholder: "Plátanos",
+  itemSearch: "Buscar un artículo en esta lista",
+  itemSearchCount: (shown, total) =>
+    `${shown} de ${total} ${total === 1 ? "artículo coincide" : "artículos coinciden"}`,
+  itemSearchPlaceholder: "Busque un artículo, como leche",
   items: "Artículos",
   itemsOn: (name) => `Artículos de ${name}`,
   itemsToBuy: "Artículos para comprar",
@@ -74,13 +94,21 @@ const groceries: Messages["groceries"] = {
   moreAbove: "Más listas arriba",
   moreBelow: "Desplácese para ver más listas",
   moveBack: "Volver a listas actuales",
+  moveHint: "Mueva cualquier artículo que esté en el lugar equivocado.",
+  moveItem: (name, direction, aisle) =>
+    `Mover ${name} hacia ${direction === "up" ? "arriba" : "abajo"}${aisle === null ? "" : `, a ${aisle}`}`,
+  movedItem: (name, direction, aisle) =>
+    `Se movió ${name} hacia ${direction === "up" ? "arriba" : "abajo"}${aisle === null ? "" : `, a ${aisle}`}.`,
   movedToPast: (name) => `Se movió «${name}» a listas anteriores.`,
   newEmptyList: "Nueva lista vacía",
   newList: "Nueva lista",
   noBudget: "Sin presupuesto",
   noGuess: "sin estimado",
+  noMatchingItems: (query) =>
+    `Ningún artículo de esta lista coincide con «${query}».`,
   noMatchingUnit: "Ninguna unidad coincide.",
   notSet: "Sin definir",
+  notSorted: "Sin ordenar todavía",
   notes: (notes) => `Notas: ${notes}`,
   nothingOnList: "Esta lista todavía está vacía.",
   nothingOnListHint:
@@ -139,6 +167,18 @@ const groceries: Messages["groceries"] = {
   saveDetails: "Guardar datos",
   scrollList: "Desplace la lista para ver todos los artículos.",
   showAllUnits: "Mostrar todas las unidades",
+  sortByAisle: "Ordenar por pasillo",
+  sortFallback: {
+    failed:
+      "El asistente no respondió, así que se usó la guía integrada de LifeLink.",
+    limit:
+      "El asistente ha ordenado muchas listas recientemente, así que se usó la guía integrada de LifeLink.",
+    unavailable: "Se ordenó con la guía integrada de LifeLink.",
+  },
+  sortNewByAisle: "Ordenar los artículos nuevos por pasillo",
+  sortedByAisle: (count) =>
+    `${count === 1 ? "Se ordenó 1 artículo" : `Se ordenaron ${count} artículos`} por pasillo.`,
+  sorting: "Ordenando…",
   startFromThis: "Empezar una lista nueva a partir de esta",
   startFromUsual: "Empezar con su lista habitual",
   startedFrom: (name) =>
@@ -149,7 +189,7 @@ const groceries: Messages["groceries"] = {
   takeWithYou: "Lleve su lista consigo",
   thisIsUsual: "Esta es su lista habitual",
   tickHint:
-    "Marque un artículo cuando esté en su carrito. Pasa al final, sigue contando en el total y se omite al copiar o imprimir la lista.",
+    "Marque un artículo cuando esté en su carrito. Pasa al final, sigue contando en el total y se omite al copiar o imprimir la lista. Use las flechas para subir o bajar un artículo. Ordenar por pasillo coloca los artículos en el orden en que los encuentra en una tienda típica, con los congelados al final.",
   title: "Compras",
   toGet: (count) =>
     `${count} ${count === 1 ? "artículo" : "artículos"} por comprar`,

@@ -8,7 +8,7 @@ import type {
 import { FOUNDATION_SUITS } from "@lifelink/solitaire/rules";
 import { cn } from "@lifelink/ui/lib/utils";
 import { RotateCcw } from "lucide-react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 import { useMessages } from "@/i18n/locale";
 
@@ -364,10 +364,23 @@ const FOUNDATION_INDEXES = [0, 1, 2, 3] as const;
 const COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
 
 /*
- * Seven equal columns: 7 × 4.5rem cards + 6 × 0.75rem gaps = 36rem minimum.
+ * Seven equal columns: 7 × 4rem cards + 6 × 0.75rem gaps = 32.5rem minimum.
  * Both rows share one grid width, capped at 56rem, and scroll together when
  * the shell is narrower. Card sizes follow the person's text-size setting.
+ *
+ * The width is also capped by the screen height so a fresh deal fits without
+ * scrolling: the dealt table is about 4.1 card widths tall, and the header,
+ * controls, message, and padding take about 23.5rem. Width = 7 cards + 4.5rem
+ * of gaps.
  */
+const TALL_PER_WIDE = 7 / 4.1;
+
+const ROOM_AROUND_TABLE = "23.5rem";
+
+const TABLE_WIDTH: CSSProperties = {
+  maxWidth: `min(56rem, calc((100svh - ${ROOM_AROUND_TABLE}) * ${TALL_PER_WIDE.toFixed(3)} + 4.5rem))`,
+};
+
 // Every slot button forwards arrow keys and Escape to the board; Enter and Space click it natively.
 export const Board = (board: BoardProps) => {
   const t = useMessages().solitaire;
@@ -377,7 +390,7 @@ export const Board = (board: BoardProps) => {
       aria-label={t.table}
       className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 [--board-gap:0.75rem] sm:p-6"
     >
-      <div className="mx-auto w-full max-w-[56rem] min-w-[36rem]">
+      <div className="mx-auto w-full min-w-[32.5rem]" style={TABLE_WIDTH}>
         <div className="grid grid-cols-7 gap-(--board-gap)">
           <StockPile board={board} />
           <WastePile board={board} />

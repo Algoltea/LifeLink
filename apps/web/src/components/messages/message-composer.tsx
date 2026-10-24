@@ -34,13 +34,13 @@ interface PendingPhoto {
 interface MessageDraft {
   body: string;
   fromSuggestion: boolean;
-  notice: string;
+  notice: "reply_added" | null;
 }
 
 const EMPTY_DRAFT: MessageDraft = {
   body: "",
   fromSuggestion: false,
-  notice: "",
+  notice: null,
 };
 
 const errorText = (cause: unknown): string =>
@@ -271,7 +271,7 @@ const MessageComposer = ({
         </div>
       </div>
       <output aria-live="polite" className="text-label empty:hidden">
-        {draft.notice}
+        {draft.notice === "reply_added" ? t.replyAdded : null}
       </output>
       <div
         className="text-muted-foreground text-label flex flex-col items-center gap-1 text-center"
