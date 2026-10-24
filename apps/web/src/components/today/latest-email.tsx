@@ -7,13 +7,11 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { listTime } from "@/components/email/email-bits";
+import { PANEL_ROW, PanelPart } from "@/components/today/side-lists";
 import { formatWhen } from "@/lib/format";
 
 const SHOWN = 3;
 const MAILBOX_IDS = new Set(["gmail", "outlook"]);
-
-const ROW =
-  "text-foreground hover:bg-parchment flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors";
 
 /** The three newest emails, each opening in Email; a warning shows when a check flagged one. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
@@ -31,13 +29,11 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
 
   const newest = emails.slice(0, SHOWN);
 
+  // The rule above sits here, not in Messages, so it never shows above nothing while email loads.
   return (
-    <section aria-labelledby="latest-email-heading" className="flex flex-col">
-      <div className="flex items-baseline justify-between gap-4 pb-2">
-        <h2 className="text-section font-semibold" id="latest-email-heading">
-          Latest email
-        </h2>
-        {newest.length > 0 ? (
+    <PanelPart
+      action={
+        newest.length > 0 ? (
           <Link
             className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1 font-medium"
             href="/email"
@@ -45,8 +41,12 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
             All email
             <ChevronRightIcon aria-hidden="true" className="size-5" />
           </Link>
-        ) : null}
-      </div>
+        ) : null
+      }
+      className="border-rule mt-2 border-t pt-2"
+      headingId="latest-email-heading"
+      title="Latest email"
+    >
       {newest.length === 0 ? (
         <p className="text-muted-foreground text-body flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-1">
           {connected || connections.demoMode ? (
@@ -75,7 +75,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
             return (
               <li key={email.id}>
                 <Link
-                  className={ROW}
+                  className={PANEL_ROW}
                   // SAFETY: a stored email id; /email reads ?id= to open it.
                   href={`/email?id=${email.id}` as Route}
                 >
@@ -116,7 +116,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
           })}
         </ul>
       )}
-    </section>
+    </PanelPart>
   );
 };
 

@@ -96,7 +96,7 @@ const showsGettingStarted = (progress: Progress, hidden: boolean): boolean =>
 const GettingStarted = ({ progress }: { progress: Progress }) => (
   <section aria-labelledby="getting-started-heading" className="flex flex-col">
     <h2
-      className="pb-4 text-2xl leading-8 font-semibold"
+      className="text-section pb-4 font-semibold"
       id="getting-started-heading"
     >
       Getting started

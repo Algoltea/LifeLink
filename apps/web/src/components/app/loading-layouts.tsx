@@ -22,7 +22,8 @@ import {
 } from "./messages-loading-layouts";
 import {
   TodayLoadingHeader,
-  TodayLoadingSideLists,
+  TodayLoadingNews,
+  TodayLoadingPanels,
 } from "./today-loading-layouts";
 
 /** Geometry measured against the Practice UI at 1440, 768, and 390 CSS pixels.
@@ -477,14 +478,16 @@ const ContactRows = ({ rows }: { rows: number }) => (
   </div>
 );
 
+/** Needs you, Your week and Messages, News, then Ask, as Today shows them. */
 const TodayLayout = () => (
-  <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
-    <div className="flex min-w-0 flex-col gap-6">
+  <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-4">
       <Heading />
       <TaskPanelLayout />
-      <ComposerLayout />
     </div>
-    <TodayLoadingSideLists />
+    <TodayLoadingPanels />
+    <TodayLoadingNews />
+    <ComposerLayout />
   </div>
 );
 

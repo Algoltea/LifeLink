@@ -88,9 +88,12 @@ const NewsCard = () => {
             : "News is not available right now. Please try again later."}
         </output>
       ) : (
-        <ul className="motion-enter flex flex-col gap-1" key={kind}>
+        <ul className="motion-enter flex flex-col" key={kind}>
           {headlines.map((headline) => (
-            <li key={headline.url}>
+            <li
+              className="border-rule border-t py-1 first:border-t-0"
+              key={headline.url}
+            >
               <a
                 className="text-foreground hover:bg-parchment flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors"
                 href={headline.url}

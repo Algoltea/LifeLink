@@ -20,10 +20,14 @@ import {
 } from "@/components/today/getting-started";
 import { LatestEmail } from "@/components/today/latest-email";
 import { NewsCard } from "@/components/today/news-card";
-import { FamilyList, WeekList } from "@/components/today/side-lists";
+import {
+  FamilyList,
+  TodayPanel,
+  WeekList,
+} from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
-import { LocationPrompt, WeatherChip } from "@/components/today/weather";
+import { WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
 import { messageOf } from "@/lib/errors";
 import { dayKey, formatTime, relativeDay } from "@/lib/format";
@@ -185,37 +189,32 @@ const TodayContent = ({
         <DueReminder key={reminder._id} reminder={reminder} />
       ))}
 
-      <div className="motion-enter grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-8">
-          {welcome ? (
-            <GettingStarted progress={summary.gettingStarted} />
-          ) : null}
-          {/* With nothing to review the section steps aside; the header line already says so. */}
-          {tasks.length > 0 ? (
-            <section
-              aria-labelledby="review-heading"
-              className="motion-enter flex flex-col gap-6"
-            >
-              <h2 className="text-section font-semibold" id="review-heading">
-                Needs your review
-              </h2>
-              {tasks.map((task) => (
-                <TaskPanel key={task._id} taskId={task._id} />
-              ))}
-            </section>
-          ) : null}
-          <LatestEmail timeZone={timeZone} />
-          <NewsCard />
-          <Composer />
+      {/* Groups sit further apart than the rows inside them. One column on a phone, in the same order. */}
+      <div className="motion-enter flex flex-col gap-10">
+        {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
+        {/* With nothing to review the group steps aside; the header line already says so. */}
+        {tasks.length > 0 ? (
+          <section
+            aria-labelledby="review-heading"
+            className="motion-enter flex flex-col gap-4"
+          >
+            <h2 className="text-section font-semibold" id="review-heading">
+              Needs you
+            </h2>
+            {tasks.map((task) => (
+              <TaskPanel key={task._id} taskId={task._id} />
+            ))}
+          </section>
+        ) : null}
+        <div className="grid items-start gap-x-6 gap-y-10 @min-[56rem]/content:grid-cols-2">
+          <WeekList rows={week} timeZone={timeZone} weather={weather} />
+          <TodayPanel headingId="messages-heading" title="Messages">
+            <FamilyList messages={summary.messages} timeZone={timeZone} />
+            <LatestEmail timeZone={timeZone} />
+          </TodayPanel>
         </div>
-        <aside className="flex flex-col gap-8">
-          <WeekList
-            prompt={<LocationPrompt state={weather} />}
-            rows={week}
-            timeZone={timeZone}
-          />
-          <FamilyList messages={summary.messages} timeZone={timeZone} />
-        </aside>
+        <NewsCard />
+        <Composer />
       </div>
     </>
   );

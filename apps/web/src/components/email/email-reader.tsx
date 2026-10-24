@@ -274,7 +274,7 @@ const AppointmentCard = ({
         {appointment.location ? ` · ${appointment.location}` : ""}
       </p>
       <p className="text-muted-foreground text-label">
-        It’s been added to This week on your Today page.{ride ? ` ${ride}` : ""}{" "}
+        It’s been added to Your week on your Today page.{ride ? ` ${ride}` : ""}{" "}
         <Link className="text-foreground font-semibold underline" href="/">
           Go to Today
         </Link>
