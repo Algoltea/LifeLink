@@ -7,10 +7,11 @@ import {
   connectionDefinitions,
   findConnectionDefinition,
 } from "@lifelink/contracts/integrations";
+import type { ConnectionDefinition } from "@lifelink/contracts/integrations";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
@@ -33,6 +34,53 @@ import {
 } from "./lib/capabilities";
 import { demoModeAllowed, readEnvOr } from "./lib/env";
 import { requireOwned, requireOwner } from "./lib/session";
+
+const PRACTICE_MODE_REASON =
+  "Turn off Practice mode in Settings before connecting or changing a real account.";
+
+const CONNECTION_CHANGED_REASON =
+  "This connection changed while the request was running. Return to Connections to check its status.";
+
+const requireLiveMode = (owner: { demoMode: boolean }): void => {
+  if (owner.demoMode) {
+    throw new ConvexError({
+      code: "practice_mode",
+      message: PRACTICE_MODE_REASON,
+    });
+  }
+};
+
+const unavailableReason = (definition: ConnectionDefinition): string | null =>
+  definition.capabilities.some(
+    (capability) => capability.status === "available"
+  )
+    ? null
+    : `${definition.label} has no available features in LifeLink yet. You do not need to connect an account.`;
+
+const requireAvailableCapabilities = (
+  definition: ConnectionDefinition
+): void => {
+  const reason = unavailableReason(definition);
+
+  if (reason !== null) {
+    throw new ConvexError({ code: "unavailable", message: reason });
+  }
+};
+
+/** Also preserve real identifiers left on simulated rows by older clients. */
+const hasLiveMapping = (connection: Doc<"connections">): boolean =>
+  connection.mode === "live" ||
+  connection.externalAccountId !== null ||
+  connection.pendingAttemptId !== null;
+
+const matchesPendingAttempt = (
+  connection: Doc<"connections"> | null,
+  attemptId: string
+): connection is Doc<"connections"> =>
+  connection !== null &&
+  connection.mode === "live" &&
+  connection.status !== "revoked" &&
+  connection.pendingAttemptId === attemptId;
 
 /** New-mail triggers registered after a mailbox connects, with their config. */
 const mailTriggerFor = (
@@ -101,6 +149,10 @@ export const list = query({
           connectionId: row?._id ?? null,
           definition,
           developerReady,
+          hasSavedRealConnection: rows.some(
+            (candidate) =>
+              candidate.provider === definition.id && hasLiveMapping(candidate)
+          ),
           lastError: row?.lastError ?? null,
           mode: row?.mode ?? null,
           status: row?.status ?? null,
@@ -141,6 +193,18 @@ export const recordPending = internalMutation({
     provider: v.string(),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    if (owner._id !== args.ownerId) {
+      throw new ConvexError({
+        code: "not_found",
+        message: "That account could not be found.",
+      });
+    }
+
+    // The provider request may have completed after Practice was switched on.
+    requireLiveMode(owner);
+
     const existing = await ctx.db
       .query("connections")
       .withIndex("by_owner_provider", (index) =>
@@ -149,11 +213,15 @@ export const recordPending = internalMutation({
       .first();
 
     const values = {
+      accountLabel: existing?.mode === "live" ? existing.accountLabel : null,
+      connectedAt: existing?.mode === "live" ? existing.connectedAt : null,
+      externalAccountId:
+        existing?.mode === "live" ? existing.externalAccountId : null,
       lastError: null,
       mode: "live" as const,
       pendingAttemptId: args.externalAttemptId,
       status:
-        existing?.status === "active"
+        existing?.mode === "live" && existing.status === "active"
           ? ("active" as const)
           : ("pending" as const),
       updatedAt: Date.now(),
@@ -162,9 +230,6 @@ export const recordPending = internalMutation({
     await (existing === null
       ? ctx.db.insert("connections", {
           ...values,
-          accountLabel: null,
-          connectedAt: null,
-          externalAccountId: null,
           ownerId: args.ownerId,
           provider: args.provider,
         })
@@ -186,6 +251,8 @@ export const start = action({
       });
     }
 
+    requireLiveMode(owner);
+
     if (
       definition?.composioToolkit === undefined ||
       definition.connectStyle !== "oauth"
@@ -195,6 +262,8 @@ export const start = action({
         message: "This service does not use a personal sign-in.",
       });
     }
+
+    requireAvailableCapabilities(definition);
 
     if (!developerConfigured("composio")) {
       throw new ConvexError({
@@ -228,13 +297,22 @@ export const start = action({
 
 export const pendingFor = internalQuery({
   args: { ownerId: v.id("profiles"), provider: v.string() },
-  handler: async (ctx, args) =>
-    await ctx.db
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    if (owner._id !== args.ownerId) {
+      return null;
+    }
+
+    requireLiveMode(owner);
+
+    return await ctx.db
       .query("connections")
       .withIndex("by_owner_provider", (index) =>
         index.eq("ownerId", args.ownerId).eq("provider", args.provider)
       )
-      .first(),
+      .first();
+  },
 });
 
 export const markResult = internalMutation({
@@ -243,8 +321,24 @@ export const markResult = internalMutation({
     connectionId: v.id("connections"),
     error: v.union(v.string(), v.null()),
     externalAccountId: v.union(v.string(), v.null()),
+    externalAttemptId: v.string(),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    const connection = requireOwned(
+      await ctx.db.get(args.connectionId),
+      owner,
+      "connection"
+    );
+
+    requireLiveMode(owner);
+
+    // A stale callback must not replace a newer attempt or restore a revoked row.
+    if (!matchesPendingAttempt(connection, args.externalAttemptId)) {
+      return false;
+    }
+
     const now = Date.now();
 
     await ctx.db.patch(args.connectionId, {
@@ -256,6 +350,8 @@ export const markResult = internalMutation({
       status: args.error === null ? "active" : "error",
       updatedAt: now,
     });
+
+    return true;
   },
 });
 
@@ -274,15 +370,25 @@ export const complete = action({
       return { message: "Please sign in again.", ok: false };
     }
 
+    if (owner.demoMode) {
+      return { message: PRACTICE_MODE_REASON, ok: false };
+    }
+
+    const unavailable = unavailableReason(definition);
+
+    if (definition.connectStyle !== "oauth" || unavailable !== null) {
+      return {
+        message: unavailable ?? "This service does not use a personal sign-in.",
+        ok: false,
+      };
+    }
+
     const pending = await ctx.runQuery(internal.connections.pendingFor, {
       ownerId: owner.id,
       provider: definition.id,
     });
 
-    if (
-      pending === null ||
-      pending.pendingAttemptId !== args.connectedAccountId
-    ) {
+    if (!matchesPendingAttempt(pending, args.connectedAccountId)) {
       return {
         message:
           "This connection was not started from your account. Please try connecting again.",
@@ -304,6 +410,7 @@ export const complete = action({
         connectionId: pending._id,
         error: rejection,
         externalAccountId: null,
+        externalAttemptId: args.connectedAccountId,
       });
 
       return {
@@ -312,16 +419,40 @@ export const complete = action({
       };
     }
 
-    await ctx.runMutation(internal.connections.markResult, {
-      accountLabel: account.state?.val?.displayName ?? definition.label,
-      connectionId: pending._id,
-      error: null,
-      externalAccountId: account.id,
-    });
+    const saved: boolean = await ctx.runMutation(
+      internal.connections.markResult,
+      {
+        accountLabel: account.state?.val?.displayName ?? definition.label,
+        connectionId: pending._id,
+        error: null,
+        externalAccountId: account.id,
+        externalAttemptId: args.connectedAccountId,
+      }
+    );
+
+    if (!saved) {
+      return { message: CONNECTION_CHANGED_REASON, ok: false };
+    }
 
     const trigger = mailTriggerFor(definition.id);
 
     if (trigger !== null) {
+      const current: Doc<"connections"> | null = await ctx.runQuery(
+        internal.connections.externalIdFor,
+        {
+          connectionId: pending._id,
+          ownerId: owner.id,
+        }
+      );
+
+      if (
+        current?.mode !== "live" ||
+        current.status !== "active" ||
+        current.externalAccountId !== account.id
+      ) {
+        return { message: CONNECTION_CHANGED_REASON, ok: false };
+      }
+
       await upsertTrigger(trigger.slug, owner.id, account.id, trigger.config);
     }
 
@@ -332,17 +463,56 @@ export const complete = action({
 export const externalIdFor = internalQuery({
   args: { connectionId: v.id("connections"), ownerId: v.id("profiles") },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
     const connection = await ctx.db.get(args.connectionId);
 
-    return connection === null || connection.ownerId !== args.ownerId
-      ? null
-      : connection;
+    if (
+      owner._id !== args.ownerId ||
+      connection === null ||
+      connection.ownerId !== owner._id
+    ) {
+      return null;
+    }
+
+    if (hasLiveMapping(connection)) {
+      requireLiveMode(owner);
+    }
+
+    return connection;
   },
 });
 
 export const markRevoked = internalMutation({
-  args: { connectionId: v.id("connections") },
+  args: {
+    connectionId: v.id("connections"),
+    externalAccountId: v.union(v.string(), v.null()),
+    mode: v.union(v.literal("live"), v.literal("simulated")),
+    pendingAttemptId: v.union(v.string(), v.null()),
+  },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    const connection = requireOwned(
+      await ctx.db.get(args.connectionId),
+      owner,
+      "connection"
+    );
+
+    if (hasLiveMapping(connection)) {
+      requireLiveMode(owner);
+    }
+
+    if (
+      connection.mode !== args.mode ||
+      connection.externalAccountId !== args.externalAccountId ||
+      connection.pendingAttemptId !== args.pendingAttemptId
+    ) {
+      throw new ConvexError({
+        code: "connection_changed",
+        message: CONNECTION_CHANGED_REASON,
+      });
+    }
+
     await ctx.db.patch(args.connectionId, {
       pendingAttemptId: null,
       status: "revoked",
@@ -382,6 +552,9 @@ export const disconnect = action({
 
     await ctx.runMutation(internal.connections.markRevoked, {
       connectionId: connection._id,
+      externalAccountId: connection.externalAccountId,
+      mode: connection.mode,
+      pendingAttemptId: connection.pendingAttemptId,
     });
   },
 });
@@ -404,6 +577,8 @@ export const connectPractice = mutation({
       });
     }
 
+    requireAvailableCapabilities(definition);
+
     const existing = await ctx.db
       .query("connections")
       .withIndex("by_owner_provider", (index) =>
@@ -413,9 +588,21 @@ export const connectPractice = mutation({
 
     if (existing !== null) {
       requireOwned(existing, owner, "connection");
+
+      if (hasLiveMapping(existing)) {
+        throw new ConvexError({
+          code: "live_connection_exists",
+          message: `Your real ${definition.label} connection is saved. Practice accounts cannot replace it. Turn off Practice mode in Settings to manage it.`,
+        });
+      }
+
       await ctx.db.patch(existing._id, {
         accountLabel: "Practice account",
+        connectedAt: Date.now(),
+        externalAccountId: null,
+        lastError: null,
         mode: "simulated",
+        pendingAttemptId: null,
         status: "active",
         updatedAt: Date.now(),
       });
