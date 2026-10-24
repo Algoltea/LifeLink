@@ -4,7 +4,12 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { MicIcon, SquareIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  LoaderCircleIcon,
+  MicIcon,
+  SquareIcon,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -35,14 +40,14 @@ const voiceHintFor = (voice: VoiceState, available: boolean): string => {
   }
 
   if (voice === "dictating") {
-    return "Listening. Your words will appear in the box; press Ask when they look right.";
+    return "Listening. Your words will appear in the box; press Send when they look right.";
   }
 
   if (voice === "live" || voice === "connecting") {
     return "Talking with LifeLink. Anything it prepares appears on screen for you to approve.";
   }
 
-  return "Press the microphone button to speak. Nothing is sent until you approve it.";
+  return "Press Speak to talk instead of typing. Nothing is sent until you approve it.";
 };
 
 /**
@@ -73,6 +78,8 @@ const ComposerSession = ({
   const text = draft ?? localText;
   const setText = onDraftChange ?? setLocalText;
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voice, setVoice] = useState<VoiceState>("idle");
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [speaking, setSpeaking] = useState(false);
@@ -112,9 +119,11 @@ const ComposerSession = ({
       return false;
     }
 
+    setSubmissionError(null);
+
     if (!online) {
       if (!queueRequest(trimmed, threadId)) {
-        toast.error(
+        setSubmissionError(
           "This request could not be saved offline. Your words are still here. Please try again when connected."
         );
 
@@ -138,7 +147,7 @@ const ComposerSession = ({
 
       return true;
     } catch (error) {
-      toast.error(errorText(error));
+      setSubmissionError(errorText(error));
       pending.current = false;
       setSubmitting(false);
 
@@ -177,6 +186,8 @@ const ComposerSession = ({
   };
 
   const startVoice = async (): Promise<void> => {
+    setVoiceError(null);
+
     if (liveConfigured && online) {
       voiceRun.current += 1;
       const run = voiceRun.current;
@@ -216,7 +227,7 @@ const ComposerSession = ({
         setVoice("live");
       } catch (error) {
         stopVoice();
-        toast.error(
+        setVoiceError(
           `Voice didn't start: ${errorText(error)} You can type instead.`
         );
       }
@@ -242,9 +253,9 @@ const ComposerSession = ({
   const voiceHint = voiceHintFor(voice, voiceAvailable);
 
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
+    <div className={cn("@container/composer flex flex-col gap-4", className)}>
       <form
-        className="border-control bg-raised grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-2xl border-[1.5px] p-3 sm:gap-x-5 sm:p-4"
+        className="border-border bg-raised has-[textarea:focus-visible]:border-control flex flex-col gap-2 rounded-3xl border p-3 pl-5 shadow-[0_1px_2px_rgb(45_33_24/0.04),0_8px_24px_rgb(45_33_24/0.06)] transition-[border-color]"
         onSubmit={async (event) => {
           event.preventDefault();
 
@@ -253,70 +264,90 @@ const ComposerSession = ({
           }
         }}
       >
-        <button
-          aria-label={listening ? "Stop listening" : "Speak to LifeLink"}
-          aria-pressed={listening}
-          className={cn(
-            "border-brass bg-primary text-primary-foreground hover:bg-primary-hover disabled:hover:bg-primary flex size-12 shrink-0 items-center justify-center rounded-full border-2 transition-[background-color,transform] active:scale-95 disabled:opacity-50 sm:size-16",
-            listening && "bg-foreground hover:bg-foreground/85"
-          )}
-          disabled={!voiceAvailable}
-          onClick={() => {
-            if (listening) {
-              stopVoice();
-            } else {
-              void startVoice();
+        <label className="sr-only" htmlFor={inputId}>
+          What would you like help with?
+        </label>
+        <textarea
+          aria-describedby={hintId}
+          className="placeholder:text-muted-foreground field-sizing-content max-h-48 min-h-12 w-full resize-none overflow-y-auto bg-transparent pt-1 text-lg leading-relaxed outline-none"
+          disabled={submitting}
+          id={inputId}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
             }
           }}
-          type="button"
-        >
-          {listening ? (
-            <SquareIcon
-              aria-hidden="true"
-              className="size-6"
-              fill="currentColor"
-            />
-          ) : (
-            <MicIcon aria-hidden="true" className="size-7" />
-          )}
-        </button>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <label className="sr-only" htmlFor={inputId}>
-            What would you like help with?
-          </label>
-          <textarea
-            aria-describedby={hintId}
-            className="placeholder:text-muted-foreground field-sizing-content max-h-32 min-h-12 w-full resize-none overflow-y-auto bg-transparent text-base leading-snug outline-none sm:text-lg"
-            disabled={submitting}
-            id={inputId}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                !event.shiftKey &&
-                !event.nativeEvent.isComposing
-              ) {
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
+          placeholder="Ask LifeLink…"
+          rows={1}
+          value={text}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <button
+            aria-pressed={listening}
+            className={cn(
+              "border-border text-label hover:bg-parchment min-h-control -ml-2 inline-flex items-center gap-2 rounded-full border px-4 font-medium transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
+              listening &&
+                "bg-foreground text-background hover:bg-foreground/85 border-transparent"
+            )}
+            disabled={!voiceAvailable}
+            onClick={() => {
+              if (listening) {
+                stopVoice();
+              } else {
+                void startVoice();
               }
             }}
-            placeholder="Type your message…"
-            rows={1}
-            value={text}
-          />
+            type="button"
+          >
+            {listening ? (
+              <SquareIcon
+                aria-hidden="true"
+                className="size-4"
+                fill="currentColor"
+              />
+            ) : (
+              <MicIcon aria-hidden="true" className="size-5" />
+            )}
+            {listening ? "Stop" : "Speak"}
+          </button>
+          <Button
+            aria-busy={submitting}
+            aria-label={submitting ? "Sending" : "Send"}
+            className="rounded-full disabled:border-transparent"
+            disabled={submitting || text.trim().length === 0}
+            size="icon"
+            type="submit"
+          >
+            {submitting ? (
+              <LoaderCircleIcon
+                aria-hidden="true"
+                className="motion-safe:animate-spin"
+              />
+            ) : (
+              <ArrowUpIcon aria-hidden="true" />
+            )}
+          </Button>
         </div>
-        <Button
-          aria-busy={submitting}
-          className="px-4 sm:px-6"
-          disabled={submitting || text.trim().length === 0}
-          type="submit"
-        >
-          {submitting ? "Sending…" : "Ask"}
-        </Button>
-        <p className="text-muted-foreground col-span-3 text-base" id={hintId}>
-          {voiceHint}
-        </p>
       </form>
+      <p
+        className="text-muted-foreground text-label -mt-2 text-center"
+        id={hintId}
+      >
+        {voiceHint}
+      </p>
+      {submissionError ? (
+        <ErrorNote>
+          {submissionError} Your words are still in the box. Press Send to try
+          again.
+        </ErrorNote>
+      ) : null}
+      {voiceError ? <ErrorNote>{voiceError}</ErrorNote> : null}
       {listening && preferences.captions && captions.length > 0 ? (
         <section
           aria-label="Captions"
@@ -398,7 +429,13 @@ const Composer = (props: ComposerProps) => {
   }
 
   if (!threadId || !profileId) {
-    return <LoadingRows label="Opening a place for your message" rows={1} />;
+    return (
+      <LoadingRows
+        layout="composer"
+        label="Opening a place for your message"
+        rows={1}
+      />
+    );
   }
 
   return (
