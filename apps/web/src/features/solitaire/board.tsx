@@ -5,6 +5,7 @@ import type {
   MoveTarget,
   Position,
 } from "@lifelink/solitaire/game";
+import { FOUNDATION_SUITS } from "@lifelink/solitaire/rules";
 import { cn } from "@lifelink/ui/lib/utils";
 import { RotateCcw } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
@@ -21,7 +22,7 @@ import {
   wasteLabel,
 } from "./board-model";
 import type { Slot } from "./board-model";
-import { CardBack, CardFace, EmptyPile } from "./playing-card";
+import { CardBack, CardFace, EmptyFoundation, EmptyPile } from "./playing-card";
 
 type Mark = "hint" | "none" | "selected" | "target";
 
@@ -224,6 +225,7 @@ const FoundationPile = ({
   readonly index: number;
 }) => {
   const top = board.state.foundations[index]?.at(-1);
+  const suit = FOUNDATION_SUITS[index];
   const source: MoveSource | null = top ? { index, kind: "foundation" } : null;
   const mark = pileMark(board, source, "foundation", index);
 
@@ -240,9 +242,8 @@ const FoundationPile = ({
             card={top}
             tone={mark === "selected" ? "selected" : "plain"}
           />
-        ) : (
-          <EmptyPile label="Ace" />
-        )}
+        ) : null}
+        {!top && suit ? <EmptyFoundation suit={suit} /> : null}
       </SlotButton>
     </div>
   );

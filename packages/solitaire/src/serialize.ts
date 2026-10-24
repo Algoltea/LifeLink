@@ -3,7 +3,7 @@ import type { Card, Suit } from "./cards";
 import { FOUNDATION_COUNT, TABLEAU_COLUMNS } from "./deal";
 import { DECK_SIZE } from "./game";
 import type { DrawCount, GameState, Position } from "./game";
-import { isValidRun } from "./rules";
+import { foundationIndexFor, isValidRun } from "./rules";
 
 export const SAVE_FORMAT = "lifelink/solitaire";
 
@@ -196,6 +196,24 @@ const parseDrawCount = (value: JsonValue | undefined): DrawCount | null => {
   return value === 3 ? 3 : null;
 };
 
+/**
+ * Games saved before foundations were suit-specific may hold a suit in any
+ * spot. Each pile moves to its suit's spot; the order within it is unchanged.
+ */
+const slotFoundations = (piles: readonly (readonly Card[])[]): Card[][] => {
+  const slotted: Card[][] = piles.map(() => []);
+
+  for (const pile of piles) {
+    const suit = pile[0]?.suit;
+
+    if (suit) {
+      slotted[foundationIndexFor(suit)] = [...pile];
+    }
+  }
+
+  return slotted;
+};
+
 const parsePosition = (value: JsonValue | undefined): Parsed<Position> => {
   if (!isRecord(value)) {
     return fail("The saved table is missing.");
@@ -245,7 +263,7 @@ const parsePosition = (value: JsonValue | undefined): Parsed<Position> => {
 
   const position: Position = {
     drawCount,
-    foundations: foundations.value,
+    foundations: slotFoundations(foundations.value),
     moves,
     recycleLimit: isInteger(limit) ? limit : null,
     recycles,

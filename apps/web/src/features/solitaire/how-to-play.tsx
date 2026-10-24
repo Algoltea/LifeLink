@@ -28,10 +28,10 @@ export const HowToPlay = () => (
     </summary>
     <div className="flex flex-col gap-6 pt-4 pb-4">
       <p className="max-w-prose">
-        Build four piles, one per suit, from ace up to king. In the seven
-        columns, place a card on one that is one higher and the other colour: a
-        red 7 on a black 8. Only a king can go into an empty column. Draw from
-        the stock when you are stuck.
+        Build four piles from ace up to king, each in the spot marked with its
+        suit (♠ ♥ ♣ ♦). In the seven columns, place a card on one that is one
+        higher and the other colour: a red 7 on a black 8. Only a king can go
+        into an empty column. Draw from the stock when you are stuck.
       </p>
       <p className="max-w-prose">
         Tap a card to pick it up, then tap where it should go. When a card has

@@ -363,8 +363,11 @@ const transfer = (
       );
     }
 
-    if (!canPlaceOnFoundation(first, foundation)) {
-      return refuse("needs-card", foundationRefusal(foundation));
+    if (!canPlaceOnFoundation(first, foundation, target.index)) {
+      return refuse(
+        "needs-card",
+        foundationRefusal(first, foundation, target.index)
+      );
     }
   } else {
     const column = state.tableau[target.index];
@@ -461,8 +464,8 @@ export const legalTargets = (
   const targets: MoveTarget[] = [];
 
   if (picked.cards.length === 1 && source.kind !== "foundation") {
-    const index = state.foundations.findIndex((pile) =>
-      canPlaceOnFoundation(first, pile)
+    const index = state.foundations.findIndex((pile, pileIndex) =>
+      canPlaceOnFoundation(first, pile, pileIndex)
     );
 
     if (index !== -1) {
@@ -588,8 +591,9 @@ export const findHint = (state: Position): Move | null => {
 };
 
 const couldPlaceAnywhere = (state: Position, card: Card): boolean =>
-  state.foundations.some((pile) => canPlaceOnFoundation(card, pile)) ||
-  state.tableau.some((column) => canPlaceOnTableau(card, column.at(-1)));
+  state.foundations.some((pile, index) =>
+    canPlaceOnFoundation(card, pile, index)
+  ) || state.tableau.some((column) => canPlaceOnTableau(card, column.at(-1)));
 
 /**
  * Best effort: false only when no useful transfer exists and no card waiting
@@ -663,8 +667,8 @@ const nextSafeMove = (state: GameState): Move | null => {
     const card = picked.ok ? picked.cards[0] : undefined;
 
     if (card && isSafeForFoundation(state, card)) {
-      const index = state.foundations.findIndex((pile) =>
-        canPlaceOnFoundation(card, pile)
+      const index = state.foundations.findIndex((pile, pileIndex) =>
+        canPlaceOnFoundation(card, pile, pileIndex)
       );
 
       if (index !== -1) {

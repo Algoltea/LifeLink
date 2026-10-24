@@ -202,6 +202,12 @@ describe("tableau rules", () => {
   });
 });
 
+const toFoundation = (index: number): Move => ({
+  source: { kind: "waste" },
+  target: { index, kind: "foundation" },
+  type: "transfer",
+});
+
 describe("foundation rules", () => {
   it("starts with an ace and continues in suit", () => {
     const game = table({ waste: [up("hearts", 2), up("hearts", 1)] });
@@ -209,47 +215,53 @@ describe("foundation rules", () => {
     const ace = expectOk(
       applyMove(game, {
         source: { kind: "waste" },
-        target: { index: 0, kind: "foundation" },
+        target: { index: 1, kind: "foundation" },
         type: "transfer",
       })
     );
 
-    expect(ace.description).toBe("Moved ace of hearts to foundation 1.");
+    expect(ace.description).toBe("Moved ace of hearts to foundation 2.");
 
     const two = expectOk(
       applyMove(ace.state, {
         source: { kind: "waste" },
-        target: { index: 0, kind: "foundation" },
+        target: { index: 1, kind: "foundation" },
         type: "transfer",
       })
     );
 
-    expect(two.state.foundations[0]?.map((card) => card.id)).toStrictEqual([
+    expect(two.state.foundations[1]?.map((card) => card.id)).toStrictEqual([
       "hearts-1",
       "hearts-2",
     ]);
   });
 
-  it("refuses a non-ace on an empty foundation and the wrong suit on a started one", () => {
-    const empty = table({ waste: [up("hearts", 2)] });
+  it("keeps each foundation to its own suit, starting with the ace", () => {
+    const wrongSuit = table({ waste: [up("hearts", 1)] });
+    const notAce = table({ waste: [up("spades", 2)] });
 
-    const started = table({
-      foundations: [[up("hearts", 1)], [], [], []],
-      waste: [up("spades", 2)],
+    const skipped = table({
+      foundations: [[], [up("hearts", 1)], [], []],
+      waste: [up("hearts", 3)],
     });
 
-    const toFoundation: Move = {
-      source: { kind: "waste" },
-      target: { index: 0, kind: "foundation" },
-      type: "transfer",
-    };
-
-    expect(expectError(applyMove(empty, toFoundation)).error.message).toBe(
-      "That card can't go there: a foundation starts with an ace."
+    expect(
+      expectError(applyMove(wrongSuit, toFoundation(0))).error.message
+    ).toBe("That card can't go there: this foundation is for spades.");
+    expect(expectError(applyMove(notAce, toFoundation(0))).error.message).toBe(
+      "That card can't go there: this foundation starts with the ace of spades."
     );
-    expect(expectError(applyMove(started, toFoundation)).error.message).toBe(
+    expect(expectError(applyMove(skipped, toFoundation(1))).error.message).toBe(
       "That card can't go there: this foundation needs the 2 of hearts."
     );
+  });
+
+  it("offers only the matching suit's foundation as a target", () => {
+    const game = table({ waste: [up("clubs", 1)] });
+
+    expect(legalTargets(game, { kind: "waste" })).toStrictEqual([
+      { index: 2, kind: "foundation" },
+    ]);
   });
 
   it("refuses more than one card at a time", () => {
@@ -436,7 +448,7 @@ describe("tap-to-move targets", () => {
     const game = table({ waste: [up("diamonds", 1)] });
 
     expect(
-      expectOk(sendToFoundation(game, { kind: "waste" })).state.foundations[0]
+      expectOk(sendToFoundation(game, { kind: "waste" })).state.foundations[3]
     ).toHaveLength(1);
     expect(
       expectError(
@@ -457,7 +469,7 @@ describe("hints and auto-move", () => {
 
     expect(findHint(game)).toStrictEqual({
       source: { cardIndex: 0, index: 0, kind: "tableau" },
-      target: { index: 0, kind: "foundation" },
+      target: { index: 1, kind: "foundation" },
       type: "transfer",
     });
     expect(findHint(table({ stock: [down("clubs", 9)] }))).toStrictEqual({
