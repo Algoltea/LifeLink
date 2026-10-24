@@ -493,6 +493,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
     <section
       aria-labelledby="profile-heading"
       className="border-rule flex min-w-0 flex-col gap-5 border-t pt-6"
+      id="profile"
     >
       <h2 className="text-2xl leading-8 font-semibold" id="profile-heading">
         About you

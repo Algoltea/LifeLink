@@ -318,4 +318,17 @@ describe("news on Today", () => {
       person.query(api.news.headlines, { kind: "top" })
     ).resolves.toStrictEqual({ fetchedAt: null, headlines: [] });
   });
+
+  it("saves the chosen kind and whether news shows", async () => {
+    const { person } = await ownerIn(null);
+
+    await person.mutation(api.profiles.updatePreferences, {
+      newsKind: "top",
+      showNews: false,
+    });
+
+    const me = await person.query(api.profiles.me, {});
+
+    expect(me?.preferences).toMatchObject({ newsKind: "top", showNews: false });
+  });
 });

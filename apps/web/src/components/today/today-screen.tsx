@@ -2,28 +2,39 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { weatherAdvice } from "@lifelink/contracts/weather";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { BellRingIcon } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
-import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
+import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { TaskPanel } from "@/components/tasks/task-panel";
 import {
   GettingStarted,
   showsGettingStarted,
   useStepsHidden,
 } from "@/components/today/getting-started";
+import { LatestEmail } from "@/components/today/latest-email";
+import { NewsCard } from "@/components/today/news-card";
 import { FamilyList, WeekList } from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
+import { WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
 import { messageOf } from "@/lib/errors";
-import { formatTime, relativeDay } from "@/lib/format";
+import { dayKey, formatTime, relativeDay } from "@/lib/format";
+import {
+  dayFor,
+  degrees,
+  forecastOf,
+  spokenWeather,
+  useTemperatureUnit,
+  useWeather,
+} from "@/lib/weather";
 
 type TodaySummary = FunctionReturnType<typeof api.today.summary>;
 
@@ -109,6 +120,100 @@ const DueReminder = ({
   );
 };
 
+const TodayContent = ({
+  stepsHidden,
+  summary,
+}: {
+  stepsHidden: boolean;
+  summary: TodaySummary;
+}) => {
+  const { timeZone } = summary;
+  const weather = useWeather(timeZone);
+  const unit = useTemperatureUnit();
+  const forecast = forecastOf(weather);
+  const lines = currentBriefing(summary);
+  const tasks = [...summary.waitingOnYou, ...summary.progressing].slice(0, 3);
+
+  // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
+  const welcome =
+    !summary.demoMode &&
+    showsGettingStarted(summary.gettingStarted, stepsHidden);
+
+  const week: WeekRow[] = [
+    ...summary.appointments.map((appointment): WeekRow => {
+      const day = dayFor(forecast, dayKey(appointment.startsAt, timeZone));
+
+      return {
+        at: appointment.startsAt,
+        id: appointment._id,
+        sub:
+          appointment.rideStatus === "confirmed" && appointment.driverName
+            ? `Ride with ${appointment.driverName.split(" ")[0] ?? appointment.driverName}, confirmed`
+            : (appointment.location ?? "Appointment"),
+        title: appointment.title,
+        weather: day
+          ? {
+              advice: weatherAdvice(day),
+              code: day.code,
+              high: degrees(day.highC, unit),
+            }
+          : undefined,
+      };
+    }),
+    ...summary.upcomingReminders.map((reminder) => ({
+      at: reminder.remindAt,
+      id: reminder._id,
+      sub: "Reminder",
+      title: reminder.title,
+    })),
+  ].toSorted((left, right) => left.at - right.at);
+
+  return (
+    <>
+      <TodayHeader
+        lines={lines}
+        preferredName={summary.preferredName}
+        spokenWeather={forecast ? spokenWeather(forecast, unit) : null}
+        timeZone={timeZone}
+        weather={<WeatherChip state={weather} unit={unit} />}
+      />
+
+      {summary.dueReminders.map((reminder) => (
+        <DueReminder key={reminder._id} reminder={reminder} />
+      ))}
+
+      <div className="motion-enter grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex min-w-0 flex-col gap-8">
+          {welcome ? (
+            <GettingStarted progress={summary.gettingStarted} />
+          ) : null}
+          {/* With nothing to review the section steps aside; the header line already says so. */}
+          {tasks.length > 0 ? (
+            <section
+              aria-labelledby="review-heading"
+              className="motion-enter flex flex-col gap-6"
+            >
+              <h2 className="text-section font-semibold" id="review-heading">
+                Needs your review
+              </h2>
+              {tasks.map((task) => (
+                <TaskPanel key={task._id} taskId={task._id} />
+              ))}
+            </section>
+          ) : null}
+          <LatestEmail timeZone={timeZone} />
+          <NewsCard />
+          <Composer />
+        </div>
+        <aside className="flex flex-col gap-8">
+          <WeekList rows={week} timeZone={timeZone} />
+          <FamilyList messages={summary.messages} timeZone={timeZone} />
+        </aside>
+      </div>
+    </>
+  );
+};
+
 const TodayScreen = () => {
   const summary = useQuery(api.today.summary);
   const stepsHidden = useStepsHidden();
@@ -132,80 +237,7 @@ const TodayScreen = () => {
     );
   }
 
-  const { timeZone } = summary;
-  const lines = currentBriefing(summary);
-  const tasks = [...summary.waitingOnYou, ...summary.progressing].slice(0, 3);
-
-  // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
-  const welcome =
-    !summary.demoMode &&
-    showsGettingStarted(summary.gettingStarted, stepsHidden);
-
-  // With nothing to review, the welcome steps already point to Ask.
-  const showReview = !welcome || tasks.length > 0;
-
-  const week: WeekRow[] = [
-    ...summary.appointments.map((appointment) => ({
-      at: appointment.startsAt,
-      id: appointment._id,
-      sub:
-        appointment.rideStatus === "confirmed" && appointment.driverName
-          ? `Ride with ${appointment.driverName.split(" ")[0] ?? appointment.driverName}, confirmed`
-          : (appointment.location ?? "Appointment"),
-      title: appointment.title,
-    })),
-    ...summary.upcomingReminders.map((reminder) => ({
-      at: reminder.remindAt,
-      id: reminder._id,
-      sub: "Reminder",
-      title: reminder.title,
-    })),
-  ].toSorted((left, right) => left.at - right.at);
-
-  return (
-    <>
-      <TodayHeader
-        lines={lines}
-        preferredName={summary.preferredName}
-        timeZone={timeZone}
-      />
-
-      {summary.dueReminders.map((reminder) => (
-        <DueReminder key={reminder._id} reminder={reminder} />
-      ))}
-
-      <div className="motion-enter grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {welcome ? (
-            <GettingStarted progress={summary.gettingStarted} />
-          ) : null}
-          {showReview ? (
-            <h2 className="text-section font-semibold">Needs your review</h2>
-          ) : null}
-          {showReview && tasks.length === 0 ? (
-            <EmptyNote
-              action={
-                <Link className="text-lg font-semibold underline" href="/ask">
-                  Ask LifeLink
-                </Link>
-              }
-            >
-              Nothing is waiting for you. When you ask for something, it will
-              appear here for you to review.
-            </EmptyNote>
-          ) : null}
-          {tasks.map((task) => (
-            <TaskPanel key={task._id} taskId={task._id} />
-          ))}
-          <Composer />
-        </div>
-        <aside className="flex flex-col gap-8">
-          <WeekList rows={week} timeZone={timeZone} />
-          <FamilyList messages={summary.messages} timeZone={timeZone} />
-        </aside>
-      </div>
-    </>
-  );
+  return <TodayContent stepsHidden={stepsHidden} summary={summary} />;
 };
 
 export { TodayScreen };

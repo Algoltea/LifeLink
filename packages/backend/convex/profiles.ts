@@ -215,8 +215,10 @@ export const updatePreferences = mutation({
       v.union(v.literal("short"), v.literal("detailed"))
     ),
     groceryNotes: v.optional(v.union(v.string(), v.null())),
+    newsKind: v.optional(v.union(v.literal("good"), v.literal("top"))),
     readAloud: v.optional(v.boolean()),
     reducedMotion: v.optional(v.boolean()),
+    showNews: v.optional(v.boolean()),
     speechRate: v.optional(v.number()),
     stepByStep: v.optional(v.boolean()),
     supportLanguage: v.optional(v.string()),
@@ -265,6 +267,14 @@ export const updatePreferences = mutation({
 
     if (args.groceryNotes !== undefined) {
       patch.groceryNotes = args.groceryNotes;
+    }
+
+    if (args.newsKind !== undefined) {
+      patch.newsKind = args.newsKind;
+    }
+
+    if (args.showNews !== undefined) {
+      patch.showNews = args.showNews;
     }
 
     if (args.readAloud !== undefined) {

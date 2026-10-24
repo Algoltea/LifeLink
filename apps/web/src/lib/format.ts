@@ -128,6 +128,7 @@ export {
   HOUR,
   MINUTE,
   ago,
+  dayKey,
   formatDay,
   formatShortDay,
   formatTime,

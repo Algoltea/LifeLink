@@ -659,9 +659,12 @@ export default defineSchema({
       v.union(v.literal("short"), v.literal("detailed"))
     ),
     groceryNotes: v.union(v.string(), v.null()),
+    // News on Today. Optional so older rows read as good news, shown.
+    newsKind: v.optional(newsKind),
     profileId: v.id("profiles"),
     readAloud: v.boolean(),
     reducedMotion: v.boolean(),
+    showNews: v.optional(v.boolean()),
     speechRate: v.number(),
     stepByStep: v.optional(v.boolean()),
     // One of the offered support languages; checked when saved.

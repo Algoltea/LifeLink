@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import type { ReactNode } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { formatDay } from "@/lib/format";
@@ -15,11 +16,16 @@ const serverDate = (): string => "";
 const TodayHeader = ({
   lines,
   preferredName,
+  spokenWeather,
   timeZone,
+  weather,
 }: {
   lines: string[];
   preferredName: string;
+  /** Read after the day's lines; null while the forecast is unknown. */
+  spokenWeather: string | null;
   timeZone: string;
+  weather: ReactNode;
 }) => {
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -41,9 +47,12 @@ const TodayHeader = ({
   return (
     <header className="flex flex-col gap-4">
       <div className="flex max-w-3xl min-w-0 flex-col gap-1">
-        {date ? (
-          <p className="text-muted-foreground text-label">{date}</p>
-        ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {date ? (
+            <p className="text-muted-foreground text-label">{date}</p>
+          ) : null}
+          {weather}
+        </div>
         <h1
           className="text-page-title font-semibold tracking-tight outline-none sm:text-[2.222rem] sm:leading-tight"
           ref={heading}
@@ -59,7 +68,9 @@ const TodayHeader = ({
       <div className="flex flex-wrap items-center gap-3">
         <ReadAloudButton
           label="Read my day aloud"
-          text={[`${salutation}.`, ...lines].join(" ")}
+          text={[`${salutation}.`, ...lines, spokenWeather ?? ""]
+            .join(" ")
+            .trim()}
         />
       </div>
     </header>

@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import type { Route } from "next";
@@ -9,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { listTime } from "@/components/email/email-bits";
+import { WeatherIcon } from "@/components/today/weather";
 import {
   formatShortDay,
   formatTime,
@@ -25,6 +27,12 @@ interface WeekRow {
   id: string;
   sub: string;
   title: string;
+  /** Appointments only; reminders stay quiet. */
+  weather?: {
+    advice: string | null;
+    code: number;
+    high: string;
+  };
 }
 
 /** A side list's heading and rows, inset to line up with the rows like Email and Documents. */
@@ -95,6 +103,23 @@ const WeekList = ({
                 <span className="sr-only">, </span>
                 {row.sub}
               </span>
+              {row.weather ? (
+                <span
+                  className={cn(
+                    "text-label flex items-center gap-1.5",
+                    row.weather.advice
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span className="sr-only">, weather: </span>
+                  <WeatherIcon className="size-4" code={row.weather.code} />
+                  <span className="num">{row.weather.high}</span>
+                  {row.weather.advice ? (
+                    <span className="truncate">· {row.weather.advice}</span>
+                  ) : null}
+                </span>
+              ) : null}
             </span>
           </li>
         ))}
