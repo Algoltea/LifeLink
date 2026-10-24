@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import type { AisleSort } from "@lifelink/contracts/grocery-aisles";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { api, internal } from "../convex/_generated/api";
 import { connectFamily, newBackend, signUp } from "./harness";
@@ -601,5 +602,145 @@ describe("past lists and the usual list", () => {
     expect(names(thisWeekId)).toStrictEqual(["Milk"]);
     expect(names(listId)).toStrictEqual([]);
     expect(names(finishedId)).toStrictEqual([]);
+  });
+});
+
+type Setup = Awaited<ReturnType<typeof setupList>>;
+
+const itemsOf = async (backend: Setup["backend"], listId: Setup["listId"]) => {
+  const list = await backend.run(async (ctx) => await ctx.db.get(listId));
+
+  return list?.items ?? [];
+};
+
+/** Appends plain items in one write, keeping the order given. */
+const addNamed = async (
+  backend: Setup["backend"],
+  listId: Setup["listId"],
+  names: string[]
+) => {
+  const existing = await itemsOf(backend, listId);
+
+  await backend.run(async (ctx) => {
+    await ctx.db.patch(listId, {
+      items: [
+        ...existing,
+        ...names.map((name) => ({
+          checked: false,
+          estimatedCents: null,
+          id: crypto.randomUUID(),
+          name,
+          quantity: 1,
+          unit: null,
+        })),
+      ],
+    });
+  });
+};
+
+const aislesOf = async (backend: Setup["backend"], listId: Setup["listId"]) => {
+  const items = await itemsOf(backend, listId);
+
+  return items.map((item) => [item.name, item.aisle]);
+};
+
+const modelReply = (content: AisleSort) =>
+  Response.json(
+    {
+      choices: [{ message: { content: JSON.stringify(content) } }],
+      model: "test-model",
+    },
+    { status: 200 }
+  );
+
+describe("sorting by store section", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses the assistant's sections and puts the list in walking order", async () => {
+    const { backend, listId, person } = await setupList();
+    await addNamed(backend, listId, ["Ice cream", "Tortillas", "Apples"]);
+    const before = await itemsOf(backend, listId);
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValueOnce(
+      modelReply({
+        items: [
+          { aisle: "frozen", number: 1 },
+          { aisle: "pantry", number: 2 },
+        ],
+      })
+    );
+
+    const outcome = await person.action(api.groceries.sortByAisle, {
+      listId,
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(outcome).toMatchObject({ localReason: null, sorted: 3 });
+    await expect(aislesOf(backend, listId)).resolves.toStrictEqual([
+      ["Apples", "produce"],
+      ["Tortillas", "pantry"],
+      ["Ice cream", "frozen"],
+    ]);
+
+    await person.mutation(api.groceries.restoreArrangement, {
+      arrangement: outcome.previous,
+      listId,
+    });
+
+    await expect(itemsOf(backend, listId)).resolves.toStrictEqual(before);
+  });
+
+  it("falls back to the built-in guess and keeps sections the person chose", async () => {
+    const { backend, listId, person } = await setupList();
+    await addNamed(backend, listId, ["Milk", "Bananas"]);
+    vi.stubEnv("OPENROUTER_API_KEY", "");
+
+    const first = await person.action(api.groceries.sortByAisle, { listId });
+    expect(first).toMatchObject({ localReason: "unavailable", sorted: 2 });
+
+    const [bananas, milk] = await itemsOf(backend, listId);
+    expect([bananas?.aisle, milk?.aisle]).toStrictEqual(["produce", "dairy"]);
+
+    // Moving milk up past the section edge puts it with the fruit.
+    await person.mutation(api.groceries.moveItem, {
+      direction: "up",
+      itemId: milk?.id ?? "",
+      listId,
+    });
+    await addNamed(backend, listId, ["Frozen peas"]);
+
+    const second = await person.action(api.groceries.sortByAisle, { listId });
+    expect(second.sorted).toBe(1);
+    await expect(aislesOf(backend, listId)).resolves.toStrictEqual([
+      ["Bananas", "produce"],
+      ["Milk", "produce"],
+      ["Frozen peas", "frozen"],
+    ]);
+  });
+
+  it("moves items past each other and rejects unknown sections on undo", async () => {
+    const { backend, listId, person } = await setupList();
+    await addNamed(backend, listId, ["Bread", "Eggs"]);
+    const [bread] = await itemsOf(backend, listId);
+
+    await person.mutation(api.groceries.moveItem, {
+      direction: "down",
+      itemId: bread?.id ?? "",
+      listId,
+    });
+
+    const moved = await itemsOf(backend, listId);
+    expect(moved.map((item) => item.name)).toStrictEqual(["Eggs", "Bread"]);
+    await expect(
+      person.mutation(api.groceries.restoreArrangement, {
+        arrangement: [{ aisle: "spaceship", itemId: bread?.id ?? "" }],
+        listId,
+      })
+    ).rejects.toThrow(/store section/u);
   });
 });

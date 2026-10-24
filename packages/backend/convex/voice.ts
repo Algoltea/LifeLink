@@ -1,3 +1,4 @@
+import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -115,7 +116,12 @@ export const createCallScreeningSession = action({
 
 /** Read text supplied by the caller; this endpoint never retrieves app records. */
 export const synthesizeSpeech = action({
-  args: { text: v.string() },
+  args: {
+    text: v.string(),
+    voice: v.optional(
+      v.union(...SPEECH_VOICES.map(({ value }) => v.literal(value)))
+    ),
+  },
   handler: async (ctx, args): Promise<SpeechAudio> => {
     const identity = await ctx.auth.getUserIdentity();
 
@@ -135,7 +141,7 @@ export const synthesizeSpeech = action({
       });
     }
 
-    const configurationError = speechConfigurationError();
+    const configurationError = speechConfigurationError(args.voice);
 
     if (configurationError !== null) {
       throw new ConvexError({
@@ -148,7 +154,7 @@ export const synthesizeSpeech = action({
     await ctx.runMutation(internal.speechlimits.consume, {
       characters: text.length,
     });
-    const result = await requestSpeech(text);
+    const result = await requestSpeech(text, args.voice);
 
     if (!result.ok) {
       throw new ConvexError({

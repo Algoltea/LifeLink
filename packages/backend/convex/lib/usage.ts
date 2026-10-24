@@ -4,9 +4,10 @@ import type { MutationCtx } from "../_generated/server";
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
 
-type UsageKind = "explanation" | "recap";
+type UsageKind = "aisles" | "explanation" | "recap";
 
 const LIMITS: Record<UsageKind, { perDay: number; perMinute: number }> = {
+  aisles: { perDay: 30, perMinute: 3 },
   explanation: { perDay: 40, perMinute: 5 },
   recap: { perDay: 20, perMinute: 3 },
 };

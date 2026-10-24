@@ -8,6 +8,7 @@ import {
   helpStyleOf,
   supportLanguages,
 } from "@lifelink/contracts/help-style";
+import { SPEECH_VOICES, isSpeechVoice } from "@lifelink/contracts/speech";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -233,6 +234,8 @@ const Toggle = ({
 
 const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const { failure, save, state, value } = usePreferenceSave(stored, true);
+  const voiceId = useId();
+  const voiceHintId = useId();
 
   return (
     <section
@@ -303,6 +306,35 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           label="Captions when speaking"
           onChange={(captions) => save({ captions })}
         />
+        <div className="border-rule flex flex-col gap-3 border-t py-5">
+          <Label htmlFor={voiceId}>Read-aloud voice</Label>
+          <p
+            className="text-muted-foreground max-w-prose text-lg leading-7"
+            id={voiceHintId}
+          >
+            Choose who reads to you. LifeLink default uses the standard voice.
+          </p>
+          <select
+            aria-describedby={voiceHintId}
+            className="border-control bg-raised text-foreground hover:border-foreground min-h-12 max-w-full self-start rounded-md border px-4 py-2 text-base transition-colors"
+            id={voiceId}
+            onChange={async (event) => {
+              const selected = event.target.value;
+
+              if (selected === "" || isSpeechVoice(selected)) {
+                await save({ speechVoice: selected === "" ? null : selected });
+              }
+            }}
+            value={value.speechVoice ?? ""}
+          >
+            <option value="">LifeLink default</option>
+            {SPEECH_VOICES.map((voice) => (
+              <option key={voice.value} value={voice.value}>
+                {voice.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <Row
           description="How fast LifeLink speaks when it reads aloud."
           label="Speaking speed"
@@ -318,6 +350,7 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
               label="Hear a sample"
               rate={value.speechRate}
               text="This is how LifeLink sounds when it reads to you."
+              voice={value.speechVoice ?? null}
             />
           </div>
         </Row>

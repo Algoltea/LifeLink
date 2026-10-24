@@ -1,8 +1,11 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import type { SpeechVoice } from "@lifelink/contracts/speech";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useId, useState } from "react";
+
+import { usePreferences } from "@/components/app/preferences";
 
 import { messageOf } from "./errors";
 
@@ -22,6 +25,7 @@ interface SpeechSession {
   resume: (() => Promise<void>) | null;
   text: string;
   update: (status: SpeechStatus) => void;
+  voice: SpeechVoice | null;
 }
 
 let currentSession: SpeechSession | null = null;
@@ -180,12 +184,18 @@ const resumeSpeech = async (
   owner: string,
   text: string,
   rate: number,
+  voice: SpeechVoice | null,
   update: (status: SpeechStatus) => void,
   reportError: (message: string) => void
 ): Promise<boolean> => {
   const session = currentSession;
 
-  if (session?.resume === null || session === null || session.text !== text) {
+  if (
+    session?.resume === null ||
+    session === null ||
+    session.text !== text ||
+    session.voice !== voice
+  ) {
     return false;
   }
 
@@ -203,6 +213,7 @@ const resumeSpeech = async (
 
 type SpeechGenerator = (args: {
   text: string;
+  voice?: SpeechVoice;
 }) => Promise<{ audio: ArrayBuffer }>;
 
 const readPassage = async (
@@ -220,9 +231,13 @@ const readPassage = async (
       }
 
       session.update("loading");
+
       // Generate only the next chunk so stopping avoids extra provider requests.
       // eslint-disable-next-line no-await-in-loop
-      const result = await synthesize({ text: textChunk });
+      const result = await synthesize({
+        text: textChunk,
+        voice: session.voice ?? undefined,
+      });
 
       // Convex actions cannot be cancelled after dispatch. Never play a stale result.
       if (signal.aborted) {
@@ -251,20 +266,32 @@ const readPassage = async (
 };
 
 /** Shared authenticated ElevenLabs read-aloud, with no browser-synthesis fallback. */
-const useSpeech = () => {
+const useSpeech = (voiceOverride?: SpeechVoice | null) => {
   const synthesize = useAction(api.voice.synthesizeSpeech);
+  const { preferences } = usePreferences();
+
+  const voice =
+    voiceOverride === undefined ? preferences.speechVoice : voiceOverride;
+
   const owner = useId();
   const [status, setStatus] = useState<SpeechStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const stop = useCallback(() => stopSpeaking(owner), [owner]);
 
-  useEffect(() => stop, [stop]);
+  // Prepared audio belongs to the voice that generated it, including before play.
+  useEffect(() => {
+    if (currentSession?.owner === owner && currentSession.voice !== voice) {
+      stop();
+    }
+
+    return stop;
+  }, [owner, stop, voice]);
 
   const read = useCallback(
     async (text: string, rate: number): Promise<void> => {
       setError(null);
 
-      if (await resumeSpeech(owner, text, rate, setStatus, setError)) {
+      if (await resumeSpeech(owner, text, rate, voice, setStatus, setError)) {
         return;
       }
 
@@ -299,11 +326,12 @@ const useSpeech = () => {
         resume: null,
         text,
         update: setStatus,
+        voice,
       };
 
       await readPassage(session, text, synthesize);
     },
-    [owner, synthesize]
+    [owner, synthesize, voice]
   );
 
   return { error, read, status, stop };

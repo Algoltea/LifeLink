@@ -1,5 +1,6 @@
 "use client";
 
+import type { SpeechVoice } from "@lifelink/contracts/speech";
 import { Button } from "@lifelink/ui/components/button";
 import { Pill } from "@lifelink/ui/components/pill";
 import { cn } from "@lifelink/ui/lib/utils";
@@ -77,22 +78,24 @@ const Avatar = ({
   );
 };
 
-/** Read text aloud at the person's chosen speed; press again to stop. */
+/** Read text aloud with the person's chosen voice and speed; press again to stop. */
 const ReadAloudButton = ({
   className,
   label = "Read aloud",
   rate,
   text,
   variant = "outline",
+  voice,
 }: {
   className?: string;
   label?: string;
   rate?: number;
   text: string;
   variant?: "ghost" | "outline";
+  voice?: SpeechVoice | null;
 }) => {
   const { preferences } = usePreferences();
-  const { error, read, status, stop } = useSpeech();
+  const { error, read, status, stop } = useSpeech(voice);
   const errorId = useId();
   const speaking = status !== "idle";
 
