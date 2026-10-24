@@ -16,6 +16,101 @@ const email = (
 
 describe("importance from sender, subject, and current content", () => {
   it.each([
+    {
+      bodyText: "Would you join us for dinner? Let me know.",
+      category: "reply",
+      subject: "This weekend",
+    },
+    {
+      bodyText: "RSVP for the neighborhood gathering.",
+      category: "reply",
+      subject: "Invitation",
+    },
+    {
+      bodyText: "Your flight is tomorrow at 8:00.",
+      category: "review",
+      subject: "Travel details",
+    },
+    {
+      bodyText: "Your account payment failed. Update it before Friday.",
+      category: "review",
+      subject: "Account update",
+    },
+    {
+      bodyText: "Here are the pictures.",
+      category: "low_priority",
+      subject: "Photos",
+    },
+    {
+      bodyText: "[image: photo.jpeg]",
+      category: "low_priority",
+      subject: "(no subject)",
+    },
+    {
+      bodyText: "Our seasonal sale is here. Unsubscribe anytime.",
+      category: "low_priority",
+      subject: "This week's savings",
+    },
+    {
+      bodyText: "Please complete the attached form by Friday.",
+      category: "review",
+      subject: "Documents",
+    },
+  ])(
+    "uses intent rather than personal sender identity: $subject",
+    ({ category, ...content }) => {
+      const identities = [
+        { fromAddress: "mina@cedar.example", fromName: "Mina" },
+        { fromAddress: "jules@harbor.example", fromName: "Jules" },
+        { fromAddress: "alex@birch.example", fromName: null },
+        { fromAddress: "ren@maple.example", fromName: "Ren" },
+      ];
+
+      for (const identity of identities) {
+        expect(
+          emailImportance(email({ ...content, ...identity })).category
+        ).toBe(category);
+      }
+    }
+  );
+
+  it.each([
+    {
+      bodyText: "Your prescription is ready.",
+      category: "review",
+      fromAddress: "no-reply@cedar.example",
+      fromName: "Updates",
+      subject: "Status",
+    },
+    {
+      bodyText: "Can you save more? Unsubscribe from our sale notices.",
+      category: "low_priority",
+      fromAddress: "offers@birch.example",
+      fromName: "Offers",
+      subject: "Deals",
+    },
+    {
+      bodyText: "Please reply to confirm.",
+      category: "review",
+      fromAddress: "notifications@maple.example",
+      fromName: "Updates",
+      subject: "Status",
+    },
+    {
+      bodyText: "Your payment is overdue. Unsubscribe from optional updates.",
+      category: "review",
+      fromAddress: "marketing@harbor.example",
+      fromName: "Newsletter",
+      subject: "Billing notice",
+    },
+  ])(
+    "keeps sender role and concrete content separate: $fromAddress",
+    ({ category, ...input }) => {
+      expect(emailImportance(email(input)).category).toBe(category);
+    }
+  );
+
+  it.each([
     { bodyText: "", subject: "" },
     { bodyText: "<img src='cid:123'>", subject: "(no subject)" },
     { bodyText: "[image: IMG_1234.jpg]", subject: "Re: (No subject)" },

@@ -10,6 +10,10 @@ import {
   localInboxInsight,
 } from "@lifelink/contracts/inbox";
 import type { InboxInsight, InboxMessage } from "@lifelink/contracts/inbox";
+import type {
+  InboxChatItem,
+  InboxChatSummary,
+} from "@lifelink/contracts/inbox-chat";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -19,7 +23,7 @@ import {
   openRouterConfigured,
   structuredCompletion,
 } from "./integrations/openrouter";
-import { inboxMessage, knownEmailSenders } from "./lib/email-priority";
+import { inboxMessage, knownEmailSenders } from "./lib/emailpriority";
 import { requireOwner } from "./lib/session";
 import { reserveCloudUse } from "./lib/usage";
 
@@ -54,6 +58,17 @@ const snapshot = async (ctx: QueryCtx | MutationCtx) => {
     practice,
   };
 };
+
+const withEmailLabels = (
+  messages: InboxMessage[],
+  insights: InboxInsight[]
+): InboxChatItem[] =>
+  messages.map((message) => ({
+    ...(insights.find((item) => item.id === message.id) ??
+      localInboxInsight(message)),
+    sender: message.fromName ?? message.fromAddress,
+    subject: message.subject,
+  }));
 
 export const recent = query({
   args: {},
@@ -93,24 +108,24 @@ export const prepare = internalMutation({
         "The cloud-reading limit has been reached. Your local overview is still available.";
     }
 
-    return { key: view.key, messages: view.messages, note };
+    return {
+      key: view.key,
+      messages: view.messages,
+      note,
+      practice: view.practice,
+    };
   },
 });
 
 export const summarize = action({
   args: { allowCloudAnalysis: v.boolean() },
-  handler: async (
-    ctx,
-    args
-  ): Promise<{
-    items: InboxInsight[];
-    key: string;
-    method: "local" | "cloud";
-    note: string;
-    summary: string | null;
-  }> => {
+  handler: async (ctx, args): Promise<InboxChatSummary & { key: string }> => {
     const view = await ctx.runMutation(internal.inbox.prepare, args);
-    const local = view.messages.map(localInboxInsight);
+
+    const local = withEmailLabels(
+      view.messages,
+      view.messages.map(localInboxInsight)
+    );
 
     if (view.note !== null) {
       return {
@@ -118,6 +133,7 @@ export const summarize = action({
         key: view.key,
         method: "local" as const,
         note: view.note,
+        practice: view.practice,
         summary: null,
       };
     }
@@ -157,6 +173,7 @@ export const summarize = action({
         key: view.key,
         method: "local" as const,
         note: "The cloud overview did not finish. The local overview is shown; the provider may have received these emails.",
+        practice: view.practice,
         summary: null,
       };
     }
@@ -166,10 +183,14 @@ export const summarize = action({
       .join("\n");
 
     return {
-      items: checkInboxOverview(view.messages, result.value),
+      items: withEmailLabels(
+        view.messages,
+        checkInboxOverview(view.messages, result.value)
+      ),
       key: view.key,
       method: "cloud" as const,
       note: "Cloud AI suggestions, with supporting quotes checked against each email. Verify details in the original message.",
+      practice: view.practice,
       summary:
         proseQuotesVerified(source, result.value.summary) &&
         inboxGuidanceAllowed(result.value.summary)

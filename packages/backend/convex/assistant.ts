@@ -15,14 +15,21 @@ import {
   Agent,
   createThread,
   createTool,
-  listUIMessages,
+  listMessages,
   saveMessage,
   saveMessages,
   stepCountIs,
   syncStreams,
+  toUIMessages,
   vStreamArgs,
 } from "@convex-dev/agent";
 import type { AgentComponent } from "@convex-dev/agent";
+import {
+  PRIVATE_INBOX_OPTIONS,
+  formatInboxChatSummary,
+  inboxChatSummarySchema,
+  withoutPrivateInboxSummaries,
+} from "@lifelink/contracts/inbox-chat";
 import {
   assistantPlanSchema,
   proposalIntents,
@@ -37,6 +44,7 @@ import { ConvexError, v } from "convex/values";
 import { api, components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
+  action as publicAction,
   internalAction,
   internalMutation,
   internalQuery,
@@ -325,6 +333,28 @@ export const listConversationHistory = query({
   },
 });
 
+/** Automatic composer setup must never replace a selected conversation with messages. */
+export const ensureConversation = mutation({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const owner = await requireOwner(ctx);
+
+    if (owner.assistantThreadId !== null) {
+      const selected = await persistConversation(
+        ctx,
+        owner,
+        owner.assistantThreadId
+      );
+
+      return selected.threadId;
+    }
+
+    const conversation = await createConversation(ctx, owner);
+
+    return conversation.threadId;
+  },
+});
+
 /** Repeated New conversation clicks reuse the selected empty conversation. */
 export const newConversation = mutation({
   args: {},
@@ -430,6 +460,133 @@ export const submitRequest = mutation({
   },
 });
 
+/** The preset saves a normal chat turn but does not ask the general planning agent to read email. */
+export const beginInboxSummary = internalMutation({
+  args: { allowCloudAnalysis: v.boolean(), threadId: v.string() },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ promptMessageId: string; threadId: string }> => {
+    const owner = await requireOwner(ctx);
+    const conversation = await persistConversation(ctx, owner, args.threadId);
+
+    const text = args.allowCloudAnalysis
+      ? "Summarize my recent emails with cloud AI."
+      : "Summarize my recent emails.";
+
+    const { messageId } = await saveMessage(ctx, agentComponent, {
+      message: {
+        content: text,
+        providerOptions: PRIVATE_INBOX_OPTIONS,
+        role: "user",
+      },
+      threadId: conversation.threadId,
+      userId: owner._id,
+    });
+
+    const title = conversation.hasMessages
+      ? conversation.title
+      : conversationTitle(text);
+
+    await ctx.db.patch(conversation._id, {
+      hasMessages: true,
+      title,
+      updatedAt: Date.now(),
+    });
+
+    if (!conversation.hasMessages) {
+      await ctx.runMutation(agentComponent.threads.updateThread, {
+        patch: { title },
+        threadId: conversation.threadId,
+      });
+    }
+
+    return { promptMessageId: messageId, threadId: conversation.threadId };
+  },
+});
+
+export const finishInboxSummary = internalMutation({
+  args: {
+    promptMessageId: v.string(),
+    summaryJson: v.optional(v.string()),
+    text: v.string(),
+    threadId: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const owner = await requireOwner(ctx);
+    const conversation = await persistConversation(ctx, owner, args.threadId);
+
+    const [prompt] = await ctx.runQuery(
+      agentComponent.messages.getMessagesByIds,
+      { messageIds: [args.promptMessageId] }
+    );
+
+    if (
+      !prompt ||
+      prompt.threadId !== args.threadId ||
+      prompt.message?.role !== "user"
+    ) {
+      throw conversationNotFound();
+    }
+
+    await saveMessage(ctx, agentComponent, {
+      agentName: "LifeLink email summary",
+      message: {
+        content: args.text,
+        providerOptions: {
+          lifelink: {
+            privateInboxSummary: true,
+            summaryJson: args.summaryJson ?? "",
+          },
+        },
+        role: "assistant",
+      },
+      promptMessageId: args.promptMessageId,
+      threadId: args.threadId,
+      userId: owner._id,
+    });
+    await ctx.db.patch(conversation._id, {
+      hasMessages: true,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const summarizeInbox = publicAction({
+  args: { allowCloudAnalysis: v.boolean(), threadId: v.string() },
+  handler: async (ctx, args): Promise<string> => {
+    const turn = await ctx.runMutation(
+      internal.assistant.beginInboxSummary,
+      args
+    );
+
+    let text: string;
+    let summaryJson: string | undefined;
+
+    try {
+      await ctx.runMutation(api.emails.checkRecent, {});
+
+      const result = await ctx.runAction(api.inbox.summarize, {
+        allowCloudAnalysis: args.allowCloudAnalysis,
+      });
+
+      text = formatInboxChatSummary(result);
+      summaryJson = JSON.stringify(result);
+    } catch {
+      text =
+        "I couldn't summarize your emails just now. Your mailbox is unchanged. Please use Summarize emails to try again.";
+    }
+
+    await ctx.runMutation(internal.assistant.finishInboxSummary, {
+      ...turn,
+      summaryJson,
+      text,
+    });
+
+    return turn.threadId;
+  },
+});
+
 export const myThread = query({
   args: {},
   handler: async (ctx): Promise<string | null> => {
@@ -463,7 +620,23 @@ export const listThreadMessages = query({
       throw conversationNotFound();
     }
 
-    const paginated = await listUIMessages(ctx, agentComponent, args);
+    const stored = await listMessages(ctx, agentComponent, args);
+
+    const paginated = {
+      ...stored,
+      page: toUIMessages(
+        stored.page.map((message) => {
+          const json = message.message?.providerOptions?.lifelink?.summaryJson;
+          const parsed = decodeJson(inboxChatSummarySchema, String(json ?? ""));
+
+          return {
+            ...message,
+            metadata: parsed ? { inboxSummary: parsed } : null,
+          };
+        })
+      ),
+    };
+
     const streams = await syncStreams(ctx, agentComponent, args);
 
     return { ...paginated, streams };
@@ -998,6 +1171,8 @@ export const respond = internalAction({
 
     const agent = new Agent(agentComponent, {
       callSettings: { maxRetries: 2, temperature: 0.3 },
+      contextHandler: (_ctx, { allMessages }) =>
+        withoutPrivateInboxSummaries(allMessages),
       contextOptions: { searchOtherThreads: false },
       instructions: instructionsFor(context),
       languageModel: openrouter.chat(model),

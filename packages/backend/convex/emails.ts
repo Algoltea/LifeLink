@@ -32,7 +32,7 @@ import {
   structuredCompletion,
 } from "./integrations/openrouter";
 import { audit } from "./lib/audit";
-import { inboxMessage, knownEmailSenders } from "./lib/email-priority";
+import { inboxMessage, knownEmailSenders } from "./lib/emailpriority";
 import { createTask } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";

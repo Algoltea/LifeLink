@@ -44,6 +44,7 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_avatarimage from "../lib/avatarimage.js";
 import type * as lib_capabilities from "../lib/capabilities.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_emailpriority from "../lib/emailpriority.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_imessage from "../lib/imessage.js";
 import type * as lib_incoming from "../lib/incoming.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   "lib/avatarimage": typeof lib_avatarimage;
   "lib/capabilities": typeof lib_capabilities;
   "lib/crypto": typeof lib_crypto;
+  "lib/emailpriority": typeof lib_emailpriority;
   "lib/env": typeof lib_env;
   "lib/imessage": typeof lib_imessage;
   "lib/incoming": typeof lib_incoming;
