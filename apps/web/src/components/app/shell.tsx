@@ -10,6 +10,7 @@ import {
   FolderOpenIcon,
   HeartHandshakeIcon,
   HomeIcon,
+  LayersIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -31,6 +32,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { authClient } from "@/lib/auth-client";
 
 import { Avatar } from "./bits";
@@ -46,6 +48,8 @@ interface NavItem {
   href: Route;
   icon: LucideIcon;
   label: string;
+  /** Left out of the phone menu, because the page needs a tablet-sized screen. */
+  wideOnly?: boolean;
 }
 
 interface NavGroup {
@@ -60,6 +64,22 @@ const SETTINGS_GROUP: NavGroup = {
   label: null,
   pinned: true,
 };
+
+const SOLITAIRE: NavItem = {
+  href: "/solitaire",
+  icon: SpadeIcon,
+  label: "Solitaire",
+};
+
+const MAHJONG: NavItem = {
+  href: "/mahjong",
+  icon: LayersIcon,
+  label: "Mahjong",
+  wideOnly: true,
+};
+
+/** Public games: prefetched so they open quickly and get cached for offline play. */
+const PUBLIC_GAMES = new Set<string>([SOLITAIRE.href, MAHJONG.href]);
 
 const ownerNavigation = (): NavGroup[] => [
   {
@@ -76,9 +96,12 @@ const ownerNavigation = (): NavGroup[] => [
     items: [
       { href: "/scam", icon: ShieldCheckIcon, label: "Scam check" },
       { href: "/groceries", icon: ShoppingBasketIcon, label: "Groceries" },
-      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
     ],
     label: "Help with",
+  },
+  {
+    items: [SOLITAIRE, MAHJONG],
+    label: "Games",
   },
   {
     items: [
@@ -92,7 +115,7 @@ const ownerNavigation = (): NavGroup[] => [
 
 const PLAY_NAV: NavGroup[] = [
   {
-    items: [{ href: "/solitaire", icon: SpadeIcon, label: "Solitaire" }],
+    items: [SOLITAIRE, MAHJONG],
     label: null,
   },
   SETTINGS_GROUP,
@@ -102,7 +125,8 @@ const FAMILY_NAV: NavGroup[] = [
   {
     items: [
       { href: "/family", icon: UsersRoundIcon, label: "Family" },
-      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
+      SOLITAIRE,
+      MAHJONG,
     ],
     label: null,
   },
@@ -139,7 +163,10 @@ const NavList = ({
               const Icon = item.icon;
 
               return (
-                <li key={item.href}>
+                <li
+                  className={item.wideOnly ? HIDE_ON_PHONES : undefined}
+                  key={item.href}
+                >
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -149,7 +176,7 @@ const NavList = ({
                     )}
                     href={item.href}
                     onClick={onNavigate}
-                    prefetch={item.href === "/solitaire" ? true : undefined}
+                    prefetch={PUBLIC_GAMES.has(item.href) ? true : undefined}
                   >
                     <Icon
                       aria-hidden="true"
@@ -467,13 +494,13 @@ const ShellFrame = ({
 
 const PLAY_ACCOUNT = (
   <p className="text-muted-foreground text-label px-4">
-    Solitaire is saved on this device and works offline.
+    Your games are saved on this device and work offline.
   </p>
 );
 
 /**
- * One frame for every signed-in screen and public Solitaire, so navigating
- * between them only swaps the page. The cached Solitaire HTML is always public:
+ * One frame for every signed-in screen and the public games, so navigating
+ * between them only swaps the page. The cached game HTML is always public:
  * session discovery only changes the chrome and never blocks or remounts the
  * locally saved game, including while offline.
  */

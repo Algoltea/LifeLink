@@ -125,15 +125,26 @@ const emptyReason = (state: GameState, slot: Slot): string => {
   return "That card is face down. Move the cards on top of it to turn it over.";
 };
 
-const formatSavedAt = (savedAt: string): string => {
+/** When the game was saved, as it reads in a sentence: "today at 5:43 PM" or "on Oct 24 at 5:43 PM". */
+const savedWhen = (savedAt: string): string => {
   const date = new Date(savedAt);
 
-  return Number.isNaN(date.getTime())
-    ? "earlier"
-    : date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+  if (Number.isNaN(date.getTime())) {
+    return "earlier";
+  }
+
+  const time = date.toLocaleTimeString(undefined, { timeStyle: "short" });
+
+  if (date.toDateString() === new Date().toDateString()) {
+    return `today at ${time}`;
+  }
+
+  const day = date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+
+  return `on ${day} at ${time}`;
 };
 
 const outcomeNote = (state: GameState): string => {
@@ -164,7 +175,7 @@ const isUndoChord = (event: KeyChord): boolean =>
 
 const openingMessage = (loaded: LoadedGame): string => {
   if (loaded.resumedFrom) {
-    return "Resumed your last game.";
+    return `Resumed your game from ${savedWhen(loaded.resumedFrom)}.`;
   }
 
   return loaded.discarded
@@ -181,7 +192,9 @@ const isInside = (
 
 /** The playable table. Client-only: it reads the saved game from localStorage while it first renders. */
 export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
-  const [opening, setOpening] = useState(() => loadGame(1));
+  // Read once when the table mounts; the opening state never changes afterwards.
+  // oxlint-disable-next-line react/hook-use-state -- Only the first value is needed.
+  const [opening] = useState(() => loadGame(1));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState<Slot>(STOCK_SLOT);
   const [selected, setSelected] = useState<MoveSource | null>(null);
@@ -363,11 +376,6 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   };
 
   const startNewGame = (drawCount: DrawCount = preferredDraw) => {
-    setOpening((current) => ({
-      ...current,
-      discarded: null,
-      resumedFrom: null,
-    }));
     commit(
       freshGame(drawCount),
       `Dealt a new game, drawing ${drawWords(drawCount)} at a time.`,
@@ -480,9 +488,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
           </Button>
         </div>
         <p className="text-muted-foreground text-body">
-          {guest
-            ? "A quiet game. No account needed."
-            : "A quiet game. Available offline."}
+          {guest ? "A quiet game. No account needed." : "A quiet game."}
         </p>
         <p className="num text-muted-foreground text-label">
           Drawing {drawWords(game.drawCount)} at a time
@@ -497,17 +503,6 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
           {" on the foundations"}
         </p>
       </header>
-
-      {opening.resumedFrom === null ? null : (
-        <div className="bg-parchment flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
-          <p className="text-body">
-            Resumed your last game, saved {formatSavedAt(opening.resumedFrom)}.
-          </p>
-          <Button onClick={() => startNewGame()} size="sm" variant="outline">
-            Start fresh instead
-          </Button>
-        </div>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
