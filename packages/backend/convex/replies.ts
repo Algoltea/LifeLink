@@ -66,18 +66,28 @@ export const replyContext = internalQuery({
 const YES_PATTERN =
   /\b(?:yes|sure|of course|happy to|no problem|i can|i'll|i will|absolutely|ok|okay)\b/iu;
 
-const NO_PATTERN = /\b(?:no|can't|cannot|sorry|unable|won't)\b/iu;
+// A refusal wins over the words around it: "Sorry, I can't" also contains "I can".
+const NO_PATTERN =
+  /\b(?:no(?! problem)|can['’]?t(?! wait)|cannot|sorry|unable|won['’]?t|not able)\b/iu;
+
+// A maybe is not a yes: "I'll check and let you know".
+const HEDGE_PATTERN =
+  /\b(?:maybe|might|not sure|let me (?:check|see)|i['’]ll (?:check|see|try)|let you know|possibly|perhaps)\b/iu;
 
 const TIME_PATTERN =
   /\b(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<meridiem>am|pm)\b/iu;
 
-/** Demo-only reply reader: a clear yes or no and a stated time, on the appointment's day. */
-const rulesClassify = (
+/**
+ * Demo-only reply reader: a clear yes or no and a stated time, on the
+ * appointment's day. A refusal is checked first and a hedge is never a yes.
+ */
+export const rulesClassify = (
   text: string,
   appointmentStartIso: string | null
 ): ReplyClassification => {
-  const accepted = YES_PATTERN.test(text);
-  const declined = NO_PATTERN.test(text) && !accepted;
+  const declined = NO_PATTERN.test(text);
+  const hedged = !declined && HEDGE_PATTERN.test(text);
+  const accepted = !declined && !hedged && YES_PATTERN.test(text);
   const time = TIME_PATTERN.exec(text);
   let pickupTimeIso: string | null = null;
 
