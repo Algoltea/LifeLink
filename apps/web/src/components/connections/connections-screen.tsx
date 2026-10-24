@@ -651,14 +651,25 @@ const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
     );
   }
 
+  // Practice mode simulates messages, so the real steps say when they apply.
   if (definition.id === "imessage") {
-    return <IMessageSteps />;
+    return (
+      <div className="flex flex-col gap-4">
+        {demoMode ? (
+          <p className="text-body">
+            When you use real iMessage, follow these steps.
+          </p>
+        ) : null}
+        <IMessageSteps />
+      </div>
+    );
   }
 
   if (definition.id === "discord") {
     return (
       <p className="text-body">
-        Add each person’s Discord user ID in Trusted circle.
+        {demoMode ? "When you use real Discord, add" : "Add"} each person’s
+        Discord user ID in Trusted circle.
       </p>
     );
   }
