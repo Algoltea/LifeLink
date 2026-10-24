@@ -6,7 +6,12 @@ import { Button } from "@lifelink/ui/components/button";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation, useQuery } from "convex/react";
-import { ImagePlusIcon, LightbulbIcon, XIcon } from "lucide-react";
+import {
+  ImagePlusIcon,
+  LightbulbIcon,
+  ListChecksIcon,
+  XIcon,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +24,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
+import { RecapPanel } from "@/components/messages/recap-panel";
 import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
@@ -91,6 +97,7 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [busy, setBusy] = useState(false);
   const [explaining, setExplaining] = useState<Id<"messages"> | null>(null);
+  const [recapOpen, setRecapOpen] = useState(false);
   const [fromSuggestion, setFromSuggestion] = useState(false);
   const [notice, setNotice] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -183,9 +190,26 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
           aria-labelledby="history-heading"
           className="flex min-w-0 flex-col gap-4"
         >
-          <h2 className="text-2xl leading-8 font-semibold" id="history-heading">
-            Conversation
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2
+              className="text-2xl leading-8 font-semibold"
+              id="history-heading"
+            >
+              Conversation
+            </h2>
+            {thread.messages.length > 0 ? (
+              <Button
+                aria-controls="recap-panel"
+                aria-expanded={recapOpen}
+                onClick={() => setRecapOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <ListChecksIcon aria-hidden="true" />
+                Recap this conversation
+              </Button>
+            ) : null}
+          </div>
           {thread.messages.length === 0 ? (
             <EmptyNote>No messages with {firstName} yet.</EmptyNote>
           ) : (
@@ -265,6 +289,13 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
           )}
         </section>
         <div className="flex min-w-0 flex-col gap-6">
+          {recapOpen ? (
+            <RecapPanel
+              contactId={contact._id}
+              contactName={contact.name}
+              onClose={() => setRecapOpen(false)}
+            />
+          ) : null}
           {explaining === null ? null : (
             <ExplanationPanel
               key={explaining}

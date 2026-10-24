@@ -39,6 +39,11 @@ const suggestedReply = v.object({
   label: v.string(),
 });
 
+const quotedFrom = v.object({
+  from: v.union(v.literal("them"), v.literal("you")),
+  quote: v.string(),
+});
+
 // Why a reading was local rather than from the cloud assistant.
 const localReason = v.union(
   v.literal("chosen"),
@@ -321,6 +326,56 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_linked_profile", ["linkedProfileId"]),
+
+  // Recaps of text conversations: private to the owner, never read by any family query.
+  conversationRecaps: defineTable({
+    agreements: v.array(
+      v.object({
+        acceptance: quotedFrom,
+        offer: quotedFrom,
+        text: v.string(),
+      })
+    ),
+    cloudRequested: v.boolean(),
+    contactId: v.id("contacts"),
+    createdAt: v.number(),
+    droppedCount: v.number(),
+    // The help style this recap was written for. Private notes are never used for recaps.
+    helpStyleKey: v.string(),
+    // The newest message the recap covers; a newer message means a new recap.
+    lastMessageId: v.id("messages"),
+    lines: v.array(
+      v.object({
+        body: v.string(),
+        from: v.union(v.literal("them"), v.literal("you")),
+        ref: v.string(),
+      })
+    ),
+    localReason,
+    method: v.union(v.literal("cloud"), v.literal("local")),
+    mode,
+    model: v.string(),
+    offers: v.array(v.object({ offer: quotedFrom, text: v.string() })),
+    ownerId: v.id("profiles"),
+    proposedSteps: v.array(
+      v.object({
+        kind: v.union(v.literal("send_message"), v.literal("create_reminder")),
+        messageDraft: v.union(v.string(), v.null()),
+        remindAt: v.union(v.number(), v.null()),
+        reminderTitle: v.union(v.string(), v.null()),
+        // Set once the person prepares this step for review.
+        taskId: v.union(v.id("tasks"), v.null()),
+        why: v.string(),
+      })
+    ),
+    status: v.union(
+      v.literal("recapping"),
+      v.literal("done"),
+      v.literal("failed")
+    ),
+    summary: v.string(),
+    unclear: v.array(v.string()),
+  }).index("by_owner_and_contact", ["ownerId", "contactId"]),
 
   emails: defineTable({
     actionNeeded: v.union(v.string(), v.null()),

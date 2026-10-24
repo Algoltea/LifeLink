@@ -209,6 +209,72 @@ type ExplanationGuidance = z.infer<typeof explanationGuidanceSchema>;
 
 type SuggestedReplies = z.infer<typeof suggestedRepliesSchema>;
 
+const recapEvidence = z.strictObject({
+  messageRef: z
+    .string()
+    .describe("The ref of the message the words come from, such as m3."),
+  quote: z
+    .string()
+    .describe(
+      "The exact words from that message, copied character for character."
+    ),
+});
+
+const recapStepKinds = ["send_message", "create_reminder"] as const;
+
+/**
+ * A recap of a text conversation. An offer is not an agreement, and the model
+ * can never say something is done: LifeLink's own records decide that.
+ */
+const conversationRecapSchema = z.strictObject({
+  agreements: z
+    .array(
+      z.strictObject({
+        acceptance: recapEvidence,
+        offer: recapEvidence,
+        text: z.string().describe("What was agreed, in one plain sentence."),
+      })
+    )
+    .describe(
+      "Only where one person offered or asked and the other clearly accepted later."
+    ),
+  offers: z
+    .array(
+      z.strictObject({
+        offer: recapEvidence,
+        text: z.string().describe("What was offered, in one plain sentence."),
+      })
+    )
+    .describe("Offers or requests that have not been clearly accepted."),
+  proposedSteps: z
+    .array(
+      z.strictObject({
+        kind: z.enum(recapStepKinds),
+        messageDraft: nullableString.describe(
+          "For send_message: the exact words, in the conversation's language and the person's voice. Otherwise null."
+        ),
+        remindAtIso: nullableString.describe(
+          "For create_reminder: an absolute ISO 8601 time with offset. Otherwise null."
+        ),
+        reminderTitle: nullableString.describe(
+          "For create_reminder: a short title. Otherwise null."
+        ),
+        why: z.string().describe("One plain sentence on why this might help."),
+      })
+    )
+    .describe(
+      "At most three possible next steps; the person reviews each one."
+    ),
+  summary: z
+    .string()
+    .describe("Two or three short, plain sentences about the conversation."),
+  unclear: z
+    .array(z.string())
+    .describe("Things that are not settled yet, one short sentence each."),
+});
+
+type ConversationRecap = z.infer<typeof conversationRecapSchema>;
+
 const appointmentExtractionSchema = z.strictObject({
   ambiguity: nullableString.describe(
     "What is unclear about the date, time, or place, or null."
@@ -268,6 +334,8 @@ export {
   assistantIntents,
   assistantPlanSchema,
   briefingSchema,
+  conversationRecapSchema,
+  recapStepKinds,
   proposalIntents,
   proposalSchema,
   emailSummarySchema,
@@ -285,6 +353,7 @@ export type {
   AppointmentExtraction,
   AssistantPlan,
   Briefing,
+  ConversationRecap,
   Proposal,
   EmailSummary,
   ExplanationGuidance,

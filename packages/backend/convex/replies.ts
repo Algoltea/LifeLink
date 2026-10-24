@@ -5,6 +5,7 @@
  */
 import { replyClassificationSchema } from "@lifelink/contracts/model-output";
 import type { ReplyClassification } from "@lifelink/contracts/model-output";
+import { readReply } from "@lifelink/contracts/reply-reading";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -63,17 +64,6 @@ export const replyContext = internalQuery({
   },
 });
 
-const YES_PATTERN =
-  /\b(?:yes|sure|of course|happy to|no problem|i can|i'll|i will|absolutely|ok|okay)\b/iu;
-
-// A refusal wins over the words around it: "Sorry, I can't" also contains "I can".
-const NO_PATTERN =
-  /\b(?:no(?! problem)|can['’]?t(?! wait)|cannot|sorry|unable|won['’]?t|not able)\b/iu;
-
-// A maybe is not a yes: "I'll check and let you know".
-const HEDGE_PATTERN =
-  /\b(?:maybe|might|not sure|let me (?:check|see)|i['’]ll (?:check|see|try)|let you know|possibly|perhaps)\b/iu;
-
 const TIME_PATTERN =
   /\b(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<meridiem>am|pm)\b/iu;
 
@@ -85,9 +75,7 @@ export const rulesClassify = (
   text: string,
   appointmentStartIso: string | null
 ): ReplyClassification => {
-  const declined = NO_PATTERN.test(text);
-  const hedged = !declined && HEDGE_PATTERN.test(text);
-  const accepted = !declined && !hedged && YES_PATTERN.test(text);
+  const reading = readReply(text);
   const time = TIME_PATTERN.exec(text);
   let pickupTimeIso: string | null = null;
 
@@ -103,13 +91,7 @@ export const rulesClassify = (
     pickupTimeIso = `${datePart}${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00${offsetPart}`;
   }
 
-  let decision: ReplyClassification["decision"] = "unclear";
-
-  if (declined) {
-    decision = "declined";
-  } else if (accepted) {
-    decision = "accepted";
-  }
+  const decision: ReplyClassification["decision"] = reading;
 
   const summaries = {
     accepted: "They said yes.",

@@ -56,6 +56,7 @@ import type * as messages from "../messages.js";
 import type * as ownership from "../ownership.js";
 import type * as photos from "../photos.js";
 import type * as profiles from "../profiles.js";
+import type * as recaps from "../recaps.js";
 import type * as reminders from "../reminders.js";
 import type * as replies from "../replies.js";
 import type * as scam from "../scam.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   ownership: typeof ownership;
   photos: typeof photos;
   profiles: typeof profiles;
+  recaps: typeof recaps;
   reminders: typeof reminders;
   replies: typeof replies;
   scam: typeof scam;
