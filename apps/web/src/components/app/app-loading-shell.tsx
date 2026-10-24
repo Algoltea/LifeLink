@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 import { ChatLoadingWorkspace } from "@/components/assistant/chat-loading-workspace";
 
@@ -64,14 +65,15 @@ const LoadingAccount = () => (
   </div>
 );
 
+const EmailLoadingRows = () => (
+  <LoadingRows
+    label="Loading emails"
+    layout={useSearchParams().get("id") ? "email-selected" : "email"}
+  />
+);
+
 /** Public route names only. No account facts are available during bootstrap. */
-const LoadingPage = ({
-  pathname,
-  emailSelected,
-}: {
-  pathname: string;
-  emailSelected: boolean;
-}) => {
+const LoadingPage = ({ pathname }: { pathname: string }) => {
   if (pathname.startsWith("/tasks/")) {
     return <LoadingRows label="Loading task details" layout="task" />;
   }
@@ -107,10 +109,12 @@ const LoadingPage = ({
       return (
         <>
           <EmailLoadingHeader />
-          <LoadingRows
-            label="Loading emails"
-            layout={emailSelected ? "email-selected" : "email"}
-          />
+          {/* Reading the query string needs a boundary: the shared layout can render ahead of time. */}
+          <Suspense
+            fallback={<LoadingRows label="Loading emails" layout="email" />}
+          >
+            <EmailLoadingRows />
+          </Suspense>
         </>
       );
     }
@@ -216,28 +220,24 @@ const LoadingPage = ({
 /** Keep the real shell's breakpoints, gutters, and content width on hard refresh.
  * All apparent controls are inert until authentication and the profile resolve.
  */
-const AppLoadingShell = ({ pathname }: { pathname: string }) => {
-  const emailSelected = Boolean(useSearchParams().get("id"));
-
-  return (
-    <div aria-busy="true" aria-label="Loading LifeLink" data-loading-shell="">
-      <output className="sr-only">Loading LifeLink</output>
-      <div aria-hidden="true" inert>
-        <ShellFrame
-          account={<LoadingAccount />}
-          groups={[]}
-          navigation={<LoadingNavigation />}
-          notices={
-            <div className="border-border bg-parchment flex min-h-[6.889rem] items-center border-b px-5 py-2 sm:min-h-[4.444rem]">
-              <Skeleton className="h-4 w-96" />
-            </div>
-          }
-        >
-          <LoadingPage emailSelected={emailSelected} pathname={pathname} />
-        </ShellFrame>
-      </div>
+const AppLoadingShell = ({ pathname }: { pathname: string }) => (
+  <div aria-busy="true" aria-label="Loading LifeLink" data-loading-shell="">
+    <output className="sr-only">Loading LifeLink</output>
+    <div aria-hidden="true" inert>
+      <ShellFrame
+        account={<LoadingAccount />}
+        groups={[]}
+        navigation={<LoadingNavigation />}
+        notices={
+          <div className="border-border bg-parchment flex min-h-[6.889rem] items-center border-b px-5 py-2 sm:min-h-[4.444rem]">
+            <Skeleton className="h-4 w-96" />
+          </div>
+        }
+      >
+        <LoadingPage pathname={pathname} />
+      </ShellFrame>
     </div>
-  );
-};
+  </div>
+);
 
 export { AppLoadingShell };
