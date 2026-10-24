@@ -269,6 +269,15 @@ export default defineSchema({
     ownerId: v.id("profiles"),
     relationship: v.string(),
     sample: v.boolean(),
+    // Kept on file only: LifeLink cannot send on these, so they never join `channels`.
+    savedHandles: v.optional(
+      v.array(
+        v.object({
+          address: v.string(),
+          service: v.literal("whatsapp"),
+        })
+      )
+    ),
     trusted: v.boolean(),
   })
     .index("by_owner", ["ownerId"])

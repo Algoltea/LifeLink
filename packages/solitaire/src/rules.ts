@@ -7,7 +7,7 @@ import {
   rankName,
   toRank,
 } from "./cards";
-import type { Card } from "./cards";
+import type { Card, Suit } from "./cards";
 
 /** True when `moving` may sit directly on `target` in a tableau column. */
 export const canStackOnTableauCard = (moving: Card, target: Card): boolean =>
@@ -40,19 +40,26 @@ export const canPlaceOnTableau = (
   top: Card | undefined
 ): boolean => (top ? canStackOnTableauCard(moving, top) : moving.rank === KING);
 
-/** True when `card` is the next card for this foundation pile. */
+/** Each foundation holds one suit, in this order across the table. */
+export const FOUNDATION_SUITS = [
+  "spades",
+  "hearts",
+  "clubs",
+  "diamonds",
+] as const satisfies readonly Suit[];
+
+/** The foundation a suit belongs on. */
+export const foundationIndexFor = (suit: Suit): number =>
+  FOUNDATION_SUITS.indexOf(suit);
+
+/** True when `card` is the next card for the foundation at `index`. */
 export const canPlaceOnFoundation = (
   card: Card,
-  foundation: readonly Card[]
-): boolean => {
-  const top = foundation.at(-1);
-
-  if (!top) {
-    return card.rank === ACE;
-  }
-
-  return card.suit === top.suit && card.rank === top.rank + 1;
-};
+  foundation: readonly Card[],
+  index: number
+): boolean =>
+  card.suit === FOUNDATION_SUITS[index] &&
+  card.rank === (foundation.at(-1)?.rank ?? 0) + 1;
 
 /** Plain-language reason a card cannot go onto a tableau column. */
 export const tableauRefusal = (top: Card | undefined): string => {
@@ -71,12 +78,23 @@ export const tableauRefusal = (top: Card | undefined): string => {
   return `That card can't go there: it needs a ${color} ${rankName(needed)}.`;
 };
 
-/** Plain-language reason a card cannot go onto a foundation. */
-export const foundationRefusal = (foundation: readonly Card[]): string => {
+/** Plain-language reason a card cannot go onto the foundation at `index`. */
+export const foundationRefusal = (
+  card: Card,
+  foundation: readonly Card[],
+  index: number
+): string => {
+  const suit = FOUNDATION_SUITS[index];
   const top = foundation.at(-1);
 
+  if (suit && card.suit !== suit) {
+    return `That card can't go there: this foundation is for ${suit}.`;
+  }
+
   if (!top) {
-    return "That card can't go there: a foundation starts with an ace.";
+    return suit
+      ? `That card can't go there: this foundation starts with the ${cardName({ rank: ACE, suit })}.`
+      : "That card can't go there: a foundation starts with an ace.";
   }
 
   const needed = toRank(top.rank + 1);

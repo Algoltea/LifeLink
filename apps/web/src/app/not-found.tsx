@@ -12,7 +12,7 @@ const NotFound = () => (
       aria-labelledby="missing-heading"
       className="border-border bg-parchment flex max-w-xl flex-col gap-5 rounded-lg border px-7 py-8"
     >
-      <BrandMark size={48} />
+      <BrandMark size={40} />
       <h1
         className="text-mobile-title sm:text-page-title font-semibold"
         id="missing-heading"

@@ -1,10 +1,11 @@
-import { cardName } from "@lifelink/solitaire/cards";
+import { ACE, cardName } from "@lifelink/solitaire/cards";
 import type { Card } from "@lifelink/solitaire/cards";
 import type {
   MoveSource,
   MoveTarget,
   Position,
 } from "@lifelink/solitaire/game";
+import { FOUNDATION_SUITS } from "@lifelink/solitaire/rules";
 
 /** One focusable place on the board. Tableau slots name a card by index; an empty column uses index 0. */
 export type Slot =
@@ -266,10 +267,17 @@ export const wasteLabel = (state: Position): string => {
 
 export const foundationLabel = (state: Position, index: number): string => {
   const top = state.foundations[index]?.at(-1);
+  const suit = FOUNDATION_SUITS[index];
+
+  if (!suit) {
+    return `Foundation ${index + 1}.`;
+  }
+
+  const name = `${suit.charAt(0).toUpperCase()}${suit.slice(1)} foundation`;
 
   return top
-    ? `Foundation ${index + 1}, ${cardName(top)} on top.`
-    : `Foundation ${index + 1}, empty. It starts with an ace.`;
+    ? `${name}, ${cardName(top)} on top.`
+    : `${name}, empty. It starts with the ${cardName({ rank: ACE, suit })}.`;
 };
 
 const countFaceDown = (cards: readonly Card[]): number =>

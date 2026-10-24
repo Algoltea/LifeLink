@@ -48,6 +48,13 @@ export const CardBack = () => (
   </span>
 );
 
+/** An empty foundation shows the one suit it takes. */
+export const EmptyFoundation = ({ suit }: { readonly suit: Card["suit"] }) => (
+  <span className="border-control text-muted-foreground flex size-full items-center justify-center rounded-md border-2 border-dashed text-[46cqi] leading-none">
+    <span aria-hidden="true">{suitSymbol(suit)}</span>
+  </span>
+);
+
 interface EmptyPileProps {
   readonly label: string;
 }
