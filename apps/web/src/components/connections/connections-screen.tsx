@@ -464,7 +464,7 @@ const ProviderRowDetails = ({
 const GROUPS = [
   { ids: ["imessage", "discord"], title: "Message family and friends" },
   { ids: ["gmail", "outlook"], title: "Read and write email" },
-  { ids: ["google_calendar"], title: "Manage appointments" },
+  { ids: ["google_calendar", "google_drive"], title: "Manage appointments" },
 ] as const;
 
 const ADDITIONAL_IDS = new Set(["paypal", "facebook", "instagram", "ebay"]);

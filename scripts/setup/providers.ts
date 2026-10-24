@@ -158,6 +158,7 @@ const MANAGED_TOOLKITS = [
   { label: "Gmail", slug: "gmail" },
   { label: "Outlook", slug: "outlook" },
   { label: "Google Calendar", slug: "googlecalendar" },
+  { label: "Google Drive", slug: "googledrive" },
   { label: "Facebook", slug: "facebook" },
   { label: "Instagram", slug: "instagram" },
 ] as const;
