@@ -65,7 +65,7 @@ const NewsCard = () => {
           News
         </h2>
         <Segmented
-          className="w-auto"
+          className="w-full flex-nowrap sm:w-auto [&>*]:whitespace-nowrap"
           label="News type"
           onValueChange={async (next) => {
             setChosen(next);
