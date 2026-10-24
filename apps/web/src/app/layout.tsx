@@ -7,6 +7,7 @@ import "../index.css";
 import { DisplayBootScript } from "@/components/display-boot-script";
 import { PwaRegistration } from "@/components/pwa-registration";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ENV } from "@/env";
 
 // One self-hosted face for headings and body, with an explicit system fallback.
 const bodyFont = IBM_Plex_Sans({
@@ -16,12 +17,27 @@ const bodyFont = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
 });
 
+const socialImage = {
+  alt: "Claude Monet, Cliff Walk at Pourville: two figures on a flowered clifftop above a bright sea with sailboats.",
+  height: 1922,
+  type: "image/jpeg",
+  url: "/landing/monet-cliff-walk-at-pourville.jpg",
+  width: 2400,
+};
+
 export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "default", title: "LifeLink" },
   applicationName: "LifeLink",
   description:
     "A calm helper for staying in touch with family, keeping track of the day, and checking messages that look wrong.",
+  metadataBase: new URL(ENV.NEXT_PUBLIC_SITE_URL),
+  openGraph: {
+    images: [socialImage],
+    siteName: "LifeLink",
+    type: "website",
+  },
   title: { default: "LifeLink", template: "%s · LifeLink" },
+  twitter: { card: "summary_large_image", images: [socialImage] },
 };
 
 export const viewport: Viewport = {
