@@ -32,13 +32,14 @@ type PictureChange =
   | { blob: Blob; kind: "replace"; previewUrl: string }
   | { kind: "remove" };
 
-type Channel = "discord" | "email" | "imessage";
+type Channel = "discord" | "email" | "imessage" | "telegram";
 
 type Way =
   | "discord"
   | "email"
   | "imessage_email"
   | "imessage_phone"
+  | "telegram"
   | "whatsapp";
 
 interface WayDetails {
@@ -85,6 +86,14 @@ const WAYS: Record<Way, WayDetails> = {
     phone: true,
     valueLabel: "Phone number",
   },
+  telegram: {
+    channel: "telegram",
+    group: "telegram",
+    help: "Linked through their Telegram link. To link a different account or stop using Telegram, use the Telegram section below.",
+    label: "Telegram (linked)",
+    phone: false,
+    valueLabel: "Telegram",
+  },
   whatsapp: {
     channel: null,
     group: "whatsapp",
@@ -100,6 +109,7 @@ const WAY_ORDER: readonly Way[] = [
   "imessage_email",
   "email",
   "discord",
+  "telegram",
   "whatsapp",
 ];
 
@@ -165,6 +175,13 @@ const initialRows = (contact: CircleContact | null): Row[] => {
   return rows;
 };
 
+/** The chat proved through their Telegram link, if any. It is never typed in. */
+const linkedTelegramOf = (contact: CircleContact | null): string | null => {
+  const linked = contact?.channels.find((item) => item.channel === "telegram");
+
+  return linked?.address ?? null;
+};
+
 const addressOf = (row: Row): string => {
   if (row.way === "") {
     return "";
@@ -176,12 +193,15 @@ const addressOf = (row: Row): string => {
 };
 
 const WayRow = ({
+  linkedTelegram,
   onChange,
   onRemove,
   preferred,
   row,
   usedGroups,
 }: {
+  /** The verified chat, when this person has linked Telegram; it can't be typed in. */
+  linkedTelegram: string | null;
   onChange: (next: Row) => void;
   onRemove: (() => void) | null;
   preferred: boolean;
@@ -197,6 +217,7 @@ const WayRow = ({
   const choices = WAY_ORDER.filter(
     (way) =>
       !(preferred && WAYS[way].channel === null) &&
+      (way !== "telegram" || linkedTelegram !== null) &&
       (way === row.way || !usedGroups.has(WAYS[way].group))
   );
 
@@ -219,7 +240,11 @@ const WayRow = ({
               const way =
                 WAY_ORDER.find((option) => option === event.target.value) ?? "";
 
-              onChange({ ...row, way });
+              onChange(
+                way === "telegram"
+                  ? { ...row, value: linkedTelegram ?? "", way }
+                  : { ...row, way }
+              );
             }}
             value={row.way}
           >
@@ -237,7 +262,10 @@ const WayRow = ({
           </Button>
         ) : null}
       </div>
-      {details ? (
+      {row.way === "telegram" ? (
+        <p className="text-muted-foreground text-label">{WAYS.telegram.help}</p>
+      ) : null}
+      {details && row.way !== "telegram" ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor={valueId}>{details.valueLabel}</Label>
           {details.phone ? (
@@ -413,6 +441,9 @@ const ContactForm = ({
   const [relationship, setRelationship] = useState(contact?.relationship ?? "");
   const [trusted, setTrusted] = useState(contact?.trusted ?? true);
   const [rows, setRows] = useState<Row[]>(() => initialRows(contact));
+
+  const linkedTelegram = linkedTelegramOf(contact);
+
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -597,6 +628,7 @@ const ContactForm = ({
             {rows.map((row, index) => (
               <WayRow
                 key={row.key}
+                linkedTelegram={linkedTelegram}
                 onChange={replaceRow}
                 onRemove={
                   index === 0

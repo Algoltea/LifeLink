@@ -24,6 +24,7 @@ const REACHED_BY: Record<CircleContact["channels"][number]["channel"], string> =
     email: "Reached by email",
     imessage: "Reached by iMessage",
     in_app: "Reached in LifeLink",
+    telegram: "Reached by Telegram",
   };
 
 const reachLine = (contact: CircleContact): string => {
