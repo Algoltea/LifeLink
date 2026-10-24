@@ -7,85 +7,37 @@ import { Label } from "@lifelink/ui/components/label";
 import { Pill } from "@lifelink/ui/components/pill";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { cn } from "@lifelink/ui/lib/utils";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import {
+  ArrowRightIcon,
+  ImageIcon,
+  MailIcon,
+  ShieldCheckIcon,
+  TextIcon,
+} from "lucide-react";
+import Link from "next/link";
 import { useId, useRef, useState } from "react";
-import { z } from "zod";
 
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
-import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
+import { LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
 
+import { CallHistory, CallScreening } from "./call-screening";
+import { PhotoInput, photoError } from "./photo-input";
 import { KIND_WORDS, ScamResult, VERDICT_WORDS } from "./scam-result";
+import type { Review } from "./scam-result";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const uploadResultSchema = z.object({ storageId: z.string() });
-
-const MAX_SCREENSHOT_BYTES = 6 * 1024 * 1024;
-
 type Source = "email" | "screenshot" | "text";
 
-const canCheck = (
-  source: Source,
-  text: string,
-  file: File | null,
-  allowCloudAnalysis: boolean,
-  practice: boolean,
-  loading: boolean
-): boolean => {
-  if (source === "email") {
-    return true;
-  }
-
-  if (source === "screenshot") {
-    return file !== null && allowCloudAnalysis && !practice && !loading;
-  }
-
-  return text.trim().length > 0;
-};
-
-const checkButtonLabel = (
-  source: Source,
-  cloud: boolean,
-  practice: boolean
-): string => {
-  if (source === "screenshot") {
-    if (practice) {
-      return "Screenshot checks unavailable in Practice";
-    }
-
-    return "Check screenshot with cloud AI";
-  }
-
-  return cloud ? "Check with cloud AI" : "Check locally";
-};
-
-const checkGuidance = (source: Source, practice: boolean): string => {
-  if (source === "screenshot") {
-    if (practice) {
-      return "Practice mode cannot analyze screenshots and never sends them to an AI provider. Paste or type the words for a local check. ";
-    }
-
-    return "Local rules cannot read images. Choose an image and allow cloud AI above, or paste or type its words for a local check. ";
-  }
-
-  return "The local check looks for common warning signs without sending your message to an AI provider. ";
-};
-
-const validScreenshot = (file: File): boolean =>
-  file.size <= MAX_SCREENSHOT_BYTES && file.type.startsWith("image/");
-
-const BASE_SOURCES = [
-  { label: "Paste the words", value: "text" },
-  { label: "A screenshot", value: "screenshot" },
-] as const;
-
-const EMAIL_SOURCES = [
-  { label: "This email", value: "email" },
-  ...BASE_SOURCES,
+const SOURCES = [
+  { icon: TextIcon, label: "Type or paste the words", value: "text" },
+  { icon: ImageIcon, label: "Add a photo or screenshot", value: "screenshot" },
+  { icon: MailIcon, label: "Pick an email", value: "email" },
 ] as const;
 
 interface EmailChoice {
@@ -95,331 +47,473 @@ interface EmailChoice {
   subject: string;
 }
 
-const ScreenshotFields = ({
-  file,
-  note,
-  onFile,
-  onNote,
-}: {
-  file: File | null;
-  note: string;
-  onFile: (file: File | null) => void;
-  onNote: (note: string) => void;
-}) => {
-  const fileId = useId();
-  const noteId = useId();
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={fileId}>Screenshot</Label>
-        <input
-          accept="image/*"
-          className="text-foreground file:border-control file:bg-raised file:text-foreground hover:file:bg-surface hover:file:text-foreground min-h-12 w-full min-w-0 text-base file:mr-4 file:min-h-12 file:rounded-md file:border file:px-5 file:text-base file:font-medium"
-          id={fileId}
-          onChange={(event) => onFile(event.target.files?.[0] ?? null)}
-          type="file"
-        />
-        {file ? (
-          <span className="text-muted-foreground text-base">
-            Chosen: {file.name}
-          </span>
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={noteId}>Anything to add? (optional)</Label>
-        <Textarea
-          id={noteId}
-          maxLength={8000}
-          onChange={(event) => onNote(event.target.value)}
-          placeholder="For example, who it claimed to be from"
-          rows={2}
-          value={note}
-        />
-      </div>
-    </div>
-  );
-};
-
 const CloudConsent = ({
-  source,
-  practice,
-  busy,
   allowed,
+  disabled,
   onChange,
+  photo,
 }: {
-  source: Source;
-  practice: boolean;
-  busy: boolean;
   allowed: boolean;
+  disabled: boolean;
   onChange: (allowed: boolean) => void;
+  photo: boolean;
 }) => {
   const consentId = useId();
 
-  if (source === "screenshot" && practice) {
-    return null;
-  }
-
   return (
     <label
-      className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
+      className="flex min-h-12 cursor-pointer items-start gap-3 text-lg leading-relaxed"
       htmlFor={consentId}
     >
       <input
         checked={allowed}
-        className="accent-primary mt-1 size-5 shrink-0"
-        disabled={busy}
+        className="accent-primary mt-1 size-6 shrink-0"
+        disabled={disabled}
         id={consentId}
         onChange={(event) => onChange(event.target.checked)}
         type="checkbox"
       />
       <span>
-        Allow this {source === "screenshot" ? "screenshot and note" : "message"}{" "}
-        to be sent to the cloud AI provider for this check.
-        {source === "screenshot"
-          ? " A screenshot must be sent to cloud AI to read its words."
-          : " Leave unchecked to use local rules."}
+        {photo
+          ? "Send this photo and my note to a cloud AI service so it can read the words for this check. A photo can’t be checked without this."
+          : "Allow a cloud AI service to help with this message, just for this check. Leave this unchecked to look for common warning signs without cloud AI."}
       </span>
     </label>
   );
 };
 
-/** Text, a screenshot, or a chosen email goes to the backend; the result appears below as it finishes. */
-const CheckForm = ({
+const EmailPicker = ({
+  disabled,
+  emails,
+  onChange,
+  selected,
+}: {
+  disabled: boolean;
+  emails: EmailChoice[] | undefined;
+  onChange: (emailId: string) => void;
+  selected: EmailChoice | null;
+}) => {
+  const id = useId();
+
+  if (emails === undefined) {
+    return <LoadingRows label="Loading your emails" layout="checks" rows={2} />;
+  }
+
+  if (emails.length === 0) {
+    return (
+      <p className="text-lg">
+        There are no recent emails to choose from.{" "}
+        <Link
+          className="inline-flex min-h-12 items-center font-semibold underline"
+          href="/email"
+        >
+          Open Email
+        </Link>
+        , or type the message’s words instead.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <Label className="text-lg" htmlFor={id}>
+        Choose an email
+      </Label>
+      <select
+        className="border-control bg-raised text-foreground min-h-14 w-full min-w-0 rounded-lg border px-4 text-lg"
+        disabled={disabled}
+        id={id}
+        onChange={(event) => onChange(event.target.value)}
+        value={selected?.id ?? ""}
+      >
+        <option value="">Choose from your recent emails</option>
+        {emails.map((email) => (
+          <option key={email.id} value={email.id}>
+            {email.fromName ?? email.fromAddress} ·{" "}
+            {email.subject || "(No subject)"}
+          </option>
+        ))}
+      </select>
+      {selected ? (
+        <div className="border-rule flex flex-col gap-1 border-b py-3 wrap-anywhere">
+          <p className="text-muted-foreground text-lg">
+            From {selected.fromName ?? selected.fromAddress}
+          </p>
+          <p className="text-xl font-semibold">
+            {selected.subject || "(No subject)"}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const photoAvailability = (
+  practice: boolean,
+  loaded: boolean,
+  configured: boolean
+): string | null => {
+  if (practice) {
+    return "Practice mode is on, so photos aren’t checked or sent anywhere. You can type the words from the letter instead.";
+  }
+
+  if (!loaded) {
+    return "Checking whether photo checks are available…";
+  }
+
+  if (!configured) {
+    return "Photo checks aren’t available right now. Your photo won’t be uploaded. You can type the words instead.";
+  }
+
+  return null;
+};
+
+const useCheckAvailability = () => {
+  const { me } = usePreferences();
+  const integrations = useQuery(api.status.integrations);
+  const practice = me?.profile?.demoMode === true;
+  const profileLoaded = me !== undefined;
+
+  const configured =
+    integrations?.integrations.some(
+      (item) => item.id === "openrouter" && item.configured
+    ) === true;
+
+  return {
+    cloudAvailable: profileLoaded && !practice && configured,
+    profileLoaded,
+    unavailable: photoAvailability(
+      practice,
+      profileLoaded && integrations !== undefined,
+      configured
+    ),
+  };
+};
+
+const formReady = ({
+  source,
+  file,
+  allowed,
+  unavailable,
+  text,
   email,
+  profileLoaded,
+}: {
+  source: Source;
+  file: File | null;
+  allowed: boolean;
+  unavailable: string | null;
+  text: string;
+  email: EmailChoice | null;
+  profileLoaded: boolean;
+}): boolean => {
+  if (source === "screenshot") {
+    return (
+      file !== null &&
+      photoError(file) === null &&
+      allowed &&
+      unavailable === null
+    );
+  }
+
+  return (
+    profileLoaded &&
+    (source === "email" ? email !== null : text.trim().length > 0)
+  );
+};
+
+const submitLabel = (photo: boolean, busy: boolean): string => {
+  if (busy) {
+    return photo ? "Uploading your photo…" : "Checking the message…";
+  }
+
+  return photo ? "Check this photo" : "Check this message";
+};
+
+/** Consent belongs to this input and is cleared whenever the person replaces it. */
+const CheckForm = ({
+  active,
+  email,
+  emails,
+  initialSource,
   onStarted,
 }: {
+  active: boolean;
   email: EmailChoice | null;
+  emails: EmailChoice[] | undefined;
+  initialSource: Source;
   onStarted: (reviewId: Id<"scamReviews">) => void;
 }) => {
-  const { me } = usePreferences();
-  const practice = me?.profile?.demoMode === true;
-  const textRef = useRef<HTMLTextAreaElement>(null);
+  const { cloudAvailable, profileLoaded, unavailable } = useCheckAvailability();
   const submit = useMutation(api.scam.submit);
-  const uploadUrl = useMutation(api.messages.generatePhotoUploadUrl);
+  const submitPhoto = useAction(api.scam.submitPhoto);
+  const [source, setSource] = useState(initialSource);
 
-  const [source, setSource] = useState<Source>(
-    email === null ? "text" : "email"
+  const [chosenEmailId, setChosenEmailId] = useState<string | null>(
+    email?.id ?? null
   );
 
   const [text, setText] = useState("");
+  const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const textId = useId();
+  const noteId = useId();
   const sourceName = useId();
+  const guidanceId = useId();
+  const photo = source === "screenshot";
+  const selected = emails?.find((item) => item.id === chosenEmailId) ?? null;
 
-  const activeSource: Source =
-    source === "email" && email === null ? "text" : source;
-
-  const screenshotReady = activeSource === "screenshot" && file !== null;
-  const screenshotMode = activeSource === "screenshot";
-
-  const ready = canCheck(
-    activeSource,
-    text,
+  const ready = formReady({
+    allowed: allowCloudAnalysis,
+    email: selected,
     file,
-    allowCloudAnalysis,
-    practice,
-    me === undefined
-  );
+    profileLoaded,
+    source,
+    text,
+    unavailable,
+  });
 
-  const checkLabel = checkButtonLabel(
-    activeSource,
-    allowCloudAnalysis,
-    practice
-  );
-
-  const uploadScreenshot = async (
-    screenshot: File
-  ): Promise<Id<"_storage">> => {
-    const url = await uploadUrl({});
-
-    const response = await fetch(url, {
-      body: screenshot,
-      headers: { "Content-Type": screenshot.type },
-      method: "POST",
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        "The screenshot could not be uploaded. Try again, or paste its words for a local check."
-      );
-    }
-
-    const uploaded = uploadResultSchema.parse(await response.json());
-
-    // SAFETY: Convex storage returned this id for the file just uploaded; `submit` re-checks its type and size.
-    return uploaded.storageId as Id<"_storage">;
+  const changeSource = (next: Source) => {
+    setSource(next);
+    setAllowCloudAnalysis(false);
+    setFormError(null);
   };
 
   const start = async (): Promise<Id<"scamReviews">> => {
-    if (activeSource === "email" && email !== null) {
-      return await submit({
-        allowCloudAnalysis,
-        emailId: email.id,
-        screenshotId: null,
-        text: null,
-      });
-    }
+    if (photo && file !== null) {
+      // Both the UI and the server gate storage on consent and availability.
+      if (unavailable !== null || !allowCloudAnalysis) {
+        throw new Error(
+          "Photo checks aren’t available. Type the words instead."
+        );
+      }
 
-    if (activeSource === "screenshot" && file !== null) {
-      const screenshotId = await uploadScreenshot(file);
+      const problem = photoError(file);
 
-      return await submit({
-        allowCloudAnalysis,
-        emailId: null,
-        screenshotId,
-        text: text.trim() || null,
+      if (problem) {
+        throw new Error(problem);
+      }
+
+      return await submitPhoto({
+        allowCloudAnalysis: true,
+        contentType: file.type,
+        photo: await file.arrayBuffer(),
+        text: note.trim() || null,
       });
     }
 
     return await submit({
-      allowCloudAnalysis,
-      emailId: null,
+      allowCloudAnalysis: allowCloudAnalysis && cloudAvailable,
+      emailId: source === "email" ? (selected?.id ?? null) : null,
       screenshotId: null,
-      text,
+      text: source === "text" ? text : null,
     });
   };
 
   return (
     <form
-      className="bg-surface text-foreground flex min-w-0 flex-col gap-5 rounded-xl px-5 py-6 sm:px-7"
+      className="flex min-w-0 flex-col gap-5"
       onSubmit={async (event) => {
         event.preventDefault();
 
-        if (busy || !ready) {
+        if (inFlight.current || !ready) {
           return;
         }
 
-        if (screenshotReady && !validScreenshot(file)) {
-          setFormError("Please choose a screenshot image under 6 MB.");
-
-          return;
-        }
-
+        inFlight.current = true;
         setBusy(true);
         setFormError(null);
 
         try {
           onStarted(await start());
           setText("");
+          setNote("");
           setFile(null);
-          setAllowCloudAnalysis(false);
         } catch (error) {
           setFormError(errorText(error));
         }
 
+        // A retry is another check and needs fresh permission too.
+        setAllowCloudAnalysis(false);
         setBusy(false);
+        inFlight.current = false;
       }}
     >
-      <fieldset className="flex min-w-0 flex-col gap-2" disabled={busy}>
-        <legend className="pb-2 text-lg font-semibold">
-          What would you like checked?
+      <div className="flex flex-col gap-1">
+        <h2
+          className="text-section font-semibold"
+          id="message-check-heading"
+          tabIndex={-1}
+        >
+          Check a message
+        </h2>
+        <p className="text-muted-foreground text-lg">
+          A letter, a text, a screenshot or an email. Choose the easiest way to
+          show it.
+        </p>
+      </div>
+      <fieldset className="min-w-0" disabled={busy}>
+        <legend className="sr-only">
+          How would you like to show the message?
         </legend>
-        <div className="flex flex-wrap gap-2">
-          {(email === null ? BASE_SOURCES : EMAIL_SOURCES).map((option) => (
+        <div className="grid grid-cols-1 gap-3 @lg/content:grid-cols-3">
+          {SOURCES.map((option) => (
             <label
               className={cn(
-                "border-control has-focus-visible:outline-ring flex min-h-12 cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-base has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
-                activeSource === option.value
-                  ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-                  : "bg-raised text-foreground hover:bg-surface hover:text-foreground"
+                "border-control has-focus-visible:outline-ring flex min-h-18 min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-lg leading-6 has-focus-visible:outline-3 has-focus-visible:outline-offset-2",
+                source === option.value
+                  ? "border-primary bg-neutral-wash text-primary font-semibold"
+                  : "bg-background hover:bg-parchment font-medium"
               )}
               key={option.value}
             >
               <input
-                checked={activeSource === option.value}
-                className="size-4 shrink-0"
+                checked={source === option.value}
+                className="sr-only"
                 name={sourceName}
-                onChange={() => {
-                  setSource(option.value);
-                  setAllowCloudAnalysis(false);
-                  setFormError(null);
-                }}
+                onChange={() => changeSource(option.value)}
                 type="radio"
                 value={option.value}
               />
+              <option.icon aria-hidden="true" className="size-6 shrink-0" />
               {option.label}
             </label>
           ))}
         </div>
       </fieldset>
-
-      {activeSource === "email" && email !== null ? (
-        <div className="border-rule flex min-w-0 flex-col gap-1 border-y py-4 wrap-anywhere">
-          <span className="text-muted-foreground text-base">
-            From {email.fromName ?? email.fromAddress}
-          </span>
-          <span className="text-xl font-semibold">
-            {email.subject || "(No subject)"}
-          </span>
-        </div>
+      {source === "email" ? (
+        <EmailPicker
+          disabled={busy}
+          emails={emails}
+          onChange={(id) => {
+            setChosenEmailId(id);
+            setAllowCloudAnalysis(false);
+            setFormError(null);
+          }}
+          selected={selected}
+        />
       ) : null}
-
-      {activeSource === "text" ? (
+      {source === "text" ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor={textId}>The message</Label>
+          <Label className="text-lg" htmlFor={textId}>
+            The message’s words
+          </Label>
           <Textarea
+            className="text-lg"
+            disabled={busy}
             id={textId}
-            ref={textRef}
             maxLength={8000}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => {
+              setText(event.target.value);
+              setAllowCloudAnalysis(false);
+            }}
             placeholder="Paste or type the words here"
+            ref={textRef}
             rows={6}
             value={text}
           />
         </div>
       ) : null}
-
-      {activeSource === "screenshot" ? (
-        <ScreenshotFields
-          file={file}
-          note={text}
-          onFile={setFile}
-          onNote={setText}
+      {photo ? (
+        <>
+          <PhotoInput
+            active={active}
+            disabled={busy}
+            file={file}
+            onFile={(next) => {
+              setFile(next);
+              setAllowCloudAnalysis(false);
+              setFormError(null);
+            }}
+          />
+          <div className="flex flex-col gap-2">
+            <Label className="text-lg" htmlFor={noteId}>
+              Anything to add? (optional)
+            </Label>
+            <Textarea
+              className="text-lg"
+              disabled={busy}
+              id={noteId}
+              maxLength={8000}
+              onChange={(event) => {
+                setNote(event.target.value);
+                setAllowCloudAnalysis(false);
+              }}
+              placeholder="For example, who it claimed to be from"
+              rows={2}
+              value={note}
+            />
+          </div>
+          <p className="text-muted-foreground text-lg">
+            To read the words in a photo, LifeLink needs a cloud AI service. It
+            asks you first, every time. The photo is kept with this check until
+            you delete it.
+          </p>
+          {unavailable ? (
+            <p className="text-warning text-lg" id={guidanceId}>
+              {unavailable}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      {cloudAvailable ? (
+        <CloudConsent
+          allowed={allowCloudAnalysis}
+          disabled={busy || (photo && file === null)}
+          onChange={setAllowCloudAnalysis}
+          photo={photo}
         />
       ) : null}
-
-      <CloudConsent
-        source={activeSource}
-        practice={practice}
-        busy={busy}
-        allowed={allowCloudAnalysis}
-        onChange={setAllowCloudAnalysis}
-      />
-      <p className="text-muted-foreground max-w-prose text-base">
-        {checkGuidance(activeSource, practice)}
-        LifeLink does not open links or contact the sender. No check can prove a
-        message is genuine.
-      </p>
-      {screenshotMode ? (
-        <Button
-          className="self-start whitespace-normal"
-          disabled={busy}
-          onClick={() => {
-            setSource("text");
-            setAllowCloudAnalysis(false);
-            setFormError(null);
-            requestAnimationFrame(() => textRef.current?.focus());
-          }}
-          type="button"
-          variant="outline"
-        >
-          Paste the words instead
-        </Button>
+      {photo ? null : (
+        <p className="text-muted-foreground text-lg">
+          LifeLink looks for common warning signs. It doesn’t open links or
+          contact the sender. No check can prove a message is genuine.
+        </p>
+      )}
+      {formError ? (
+        <p className="text-negative text-lg" role="alert">
+          {formError}
+        </p>
       ) : null}
-      {formError === null ? null : <ErrorNote>{formError}</ErrorNote>}
-      <Button
-        aria-busy={busy}
-        className="hover:text-primary-foreground self-start rounded-md whitespace-normal"
-        disabled={busy || !ready}
-        size="lg"
-        type="submit"
-      >
-        {busy ? "Checking…" : checkLabel}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          aria-busy={busy}
+          aria-describedby={photo && unavailable ? guidanceId : undefined}
+          className="min-h-14 w-full text-lg sm:w-auto"
+          disabled={busy || !ready}
+          size="lg"
+          type="submit"
+        >
+          <ShieldCheckIcon aria-hidden="true" />
+          {submitLabel(photo, busy)}
+        </Button>
+        {photo ? (
+          <Button
+            className="text-lg"
+            disabled={busy}
+            onClick={() => {
+              changeSource("text");
+              requestAnimationFrame(() => textRef.current?.focus());
+            }}
+            type="button"
+            variant="ghost"
+          >
+            Type the words instead
+          </Button>
+        ) : null}
+      </div>
+      {busy ? (
+        <output aria-live="polite" className="text-muted-foreground text-lg">
+          {photo
+            ? "Uploading your photo. Keep this page open; reading the words comes next."
+            : "Preparing your check…"}
+        </output>
+      ) : null}
     </form>
   );
 };
@@ -450,7 +544,11 @@ const HistoryList = ({
   }
 
   if (reviews.length === 0) {
-    return <EmptyNote>No earlier checks.</EmptyNote>;
+    return (
+      <p className="text-muted-foreground py-5 text-lg">
+        Your message, photo and call checks will appear here.
+      </p>
+    );
   }
 
   return (
@@ -459,40 +557,41 @@ const HistoryList = ({
         const verdict = VERDICT_WORDS[review.verdict];
         const email = emails?.find((item) => item.id === review.emailId);
 
+        const Icon =
+          SOURCES.find((source) => source.value === review.inputKind)?.icon ??
+          TextIcon;
+
         return (
-          <li className="border-rule border-t" key={review._id}>
+          <li className="border-rule border-b" key={review._id}>
             <button
-              className="bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 flex-col items-start gap-3 rounded-md px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="hover:bg-parchment flex min-h-20 w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-md px-1 py-3.5 text-left"
               onClick={() => onOpen(review._id)}
               type="button"
             >
-              {email ? (
-                <span className="flex min-w-0 flex-col gap-1 wrap-anywhere">
-                  <span className="text-lg font-semibold">
-                    {email.fromName ?? email.fromAddress}
-                  </span>
-                  <span className="text-lg">
-                    {email.subject || "(No subject)"}
-                  </span>
+              <Icon
+                aria-hidden="true"
+                className="text-muted-foreground size-6 shrink-0"
+              />
+              <span className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
+                <span className="line-clamp-2 text-lg font-semibold wrap-anywhere">
+                  {email?.subject ||
+                    review.inputText?.trim() ||
+                    KIND_WORDS[review.inputKind]}
                 </span>
-              ) : null}
-              <span className="line-clamp-3 w-full text-lg wrap-anywhere">
-                {review.inputText?.trim() ||
-                  (review.inputKind === "screenshot"
-                    ? "Screenshot without a note"
-                    : KIND_WORDS[review.inputKind])}
-              </span>
-              <span className="flex flex-wrap items-center gap-2">
-                {review.status === "done" ? (
-                  <Pill tone={verdict.tone}>{verdict.label}</Pill>
-                ) : (
-                  <Pill>{STATUS_PILL[review.status]}</Pill>
-                )}
-                <span className="text-muted-foreground text-base">
+                <span className="text-muted-foreground text-label">
                   {KIND_WORDS[review.inputKind]} ·{" "}
-                  {review.automatic ? "Automatic local check" : "Manual check"}{" "}
-                  · {ago(review.createdAt, timeZone)}
+                  {ago(review.createdAt, timeZone)}
+                  {review.mode === "simulated" ? " · Practice" : ""}
                 </span>
+              </span>
+              <Pill tone={review.status === "done" ? verdict.tone : "neutral"}>
+                {review.status === "done"
+                  ? verdict.label
+                  : STATUS_PILL[review.status]}
+              </Pill>
+              <span className="flex min-h-12 items-center gap-2 text-lg font-medium">
+                Review
+                <ArrowRightIcon aria-hidden="true" className="size-5" />
               </span>
             </button>
           </li>
@@ -502,61 +601,204 @@ const HistoryList = ({
   );
 };
 
-const ScamScreen = ({ emailId }: { emailId: string | null }) => {
+const useReviewSelection = (emailId: string | null) => {
   const reviews = useQuery(api.scam.list);
   const emails = useQuery(api.emails.list);
   const { me } = usePreferences();
   const [currentId, setCurrentId] = useState<Id<"scamReviews"> | null>(null);
+  const [ignoreEmailReview, setIgnoreEmailReview] = useState(false);
+  const [deletingReview, setDeletingReview] = useState<Review | null>(null);
+
+  const [initialSource, setInitialSource] = useState<Source>(
+    emailId ? "email" : "screenshot"
+  );
+
+  const [formVersion, setFormVersion] = useState(0);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
   const email = emails?.find((item) => item.id === emailId) ?? null;
-  const selectedReviewId = currentId ?? email?.scamCheck?.reviewId ?? null;
+
+  const selectedReviewId =
+    currentId ??
+    (ignoreEmailReview ? null : email?.scamCheck?.reviewId) ??
+    null;
 
   const current = useQuery(
     api.scam.get,
-    selectedReviewId === null ? "skip" : { reviewId: selectedReviewId }
+    selectedReviewId === null || deletingReview !== null
+      ? "skip"
+      : { reviewId: selectedReviewId }
   );
 
   const earlier = reviews?.filter((review) => review._id !== selectedReviewId);
   const waitingForEmail = emailId !== null && emails === undefined;
+  const showingResult = selectedReviewId !== null;
+
+  const openForm = (source: Source = "screenshot") => {
+    setIgnoreEmailReview(true);
+    setCurrentId(null);
+    setDeletingReview(null);
+    setInitialSource(source);
+    setFormVersion((version) => version + 1);
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("#message-check-heading")?.focus()
+    );
+  };
+
+  return {
+    current: deletingReview ?? current,
+    earlier,
+    email,
+    emails,
+    formVersion,
+    initialSource,
+    openForm,
+    setCurrentId,
+    setDeletingReview,
+    showingResult,
+    timeZone,
+    waitingForEmail,
+  };
+};
+
+const ScamPageIntro = ({ active }: { active: boolean }) => {
+  const [explaining, setExplaining] = useState(false);
 
   return (
     <>
-      <PageHeader
-        subline="Email is checked automatically with local rules. Use this page to review a result or check another message before you act."
-        title="Scam check"
-      />
-      {current === undefined ? null : (
-        <ScamResult key={current._id} review={current} timeZone={timeZone} />
-      )}
-      {emailId !== null && !waitingForEmail && email === null ? (
-        <ErrorNote>
-          This email is not in the recent inbox. Return to Email to choose one,
-          or paste its words below.
-        </ErrorNote>
-      ) : null}
-      {waitingForEmail ? (
-        <LoadingRows layout="check-form" label="Loading the email" rows={2} />
+      {active ? (
+        <h1 className="sr-only">Scam call check</h1>
       ) : (
-        <CheckForm
-          email={email}
-          key={email?.id ?? "none"}
-          onStarted={setCurrentId}
+        <PageHeader
+          actions={
+            <Button
+              aria-expanded={explaining}
+              className="text-lg"
+              onClick={() => setExplaining((open) => !open)}
+              variant="ghost"
+            >
+              <ShieldCheckIcon aria-hidden="true" />
+              How checks work
+            </Button>
+          }
+          subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
+          title="Scam check"
         />
       )}
-      <section aria-labelledby="history-heading" className="flex flex-col">
-        <h2 className="pb-3 text-2xl font-semibold" id="history-heading">
-          Earlier checks
-        </h2>
-        <HistoryList
-          emails={emails}
-          onOpen={(reviewId) => {
-            setCurrentId(reviewId);
-            globalThis.scrollTo({ top: 0 });
-          }}
-          reviews={earlier}
+      {explaining && !active ? (
+        <p className="border-rule max-w-prose border-b pb-5 text-lg">
+          A check looks for common warning signs; it can’t confirm who sent a
+          message or whether it’s true. Photos need your permission to be read
+          by a cloud AI service and stay with your check until you delete it.
+          You choose what to do next.
+        </p>
+      ) : null}
+    </>
+  );
+};
+
+const ScamScreen = ({ emailId }: { emailId: string | null }) => {
+  const {
+    current,
+    earlier,
+    email,
+    emails,
+    formVersion,
+    initialSource,
+    openForm,
+    setCurrentId,
+    setDeletingReview,
+    showingResult,
+    timeZone,
+    waitingForEmail,
+  } = useReviewSelection(emailId);
+
+  const [callActive, setCallActive] = useState(false);
+  const showResult = !callActive && showingResult;
+
+  return (
+    <>
+      <ScamPageIntro active={callActive} />
+      {showResult && current ? (
+        <ScamResult
+          key={current._id}
+          onCheckAnother={() => openForm()}
+          onDeleted={() => openForm()}
+          onDeleting={setDeletingReview}
+          onTryPhoto={() => openForm("screenshot")}
+          onTypeWords={() => openForm("text")}
+          review={current}
           timeZone={timeZone}
         />
-      </section>
+      ) : null}
+      {showResult && current === undefined ? (
+        <LoadingRows label="Opening your check" layout="check-form" rows={2} />
+      ) : null}
+      <div
+        className={cn(
+          "grid min-w-0 items-start gap-8",
+          !callActive && showingResult && "hidden",
+          !callActive &&
+            "@4xl/content:grid-cols-[minmax(0,1fr)_1px_22.5rem] @4xl/content:gap-10"
+        )}
+      >
+        <div className={cn("min-w-0", callActive && "hidden")}>
+          {emailId !== null && !waitingForEmail && email === null ? (
+            <p className="text-negative mb-4 text-lg" role="alert">
+              This email isn’t in the recent inbox. Pick another email or type
+              its words below.
+            </p>
+          ) : null}
+          {waitingForEmail ? (
+            <LoadingRows
+              layout="check-form"
+              label="Loading the email"
+              rows={2}
+            />
+          ) : (
+            <CheckForm
+              active={!callActive && !showingResult}
+              email={email}
+              emails={emails}
+              initialSource={initialSource}
+              key={`${email?.id ?? "none"}-${formVersion}`}
+              onStarted={setCurrentId}
+            />
+          )}
+        </div>
+        <div
+          aria-hidden="true"
+          className={cn(
+            "bg-rule h-px @4xl/content:h-auto @4xl/content:w-px @4xl/content:self-stretch",
+            callActive && "hidden"
+          )}
+        />
+        <div className="min-w-0">
+          <CallScreening onActiveChange={setCallActive} />
+        </div>
+      </div>
+      {callActive ? null : (
+        <section
+          aria-labelledby="history-heading"
+          className="flex flex-col pt-3"
+        >
+          <h2
+            className="border-rule text-section border-b pb-3 font-semibold"
+            id="history-heading"
+          >
+            Earlier checks
+          </h2>
+          <HistoryList
+            emails={emails}
+            onOpen={(reviewId) => {
+              setCurrentId(reviewId);
+              globalThis.scrollTo({ top: 0 });
+            }}
+            reviews={earlier}
+            timeZone={timeZone}
+          />
+          <CallHistory />
+        </section>
+      )}
     </>
   );
 };

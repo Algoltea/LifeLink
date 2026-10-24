@@ -182,10 +182,10 @@ const LoadingPage = ({
       return (
         <>
           <PageHeader
-            subline="Email is checked automatically with local rules. Use this page to review a result or check another message before you act."
+            subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
             title="Scam check"
           />
-          <LoadingRows label="Loading your checks" layout="check-form" />
+          <LoadingRows label="Loading your checks" layout="scam-page" />
         </>
       );
     }
