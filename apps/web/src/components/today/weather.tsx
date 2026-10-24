@@ -131,15 +131,20 @@ const SettingsLink = ({ children }: { children: string }) => (
 /** Today's weather in the header; the week opens in a light popover. */
 const WeatherChip = ({
   state,
+  unavailable,
   unit,
 }: {
   state: WeatherState | undefined;
+  /** The last refresh found nothing to show. */
+  unavailable: boolean;
   unit: TemperatureUnit;
 }) => {
   if (state === undefined || state.status === "loading") {
     return (
       <p className="text-muted-foreground text-label min-h-control flex items-center">
-        Loading weather…
+        {unavailable
+          ? "Weather is not available right now."
+          : "Loading weather…"}
       </p>
     );
   }

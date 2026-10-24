@@ -15,10 +15,11 @@ import type {
 } from "@lifelink/contracts/weather";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { dayKey } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
+import { useRefreshWhenStale } from "@/lib/refresh";
 
 type WeatherState = FunctionReturnType<typeof api.weather.forecast>;
 
@@ -50,7 +51,13 @@ const degrees = (celsius: number, unit: TemperatureUnit): string =>
  * again when the cached copy is missing or older than 30 minutes; the server
  * decides whether a fetch is really needed.
  */
-const useWeather = (timeZone: string): WeatherState | undefined => {
+interface WeatherView {
+  state: WeatherState | undefined;
+  /** The last refresh found nothing to show. */
+  unavailable: boolean;
+}
+
+const useWeather = (timeZone: string): WeatherView => {
   const today = useSyncExternalStore(
     subscribeToClock,
     () => dayKey(Date.now(), timeZone),
@@ -58,36 +65,33 @@ const useWeather = (timeZone: string): WeatherState | undefined => {
   );
 
   const state = useQuery(api.weather.forecast, { today });
-  const refresh = useAction(api.weather.refresh);
-
+  const refreshAction = useAction(api.weather.refresh);
+  const [unavailable, setUnavailable] = useState(false);
   const status = state?.status;
 
-  const fetchedAt =
-    state && "fetchedAt" in state ? (state.fetchedAt ?? null) : null;
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const { available } = await refreshAction({});
 
-  useEffect(() => {
-    const due =
-      status === "loading" ||
-      ((status === "ready" || status === "not_found") &&
-        fetchedAt !== null &&
-        Date.now() - fetchedAt > WEATHER_REFRESH_MS);
-
-    if (!due) {
-      return;
+      setUnavailable(!available);
+    } catch {
+      // The last forecast, if any, stays on screen.
+      setUnavailable(true);
     }
+  }, [refreshAction]);
 
-    const run = async (): Promise<void> => {
-      try {
-        await refresh({});
-      } catch {
-        // A failed refresh leaves the last forecast in place; nothing to show the person.
-      }
-    };
+  useRefreshWhenStale({
+    enabled:
+      status === "loading" || status === "ready" || status === "not_found",
+    fetchedAt:
+      state === undefined || !("fetchedAt" in state)
+        ? undefined
+        : (state.fetchedAt ?? null),
+    maxAgeMs: WEATHER_REFRESH_MS,
+    refresh,
+  });
 
-    void run();
-  }, [fetchedAt, refresh, status]);
-
-  return state;
+  return { state, unavailable };
 };
 
 const forecastOf = (state: WeatherState | undefined): Forecast | null =>

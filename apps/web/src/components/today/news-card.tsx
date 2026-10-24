@@ -6,9 +6,10 @@ import type { NewsKind } from "@lifelink/contracts/news";
 import { Segmented } from "@lifelink/ui/components/segmented";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ExternalLinkIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { useRefreshWhenStale } from "@/lib/refresh";
 
 const SHOWN = 3;
 
@@ -18,32 +19,27 @@ const KINDS = [
 ] as const;
 
 /** Missing or old headlines are fetched again; the server decides if a fetch is due. */
-const useHeadlines = (kind: NewsKind) => {
-  const news = useQuery(api.news.headlines, { kind });
-  const refresh = useAction(api.news.refresh);
+const useHeadlines = (kind: NewsKind, enabled: boolean) => {
+  const news = useQuery(api.news.headlines, enabled ? { kind } : "skip");
+  const refreshAction = useAction(api.news.refresh);
   const [failed, setFailed] = useState<NewsKind | null>(null);
-  const fetchedAt = news?.fetchedAt;
 
-  useEffect(() => {
-    if (fetchedAt === undefined) {
-      return;
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const { available } = await refreshAction({ kind });
+
+      setFailed(available ? null : kind);
+    } catch {
+      setFailed(kind);
     }
+  }, [kind, refreshAction]);
 
-    if (fetchedAt !== null && Date.now() - fetchedAt < NEWS_REFRESH_MS) {
-      return;
-    }
-
-    const run = async (): Promise<void> => {
-      try {
-        await refresh({ kind });
-        setFailed(null);
-      } catch {
-        setFailed(kind);
-      }
-    };
-
-    void run();
-  }, [fetchedAt, kind, refresh]);
+  useRefreshWhenStale({
+    enabled,
+    fetchedAt: news?.fetchedAt,
+    maxAgeMs: NEWS_REFRESH_MS,
+    refresh,
+  });
 
   return { failed: failed === kind, news };
 };
@@ -54,7 +50,7 @@ const NewsCard = () => {
   const savePreferences = useMutation(api.profiles.updatePreferences);
   const [chosen, setChosen] = useState<NewsKind | null>(null);
   const kind = chosen ?? preferences.newsKind;
-  const { failed, news } = useHeadlines(kind);
+  const { failed, news } = useHeadlines(kind, preferences.showNews);
   const headlines = news?.headlines.slice(0, SHOWN) ?? [];
   const [single] = NEWS_SOURCES[kind].length === 1 ? NEWS_SOURCES[kind] : [];
 

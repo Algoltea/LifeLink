@@ -32,6 +32,7 @@ interface WeekRow {
     advice: string | null;
     code: number;
     high: string;
+    label: string;
   };
 }
 
@@ -112,7 +113,9 @@ const WeekList = ({
                       : "text-muted-foreground"
                   )}
                 >
-                  <span className="sr-only">, weather: </span>
+                  <span className="sr-only">
+                    , weather: {row.weather.label}, high{" "}
+                  </span>
                   <WeatherIcon className="size-4" code={row.weather.code} />
                   <span className="num">{row.weather.high}</span>
                   {row.weather.advice ? (

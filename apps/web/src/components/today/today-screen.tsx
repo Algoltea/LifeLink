@@ -2,7 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { weatherAdvice } from "@lifelink/contracts/weather";
+import { describeWeather, weatherAdvice } from "@lifelink/contracts/weather";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -128,7 +128,7 @@ const TodayContent = ({
   summary: TodaySummary;
 }) => {
   const { timeZone } = summary;
-  const weather = useWeather(timeZone);
+  const { state: weather, unavailable } = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
   const lines = currentBriefing(summary);
@@ -156,6 +156,7 @@ const TodayContent = ({
               advice: weatherAdvice(day),
               code: day.code,
               high: degrees(day.highC, unit),
+              label: describeWeather(day.code).label,
             }
           : undefined,
       };
@@ -175,7 +176,9 @@ const TodayContent = ({
         preferredName={summary.preferredName}
         spokenWeather={forecast ? spokenWeather(forecast, unit) : null}
         timeZone={timeZone}
-        weather={<WeatherChip state={weather} unit={unit} />}
+        weather={
+          <WeatherChip state={weather} unavailable={unavailable} unit={unit} />
+        }
       />
 
       {summary.dueReminders.map((reminder) => (
