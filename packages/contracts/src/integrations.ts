@@ -527,7 +527,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "imessage.delivery",
         label: "Delivery updates",
-        note: "LifeLink knows your message was sent, but not if it was read.",
+        note: "LifeLink knows your message was sent, but not if it arrived or was read.",
         status: "not_wired",
       },
       {

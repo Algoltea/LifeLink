@@ -648,7 +648,7 @@ const DemoSettings = ({
       </p>
       {allowed ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <Label className="cursor-pointer" htmlFor={id}>
+          <Label className={busy ? undefined : "cursor-pointer"} htmlFor={id}>
             Use practice mode
           </Label>
           <div className="flex items-center gap-3">

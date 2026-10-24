@@ -151,17 +151,24 @@ const cardCountFor = (demoMode: boolean, row: ProviderRow): string => {
   return `Can do ${things}`;
 };
 
-/** The card's call to action names what opening it leads to. */
+/** The card's call to action names only what the window lets the person do. */
 const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
-  if (row.status === "active") {
-    return "Manage";
+  if (row.definition.connectStyle === "oauth") {
+    const { canConnect, canDisconnect } = oauthOptionsFor(demoMode, row);
+
+    if (canConnect) {
+      return "Connect";
+    }
+
+    return canDisconnect ? "Manage" : "Details";
   }
 
-  if (!row.developerReady && !demoMode) {
-    return "Details";
-  }
-
-  return row.definition.connectStyle === "handle" ? "Set up" : "Connect";
+  // Practice messages need no setup, and Trusted circle holds it back.
+  return row.definition.connectStyle === "handle" &&
+    row.developerReady &&
+    !demoMode
+    ? "Set up"
+    : "Details";
 };
 
 const cardIconsFor = (row: ProviderRow): IsoIconKind[] => {
