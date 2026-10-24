@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = production ]; then cd ../../packages/backend && bunx convex deploy --cmd 'cd ../../apps/web && bun run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL; else bun run build; fi"
+}
