@@ -126,6 +126,73 @@ const scamReviewSchema = z.strictObject({
 
 type ScamReviewResult = z.infer<typeof scamReviewSchema>;
 
+const replyKinds = ["accept", "clarify", "decline"] as const;
+
+const quotedItem = z.strictObject({
+  quote: z
+    .string()
+    .describe(
+      "The exact words from the message, copied character for character."
+    ),
+  text: z.string().describe("One short, plain sentence."),
+});
+
+/**
+ * "Help me understand this": a private, plain-language reading of one message.
+ * Every request, date, and stated fact must quote the message; the backend
+ * moves anything it cannot find word for word into interpretations.
+ */
+const messageExplanationSchema = z.strictObject({
+  dates: z
+    .array(
+      z.strictObject({
+        isoDate: nullableString.describe(
+          "The calendar date as YYYY-MM-DD only if it is certain; otherwise null."
+        ),
+        quote: z
+          .string()
+          .describe(
+            "The exact words for the date or time, copied character for character."
+          ),
+      })
+    )
+    .describe("Dates and times the message mentions."),
+  interpretations: z
+    .array(z.strictObject({ text: z.string(), why: z.string() }))
+    .describe(
+      "Possible meanings the message does not state. Each is a guess, and why says what suggests it."
+    ),
+  missingDetails: z
+    .array(z.string())
+    .describe("Details a reply would need that the message does not give."),
+  plainSummary: z
+    .string()
+    .describe(
+      "Two or three short, plain sentences saying what the message is about."
+    ),
+  requests: z
+    .array(quotedItem)
+    .describe("What the sender explicitly asks the reader to do or answer."),
+  statedFacts: z
+    .array(quotedItem)
+    .describe("Things the message states as fact."),
+  suggestedReplies: z
+    .array(
+      z.strictObject({
+        draft: z
+          .string()
+          .describe(
+            "The full reply in the reader's own voice: short, warm, and signed with their name."
+          ),
+        kind: z.enum(replyKinds),
+        label: z.string().describe("Two to four words, such as Say yes."),
+      })
+    )
+    .describe("Up to three optional replies: accept, clarify, or decline."),
+});
+
+type MessageExplanation = z.infer<typeof messageExplanationSchema>;
+
 const appointmentExtractionSchema = z.strictObject({
   ambiguity: nullableString.describe(
     "What is unclear about the date, time, or place, or null."
@@ -188,7 +255,9 @@ export {
   proposalIntents,
   proposalSchema,
   emailSummarySchema,
+  messageExplanationSchema,
   replyClassificationSchema,
+  replyKinds,
   replyDecisions,
   scamReviewSchema,
   scamVerdicts,
@@ -200,6 +269,7 @@ export type {
   Briefing,
   Proposal,
   EmailSummary,
+  MessageExplanation,
   ReplyClassification,
   ScamReviewResult,
 };

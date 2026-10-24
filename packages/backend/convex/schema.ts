@@ -27,6 +27,28 @@ const sharingScope = v.union(
   v.literal("groceries.view")
 );
 
+const quotedItem = v.object({ quote: v.string(), text: v.string() });
+
+const suggestedReply = v.object({
+  draft: v.string(),
+  kind: v.union(
+    v.literal("accept"),
+    v.literal("clarify"),
+    v.literal("decline")
+  ),
+  label: v.string(),
+});
+
+// Why a reading was local rather than from the cloud assistant.
+const localReason = v.union(
+  v.literal("chosen"),
+  v.literal("practice"),
+  v.literal("unavailable"),
+  v.literal("limit"),
+  v.literal("failed"),
+  v.null()
+);
+
 const groceryItem = v.object({
   name: v.string(),
   quantity: v.union(v.number(), v.null()),
@@ -206,6 +228,16 @@ export default defineSchema({
   })
     .index("by_ownerId_and_threadId", ["ownerId", "threadId"])
     .index("by_ownerId_and_updatedAt", ["ownerId", "updatedAt"]),
+
+  // Per-person limits on cloud-assistant readings, reserved before each paid call.
+  assistantUsage: defineTable({
+    dayRequests: v.number(),
+    dayStartedAt: v.number(),
+    kind: v.union(v.literal("explanation"), v.literal("recap")),
+    minuteRequests: v.number(),
+    minuteStartedAt: v.number(),
+    profileId: v.id("profiles"),
+  }).index("by_profile_and_kind", ["profileId", "kind"]),
 
   auditLog: defineTable({
     actor: v.union(
@@ -434,6 +466,38 @@ export default defineSchema({
     ),
     verified: v.boolean(),
   }).index("by_dedupe_key", ["provider", "dedupeKey"]),
+
+  // "Help me understand this": private to the owner, never read by any family query.
+  messageExplanations: defineTable({
+    cloudRequested: v.boolean(),
+    createdAt: v.number(),
+    dates: v.array(
+      v.object({ isoDate: v.union(v.string(), v.null()), quote: v.string() })
+    ),
+    droppedCount: v.number(),
+    emailId: v.union(v.id("emails"), v.null()),
+    interpretations: v.array(v.object({ text: v.string(), why: v.string() })),
+    localReason,
+    messageId: v.union(v.id("messages"), v.null()),
+    method: v.union(v.literal("cloud"), v.literal("local")),
+    missingDetails: v.array(v.string()),
+    mode,
+    model: v.string(),
+    ownerId: v.id("profiles"),
+    plainSummary: v.string(),
+    requests: v.array(quotedItem),
+    senderName: v.string(),
+    sourceText: v.string(),
+    statedFacts: v.array(quotedItem),
+    status: v.union(
+      v.literal("explaining"),
+      v.literal("done"),
+      v.literal("failed")
+    ),
+    suggestedReplies: v.array(suggestedReply),
+  })
+    .index("by_owner_and_message", ["ownerId", "messageId"])
+    .index("by_owner_and_email", ["ownerId", "emailId"]),
 
   messages: defineTable({
     actionId: v.union(v.id("actions"), v.null()),

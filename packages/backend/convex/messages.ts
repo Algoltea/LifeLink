@@ -9,6 +9,12 @@ import { requireOwned, requireOwner, requireProfile } from "./lib/session";
 
 const MAX_PHOTOS = 4;
 
+/** Display-only: shown with the review, never part of what is approved. */
+export const SUGGESTION_RATIONALE =
+  "Started from a suggested reply. You can change every word before approving it.";
+
+const startedFromValidator = v.optional(v.literal("suggestion"));
+
 const ALLOWED_PHOTO_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -140,6 +146,7 @@ export const draft = mutation({
     body: v.string(),
     contactId: v.id("contacts"),
     photoIds: v.array(v.id("photos")),
+    startedFrom: startedFromValidator,
   },
   handler: async (ctx, args): Promise<Id<"tasks">> => {
     const owner = await requireOwner(ctx);
@@ -203,7 +210,8 @@ export const draft = mutation({
       mode,
       ownerId: owner._id,
       proposedBy: "person",
-      rationale: null,
+      rationale:
+        args.startedFrom === "suggestion" ? SUGGESTION_RATIONALE : null,
       stepId: stepIds[0] ?? null,
       taskId,
     });
