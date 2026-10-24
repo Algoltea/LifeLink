@@ -100,6 +100,8 @@ const InviteForm = ({
 
   const [expiry, setExpiry] = useState<Expiry>("none");
   const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const selectId = useId();
   const person = contacts.find((contact) => contact._id === contactId);
 
@@ -117,11 +119,33 @@ const InviteForm = ({
         >
           {code}
         </p>
+        {failure ? (
+          <p className="text-destructive text-base" role="alert">
+            {failure}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-3">
           <Button
+            disabled={busy}
+            aria-busy={busy}
             onClick={async () => {
-              await navigator.clipboard.writeText(code);
-              toast.success("Code copied.");
+              if (busy) {
+                return;
+              }
+
+              setBusy(true);
+              setFailure(null);
+
+              try {
+                await navigator.clipboard.writeText(code);
+                toast.success("Code copied.");
+              } catch {
+                setFailure(
+                  "The code couldn’t be copied. Try Copy the code again, or write down the code shown above."
+                );
+              }
+
+              setBusy(false);
             }}
             variant="outline"
           >
@@ -144,9 +168,12 @@ const InviteForm = ({
       onSubmit={async (event) => {
         event.preventDefault();
 
-        if (contactId === "") {
+        if (busy || contactId === "") {
           return;
         }
+
+        setBusy(true);
+        setFailure(null);
 
         try {
           const result = await createInvite({
@@ -157,48 +184,60 @@ const InviteForm = ({
 
           setCode(result.code);
         } catch (error) {
-          toast.error(errorText(error));
+          setFailure(
+            `The invitation couldn’t be created. ${errorText(error)} Your choices are still here. Try making the code again.`
+          );
         }
+
+        setBusy(false);
       }}
     >
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={selectId}>Who</Label>
-        <select
-          className="border-control bg-raised min-h-12 rounded-md border px-4 text-base"
-          id={selectId}
-          onChange={(event) =>
-            setContactId(
-              contacts.find((contact) => contact._id === event.target.value)
-                ?._id ?? ""
-            )
-          }
-          value={contactId}
-        >
-          {contacts.map((contact) => (
-            <option key={contact._id} value={contact._id}>
-              {contact.name} ({contact.relationship})
-            </option>
-          ))}
-        </select>
-      </div>
-      <ScopePicker onChange={setScopes} value={scopes} />
-      <div className="flex flex-col gap-2">
-        <span className="text-lg font-semibold">For how long</span>
-        <Segmented
-          label="For how long"
-          onValueChange={setExpiry}
-          options={EXPIRY_OPTIONS}
-          value={expiry}
-        />
-      </div>
+      <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={selectId}>Who</Label>
+          <select
+            className="border-control bg-raised min-h-12 rounded-md border px-4 text-base"
+            id={selectId}
+            onChange={(event) =>
+              setContactId(
+                contacts.find((contact) => contact._id === event.target.value)
+                  ?._id ?? ""
+              )
+            }
+            value={contactId}
+          >
+            {contacts.map((contact) => (
+              <option key={contact._id} value={contact._id}>
+                {contact.name} ({contact.relationship})
+              </option>
+            ))}
+          </select>
+        </div>
+        <ScopePicker onChange={setScopes} value={scopes} />
+        <div className="flex flex-col gap-2">
+          <span className="text-lg font-semibold">For how long</span>
+          <Segmented
+            label="For how long"
+            onValueChange={setExpiry}
+            options={EXPIRY_OPTIONS}
+            value={expiry}
+          />
+        </div>
+      </fieldset>
+      {failure ? (
+        <p className="text-destructive text-base" role="alert">
+          {failure}
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         <Button
-          disabled={scopes.length === 0 || contactId === ""}
+          aria-busy={busy}
+          disabled={busy || scopes.length === 0 || contactId === ""}
           type="submit"
         >
-          Make an invitation code
+          {busy ? "Making the code…" : "Make an invitation code"}
         </Button>
-        <Button onClick={onDone} type="button" variant="ghost">
+        <Button disabled={busy} onClick={onDone} type="button" variant="ghost">
           Cancel
         </Button>
       </div>
@@ -232,6 +271,8 @@ const GrantCard = ({
   const [editing, setEditing] = useState(false);
   const [scopes, setScopes] = useState<SharingScope[]>(grant.scopes);
   const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const live = grant.state === "active" || grant.state === "invited";
   const state = STATE_WORDS[grant.state];
 
@@ -250,22 +291,44 @@ const GrantCard = ({
       </div>
       {editing ? (
         <div className="flex flex-col gap-4">
-          <ScopePicker onChange={setScopes} value={scopes} />
+          <fieldset disabled={busy} className="min-w-0">
+            <ScopePicker onChange={setScopes} value={scopes} />
+          </fieldset>
           <div className="flex flex-wrap gap-3">
             <Button
+              disabled={busy}
+              aria-busy={busy}
               onClick={async () => {
+                if (busy) {
+                  return;
+                }
+
+                setBusy(true);
+                setFailure(null);
+
                 try {
                   await updateScopes({ grantId: grant.id, scopes });
                   setEditing(false);
                   toast.success("Sharing updated. It applies right away.");
                 } catch (error) {
-                  toast.error(errorText(error));
+                  setFailure(
+                    `Sharing couldn’t be updated. ${errorText(error)} Your choices are still here. Choose Save to try again.`
+                  );
                 }
+
+                setBusy(false);
               }}
             >
-              Save
+              {busy ? "Saving…" : "Save"}
             </Button>
-            <Button onClick={() => setEditing(false)} variant="ghost">
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                setFailure(null);
+              }}
+              variant="ghost"
+            >
               Cancel
             </Button>
           </div>
@@ -282,14 +345,29 @@ const GrantCard = ({
           ))}
         </ul>
       )}
+      {!confirming && failure ? (
+        <p className="text-destructive text-base" role="alert">
+          {failure}
+        </p>
+      ) : null}
       {live && !editing ? (
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+          <Button
+            onClick={() => {
+              setEditing(true);
+              setFailure(null);
+            }}
+            size="sm"
+            variant="outline"
+          >
             <PencilIcon />
             Change what they see
           </Button>
           <Button
-            onClick={() => setConfirming(true)}
+            onClick={() => {
+              setConfirming(true);
+              setFailure(null);
+            }}
             size="sm"
             variant="destructive"
           >
@@ -299,22 +377,58 @@ const GrantCard = ({
       ) : null}
       <Dialog
         description={`${grant.contactName} will immediately stop seeing anything you shared. You can invite them again later.`}
-        onOpenChange={setConfirming}
+        onOpenChange={(open) => {
+          if (!busy) {
+            setConfirming(open);
+            setFailure(null);
+          }
+        }}
         open={confirming}
         title={`Stop sharing with ${grant.contactName}?`}
       >
+        {failure ? (
+          <p className="text-destructive text-base" role="alert">
+            {failure}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-3">
           <Button
+            disabled={busy}
+            aria-busy={busy}
             onClick={async () => {
-              await revoke({ grantId: grant.id });
-              setConfirming(false);
-              toast.success(`Stopped sharing with ${grant.contactName}.`);
+              if (busy) {
+                return;
+              }
+
+              setBusy(true);
+              setFailure(null);
+
+              try {
+                await revoke({ grantId: grant.id });
+                setConfirming(false);
+                toast.success(`Stopped sharing with ${grant.contactName}.`);
+              } catch (error) {
+                setFailure(
+                  `Sharing couldn’t be stopped. ${errorText(error)} Try Stop sharing again.`
+                );
+              }
+
+              setBusy(false);
             }}
             variant="destructive"
           >
-            Stop sharing with {grant.contactName.split(" ")[0]}
+            {busy
+              ? "Stopping sharing…"
+              : `Stop sharing with ${grant.contactName.split(" ")[0]}`}
           </Button>
-          <Button onClick={() => setConfirming(false)} variant="ghost">
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setConfirming(false);
+              setFailure(null);
+            }}
+            variant="ghost"
+          >
             Keep sharing
           </Button>
         </div>
@@ -452,6 +566,8 @@ const CircleScreen = () => {
   const { me } = usePreferences();
   const [editing, setEditing] = useState<CircleContact | "new" | null>(null);
   const [removing, setRemoving] = useState<CircleContact | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
   return (
@@ -514,7 +630,10 @@ const CircleScreen = () => {
                   )}
                   key={contact._id}
                   onEdit={() => setEditing(contact)}
-                  onRemove={() => setRemoving(contact)}
+                  onRemove={() => {
+                    setRemoving(contact);
+                    setFailure(null);
+                  }}
                 />
               ))}
             </ul>
@@ -533,34 +652,57 @@ const CircleScreen = () => {
             : undefined
         }
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !busy) {
             setRemoving(null);
+            setFailure(null);
           }
         }}
         open={removing !== null}
         title={removing ? `Remove ${removing.name}?` : "Remove"}
       >
+        {failure ? (
+          <p className="text-destructive text-base" role="alert">
+            {failure}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-3">
           <Button
+            disabled={busy}
+            aria-busy={busy}
             onClick={async () => {
-              if (removing === null) {
+              if (busy || removing === null) {
                 return;
               }
+
+              setBusy(true);
+              setFailure(null);
 
               try {
                 await remove({ contactId: removing._id });
                 toast.success(`${removing.name} was removed.`);
+                setRemoving(null);
               } catch (error) {
-                toast.error(errorText(error));
+                setFailure(
+                  `The person couldn’t be removed. ${errorText(error)} Try Remove again.`
+                );
               }
 
-              setRemoving(null);
+              setBusy(false);
             }}
             variant="destructive"
           >
-            Remove {removing?.name.split(" ")[0]}
+            {busy
+              ? "Removing…"
+              : `Remove ${removing?.name.split(" ")[0] ?? ""}`}
           </Button>
-          <Button onClick={() => setRemoving(null)} variant="ghost">
+          <Button
+            disabled={busy}
+            onClick={() => {
+              setRemoving(null);
+              setFailure(null);
+            }}
+            variant="ghost"
+          >
             Keep
           </Button>
         </div>

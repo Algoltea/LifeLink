@@ -279,15 +279,19 @@ const PicturePicker = ({
   hue,
   name,
   onChange,
+  preparing,
+  onPreparingChange,
 }: {
   change: PictureChange;
   contact: CircleContact | null;
   hue: number;
   name: string;
   onChange: (next: PictureChange) => void;
+  preparing: boolean;
+  onPreparingChange: (value: boolean) => void;
 }) => {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [preparing, setPreparing] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const helpId = useId();
   const preview = change.kind === "replace" ? change.previewUrl : null;
 
@@ -313,7 +317,12 @@ const PicturePicker = ({
               return;
             }
 
-            setPreparing(true);
+            if (preparing) {
+              return;
+            }
+
+            onPreparingChange(true);
+            setFailure(null);
 
             try {
               const blob = await prepareAvatar(file);
@@ -324,10 +333,12 @@ const PicturePicker = ({
                 previewUrl: URL.createObjectURL(blob),
               });
             } catch (error) {
-              toast.error(messageOf(error instanceof Error ? error : null));
+              setFailure(
+                `${messageOf(error instanceof Error ? error : null)} Choose a picture to try again.`
+              );
             }
 
-            setPreparing(false);
+            onPreparingChange(false);
           }}
           ref={fileInput}
           tabIndex={-1}
@@ -357,6 +368,11 @@ const PicturePicker = ({
           </Button>
         ) : null}
       </div>
+      {failure ? (
+        <p className="text-destructive text-base" role="alert">
+          {failure}
+        </p>
+      ) : null}
       <p className="text-muted-foreground text-base" id={helpId}>
         Optional. The photo is made small and square on this device, and
         location and camera details are removed before it is saved.
@@ -383,6 +399,10 @@ const ContactForm = ({
   const [trusted, setTrusted] = useState(contact?.trusted ?? true);
   const [rows, setRows] = useState<Row[]>(() => initialRows(contact));
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<Id<"contacts"> | null>(null);
+  const saving = useRef(false);
 
   const ids = {
     name: useId(),
@@ -432,7 +452,14 @@ const ContactForm = ({
       className="flex flex-col gap-5"
       onSubmit={async (event) => {
         event.preventDefault();
+
+        if (saving.current || preparing) {
+          return;
+        }
+
+        saving.current = true;
         setBusy(true);
+        setFailure(null);
 
         const channels = rows.flatMap((row, index) => {
           const channel = row.way === "" ? null : WAYS[row.way].channel;
@@ -465,12 +492,14 @@ const ContactForm = ({
             : [];
         });
 
-        let added = false;
+        let detailsSaved = false;
 
         try {
           let savedId: Id<"contacts">;
 
-          if (contact === null) {
+          const existingId = contact?._id ?? createdId;
+
+          if (existingId === null) {
             savedId = await create({
               channels: [...channels, ...inApp],
               name,
@@ -478,116 +507,149 @@ const ContactForm = ({
               savedHandles,
               trusted,
             });
-            added = true;
+            setCreatedId(savedId);
           } else {
             await update({
               channels: [...channels, ...inApp],
-              contactId: contact._id,
+              contactId: existingId,
               name,
               relationship,
               savedHandles,
               trusted,
             });
-            savedId = contact._id;
+            savedId = existingId;
           }
 
+          detailsSaved = true;
           await savePicture(savedId);
-          toast.success(added ? `${name} was added.` : "Saved.");
+          toast.success(contact === null ? `${name} was added.` : "Saved.");
           onDone();
         } catch (error) {
           const message = messageOf(error instanceof Error ? error : null);
 
-          // The person is saved even if their picture wasn't; don't make them retype everything.
-          if (added) {
-            toast.error(
-              `${name} was added, but the picture wasn’t saved. ${message}`
-            );
-            onDone();
-          } else {
-            toast.error(message);
-          }
+          setFailure(
+            detailsSaved
+              ? `The person’s details are saved, but the picture wasn’t saved. ${message} Your choices are still here. Save again to retry, or choose another picture.`
+              : `The person’s details couldn’t be saved. ${message} Your entries are still here. Save again to retry.`
+          );
         }
 
+        saving.current = false;
         setBusy(false);
       }}
     >
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={ids.name}>Name</Label>
-          <Input
-            id={ids.name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            value={name}
-          />
+      <p className="text-muted-foreground text-base">
+        Choose{" "}
+        {contact === null && createdId === null
+          ? "Add this person"
+          : "Save changes"}{" "}
+        to save these details and the picture.
+      </p>
+      <fieldset
+        disabled={busy || preparing}
+        className="flex min-w-0 flex-col gap-5"
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={ids.name}>Name</Label>
+            <Input
+              id={ids.name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              value={name}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={ids.relationship}>Who they are to you</Label>
+            <Input
+              id={ids.relationship}
+              onChange={(event) => setRelationship(event.target.value)}
+              placeholder="Son, neighbour, friend"
+              value={relationship}
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={ids.relationship}>Who they are to you</Label>
-          <Input
-            id={ids.relationship}
-            onChange={(event) => setRelationship(event.target.value)}
-            placeholder="Son, neighbour, friend"
-            value={relationship}
-          />
-        </div>
-      </div>
-      <PicturePicker
-        change={picture}
-        contact={contact}
-        hue={contact?.hue ?? 30}
-        name={name}
-        onChange={setPicture}
-      />
-      <fieldset className="flex flex-col gap-4">
-        <legend className="pb-2 text-lg font-semibold">
-          How to reach them
-        </legend>
-        {rows.map((row, index) => (
-          <WayRow
-            key={row.key}
-            onChange={replaceRow}
-            onRemove={
-              index === 0
-                ? null
-                : () => setRows(rows.filter((other) => other.key !== row.key))
-            }
-            preferred={index === 0}
-            row={row}
-            usedGroups={groupsExcept(row.key)}
-          />
-        ))}
-        {remaining.length > 0 ? (
-          <Button
-            className="self-start"
-            onClick={() => {
-              const [way] = remaining;
-
-              if (way) {
-                setRows([...rows, rowFor(way, "", defaultRegion())]);
-              }
-            }}
-            type="button"
-            variant="outline"
-          >
-            Add another way to reach them
-          </Button>
-        ) : null}
-      </fieldset>
-      <div className="flex items-center gap-4">
-        <Checkbox
-          checked={trusted}
-          id={ids.trusted}
-          onCheckedChange={(checked) => setTrusted(checked)}
+        <PicturePicker
+          change={picture}
+          contact={contact}
+          hue={contact?.hue ?? 30}
+          name={name}
+          onChange={setPicture}
+          preparing={preparing}
+          onPreparingChange={setPreparing}
         />
-        <Label htmlFor={ids.trusted}>
-          In my trusted circle (LifeLink may suggest asking them for help)
-        </Label>
-      </div>
+        <fieldset className="flex flex-col gap-4">
+          <legend className="pb-2 text-lg font-semibold">
+            How to reach them
+          </legend>
+          {rows.map((row, index) => (
+            <WayRow
+              key={row.key}
+              onChange={replaceRow}
+              onRemove={
+                index === 0
+                  ? null
+                  : () => setRows(rows.filter((other) => other.key !== row.key))
+              }
+              preferred={index === 0}
+              row={row}
+              usedGroups={groupsExcept(row.key)}
+            />
+          ))}
+          {remaining.length > 0 ? (
+            <Button
+              className="self-start"
+              onClick={() => {
+                const [way] = remaining;
+
+                if (way) {
+                  setRows([...rows, rowFor(way, "", defaultRegion())]);
+                }
+              }}
+              type="button"
+              variant="outline"
+            >
+              Add another way to reach them
+            </Button>
+          ) : null}
+        </fieldset>
+        <div className="flex items-center gap-4">
+          <Checkbox
+            checked={trusted}
+            id={ids.trusted}
+            onCheckedChange={(checked) => setTrusted(checked)}
+          />
+          <Label htmlFor={ids.trusted}>
+            In my trusted circle (LifeLink may suggest asking them for help)
+          </Label>
+        </div>
+      </fieldset>
+      {failure ? (
+        <p className="text-destructive text-base" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      {busy ? (
+        <output className="text-muted-foreground text-base">
+          Saving person and picture…
+        </output>
+      ) : null}
       <div className="flex flex-wrap gap-3">
-        <Button aria-busy={busy} disabled={busy} type="submit">
-          {contact === null ? "Add this person" : "Save changes"}
+        <Button
+          aria-busy={busy || preparing}
+          disabled={busy || preparing}
+          type="submit"
+        >
+          {contact === null && createdId === null
+            ? "Add this person"
+            : "Save changes"}
         </Button>
-        <Button onClick={onDone} type="button" variant="ghost">
+        <Button
+          disabled={busy || preparing}
+          onClick={onDone}
+          type="button"
+          variant="ghost"
+        >
           Cancel
         </Button>
       </div>
