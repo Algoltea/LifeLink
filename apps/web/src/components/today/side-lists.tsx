@@ -60,6 +60,17 @@ const TodayPanel = ({
   </section>
 );
 
+/** The link to a part's full page, such as "All email". */
+const AllLink = ({ children, href }: { children: string; href: Route }) => (
+  <Link
+    className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1 font-medium"
+    href={href}
+  >
+    {children}
+    <ChevronRightIcon aria-hidden="true" className="size-5" />
+  </Link>
+);
+
 /** A smaller part of a panel, such as "From family and friends" in Messages. */
 const PanelPart = ({
   action,
@@ -239,7 +250,11 @@ const FamilyList = ({
   const rows = latestPerPerson(messages);
 
   return (
-    <PanelPart headingId="family-heading" title="From family and friends">
+    <PanelPart
+      action={<AllLink href="/messages">All messages</AllLink>}
+      headingId="family-heading"
+      title="From family and friends"
+    >
       {rows.length === 0 ? (
         <SideEmpty>No new messages in the last two days.</SideEmpty>
       ) : (
@@ -298,6 +313,6 @@ const FamilyList = ({
   );
 };
 
-export { FamilyList, PANEL_ROW, PanelPart, TodayPanel, WeekList };
+export { AllLink, FamilyList, PANEL_ROW, PanelPart, TodayPanel, WeekList };
 
 export type { WeekRow };

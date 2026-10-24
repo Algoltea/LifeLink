@@ -9,7 +9,7 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { listTime } from "@/components/email/email-bits";
-import { PANEL_ROW, PanelPart } from "@/components/today/side-lists";
+import { AllLink, PANEL_ROW, PanelPart } from "@/components/today/side-lists";
 import { formatWhen } from "@/lib/format";
 
 const SHOWN = 3;
@@ -59,15 +59,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   return (
     <PanelPart
       action={
-        newest.length > 0 ? (
-          <Link
-            className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1 font-medium"
-            href="/email"
-          >
-            All email
-            <ChevronRightIcon aria-hidden="true" className="size-5" />
-          </Link>
-        ) : null
+        newest.length > 0 ? <AllLink href="/email">All email</AllLink> : null
       }
       className="border-rule mt-2 border-t pt-2"
       headingId="latest-email-heading"
