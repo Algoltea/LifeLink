@@ -3,25 +3,36 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
-import { Label } from "@lifelink/ui/components/label";
-import { useMutation, useQuery } from "convex/react";
-import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
-import { toast } from "sonner";
+import { cn } from "@lifelink/ui/lib/utils";
+import { useMutation } from "convex/react";
+import {
+  CameraIcon,
+  FileTextIcon,
+  InfoIcon,
+  ShieldQuestionIcon,
+  TextIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { OneAtATime } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
-import { ErrorNote } from "@/components/app/states";
+import { Disclosure } from "@/components/email/email-bits";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
 
-const errorText = (cause: unknown): string =>
-  messageOf(cause instanceof Error ? cause : null);
+import { TrustedPeople } from "./trusted-people";
 
 type Verdict = Doc<"scamReviews">["verdict"];
+
+type Review = Omit<Doc<"scamReviews">, "extractedText" | "imageReadable"> & {
+  extractedText?: string | null;
+  imageReadable?: boolean | null;
+  photoUrl?: string | null;
+};
 
 const VERDICT_WORDS: Record<
   Verdict,
@@ -29,364 +40,589 @@ const VERDICT_WORDS: Record<
 > = {
   likely_safe: { label: "No clear warning signs", tone: "neutral" },
   likely_scam: { label: "Likely a scam", tone: "negative" },
-  suspicious: { label: "Suspicious", tone: "warning" },
+  suspicious: { label: "Warning signs found", tone: "warning" },
   unsure: { label: "Not verified", tone: "neutral" },
 };
 
 const CONFIDENCE_WORDS: Record<Doc<"scamReviews">["confidence"], string> = {
-  high: "High confidence in this assessment. This still cannot verify the sender.",
-  low: "Limited confidence. A second opinion can help.",
-  medium: "Some warning signs are present. Verify the request independently.",
+  high: "Several details support this assessment. It still can’t verify the sender.",
+  low: "There isn’t enough information to be sure. A second opinion can help.",
+  medium:
+    "Some details support this assessment. Verify the request independently.",
 };
 
 const KIND_WORDS: Record<Doc<"scamReviews">["inputKind"], string> = {
   email: "An email",
-  screenshot: "A screenshot",
+  screenshot: "A photo or screenshot",
   text: "A message",
 };
 
-const checkMethod = (review: Doc<"scamReviews">): string => {
+const checkMethod = (review: Review): string => {
   if (!review.model.startsWith("rules")) {
     return review.cloudAnalysisConsent === true
-      ? "Cloud AI assessment, requested with your permission."
-      : "Cloud AI assessment from an earlier check.";
+      ? "A cloud AI service helped with this check, with your permission."
+      : "A cloud AI service helped with this earlier check. Permission details weren’t saved with this record.";
   }
 
   if (review.cloudAnalysisConsent === undefined) {
-    return "Local rules result. This older record does not include cloud-processing history.";
+    return "LifeLink used common warning rules. This older record doesn’t say whether a cloud AI service also received the message.";
   }
 
   if (review.cloudAnalysisConsent) {
-    return "Local rules result. You requested cloud analysis, but it was unavailable or did not finish; it may already have received this content.";
+    return "LifeLink used common warning rules because cloud AI wasn’t available or didn’t finish. The service may already have received this content.";
   }
 
-  return "Checked locally with common warning rules. No content was sent to an AI provider for this result.";
+  return "LifeLink used common warning rules. The message wasn’t sent to a cloud AI service for this check.";
 };
 
 const REMOVED_QUOTES =
-  "Some words the assistant pointed to were not found in the message, so they are not shown.";
+  "Some words the assistant pointed to weren’t found in the message, so they aren’t shown.";
 
 const IMAGE_UNVERIFIED =
-  "Read from the screenshot. LifeLink could not check these words against the original text.";
+  "These words were read from a photo and may be wrong or incomplete. LifeLink couldn’t compare them with the original text. Check them against your photo.";
+
+const photoRetention = (review: Review): string => {
+  if (review.screenshotOwned !== true) {
+    return "This older check has no saved photo preview. Deleting this check removes the result; the older photo may remain in storage.";
+  }
+
+  return "Your photo is kept with this check. Deleting the check also deletes the photo, unless it’s still used by another saved check or photo.";
+};
 
 type Signal = Doc<"scamReviews">["signals"][number];
 
 const SignalList = ({
-  heading,
-  id,
-  short,
+  photo,
   signals,
 }: {
-  heading: string;
-  id: string;
-  /** Short help keeps the reason one press away instead of always open. */
-  short: boolean;
+  photo: boolean;
   signals: Signal[];
 }) => (
-  <section aria-labelledby={id} className="flex flex-col gap-3">
-    <h3 className="text-xl font-semibold" id={id}>
-      {heading}
-    </h3>
-    <ul className="flex flex-col gap-4">
-      {signals.map((signal, index) => (
-        <li
-          className="border-rule flex flex-col gap-1 border-b pb-4"
-          // Labels can repeat, and the list never reorders once saved.
-          key={`${signal.label}-${index}`}
-        >
-          <span className="text-lg font-bold">{signal.label}</span>
-          {short ? (
-            <details className="text-lg">
-              <summary className="min-h-12 cursor-pointer py-2 font-semibold underline underline-offset-4">
-                Why this matters
-              </summary>
-              {signal.detail}
-            </details>
-          ) : (
-            <span className="text-lg">{signal.detail}</span>
-          )}
-          {signal.quote ? (
-            <blockquote className="text-muted-foreground text-base italic">
-              “{signal.quote}”
-            </blockquote>
-          ) : null}
-          {signal.quote && signal.evidence === "image_unverified" ? (
-            <span className="text-base font-semibold">{IMAGE_UNVERIFIED}</span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  </section>
+  <ul className="flex flex-col gap-5">
+    {signals.map((signal, index) => (
+      <li className="flex flex-col gap-1" key={`${signal.label}-${index}`}>
+        <h4 className="text-lg font-semibold">{signal.label}</h4>
+        {signal.quote ? (
+          <blockquote className="text-neutral-ink pl-5 text-lg wrap-anywhere">
+            “{signal.quote}”
+          </blockquote>
+        ) : null}
+        <p className="text-muted-foreground text-lg">{signal.detail}</p>
+        {!photo && signal.quote && signal.evidence === "image_unverified" ? (
+          <p className="text-warning text-lg">{IMAGE_UNVERIFIED}</p>
+        ) : null}
+      </li>
+    ))}
+  </ul>
 );
 
-/** Ask someone trusted to double-check. The suspicious message itself is never forwarded. */
-const AskSomeone = ({ review }: { review: Doc<"scamReviews"> }) => {
-  const contacts = useQuery(api.contacts.list);
-  const ask = useMutation(api.scam.askTrustedContact);
-  const router = useRouter();
+const PhotoThumbnail = ({ url }: { url: string | null | undefined }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const trusted =
-    contacts?.filter(
-      (contact) => contact.trusted && contact.channels.length > 0
-    ) ?? [];
-
-  const [contactId, setContactId] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-  const selectId = useId();
-
-  const chosen =
-    trusted.find((contact) => contact._id === contactId) ?? trusted[0];
-
-  if (review.verificationTaskId !== null) {
+  if (!url || failed) {
     return (
-      <p className="text-lg">
-        A request for help has been prepared.{" "}
-        <Link
-          className="font-semibold underline"
-          // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
-          href={`/tasks/${review.verificationTaskId}` as Route}
-        >
-          Review its status
-        </Link>
-      </p>
-    );
-  }
-
-  if (contacts === undefined) {
-    return null;
-  }
-
-  if (trusted.length === 0) {
-    return (
-      <p className="text-lg">
-        To ask someone to double-check, first mark a person as trusted in your{" "}
-        <Link className="font-semibold underline" href="/circle">
-          Trusted circle
-        </Link>
-        .
+      <p className="text-muted-foreground text-lg">
+        The photo preview isn’t available for this check.{" "}
+        {url
+          ? "Try reopening the check."
+          : "You can still read its saved result."}
       </p>
     );
   }
 
   return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={async (event) => {
-        event.preventDefault();
-
-        if (chosen === undefined) {
-          return;
-        }
-
-        setBusy(true);
-
-        try {
-          const taskId = await ask({
-            contactId: chosen._id,
-            reviewId: review._id,
-          });
-
-          // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
-          router.push(`/tasks/${taskId}` as Route);
-        } catch (error) {
-          toast.error(errorText(error));
-          setBusy(false);
-        }
-      }}
+    <figure
+      className={cn(
+        "flex min-w-0 flex-col gap-2",
+        expanded ? "w-full" : "w-42 shrink-0"
+      )}
     >
-      <Label htmlFor={selectId}>Ask someone you trust to check it</Label>
-      <div className="flex flex-wrap gap-3">
-        <select
-          className="border-control bg-raised text-foreground min-h-12 max-w-full rounded-md border px-4 text-base"
-          id={selectId}
-          onChange={(event) => setContactId(event.target.value)}
-          value={chosen?._id ?? ""}
-        >
-          {trusted.map((contact) => (
-            <option key={contact._id} value={contact._id}>
-              {contact.name} ({contact.relationship || "Trusted"})
-            </option>
-          ))}
-        </select>
+      <button
+        aria-expanded={expanded}
+        aria-label={
+          expanded ? "Make the photo smaller" : "See the photo larger"
+        }
+        className={cn(
+          "bg-parchment relative w-full overflow-hidden rounded-xl",
+          expanded ? "h-96" : "h-50"
+        )}
+        onClick={() => setExpanded((open) => !open)}
+        type="button"
+      >
+        <Image
+          alt="The photo used for this check"
+          className="object-contain"
+          fill
+          onError={() => setFailed(true)}
+          sizes={expanded ? "(max-width: 768px) 100vw, 700px" : "168px"}
+          src={url}
+          unoptimized
+        />
+      </button>
+      <figcaption>
         <Button
-          aria-busy={busy}
-          className="hover:text-primary-foreground rounded-md whitespace-normal"
-          disabled={busy}
-          type="submit"
+          aria-expanded={expanded}
+          className="w-full px-1 text-lg underline underline-offset-4"
+          onClick={() => setExpanded((open) => !open)}
+          variant="ghost"
         >
-          Prepare a message to {chosen?.name.split(" ")[0] ?? "them"}
+          {expanded ? "Make photo smaller" : "See the photo"}
         </Button>
-      </div>
-      <p className="text-muted-foreground text-base">
-        You’ll see the exact words before anything is sent. The suspicious
-        message and its links are not forwarded.
-      </p>
-    </form>
+      </figcaption>
+    </figure>
   );
 };
 
-const ScamResult = ({
+const DeleteCheck = ({
+  onDeleted,
+  onDeleting,
+  review,
+}: {
+  onDeleted: () => void;
+  onDeleting?: (review: Review | null) => void;
+  review: Review;
+}) => {
+  const remove = useMutation(api.scam.remove);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  return (
+    <div className="border-rule flex flex-col items-start gap-3 border-t pt-4">
+      {confirming ? (
+        <>
+          <p className="text-lg">
+            Delete this check? It will be removed from Earlier checks.
+          </p>
+          {review.inputKind === "screenshot" ? (
+            <p className="text-lg">{photoRetention(review)}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              aria-busy={busy}
+              className="text-lg"
+              disabled={busy}
+              onClick={async () => {
+                if (inFlight.current) {
+                  return;
+                }
+
+                inFlight.current = true;
+                setBusy(true);
+                setDeleteError(null);
+                onDeleting?.(review);
+
+                try {
+                  await remove({ reviewId: review._id });
+                  onDeleted();
+                } catch (error) {
+                  onDeleting?.(null);
+                  setDeleteError(
+                    messageOf(error instanceof Error ? error : null)
+                  );
+                }
+
+                inFlight.current = false;
+                setBusy(false);
+              }}
+              variant="destructive"
+            >
+              {busy ? "Deleting…" : "Delete this check"}
+            </Button>
+            <Button
+              className="text-lg"
+              disabled={busy}
+              onClick={() => setConfirming(false)}
+              variant="ghost"
+            >
+              Keep this check
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Button
+          className="text-lg"
+          onClick={() => setConfirming(true)}
+          variant="ghost"
+        >
+          <Trash2Icon aria-hidden="true" />
+          Delete this check
+        </Button>
+      )}
+      {deleteError ? (
+        <p className="text-negative text-lg" role="alert">
+          {deleteError}
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
+const ResultBanner = ({
+  review,
+  spoken,
+}: {
+  review: Review;
+  spoken: string;
+}) => {
+  const verdict = VERDICT_WORDS[review.verdict];
+
+  const concern =
+    review.verdict === "likely_scam" || review.verdict === "suspicious";
+
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 basis-64 flex-col gap-4 rounded-xl border p-5 sm:p-6",
+        concern
+          ? "border-warning-edge bg-warning-wash"
+          : "border-rule bg-parchment"
+      )}
+    >
+      <div className="flex items-start gap-3.5">
+        {concern ? (
+          <TriangleAlertIcon
+            aria-hidden="true"
+            className="text-warning mt-1 size-7 shrink-0"
+          />
+        ) : (
+          <ShieldQuestionIcon
+            aria-hidden="true"
+            className="text-muted-foreground mt-1 size-7 shrink-0"
+          />
+        )}
+        <div className="flex min-w-0 flex-col gap-2">
+          <h3 className="text-section font-semibold">{verdict.label}</h3>
+          <p className="text-lg leading-relaxed">{review.explanation}</p>
+        </div>
+      </div>
+      <ReadAloudButton
+        className="self-start text-lg"
+        label="Read the result aloud"
+        text={spoken}
+      />
+    </div>
+  );
+};
+
+const Evidence = ({
   review,
   timeZone,
 }: {
-  review: Doc<"scamReviews">;
+  review: Review;
   timeZone: string;
 }) => {
-  const resultRef = useRef<HTMLElement>(null);
   const { preferences } = usePreferences();
-  useEffect(() => {
-    if (review.status !== "reviewing") {
-      resultRef.current?.focus();
-    }
-  }, [review.status]);
+  const photo = review.inputKind === "screenshot";
 
-  if (review.status === "reviewing") {
-    return (
-      <section
-        aria-live="polite"
-        className="bg-surface text-foreground flex flex-col gap-2 rounded-xl px-5 py-6"
-        ref={resultRef}
-        tabIndex={-1}
-      >
-        <h2 className="text-2xl font-semibold">Checking…</h2>
-        <p className="text-lg">
-          This usually takes a few seconds. Until then, please don’t click
-          links, call numbers in it, or pay anyone.
-        </p>
-      </section>
-    );
-  }
-
-  if (review.status === "failed") {
-    return (
-      <section aria-live="polite" ref={resultRef} tabIndex={-1}>
-        <ErrorNote>
-          The check didn’t finish. Treat the message with care, and ask someone
-          you trust if you’re unsure.
-        </ErrorNote>
-        <div className="pt-4">
-          <AskSomeone review={review} />
-        </div>
-      </section>
-    );
-  }
-
-  const verdict = VERDICT_WORDS[review.verdict];
-
-  const stoodOut = review.signals.filter(
+  const signs = review.signals.filter(
     (signal) => signal.stance !== "warns_against"
   );
 
-  const warnings = review.signals.filter(
+  const advice = review.signals.filter(
     (signal) => signal.stance === "warns_against"
   );
 
-  const removedQuotes = (review.unverifiedQuoteCount ?? 0) > 0;
-
-  const spoken = [
-    `${verdict.label}.`,
-    review.explanation,
-    removedQuotes ? REMOVED_QUOTES : "",
-    ...stoodOut.map(
-      (signal) =>
-        `${signal.label}.${signal.evidence === "image_unverified" ? ` ${IMAGE_UNVERIFIED}` : ""}`
-    ),
-    ...review.nextSteps,
-  ]
-    .filter((part) => part.length > 0)
-    .join(" ");
-
   return (
-    <article
-      aria-labelledby={`review-${review._id}`}
-      aria-live="polite"
-      className="border-border bg-raised text-foreground flex min-w-0 flex-col gap-6 rounded-xl border px-5 py-6 wrap-anywhere sm:px-7"
-      ref={resultRef}
-      tabIndex={-1}
-    >
-      <header className="border-rule flex flex-col gap-3 border-b pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <ModePill mode={review.mode} />
-          <span className="text-muted-foreground text-base">
-            {KIND_WORDS[review.inputKind]} · {ago(review.createdAt, timeZone)}
-          </span>
-        </div>
-        <h2
-          className="text-2xl leading-tight font-semibold"
-          id={`review-${review._id}`}
-        >
-          {verdict.label}
-        </h2>
-        <p className="max-w-prose text-lg leading-relaxed">
-          {review.explanation}
-        </p>
-        {removedQuotes ? (
-          <p className="text-base font-semibold">{REMOVED_QUOTES}</p>
+    <div className="border-rule border-t">
+      <Disclosure
+        defaultOpen={preferences.explanationDetail !== "short"}
+        icon={<TriangleAlertIcon />}
+        labelId={`signs-${review._id}`}
+        note={
+          photo
+            ? "With the words LifeLink read from your photo"
+            : "What stood out in this message"
+        }
+        title={`${signs.length} ${signs.length === 1 ? "warning sign" : "warning signs"}`}
+      >
+        {photo ? (
+          <p className="text-warning text-lg">{IMAGE_UNVERIFIED}</p>
         ) : null}
-        <p className="text-base font-semibold">{checkMethod(review)}</p>
-        <p className="text-muted-foreground text-base">
-          This result cannot prove that a message is genuine. Confirm unexpected
+        {(review.unverifiedQuoteCount ?? 0) > 0 ? (
+          <p className="text-muted-foreground text-lg">{REMOVED_QUOTES}</p>
+        ) : null}
+        {signs.length > 0 ? (
+          <SignalList photo={photo} signals={signs} />
+        ) : (
+          <p className="text-lg">
+            No clear warning signs were found. That doesn’t prove this message
+            is genuine.
+          </p>
+        )}
+      </Disclosure>
+      {advice.length > 0 ? (
+        <Disclosure
+          icon={<InfoIcon />}
+          labelId={`advice-${review._id}`}
+          note="This advice came from the message, so it isn’t counted as a warning sign"
+          title="Advice in the message itself"
+        >
+          <SignalList photo={photo} signals={advice} />
+        </Disclosure>
+      ) : null}
+      {photo ? (
+        <Disclosure
+          icon={<FileTextIcon />}
+          labelId={`words-${review._id}`}
+          note="Compare them with your photo"
+          title="All the words LifeLink read"
+        >
+          <p className="text-warning text-lg">{IMAGE_UNVERIFIED}</p>
+          {review.extractedText?.trim() ? (
+            <p className="text-lg wrap-anywhere whitespace-pre-wrap">
+              {review.extractedText}
+            </p>
+          ) : (
+            <p className="text-lg">
+              The complete wording wasn’t saved with this check. The quotes
+              above aren’t a full transcription. Compare them with your photo,
+              or type the words for another check.
+            </p>
+          )}
+        </Disclosure>
+      ) : null}
+      <Disclosure
+        icon={<ShieldQuestionIcon />}
+        labelId={`method-${review._id}`}
+        note={ago(review.createdAt, timeZone)}
+        title="How this was checked"
+      >
+        <p className="text-lg">{checkMethod(review)}</p>
+        <p className="text-lg">{CONFIDENCE_WORDS[review.confidence]}</p>
+        <p className="text-lg">
+          This result can’t prove that a message is genuine. Confirm unexpected
           requests through a contact you already know.
         </p>
-        <p className="text-muted-foreground text-base">
-          {CONFIDENCE_WORDS[review.confidence]}
+        {photo ? <p className="text-lg">{photoRetention(review)}</p> : null}
+      </Disclosure>
+    </div>
+  );
+};
+
+const Recovery = ({
+  onTryPhoto,
+  onTypeWords,
+  review,
+}: {
+  onTryPhoto?: () => void;
+  onTypeWords?: () => void;
+  review: Review;
+}) => {
+  const photo = review.inputKind === "screenshot";
+  const unreadable = review.imageReadable === false;
+
+  return (
+    <div className="flex flex-col items-start gap-4">
+      <h3 className="text-section font-semibold">
+        {unreadable
+          ? "LifeLink couldn’t read this photo clearly"
+          : "The check didn’t finish"}
+      </h3>
+      <p className="text-lg">
+        {photo
+          ? "Try a clearer photo in good light with all the words in view, or type the words instead. This check can’t tell you whether the message is genuine."
+          : "Treat the message with care. You can try another check or ask someone you trust."}
+      </p>
+      {photo ? <PhotoThumbnail url={review.photoUrl} /> : null}
+      <div className="flex flex-wrap gap-3">
+        {photo && onTryPhoto ? (
+          <Button className="text-lg" onClick={onTryPhoto}>
+            <CameraIcon aria-hidden="true" />
+            Take a new photo
+          </Button>
+        ) : null}
+        {onTypeWords ? (
+          <Button className="text-lg" onClick={onTypeWords} variant="outline">
+            <TextIcon aria-hidden="true" />
+            Type words instead
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+const ResultContent = ({
+  onTryPhoto,
+  onTypeWords,
+  review,
+  timeZone,
+}: {
+  onTryPhoto?: () => void;
+  onTypeWords?: () => void;
+  review: Review;
+  timeZone: string;
+}) => {
+  const { preferences } = usePreferences();
+  const photo = review.inputKind === "screenshot";
+
+  const needsRecovery =
+    review.status === "failed" || review.imageReadable === false;
+
+  const verdict = VERDICT_WORDS[review.verdict];
+
+  const spoken = [
+    verdict.label,
+    review.explanation,
+    photo ? IMAGE_UNVERIFIED : "",
+    (review.unverifiedQuoteCount ?? 0) > 0 ? REMOVED_QUOTES : "",
+    ...review.signals
+      .filter((signal) => signal.stance !== "warns_against")
+      .map((signal) => signal.label),
+    ...review.nextSteps,
+  ]
+    .filter(Boolean)
+    .join(". ");
+
+  if (review.status === "reviewing") {
+    return (
+      <div aria-live="polite" className="flex flex-col gap-3">
+        <h3 className="text-section font-semibold">
+          {photo
+            ? "Reading the words in your photo…"
+            : "Checking your message…"}
+        </h3>
+        <p className="text-lg">
+          This usually takes a few seconds. Keep this page open. Until then,
+          don’t use links or phone numbers in the message, or pay anyone.
         </p>
-        <ReadAloudButton
-          className="self-start"
-          label="Read the result aloud"
-          text={spoken}
-        />
-      </header>
+        {photo ? <PhotoThumbnail url={review.photoUrl} /> : null}
+      </div>
+    );
+  }
 
-      {stoodOut.length > 0 ? (
-        <SignalList
-          heading="What stood out"
-          id={`signals-${review._id}`}
-          short={preferences.explanationDetail === "short"}
-          signals={stoodOut}
-        />
-      ) : null}
+  if (needsRecovery) {
+    return (
+      <Recovery
+        onTryPhoto={onTryPhoto}
+        onTypeWords={onTypeWords}
+        review={review}
+      />
+    );
+  }
 
-      {warnings.length > 0 ? (
-        <SignalList
-          heading="Advice in the message itself"
-          id={`warnings-${review._id}`}
-          short={preferences.explanationDetail === "short"}
-          signals={warnings}
-        />
-      ) : null}
-
+  return (
+    <>
+      <div className="flex flex-wrap items-start gap-7">
+        {photo ? <PhotoThumbnail url={review.photoUrl} /> : null}
+        <ResultBanner review={review} spoken={spoken} />
+      </div>
+      <Evidence review={review} timeZone={timeZone} />
       {review.nextSteps.length > 0 ? (
         <section
-          aria-labelledby={`steps-${review._id}`}
+          aria-labelledby={`next-${review._id}`}
           className="flex flex-col gap-3"
         >
-          <h3 className="text-xl font-semibold" id={`steps-${review._id}`}>
+          <h3 className="text-xl font-semibold" id={`next-${review._id}`}>
             What to do now
           </h3>
           {preferences.stepByStep ? (
             <OneAtATime
               noun="Step"
-              steps={review.nextSteps.map((step) => ({
+              steps={review.nextSteps.map((step, index) => ({
                 content: <p className="text-lg">{step}</p>,
-                key: step,
+                key: `${index}-${step}`,
               }))}
             />
           ) : (
-            <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
-              {review.nextSteps.map((step) => (
-                <li key={step}>{step}</li>
+            <ol className="flex list-decimal flex-col gap-3 pl-6 text-lg">
+              {review.nextSteps.map((step, index) => (
+                <li key={`${index}-${step}`}>{step}</li>
               ))}
             </ol>
           )}
         </section>
       ) : null}
+    </>
+  );
+};
 
-      <section className="border-rule border-t pt-5">
-        <AskSomeone review={review} />
-      </section>
+const ScamResult = ({
+  onCheckAnother,
+  onDeleted,
+  onDeleting,
+  onTryPhoto,
+  onTypeWords,
+  review,
+  timeZone,
+}: {
+  onCheckAnother?: () => void;
+  onDeleted?: () => void;
+  onDeleting?: (review: Review | null) => void;
+  onTryPhoto?: () => void;
+  onTypeWords?: () => void;
+  review: Review;
+  timeZone: string;
+}) => {
+  const resultRef = useRef<HTMLElement>(null);
+  const photo = review.inputKind === "screenshot";
+  useEffect(() => {
+    if (review.status) {
+      resultRef.current?.focus();
+    }
+  }, [review.status]);
+
+  return (
+    <article
+      aria-labelledby={`review-${review._id}`}
+      className="flex min-w-0 flex-col gap-7 outline-none"
+      ref={resultRef}
+      tabIndex={-1}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h2
+            className="text-section font-semibold"
+            id={`review-${review._id}`}
+          >
+            {photo ? "Your photo check" : "Your message check"}
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <ModePill mode={review.mode} />
+            <p className="text-muted-foreground text-lg">
+              {KIND_WORDS[review.inputKind]} · {ago(review.createdAt, timeZone)}
+            </p>
+          </div>
+        </div>
+        {onCheckAnother ? (
+          <Button
+            className="text-lg"
+            onClick={onCheckAnother}
+            variant="outline"
+          >
+            Check something else
+          </Button>
+        ) : null}
+      </header>
+      <div className="grid min-w-0 items-start gap-8 @4xl/content:grid-cols-[minmax(0,1fr)_1px_25rem] @4xl/content:gap-8">
+        <div className="flex min-w-0 flex-col gap-7">
+          <ResultContent
+            onTryPhoto={onTryPhoto}
+            onTypeWords={onTypeWords}
+            review={review}
+            timeZone={timeZone}
+          />
+          {onDeleted ? (
+            <DeleteCheck
+              onDeleted={onDeleted}
+              onDeleting={onDeleting}
+              review={review}
+            />
+          ) : null}
+        </div>
+        <div
+          aria-hidden="true"
+          className="bg-rule h-px @4xl/content:h-auto @4xl/content:w-px @4xl/content:self-stretch"
+        />
+        <TrustedPeople reviewId={review._id} />
+      </div>
     </article>
   );
 };
 
 export { KIND_WORDS, ScamResult, VERDICT_WORDS };
+
+export type { Review };
