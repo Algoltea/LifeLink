@@ -7,7 +7,7 @@ import type { Headline, NewsKind } from "@lifelink/contracts/news";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
@@ -54,10 +54,10 @@ export const headlines = query({
 
 export const signedIn = internalQuery({
   args: {},
-  handler: async (ctx): Promise<null> => {
-    await requireProfile(ctx);
+  handler: async (ctx): Promise<Id<"profiles">> => {
+    const profile = await requireProfile(ctx);
 
-    return null;
+    return profile._id;
   },
 });
 
@@ -103,17 +103,17 @@ const readSource = async (
   }
 };
 
-/** One attempt per feed kind every few minutes, and a per-person ceiling. */
+/**
+ * One attempt per feed kind every few minutes, and a per-person ceiling. The
+ * profile is passed in because the assistant runs without a signed-in session.
+ */
 export const claim = internalMutation({
-  args: { kind: kindValidator },
-  handler: async (ctx, args): Promise<boolean> => {
-    const profile = await requireProfile(ctx);
-
-    return await reserveFetch(ctx, [
+  args: { kind: kindValidator, profileId: v.id("profiles") },
+  handler: async (ctx, args): Promise<boolean> =>
+    await reserveFetch(ctx, [
       onceUntilRetry(`news:${args.kind}`),
-      personClaim(profile._id),
-    ]);
-  },
+      personClaim(args.profileId),
+    ]),
 });
 
 /**
@@ -121,8 +121,9 @@ export const claim = internalMutation({
  * stays. Shared with the assistant's news tool.
  */
 const ensureHeadlines = async (
-  ctx: ActionCtx,
-  kind: NewsKind
+  ctx: Pick<ActionCtx, "runMutation" | "runQuery">,
+  kind: NewsKind,
+  profileId: Id<"profiles">
 ): Promise<Headline[]> => {
   const existing: Doc<"newsCache"> | null = await ctx.runQuery(
     internal.news.cached,
@@ -137,6 +138,7 @@ const ensureHeadlines = async (
 
   const claimed: boolean = await ctx.runMutation(internal.news.claim, {
     kind,
+    profileId,
   });
 
   if (!claimed) {
@@ -163,9 +165,12 @@ const ensureHeadlines = async (
 export const refresh = action({
   args: { kind: kindValidator },
   handler: async (ctx, args): Promise<{ available: boolean }> => {
-    await ctx.runQuery(internal.news.signedIn, {});
+    const profileId: Id<"profiles"> = await ctx.runQuery(
+      internal.news.signedIn,
+      {}
+    );
 
-    const fresh = await ensureHeadlines(ctx, args.kind);
+    const fresh = await ensureHeadlines(ctx, args.kind, profileId);
 
     return { available: fresh.length > 0 };
   },

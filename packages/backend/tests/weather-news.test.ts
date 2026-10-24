@@ -1,7 +1,7 @@
 import { NEWS_SOURCES } from "@lifelink/contracts/news";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { api } from "../convex/_generated/api";
+import { api, internal } from "../convex/_generated/api";
 import { interleave, parseFeed } from "../convex/lib/feeds";
 import { locationKey, searchesFor } from "../convex/lib/weather";
 import { newBackend, signUp } from "./harness";
@@ -467,5 +467,49 @@ describe("review fixes for outside fetches", () => {
     await person.action(api.news.refresh, { kind: "top" });
 
     expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+  });
+});
+
+describe("weather and news for the assistant", () => {
+  it("reads the saved place by profile, without a signed-in session", async () => {
+    const { backend, person } = await ownerIn("Springfield");
+    const me = await person.query(api.profiles.me, {});
+    const profileId = me?.profile?._id;
+
+    if (!profileId) {
+      throw new Error("Expected a profile.");
+    }
+
+    const whose = await backend.query(internal.weather.locationOf, {
+      profileId,
+    });
+
+    expect(whose).toMatchObject({
+      demoMode: false,
+      location: { city: "Springfield", postalCode: null },
+      profileId,
+    });
+  });
+
+  it("reserves a fetch for a profile passed in, once per retry window", async () => {
+    const { backend, person } = await ownerIn(null);
+    const me = await person.query(api.profiles.me, {});
+    const profileId = me?.profile?._id;
+
+    if (!profileId) {
+      throw new Error("Expected a profile.");
+    }
+
+    const first = await backend.mutation(internal.news.claim, {
+      kind: "good",
+      profileId,
+    });
+
+    const second = await backend.mutation(internal.news.claim, {
+      kind: "good",
+      profileId,
+    });
+
+    expect([first, second]).toStrictEqual([true, false]);
   });
 });

@@ -8,7 +8,7 @@ import type { Forecast } from "@lifelink/contracts/weather";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
@@ -80,12 +80,40 @@ export const forecast = query({
   },
 });
 
+interface Whose {
+  location: SavedLocation;
+  profileId: Id<"profiles">;
+}
+
 export const savedLocation = internalQuery({
   args: {},
-  handler: async (ctx): Promise<SavedLocation> => {
-    const { city, postalCode, timeZone } = await requireProfile(ctx);
+  handler: async (ctx): Promise<Whose> => {
+    const { _id, city, postalCode, timeZone } = await requireProfile(ctx);
 
-    return { city, postalCode, timeZone };
+    return { location: { city, postalCode, timeZone }, profileId: _id };
+  },
+});
+
+/** The assistant's view: whose place, and whether practice weather applies. */
+export const locationOf = internalQuery({
+  args: { profileId: v.id("profiles") },
+  handler: async (
+    ctx,
+    args
+  ): Promise<(Whose & { demoMode: boolean }) | null> => {
+    const profile = await ctx.db.get(args.profileId);
+
+    if (profile === null) {
+      return null;
+    }
+
+    const { city, demoMode, postalCode, timeZone } = profile;
+
+    return {
+      demoMode,
+      location: { city, postalCode, timeZone },
+      profileId: profile._id,
+    };
   },
 });
 
@@ -115,17 +143,18 @@ export const store = internalMutation({
   },
 });
 
-/** One attempt per place every few minutes, and a per-person ceiling across places. */
+/**
+ * One attempt per place every few minutes, and a per-person ceiling across
+ * places. The profile is passed in because the assistant runs without a
+ * signed-in session.
+ */
 export const claim = internalMutation({
-  args: { key: v.string() },
-  handler: async (ctx, args): Promise<boolean> => {
-    const profile = await requireProfile(ctx);
-
-    return await reserveFetch(ctx, [
+  args: { key: v.string(), profileId: v.id("profiles") },
+  handler: async (ctx, args): Promise<boolean> =>
+    await reserveFetch(ctx, [
       onceUntilRetry(`weather:${args.key}`),
-      personClaim(profile._id),
-    ]);
-  },
+      personClaim(args.profileId),
+    ]),
 });
 
 /**
@@ -134,8 +163,8 @@ export const claim = internalMutation({
  * Shared with the assistant's weather tool.
  */
 const ensureForecast = async (
-  ctx: ActionCtx,
-  location: SavedLocation
+  ctx: Pick<ActionCtx, "runMutation" | "runQuery">,
+  { location, profileId }: Whose
 ): Promise<Forecast | null> => {
   const key = locationKey(location);
 
@@ -162,6 +191,7 @@ const ensureForecast = async (
 
   const claimed: boolean = await ctx.runMutation(internal.weather.claim, {
     key,
+    profileId,
   });
 
   if (!claimed) {
@@ -188,15 +218,13 @@ const ensureForecast = async (
 export const refresh = action({
   args: {},
   handler: async (ctx): Promise<{ available: boolean }> => {
-    const location: SavedLocation = await ctx.runQuery(
-      internal.weather.savedLocation,
-      {}
-    );
-
-    const found = await ensureForecast(ctx, location);
+    const whose: Whose = await ctx.runQuery(internal.weather.savedLocation, {});
+    const found = await ensureForecast(ctx, whose);
 
     return { available: found !== null };
   },
 });
 
 export { ensureForecast };
+
+export type { Whose };

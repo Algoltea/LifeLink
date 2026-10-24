@@ -51,6 +51,7 @@ import type * as lib_journey from "../lib/journey.js";
 import type * as lib_lifecycle from "../lib/lifecycle.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_proposals from "../lib/proposals.js";
+import type * as lib_readtools from "../lib/readtools.js";
 import type * as lib_sampledrive from "../lib/sampledrive.js";
 import type * as lib_session from "../lib/session.js";
 import type * as lib_time from "../lib/time.js";
@@ -125,6 +126,7 @@ declare const fullApi: ApiFromModules<{
   "lib/lifecycle": typeof lib_lifecycle;
   "lib/permissions": typeof lib_permissions;
   "lib/proposals": typeof lib_proposals;
+  "lib/readtools": typeof lib_readtools;
   "lib/sampledrive": typeof lib_sampledrive;
   "lib/session": typeof lib_session;
   "lib/time": typeof lib_time;
