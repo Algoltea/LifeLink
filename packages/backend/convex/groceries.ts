@@ -18,6 +18,42 @@ import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_ITEMS = 100;
 
+/** " · Oct 24" or " (copy)" left by an earlier copy, so names don't pile up. */
+const COPY_SUFFIX = / (?:· [A-Z][a-z]{2} \d{1,2}|\(copy\))$/u;
+
+/** "Weekly groceries · Oct 24": copies are named for the day they start. */
+const datedName = (name: string, now: number, timeZone: string): string => {
+  const day = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone,
+  }).format(now);
+
+  return `${name.replace(COPY_SUFFIX, "")} · ${day}`;
+};
+
+const FULL_LIST = "This list is full. Start a new list for more items.";
+
+/** The same checks for a new item and for one put back by Undo. */
+const itemError = (item: {
+  estimatedCents: number | null;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+}): string | null => {
+  if (item.name.length === 0) {
+    return "What would you like to add?";
+  }
+
+  return (
+    (groceryUnit(item.unit) === undefined
+      ? "Choose a unit from the list."
+      : null) ??
+    groceryQuantityError(item.quantity, item.unit) ??
+    groceryEstimateError(item.estimatedCents)
+  );
+};
+
 export const lists = query({
   args: {},
   handler: async (ctx) => {
@@ -132,32 +168,21 @@ export const addItem = mutation({
   handler: async (ctx, args) => {
     const { list } = await ownedList(ctx, args.listId);
     const name = args.name.trim();
-
-    if (name.length === 0) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "What would you like to add?",
-      });
-    }
-
-    if (list.items.length >= MAX_ITEMS) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "This list is full. Start a new list for more items.",
-      });
-    }
-
     const unit = args.unit?.trim() || null;
 
-    const validationError =
-      (groceryUnit(unit) === undefined
-        ? "Choose a unit from the list."
-        : null) ??
-      groceryQuantityError(args.quantity, unit) ??
-      groceryEstimateError(args.estimatedCents);
+    const validationError = itemError({
+      estimatedCents: args.estimatedCents,
+      name,
+      quantity: args.quantity,
+      unit,
+    });
 
     if (validationError !== null) {
       throw new ConvexError({ code: "invalid", message: validationError });
+    }
+
+    if (list.items.length >= MAX_ITEMS) {
+      throw new ConvexError({ code: "invalid", message: FULL_LIST });
     }
 
     await ctx.db.patch(list._id, {
@@ -220,15 +245,135 @@ export const updateItem = mutation({
   },
 });
 
+/** Returns what was removed and where, so the person can undo a stray tap. */
 export const removeItem = mutation({
   args: { itemId: v.string(), listId: v.id("groceryLists") },
   handler: async (ctx, args) => {
     const { list } = await ownedList(ctx, args.listId);
+    const index = list.items.findIndex((item) => item.id === args.itemId);
+
+    if (index === -1) {
+      return null;
+    }
 
     await ctx.db.patch(list._id, {
       items: list.items.filter((item) => item.id !== args.itemId),
       updatedAt: Date.now(),
     });
+
+    return { index, item: list.items[index] };
+  },
+});
+
+/** Puts a removed item back where it was. Undoing twice changes nothing. */
+export const restoreItem = mutation({
+  args: {
+    index: v.number(),
+    item: v.object({
+      checked: v.boolean(),
+      estimatedCents: v.union(v.number(), v.null()),
+      id: v.string(),
+      name: v.string(),
+      quantity: v.union(v.number(), v.null()),
+      unit: v.union(v.string(), v.null()),
+    }),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    if (list.items.some((item) => item.id === args.item.id)) {
+      return;
+    }
+
+    const item = { ...args.item, name: args.item.name.trim() };
+    const validationError = itemError(item);
+
+    if (validationError !== null) {
+      throw new ConvexError({ code: "invalid", message: validationError });
+    }
+
+    if (list.items.length >= MAX_ITEMS) {
+      throw new ConvexError({ code: "invalid", message: FULL_LIST });
+    }
+
+    const index = Math.min(
+      Math.max(0, Math.trunc(args.index)),
+      list.items.length
+    );
+
+    await ctx.db.patch(list._id, {
+      items: [...list.items.slice(0, index), item, ...list.items.slice(index)],
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Starts a new list from an old one: same items, budget, and preferences,
+ * with nothing marked as in the cart. The old list stays as it was.
+ */
+export const copyList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args): Promise<Id<"groceryLists">> => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+    const now = Date.now();
+
+    return await ctx.db.insert("groceryLists", {
+      budgetCents: list.budgetCents,
+      items: list.items.map((item) => ({
+        ...item,
+        checked: false,
+        id: crypto.randomUUID(),
+      })),
+      lastHandoff: null,
+      name: datedName(list.name, now, owner.timeZone),
+      ownerId: owner._id,
+      preferences: list.preferences,
+      updatedAt: now,
+    });
+  },
+});
+
+/** Finishing a trip keeps the list under past lists so it can be reused. */
+export const archiveList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    if (list.archivedAt === undefined) {
+      await ctx.db.patch(list._id, { archivedAt: Date.now() });
+    }
+  },
+});
+
+export const unarchiveList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+    await ctx.db.patch(list._id, { archivedAt: undefined });
+  },
+});
+
+/** Marks one list as the usual weekly list, or clears it; only one at a time. */
+export const setUsual = mutation({
+  args: { listId: v.id("groceryLists"), usual: v.boolean() },
+  handler: async (ctx, args) => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+
+    if (args.usual) {
+      const owned = ctx.db
+        .query("groceryLists")
+        .withIndex("by_owner", (index) => index.eq("ownerId", owner._id));
+
+      for await (const other of owned) {
+        if (other.usual === true && other._id !== list._id) {
+          await ctx.db.patch(other._id, { usual: undefined });
+        }
+      }
+    }
+
+    await ctx.db.patch(list._id, { usual: args.usual ? true : undefined });
   },
 });
 

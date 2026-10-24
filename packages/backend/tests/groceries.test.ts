@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { api } from "../convex/_generated/api";
+import { api, internal } from "../convex/_generated/api";
 import { connectFamily, newBackend, signUp } from "./harness";
 
 const setupList = async () => {
@@ -313,5 +313,293 @@ describe("grocery item validation", () => {
         return saved?.items[0];
       })
     ).resolves.toMatchObject({ checked: true, estimatedCents: 0, quantity: 3 });
+  });
+});
+
+const addThree = async (
+  person: Awaited<ReturnType<typeof setupList>>["person"],
+  listId: Awaited<ReturnType<typeof setupList>>["listId"]
+) => {
+  for (const name of ["Milk", "Bread", "Eggs"]) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- items keep their order.
+    await person.mutation(api.groceries.addItem, {
+      estimatedCents: 300,
+      listId,
+      name,
+      quantity: 1,
+      unit: null,
+    });
+  }
+};
+
+describe("undoing removals and reusing lists", () => {
+  it("puts a removed item back in its place, once", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+
+    const before = await backend.run(async (ctx) => await ctx.db.get(listId));
+    const bread = before?.items[1];
+
+    if (!bread) {
+      throw new Error("Missing item");
+    }
+
+    const removed = await person.mutation(api.groceries.removeItem, {
+      itemId: bread.id,
+      listId,
+    });
+
+    expect(removed).toStrictEqual({ index: 1, item: bread });
+
+    if (removed === null) {
+      throw new Error("Nothing removed");
+    }
+
+    await person.mutation(api.groceries.restoreItem, { ...removed, listId });
+    await person.mutation(api.groceries.restoreItem, { ...removed, listId });
+
+    const after = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(after?.items).toStrictEqual(before?.items);
+    await expect(
+      person.mutation(api.groceries.removeItem, { itemId: "gone", listId })
+    ).resolves.toBeNull();
+  });
+
+  it("keeps another person from restoring into a list they do not own", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+
+    const { person: stranger } = await signUp(backend, {
+      demo: false,
+      name: "Stranger",
+      role: "owner",
+      subject: "grocery-stranger",
+    });
+
+    await expect(
+      stranger.mutation(api.groceries.restoreItem, {
+        index: 0,
+        item: {
+          checked: false,
+          estimatedCents: null,
+          id: "planted",
+          name: "Planted",
+          quantity: null,
+          unit: null,
+        },
+        listId,
+      })
+    ).rejects.toThrow("That list could not be found.");
+  });
+
+  it("starts a new list from an old one without changing the old one", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+    await person.mutation(api.groceries.setDetails, {
+      budgetCents: 5000,
+      listId,
+      name: "Weekly",
+      preferences: ["Low sodium"],
+    });
+
+    const original = await backend.run(async (ctx) => await ctx.db.get(listId));
+    const first = original?.items[0];
+
+    if (!first) {
+      throw new Error("Missing item");
+    }
+
+    await person.mutation(api.groceries.updateItem, {
+      checked: true,
+      itemId: first.id,
+      listId,
+    });
+
+    const copyId = await person.mutation(api.groceries.copyList, { listId });
+    const copy = await backend.run(async (ctx) => await ctx.db.get(copyId));
+
+    expect(copy).toMatchObject({
+      budgetCents: 5000,
+      name: expect.stringMatching(/^Weekly · [A-Z][a-z]{2} \d{1,2}$/u),
+      preferences: ["Low sodium"],
+    });
+    expect(copy?.items.map((item) => [item.name, item.checked])).toStrictEqual([
+      ["Milk", false],
+      ["Bread", false],
+      ["Eggs", false],
+    ]);
+    expect(
+      copy?.items.some((item) =>
+        original?.items.some((old) => old.id === item.id)
+      )
+    ).toBeFalsy();
+    await expect(
+      backend.run(async (ctx) => await ctx.db.get(listId))
+    ).resolves.toMatchObject({ items: [{ checked: true }, {}, {}] });
+  });
+
+  it("gives practice accounts a long list, once", async () => {
+    const backend = newBackend();
+
+    const { id, person } = await signUp(backend, {
+      demo: false,
+      name: "Ruth",
+      role: "owner",
+      subject: "grocery-practice",
+    });
+
+    await backend.mutation(internal.demo.seed, { ownerId: id });
+    await backend.mutation(internal.demo.seed, { ownerId: id });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+    const long = lists.filter((list) => list.name.includes("practice"));
+
+    expect(lists[0]?.name).toBe("Weekly groceries");
+    expect(long).toHaveLength(1);
+    expect(long[0]?.items.length).toBeGreaterThanOrEqual(60);
+  });
+});
+
+describe("past lists and the usual list", () => {
+  it("names copies for the day without piling up earlier dates", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const firstId = await person.mutation(api.groceries.copyList, { listId });
+
+    const secondId = await person.mutation(api.groceries.copyList, {
+      listId: firstId,
+    });
+
+    const [first, second] = await backend.run(async (ctx) => [
+      await ctx.db.get(firstId),
+      await ctx.db.get(secondId),
+    ]);
+
+    expect(second?.name).toBe(first?.name);
+  });
+
+  it("moves a finished list to past lists and back", async () => {
+    const { backend, listId, person } = await setupList();
+
+    await person.mutation(api.groceries.archiveList, { listId });
+    const archived = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(archived?.archivedAt).toBeTypeOf("number");
+
+    await person.mutation(api.groceries.archiveList, { listId });
+    await expect(
+      backend.run(async (ctx) => await ctx.db.get(listId))
+    ).resolves.toMatchObject({ archivedAt: archived?.archivedAt });
+
+    await person.mutation(api.groceries.unarchiveList, { listId });
+    const reopened = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(reopened?.archivedAt).toBeUndefined();
+  });
+
+  it("keeps one usual list at a time and does not copy the mark", async () => {
+    const { listId, person } = await setupList();
+
+    const otherId = await person.mutation(api.groceries.createList, {
+      name: "Other",
+    });
+
+    await person.mutation(api.groceries.setUsual, { listId, usual: true });
+    await person.mutation(api.groceries.setUsual, {
+      listId: otherId,
+      usual: true,
+    });
+
+    const copyId = await person.mutation(api.groceries.copyList, {
+      listId: otherId,
+    });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+    const usual = lists.filter((list) => list.usual === true);
+
+    expect(usual.map((list) => list._id)).toStrictEqual([otherId]);
+    expect(lists.find((list) => list._id === copyId)?.usual).toBeUndefined();
+
+    await person.mutation(api.groceries.setUsual, {
+      listId: otherId,
+      usual: false,
+    });
+
+    const after = await person.query(api.groceries.lists, {});
+    expect(after.lists.some((list) => list.usual === true)).toBeFalsy();
+  });
+
+  it("shows the circle current lists only", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const ownerId = await backend.run(async (ctx) => {
+      const list = await ctx.db.get(listId);
+
+      if (!list) {
+        throw new Error("Missing list");
+      }
+
+      return list.ownerId;
+    });
+
+    await person.mutation(api.groceries.createList, { name: "This week" });
+    await person.mutation(api.groceries.archiveList, { listId });
+
+    const { family } = await connectFamily(backend, person, ["groceries.view"]);
+    const view = await family.query(api.family.overview, { ownerId });
+
+    expect(view?.groceries?.map((list) => list.name)).toStrictEqual([
+      "This week",
+    ]);
+  });
+
+  it("adds assistant items to this week's list, not the usual or a past one", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const ownerId = await backend.run(async (ctx) => {
+      const list = await ctx.db.get(listId);
+
+      if (!list) {
+        throw new Error("Missing list");
+      }
+
+      return list.ownerId;
+    });
+
+    await person.mutation(api.groceries.setUsual, { listId, usual: true });
+
+    const thisWeekId = await person.mutation(api.groceries.copyList, {
+      listId,
+    });
+
+    const finishedId = await person.mutation(api.groceries.createList, {
+      name: "Finished",
+    });
+
+    await person.mutation(api.groceries.archiveList, { listId: finishedId });
+
+    await backend.mutation(internal.assistant.applyProposalForOwner, {
+      channel: "text",
+      model: "test",
+      ownerId,
+      proposalJson: JSON.stringify({
+        appointmentId: null,
+        dateTimeAsSaid: null,
+        dateTimeIso: null,
+        groceryItems: [{ name: "Milk", quantity: 1, unit: null }],
+        intent: "grocery_list",
+        messageDraft: null,
+        recipients: [],
+        reminderTitle: null,
+      }),
+      request: "Add milk to my grocery list",
+    });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+
+    const names = (id: string) =>
+      lists.find((list) => list._id === id)?.items.map((item) => item.name);
+
+    expect(names(thisWeekId)).toStrictEqual(["Milk"]);
+    expect(names(listId)).toStrictEqual([]);
+    expect(names(finishedId)).toStrictEqual([]);
   });
 });

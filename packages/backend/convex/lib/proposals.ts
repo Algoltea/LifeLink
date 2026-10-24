@@ -281,10 +281,15 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
     return outcome("Which items would you like on your list?");
   }
 
-  const [existing] = await ctx.db
+  // The newest current list is this week's; the usual list is the template.
+  const lists = await ctx.db
     .query("groceryLists")
     .withIndex("by_owner", (index) => index.eq("ownerId", owner._id))
-    .take(1);
+    .order("desc")
+    .collect();
+
+  const current = lists.filter((list) => list.archivedAt === undefined);
+  const existing = current.find((list) => list.usual !== true) ?? current.at(0);
 
   const listId =
     existing?._id ??
