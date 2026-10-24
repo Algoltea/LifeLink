@@ -13,7 +13,8 @@ import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
 import { PlusIcon, RotateCcwIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useId, useState } from "react";
+import type { ReactNode } from "react";
+import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyNote } from "@/components/app/states";
@@ -134,7 +135,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
 
   return (
     <form
-      className="bg-surface grid gap-4 rounded-xl p-5 sm:grid-cols-3 sm:items-end"
+      className="bg-surface grid gap-4 rounded-xl p-5 @min-[32em]:grid-cols-3 @min-[32em]:items-end"
       onSubmit={async (event) => {
         event.preventDefault();
 
@@ -163,7 +164,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         }
       }}
     >
-      <div className="flex flex-col gap-2 sm:col-span-3">
+      <div className="flex flex-col gap-2 @min-[32em]:col-span-3">
         <Label htmlFor={`${baseId}-name`}>Item</Label>
         <Input
           id={`${baseId}-name`}
@@ -211,7 +212,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
       </div>
       {quantityError ? (
         <p
-          className="text-negative text-lg leading-7 sm:col-span-3"
+          className="text-negative text-lg leading-7 @min-[32em]:col-span-3"
           id={`${baseId}-quantity-error`}
           role="alert"
         >
@@ -219,7 +220,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         </p>
       ) : null}
       <p
-        className="text-muted-foreground text-base sm:col-span-3"
+        className="text-muted-foreground text-base @min-[32em]:col-span-3"
         id={`${baseId}-price-help`}
       >
         Estimate the total for this quantity after discounts. Enter 0 for a free
@@ -227,7 +228,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
       </p>
       {priceInvalid ? (
         <p
-          className="text-negative text-lg leading-7 sm:col-span-3"
+          className="text-negative text-lg leading-7 @min-[32em]:col-span-3"
           id={`${baseId}-price-error`}
           role="alert"
         >
@@ -235,7 +236,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         </p>
       ) : null}
       <Button
-        className="justify-self-start sm:col-span-3"
+        className="justify-self-start @min-[32em]:col-span-3"
         disabled={
           name.trim().length === 0 || priceInvalid || quantityError !== null
         }
@@ -286,7 +287,7 @@ const DetailsForm = ({
         }
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 @min-[32em]:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor={`${baseId}-name`}>List name</Label>
           <Input
@@ -359,18 +360,22 @@ const DetailsForm = ({
 const ListEditor = ({
   list,
   onDelete,
+  summary,
 }: {
   list: Doc<"groceryLists">;
   onDelete: () => void;
+  summary: ReactNode;
 }) => {
   const [editingDetails, setEditingDetails] = useState(false);
+  const details = useRef<HTMLDetailsElement>(null);
+  const detailsTrigger = useRef<HTMLElement>(null);
   const [resetting, setResetting] = useState(false);
   const unmarkAll = useMutation(api.groceries.unmarkAll);
   const hasMarkedItems = list.items.some((item) => item.checked);
   const openCount = list.items.filter((item) => !item.checked).length;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl leading-8 font-semibold">{list.name}</h2>
@@ -378,27 +383,64 @@ const ListEditor = ({
             {openCount} {openCount === 1 ? "item" : "items"} to buy
           </p>
         </div>
-        {editingDetails ? null : (
-          <Button onClick={() => setEditingDetails(true)} variant="outline">
-            Edit list details
-          </Button>
-        )}
       </div>
-      {editingDetails ? (
-        <DetailsForm
-          list={list}
-          onDelete={onDelete}
-          onDone={() => setEditingDetails(false)}
-        />
-      ) : null}
-      {list.preferences.length > 0 && !editingDetails ? (
-        <ul className="text-muted-foreground flex list-inside list-disc flex-col gap-1 text-lg leading-7">
+      {summary}
+      <details>
+        <summary className="min-h-control cursor-pointer py-3 text-lg font-medium">
+          Add items
+        </summary>
+        <AddItemForm listId={list._id} />
+      </details>
+      {list.items.length === 0 ? (
+        <EmptyNote>
+          Nothing on this list yet. Open Add items to add the first item.
+        </EmptyNote>
+      ) : (
+        <ul aria-label={`Items on ${list.name}`}>
+          {list.items.map((item) => (
+            <ItemRow item={item} key={item.id} listId={list._id} />
+          ))}
+        </ul>
+      )}
+      <p className="text-muted-foreground text-lg leading-7">
+        Tick an item when you already have it; ticked items are left out when
+        you copy or print the list.
+      </p>
+      {list.preferences.length > 0 ? (
+        <ul
+          aria-label="List preferences"
+          className="text-muted-foreground flex list-inside list-disc flex-col gap-1 text-lg leading-7"
+        >
           {list.preferences.map((preference) => (
             <li key={preference}>{preference}</li>
           ))}
         </ul>
       ) : null}
-      <AddItemForm listId={list._id} />
+      <details
+        ref={details}
+        onToggle={(event) => setEditingDetails(event.currentTarget.open)}
+      >
+        <summary
+          className="min-h-control cursor-pointer py-3 text-lg font-medium"
+          ref={detailsTrigger}
+        >
+          Edit list details
+        </summary>
+        {editingDetails ? (
+          <DetailsForm
+            list={list}
+            onDelete={onDelete}
+            onDone={() => {
+              if (details.current) {
+                details.current.open = false;
+              }
+
+              setEditingDetails(false);
+              detailsTrigger.current?.focus();
+            }}
+          />
+        ) : null}
+      </details>
       {list.items.length > 0 ? (
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -431,21 +473,6 @@ const ListEditor = ({
           </p>
         </div>
       ) : null}
-      {list.items.length === 0 ? (
-        <EmptyNote>
-          Nothing on this list yet. Add the first item above.
-        </EmptyNote>
-      ) : (
-        <ul aria-label={`Items on ${list.name}`}>
-          {list.items.map((item) => (
-            <ItemRow item={item} key={item.id} listId={list._id} />
-          ))}
-        </ul>
-      )}
-      <p className="text-muted-foreground text-lg leading-7">
-        Tick an item when you already have it; ticked items are left out when
-        you copy or print the list.
-      </p>
     </div>
   );
 };

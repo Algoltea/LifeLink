@@ -22,7 +22,7 @@ import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 
 import { ListEditor, listAsText, quantityWords } from "./list-editor";
-import { Receipt } from "./receipt";
+import { BudgetSummary, Receipt } from "./receipt";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -58,15 +58,9 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
 
   return (
     <section
-      aria-labelledby="list-tools-heading"
-      className="bg-surface flex min-w-0 flex-col gap-4 rounded-xl p-5 sm:p-6"
+      aria-label="Take your list with you"
+      className="flex min-w-0 flex-col gap-3"
     >
-      <h2 className="text-2xl leading-8 font-semibold" id="list-tools-heading">
-        Take your list with you
-      </h2>
-      <p className="text-lg leading-7">
-        Print your list or copy it to paste into a message.
-      </p>
       <div className="flex flex-wrap gap-3">
         <Button
           className="max-w-full py-3 whitespace-normal"
@@ -114,11 +108,20 @@ const GroceryWorkspace = ({
 }) => (
   <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
     <section aria-label="List" className="min-w-0">
-      <ListEditor key={list._id} list={list} onDelete={onDelete} />
+      <ListEditor
+        key={list._id}
+        list={list}
+        onDelete={onDelete}
+        summary={
+          <>
+            <BudgetSummary list={list} />
+            <ListTools list={list} />
+          </>
+        }
+      />
     </section>
     <div className="flex min-w-0 flex-col gap-8">
       <Receipt list={list} />
-      <ListTools list={list} />
     </div>
     <PrintableList list={list} />
   </div>
@@ -267,7 +270,7 @@ const GroceriesScreen = () => {
                 >
                   <Button
                     aria-current={isCurrent ? "true" : undefined}
-                    className="shrink pr-2 hover:bg-transparent active:bg-transparent"
+                    className="shrink py-3 pr-2 break-words whitespace-normal hover:bg-transparent active:bg-transparent"
                     onClick={() => setChosen(candidate._id)}
                     variant="ghost"
                   >

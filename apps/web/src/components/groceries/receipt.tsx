@@ -18,14 +18,19 @@ const Line = ({
   value: string;
   className?: string;
 }) => (
-  <div className={cn("flex items-baseline justify-between gap-4", className)}>
+  <div
+    className={cn(
+      "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1",
+      className
+    )}
+  >
     <dt>{label}</dt>
-    <dd className="shrink-0 text-right">{value}</dd>
+    <dd className="ml-auto shrink-0 text-right">{value}</dd>
   </div>
 );
 
-/** The estimate against the budget, laid out like a shop receipt. */
-const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
+/** Keep the early summary and detailed receipt based on the same unchecked items. */
+const estimateFor = (list: Doc<"groceryLists">) => {
   const open = list.items.filter((item) => !item.checked);
   const guessed = open.filter((item) => item.estimatedCents !== null);
 
@@ -35,12 +40,56 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
   );
 
   const budget = list.budgetCents;
-  const overBudget = budget !== null && estimate > budget;
+
+  return {
+    budget,
+    estimate,
+    guessed,
+    open,
+    overBudget: budget !== null && estimate > budget,
+  };
+};
+
+const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const { open, guessed, estimate, budget, overBudget } = estimateFor(list);
+
+  return (
+    <section aria-label="Budget summary" className="flex flex-col gap-2">
+      <dl className="flex flex-col gap-1 text-lg tabular-nums">
+        <Line
+          label="Estimated total"
+          value={money(estimate)}
+          className="font-semibold"
+        />
+        <Line
+          label="Budget"
+          value={budget === null ? "Not set" : money(budget)}
+        />
+        {budget === null ? null : (
+          <Line
+            label={overBudget ? "Over budget" : "Left to spend"}
+            value={money(Math.abs(budget - estimate))}
+            className={overBudget ? "text-negative font-semibold" : undefined}
+          />
+        )}
+      </dl>
+      {guessed.length < open.length ? (
+        <p className="text-muted-foreground text-base">
+          Some items have no estimate, so the real total may be higher.
+        </p>
+      ) : null}
+    </section>
+  );
+};
+
+/** The estimate against the budget, laid out like a shop receipt. */
+const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const { open, guessed, estimate, budget, overBudget } = estimateFor(list);
 
   return (
     <section
       aria-labelledby="receipt-heading"
-      className="bg-raised text-foreground border-control flex min-w-0 flex-col gap-4 rounded-none border px-6 py-8 font-mono text-base leading-7 shadow-[0_8px_16px_rgb(0_0_0/0.12)] dark:shadow-[0_8px_20px_rgb(0_0_0/0.5)]"
+      className="bg-raised text-foreground border-control @container flex min-w-0 flex-col gap-4 rounded-none border px-6 py-8 font-mono text-base leading-7 shadow-[0_8px_16px_rgb(0_0_0/0.12)] dark:shadow-[0_8px_20px_rgb(0_0_0/0.5)]"
     >
       <header className="flex flex-col items-center gap-1 text-center">
         <h2
@@ -60,7 +109,7 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
         <ul aria-label="Items to buy" className="flex flex-col gap-2">
           {open.map((item) => (
             <li
-              className="flex items-baseline justify-between gap-4"
+              className="flex flex-col gap-1 @min-[16em]:flex-row @min-[16em]:items-baseline @min-[16em]:justify-between @min-[16em]:gap-4"
               key={item.id}
             >
               <span className="min-w-0 break-words">
@@ -121,4 +170,4 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
   );
 };
 
-export { Receipt };
+export { BudgetSummary, Receipt };
