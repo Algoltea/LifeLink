@@ -246,6 +246,23 @@
     text-decoration-thickness: 0.16em;
   }
 
+  /* Tailwind v4 resets buttons to the default cursor; utilities such as cursor-not-allowed still win. */
+  button:not(:disabled),
+  select:not(:disabled),
+  summary,
+  input:is([type="checkbox"], [type="radio"], [type="file"]):not(:disabled),
+  :is(
+    [role="button"],
+    [role="checkbox"],
+    [role="menuitem"],
+    [role="option"],
+    [role="radio"],
+    [role="switch"],
+    [role="tab"]
+  ):not([aria-disabled="true"], [data-disabled]) {
+    cursor: pointer;
+  }
+
   summary {
     transition: color 150ms;
   }
