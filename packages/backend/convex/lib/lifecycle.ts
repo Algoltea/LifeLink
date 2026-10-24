@@ -20,6 +20,7 @@ import type { MutationCtx } from "../_generated/server";
 import { audit } from "./audit";
 import { executionProblems } from "./capabilities";
 import type { Mode } from "./capabilities";
+import { markIntroduced } from "./imessage";
 
 interface Ambiguity {
   field: string;
@@ -620,6 +621,7 @@ const finishAttempt = async (
 
   if (result.kind === "succeeded") {
     await ctx.db.patch(attempt._id, { finishedAt: now, outcome: "succeeded" });
+    await markIntroduced(ctx, attempt);
     await ctx.db.insert("providerReceipts", {
       actionId: action._id,
       attemptId: attempt._id,
@@ -762,6 +764,7 @@ const settleUnknownAttempt = async (
   });
 
   if (wentThrough) {
+    await markIntroduced(ctx, unknown);
     await ctx.db.insert("providerReceipts", {
       actionId: action._id,
       attemptId: unknown._id,

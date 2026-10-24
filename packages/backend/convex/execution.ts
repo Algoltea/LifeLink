@@ -31,9 +31,12 @@ import {
 } from "./integrations/telegram";
 import { activeMailbox, INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import {
+  enrollmentNeedingIntroduction,
+  imessageIntroduction,
   photonReconciliationValidator,
   photonRouteValidator,
   readyImessageRoute,
+  withIntroduction,
 } from "./lib/imessage";
 import type { PhotonRoute } from "./lib/imessage";
 import {
@@ -240,12 +243,44 @@ interface StartedAttempt {
   mode: "live" | "simulated";
   ok: true;
   ownerId: Id<"profiles">;
+  /** Put above the message when this is the first send in a new iMessage conversation. */
+  imessageIntroduction: string | null;
   photonRoute: PhotonRoute | null;
   photoStorageIds: Id<"_storage">[];
   postalCode: string | null;
   startedAt: number;
   timeZone: string;
 }
+
+/**
+ * The first message in a new iMessage conversation carries LifeLink's
+ * introduction. The exact text is stored with the attempt so a later check
+ * replays identical words.
+ */
+const introduceIfFirst = async (
+  ctx: MutationCtx,
+  started: { attemptId: Id<"executionAttempts">; owner: Doc<"profiles"> },
+  details: Extract<ActionDetails, { kind: "send_message" }>
+): Promise<string | null> => {
+  const enrollment = await enrollmentNeedingIntroduction(
+    ctx,
+    started.owner._id,
+    details.contactId,
+    details.address
+  );
+
+  if (enrollment === null) {
+    return null;
+  }
+
+  const text = imessageIntroduction(started.owner.displayName);
+
+  await ctx.db.patch(started.attemptId, {
+    imessageIntroduction: { enrollmentId: enrollment._id, text },
+  });
+
+  return text;
+};
 
 export const begin = internalMutation({
   args: { actionId: v.id("actions") },
@@ -293,6 +328,7 @@ export const begin = internalMutation({
     }
 
     let photonRoute: PhotonRoute | null = null;
+    let introduction: string | null = null;
 
     if (
       started.mode === "live" &&
@@ -323,6 +359,7 @@ export const begin = internalMutation({
 
       // Commit the exact identity with the attempt before an action can call Photon.
       await ctx.db.patch(started.attemptId, { photonRoute });
+      introduction = await introduceIfFirst(ctx, started, details);
     }
 
     const cached = await cachedHandleFor(ctx, details);
@@ -338,6 +375,7 @@ export const begin = internalMutation({
       cachedExternalUserId: cached.externalUserId,
       details,
       idempotencyKey: started.idempotencyKey,
+      imessageIntroduction: introduction,
       mailbox,
       mode: started.mode,
       ok: true,
@@ -570,7 +608,7 @@ const sendViaPhoton = async (
   const sent: PhotonResult = await ctx.runAction(
     internal.integrations.photonruntime.send,
     {
-      body: details.body,
+      body: withIntroduction(start.imessageIntroduction, details.body),
       idempotencyKey: start.idempotencyKey,
       photoStorageIds: start.photoStorageIds,
       route,
@@ -998,6 +1036,7 @@ interface UnknownContext {
   details: ActionDetails;
   externalUserId: string | null;
   idempotencyKey: string;
+  imessageIntroduction: string | null;
   mailbox: MailAccount | null;
   photonRoute: PhotonRoute | null;
   reconciliation: {
@@ -1190,6 +1229,7 @@ export const claimReconciliation = internalMutation({
       details: version.details,
       externalUserId: cached.externalUserId,
       idempotencyKey: attempt.idempotencyKey,
+      imessageIntroduction: attempt.imessageIntroduction?.text ?? null,
       mailbox: await mailboxFor(ctx, version.details, owner._id),
       photonRoute: await reconcilablePhotonRoute(
         ctx,
@@ -1241,7 +1281,11 @@ export const authorizePhotonReconciliation = internalMutation({
       attempt.idempotencyKey !== args.idempotencyKey ||
       version.details.kind !== "send_message" ||
       version.details.channel !== "imessage" ||
-      version.details.body !== args.body ||
+      // Exactly the approved words, plus only the introduction this attempt recorded.
+      withIntroduction(
+        attempt.imessageIntroduction?.text ?? null,
+        version.details.body
+      ) !== args.body ||
       version.details.photoIds.length > 0
     ) {
       return false;
@@ -1545,7 +1589,12 @@ const reconcileWithProvider = async (
       return CANNOT_TELL;
     }
 
-    return await reconcilePhoton(ctx, context, details.body);
+    // Replay exactly what the attempt sent, introduction included.
+    return await reconcilePhoton(
+      ctx,
+      context,
+      withIntroduction(context.imessageIntroduction, details.body)
+    );
   }
 
   if (details.kind === "send_message" && details.channel === "discord") {

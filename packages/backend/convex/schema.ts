@@ -456,6 +456,13 @@ export default defineSchema({
     fingerprint: v.string(),
     finishedAt: v.union(v.number(), v.null()),
     idempotencyKey: v.string(),
+    // The one-time introduction this attempt put above the message, and the conversation it introduces.
+    imessageIntroduction: v.optional(
+      v.object({
+        enrollmentId: v.id("imessageEnrollments"),
+        text: v.string(),
+      })
+    ),
     mode,
     outcome: v.union(
       v.literal("running"),
@@ -534,6 +541,8 @@ export default defineSchema({
     error: v.union(v.string(), v.null()),
     generation: v.number(),
     handle: v.string(),
+    // When the first message, with LifeLink's introduction, was confirmed sent.
+    introducedAt: v.optional(v.union(v.number(), v.null())),
     lastIncomingAt: v.union(v.number(), v.null()),
     lastIncomingId: v.union(v.string(), v.null()),
     ownerId: v.id("profiles"),
