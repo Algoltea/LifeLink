@@ -255,7 +255,7 @@ const Account = () => {
           side="top"
           sideOffset={8}
         >
-          <Menu.Popup className="border-border bg-raised flex w-[var(--anchor-width)] min-w-[13.333rem] flex-col rounded-xl border p-1.5 shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
+          <Menu.Popup className="motion-pop border-border bg-raised flex w-[var(--anchor-width)] min-w-[13.333rem] origin-[var(--transform-origin)] flex-col rounded-xl border p-1.5 shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
             {family ? null : (
               <>
                 <Menu.LinkItem
@@ -384,7 +384,7 @@ const MobileMenu = ({
         Menu
       </DialogPrimitive.Trigger>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Popup className="bg-background fixed inset-0 z-50 flex flex-col gap-6 overflow-y-auto p-5">
+        <DialogPrimitive.Popup className="motion-fade bg-background fixed inset-0 z-50 flex flex-col gap-6 overflow-y-auto p-5">
           <div className="flex items-center justify-between">
             <DialogPrimitive.Title className="text-lg font-semibold">
               Menu

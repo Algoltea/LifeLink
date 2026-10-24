@@ -694,8 +694,8 @@ const ConnectionDialog = ({
       open={row !== null}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
-        <DialogPrimitive.Popup className="border-border bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-[0_24px_48px_rgb(45_33_24/0.18)]">
+        <DialogPrimitive.Backdrop className="motion-fade fixed inset-0 z-50 bg-black/40" />
+        <DialogPrimitive.Popup className="motion-pop border-border bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border shadow-[0_24px_48px_rgb(45_33_24/0.18)]">
           {row && status ? (
             <>
               <header className="flex items-start justify-between gap-4 px-5 pt-6 pb-5 sm:px-8 sm:pt-8">

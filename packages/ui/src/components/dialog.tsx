@@ -25,11 +25,11 @@ const Dialog = ({
 }: DialogProps) => (
   <DialogPrimitive.Root onOpenChange={onOpenChange} open={open}>
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
+      <DialogPrimitive.Backdrop className="motion-fade fixed inset-0 z-50 bg-black/40" />
       <DialogPrimitive.Popup
         finalFocus={finalFocus}
         className={cn(
-          "bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl p-6 shadow-[0_16px_48px_rgb(0_0_0/0.18)]"
+          "motion-pop bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl p-6 shadow-[0_16px_48px_rgb(0_0_0/0.18)]"
         )}
       >
         <div className="flex items-start justify-between gap-4">

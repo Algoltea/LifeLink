@@ -50,7 +50,7 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
   return (
     <section
       aria-labelledby={`task-${task._id}`}
-      className="bg-surface flex flex-col gap-6 rounded-xl px-5 py-6 sm:px-7 sm:py-7"
+      className="motion-enter bg-surface flex flex-col gap-6 rounded-xl px-5 py-6 sm:px-7 sm:py-7"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
