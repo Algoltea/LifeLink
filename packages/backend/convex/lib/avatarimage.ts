@@ -1,3 +1,5 @@
+"use node";
+
 /**
  * Server-side normalisation for contact pictures. The browser already shrinks
  * and strips each picture, but a modified client could skip that, so the
