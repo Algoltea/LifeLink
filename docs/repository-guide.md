@@ -2,22 +2,9 @@
 
 LifeLink is a Bun/Turborepo workspace. Read the root README for product behavior, setup, environment variables, and the limits of existing live-provider checks. Read the closest `AGENTS.md` before changing code. Web product and design decisions are recorded in `apps/web/PRODUCT.md` and `apps/web/DESIGN.md`.
 
-## Initial history
+## History
 
-The repository was initialized from an existing working application. Its initial commits capture that application by concern, in dependency order; they do not claim to reconstruct its original development chronology. Early commits are partial snapshots. Use the completed series for application-wide validation.
-
-1. **Workspace and quality tooling:** root configuration, workspace manifests, TypeScript configuration, dependency lockfile, environment schema needed by postinstall, Ultracite, Lefthook, and the vendored anti-slop plugin.
-2. **Shared contracts:** integration catalog, sharing scopes, action schemas, model-output validation, and deterministic fingerprints with tests.
-3. **Solitaire engine:** seeded deals, legal moves, undo, save validation, and tests.
-4. **Convex backend:** schema, auth, permissions, approvals, execution, provider adapters, webhooks, scheduled work, generated API bindings, and backend tests. These stay together because their generated API and lifecycle functions refer to each other throughout the backend.
-5. **Discord bridge:** Gateway connection, direct-message filtering, signed forwarding, configuration example, and tests.
-6. **Shared UI:** reusable accessible controls, styling utilities, and tokens.
-7. **Web foundation:** Next.js configuration, authentication, onboarding, shell, preferences, offline/PWA support, browser utilities, and solitaire interface.
-8. **Web workflows:** assistant and voice, task review, Today, messages, trusted circle, family, groceries, email, scam checks, connections, and settings routes.
-9. **Developer setup:** tool checks, dependency installation, provider configuration, environment management, and setup tests.
-10. **Product and handoff documentation:** README, product/design specifications, implementation notes, QA findings, and this guide.
-
-Each commit body describes its purpose and related packages. To inspect the sequence, use `git log --reverse --format=fuller` or `git show --stat <commit>`.
+LifeLink was built at SBUHacks 2026 (October 23 to 25) with Claude Code and Codex. We worked locally for the first few hours and created this repository early Saturday, so the first ten commits import the working tree one concern at a time, in dependency order. Everything after that is normal incremental history.
 
 ## Where changes belong
 

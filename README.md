@@ -329,6 +329,8 @@ Shared-line contacts do not need a Photon dashboard teammate invitation. Setup v
 
 ## Development
 
+Built at SBUHacks 2026 (October 23 to 25) with Claude Code and Codex.
+
 | Command | What it does |
 | --- | --- |
 | `bun run dev` | Everything (web, Convex, bridge) |
