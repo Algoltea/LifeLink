@@ -1,28 +1,41 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
-import { Dialog } from "@lifelink/ui/components/dialog";
-import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
   CopyIcon,
   PlusIcon,
   PrinterIcon,
   SquareIcon,
-  Trash2Icon,
-  XIcon,
+  StarIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type {
+  ComponentProps,
+  Dispatch,
+  RefObject,
+  SetStateAction,
+} from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
+import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
+import { formatShortDay } from "@/lib/format";
 
-import { ListEditor, listAsText, quantityWords } from "./list-editor";
-import { BudgetSummary, Receipt } from "./receipt";
+import { DeleteListDialog } from "./delete-list-dialog";
+import {
+  ListEditor,
+  UNDO_WINDOW_MS,
+  listAsText,
+  quantityWords,
+} from "./list-editor";
+import { ListPicker } from "./list-picker";
+import { Receipt, ReceiptBar } from "./receipt";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -57,10 +70,7 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
   const hasOpenItems = list.items.some((item) => !item.checked);
 
   return (
-    <section
-      aria-label="Take your list with you"
-      className="flex min-w-0 flex-col gap-3"
-    >
+    <div className="flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap gap-3">
         <Button
           className="max-w-full py-3 whitespace-normal"
@@ -87,7 +97,7 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
           variant="outline"
         >
           <CopyIcon />
-          Copy the list
+          Copy as text
         </Button>
       </div>
       {hasOpenItems ? null : (
@@ -95,144 +105,219 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
           Add an item or untick one before printing or copying.
         </p>
       )}
-    </section>
+    </div>
   );
 };
 
 const GroceryWorkspace = ({
+  actions,
+  finishedOn,
   list,
-  onDelete,
 }: {
+  actions: ComponentProps<typeof ListEditor>["actions"];
+  finishedOn: string | null;
   list: Doc<"groceryLists">;
-  onDelete: () => void;
-}) => (
-  <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-    <section aria-label="List" className="min-w-0">
-      <ListEditor
-        key={list._id}
-        list={list}
-        onDelete={onDelete}
-        summary={
-          <>
-            <BudgetSummary list={list} />
-            <ListTools list={list} />
-          </>
-        }
-      />
-    </section>
-    <div className="flex min-w-0 flex-col gap-8">
-      <Receipt list={list} />
+}) => {
+  const receipt = useRef<HTMLElement>(null);
+
+  const showReceipt = (): void => {
+    const target = receipt.current;
+
+    if (!target) {
+      return;
+    }
+
+    const reducedMotion =
+      document.documentElement.dataset.motion === "reduced" ||
+      globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    target.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+    target.focus({ preventScroll: true });
+  };
+
+  return (
+    <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section aria-label="List" className="min-w-0">
+        <ListEditor
+          actions={actions}
+          finishedOn={finishedOn}
+          key={list._id}
+          list={list}
+          tools={<ListTools list={list} />}
+        />
+      </section>
+      <ReceiptBar list={list} onShow={showReceipt} />
+      <div className="flex min-w-0 flex-col gap-8 xl:sticky xl:top-8">
+        <Receipt list={list} ref={receipt} />
+      </div>
+      <PrintableList list={list} />
     </div>
-    <PrintableList list={list} />
+  );
+};
+
+/** Runs a list change and reports any failure in a toast. */
+const attempt = async (work: () => Promise<void>): Promise<void> => {
+  try {
+    await work();
+  } catch (error) {
+    toast.error(errorText(error));
+  }
+};
+
+type SetChosen = Dispatch<SetStateAction<string | null>>;
+
+/** Everything that creates, finishes, or reuses a list, each with its own feedback. */
+const useListActions = (setChosen: SetChosen) => {
+  const createList = useMutation(api.groceries.createList);
+  const copyList = useMutation(api.groceries.copyList);
+  const archiveList = useMutation(api.groceries.archiveList);
+  const unarchiveList = useMutation(api.groceries.unarchiveList);
+  const setUsual = useMutation(api.groceries.setUsual);
+
+  const reopen = (target: Doc<"groceryLists">) =>
+    attempt(async () => {
+      await unarchiveList({ listId: target._id });
+      setChosen(target._id);
+    });
+
+  return {
+    copyOf: (source: Doc<"groceryLists">) =>
+      attempt(async () => {
+        setChosen(await copyList({ listId: source._id }));
+        toast.success(
+          `Started a new list from “${source.name}”. The original is unchanged.`
+        );
+      }),
+    /** Moving a list to past lists is undoable, so it needs no confirmation. */
+    finish: (target: Doc<"groceryLists">) =>
+      attempt(async () => {
+        await archiveList({ listId: target._id });
+        setChosen((selected) => (selected === target._id ? null : selected));
+        toast(`Moved “${target.name}” to past lists.`, {
+          action: { label: "Undo", onClick: () => reopen(target) },
+          duration: UNDO_WINDOW_MS,
+        });
+      }),
+    newList: (currentCount: number) =>
+      attempt(async () => {
+        setChosen(
+          await createList({
+            name: currentCount > 0 ? `List ${currentCount + 1}` : "Groceries",
+          })
+        );
+      }),
+    reopen,
+    toggleUsual: (target: Doc<"groceryLists">) =>
+      attempt(async () => {
+        const making = target.usual !== true;
+        await setUsual({ listId: target._id, usual: making });
+        toast.success(
+          making
+            ? `“${target.name}” is now your usual list.`
+            : `“${target.name}” is no longer your usual list.`
+        );
+      }),
+  };
+};
+
+/** With a usual list, starting from it comes first; an empty list is the fallback. */
+const StartButtons = ({
+  newListButton,
+  onNewList,
+  onStartFromUsual,
+  usual,
+}: {
+  newListButton: RefObject<HTMLButtonElement | null>;
+  onNewList: () => void;
+  onStartFromUsual: () => void;
+  usual: Doc<"groceryLists"> | null;
+}) => (
+  <div className="flex flex-wrap gap-3">
+    {usual === null ? null : (
+      <Button onClick={onStartFromUsual}>
+        <StarIcon className="fill-current" />
+        Start from your usual list
+      </Button>
+    )}
+    <Button
+      onClick={onNewList}
+      ref={newListButton}
+      variant={usual === null ? "default" : "outline"}
+    >
+      <PlusIcon />
+      {usual === null ? "New list" : "New empty list"}
+    </Button>
   </div>
 );
 
-const GroceriesScreen = () => {
+/** Current lists in the order they were made; past lists newest first. */
+const sortLists = (lists: Doc<"groceryLists">[]) => ({
+  current: lists.filter((item) => item.archivedAt === undefined),
+  past: lists
+    .filter((item) => item.archivedAt !== undefined)
+    .toSorted((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)),
+  usual: lists.find((item) => item.usual === true) ?? null,
+});
+
+/** `initialListId` comes from `?list=`, so the past lists page can open a list here. */
+const GroceriesScreen = ({
+  initialListId = null,
+}: {
+  initialListId?: string | null;
+}) => {
   const data = useQuery(api.groceries.lists);
-  const createList = useMutation(api.groceries.createList);
-  const deleteList = useMutation(api.groceries.deleteList);
+  const { me } = usePreferences();
   const newListButton = useRef<HTMLButtonElement>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Doc<"groceryLists"> | null>(
     null
   );
 
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<Id<"groceryLists"> | null>(null);
+  const [chosen, setChosen] = useState<string | null>(initialListId);
+  const router = useRouter();
+
+  const { copyOf, finish, newList, reopen, toggleUsual } =
+    useListActions(setChosen);
+
+  const timeZone =
+    me?.profile?.timeZone ??
+    new Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const { current, past, usual } = sortLists(data?.lists ?? []);
 
   const list =
     data?.lists.find((candidate) => candidate._id === chosen) ??
-    data?.lists[0] ??
+    current[0] ??
     null;
 
-  const requestDelete = (target: Doc<"groceryLists">): void => {
-    setDeleteError(null);
-    setDeleteTarget(target);
-  };
-
-  const newList = async (): Promise<void> => {
-    try {
-      setChosen(
-        await createList({
-          name: data?.lists.length
-            ? `List ${data.lists.length + 1}`
-            : "Groceries",
-        })
-      );
-    } catch (error) {
-      toast.error(errorText(error));
-    }
-  };
+  const startButtons = (
+    <StartButtons
+      newListButton={newListButton}
+      onNewList={() => newList(current.length)}
+      onStartFromUsual={() => (usual === null ? undefined : copyOf(usual))}
+      usual={usual}
+    />
+  );
 
   return (
     <>
       <style>{PRINT_STYLES}</style>
       <PageHeader
-        actions={
-          <Button onClick={newList} ref={newListButton} variant="outline">
-            <PlusIcon />
-            New list
-          </Button>
-        }
-        subline="Keep a grocery list, plan your budget, and copy or print what you need."
+        actions={startButtons}
+        subline="Your shopping lists and budget."
         title="Groceries"
       />
-      <Dialog
+      <DeleteListDialog
         finalFocus={newListButton}
-        description={`This permanently deletes “${deleteTarget?.name ?? ""}” and all its items, budget, and preferences. This cannot be undone.`}
-        onOpenChange={(open) => {
-          if (!open && !deleting) {
-            setDeleteTarget(null);
-          }
-        }}
-        open={deleteTarget !== null}
-        title="Delete this grocery list?"
-      >
-        {deleteError ? (
-          <p className="text-negative text-base" role="alert">
-            {deleteError}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button
-            disabled={deleting}
-            onClick={() => setDeleteTarget(null)}
-            variant="outline"
-          >
-            Keep list
-          </Button>
-          <Button
-            aria-busy={deleting}
-            disabled={deleting}
-            onClick={async () => {
-              if (deleteTarget === null || deleting) {
-                return;
-              }
-
-              setDeleting(true);
-              setDeleteError(null);
-
-              try {
-                await deleteList({ listId: deleteTarget._id });
-                setChosen((current) =>
-                  current === deleteTarget._id ? null : current
-                );
-                setDeleteTarget(null);
-                toast.success(`“${deleteTarget.name}” deleted.`);
-              } catch (error) {
-                setDeleteError(errorText(error));
-              }
-
-              setDeleting(false);
-            }}
-            variant="destructive"
-          >
-            <Trash2Icon />
-            {deleting ? "Deleting…" : "Delete list"}
-          </Button>
-        </div>
-      </Dialog>
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={(listId) =>
+          setChosen((selected) => (selected === listId ? null : selected))
+        }
+        target={deleteTarget}
+      />
       <section
         aria-label="Grocery lists and budgets"
         className="flex scroll-mt-24 flex-col gap-6"
@@ -241,58 +326,37 @@ const GroceriesScreen = () => {
         {data === undefined ? (
           <LoadingRows layout="groceries" label="Loading your lists" rows={4} />
         ) : null}
-        {data !== undefined && list === null ? (
-          <EmptyNote
-            action={
-              <Button onClick={newList}>
-                <PlusIcon />
-                Start a list
-              </Button>
-            }
-          >
-            No grocery lists yet.
+        {data !== undefined && current.length === 0 ? (
+          <EmptyNote action={startButtons}>
+            {past.length > 0
+              ? "No current lists. Start a new one, or open a past list below."
+              : "No grocery lists yet."}
           </EmptyNote>
         ) : null}
-        {data !== undefined && data.lists.length > 0 ? (
-          <nav aria-label="Your lists" className="flex flex-wrap gap-2">
-            {data.lists.map((candidate) => {
-              const isCurrent = candidate._id === list?._id;
-
-              return (
-                <div
-                  className={cn(
-                    "group/list border-control flex max-w-full min-w-0 items-center rounded-md border transition-colors",
-                    isCurrent
-                      ? "bg-neutral-wash hover:bg-rule"
-                      : "bg-raised hover:border-foreground hover:bg-parchment"
-                  )}
-                  key={candidate._id}
-                >
-                  <Button
-                    aria-current={isCurrent ? "true" : undefined}
-                    className="shrink py-3 pr-2 break-words whitespace-normal hover:bg-transparent active:bg-transparent"
-                    onClick={() => setChosen(candidate._id)}
-                    variant="ghost"
-                  >
-                    {candidate.name}
-                  </Button>
-                  <Button
-                    aria-label={`Delete ${candidate.name}`}
-                    className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 transition-opacity group-focus-within/list:opacity-100 group-hover/list:opacity-100 hover:bg-transparent active:bg-transparent"
-                    onClick={() => requestDelete(candidate)}
-                    size="icon"
-                    title={`Delete ${candidate.name}`}
-                    variant="ghost"
-                  >
-                    <XIcon />
-                  </Button>
-                </div>
-              );
-            })}
-          </nav>
-        ) : null}
+        <ListPicker
+          current={current}
+          onChoose={setChosen}
+          onSeeAllPast={() => router.push("/groceries/past")}
+          past={past}
+          selectedId={list?._id ?? null}
+          timeZone={timeZone}
+        />
         {list === null ? null : (
-          <GroceryWorkspace list={list} onDelete={() => requestDelete(list)} />
+          <GroceryWorkspace
+            actions={{
+              onCopy: () => copyOf(list),
+              onDelete: () => setDeleteTarget(list),
+              onFinish: () => finish(list),
+              onReopen: () => reopen(list),
+              onToggleUsual: () => toggleUsual(list),
+            }}
+            finishedOn={
+              list.archivedAt === undefined
+                ? null
+                : formatShortDay(list.archivedAt, timeZone)
+            }
+            list={list}
+          />
         )}
       </section>
     </>
