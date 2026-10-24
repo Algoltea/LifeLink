@@ -180,7 +180,7 @@ const isInside = (
   (root !== null && target instanceof Node && root.contains(target));
 
 /** The playable table. Client-only: it reads the saved game from localStorage while it first renders. */
-export const SolitaireTable = () => {
+export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
   const [opening, setOpening] = useState(() => loadGame(1));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState<Slot>(STOCK_SLOT);
@@ -475,8 +475,15 @@ export const SolitaireTable = () => {
           >
             Solitaire
           </h1>
-          <Button onClick={() => startNewGame()}>New game</Button>
+          <Button onClick={() => startNewGame()} variant="outline">
+            New game
+          </Button>
         </div>
+        <p className="text-muted-foreground text-body">
+          {guest
+            ? "A quiet game. No account needed."
+            : "A quiet game. Available offline."}
+        </p>
         <p className="num text-muted-foreground text-label">
           Drawing {drawWords(game.drawCount)} at a time
           {" · "}

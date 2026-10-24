@@ -32,6 +32,10 @@ import type { ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 
 import { BrandName } from "./brand";
+import {
+  GuestAccountLinks,
+  GuestPlayInvitation,
+} from "./guest-play-navigation";
 import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 
@@ -287,11 +291,13 @@ const ShellFrame = ({
   account,
   children,
   groups,
+  guest = false,
   notices,
 }: {
   account: ReactNode;
   children: ReactNode;
   groups: NavGroup[];
+  guest?: boolean;
   notices?: ReactNode;
 }) => (
   <div className="bg-background min-h-svh">
@@ -302,27 +308,52 @@ const ShellFrame = ({
       Skip to main content
     </a>
     <div className="min-[1101px]:grid min-[1101px]:grid-cols-[13.333rem_minmax(0,1fr)]">
-      <aside className="border-border bg-parchment sticky top-0 hidden h-svh flex-col gap-6 overflow-y-auto border-r px-3 py-5 min-[1101px]:flex">
-        <Link
-          className="min-h-control rounded-md px-4 py-1"
-          href={groups === FAMILY_NAV ? "/family" : "/"}
-        >
-          <BrandName />
-        </Link>
-        <NavList groups={groups} />
-        <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
-          {account}
-        </div>
+      <aside
+        className={cn(
+          "border-border bg-parchment sticky top-0 hidden h-svh flex-col overflow-y-auto border-r min-[1101px]:flex",
+          guest ? "px-[1.333rem] py-[1.778rem]" : "gap-6 px-3 py-5"
+        )}
+      >
+        {guest ? (
+          <>
+            <div className="min-h-control flex items-center">
+              <BrandName />
+            </div>
+            <GuestPlayInvitation />
+          </>
+        ) : (
+          <>
+            <Link
+              className="min-h-control rounded-md px-4 py-1"
+              href={groups === FAMILY_NAV ? "/family" : "/"}
+            >
+              <BrandName />
+            </Link>
+            <NavList groups={groups} />
+            <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
+              {account}
+            </div>
+          </>
+        )}
       </aside>
       <div className="flex min-w-0 flex-col">
         <div className="border-border bg-parchment sticky top-0 z-40 flex min-h-[3.556rem] flex-wrap items-center justify-between gap-[8px] border-b px-[16px] py-1 min-[1101px]:hidden">
-          <Link
-            className="min-h-control inline-flex items-center rounded-md"
-            href={groups === FAMILY_NAV ? "/family" : "/"}
-          >
-            <BrandName compact />
-          </Link>
-          <MobileMenu account={account} groups={groups} />
+          {guest ? (
+            <>
+              <BrandName compact />
+              <GuestAccountLinks compact />
+            </>
+          ) : (
+            <>
+              <Link
+                className="min-h-control inline-flex items-center rounded-md"
+                href={groups === FAMILY_NAV ? "/family" : "/"}
+              >
+                <BrandName compact />
+              </Link>
+              <MobileMenu account={account} groups={groups} />
+            </>
+          )}
         </div>
         {notices}
         <main
@@ -360,19 +391,24 @@ const FamilyShell = ({ children }: { children: ReactNode }) => (
   </ShellFrame>
 );
 
-// The game shell reads no account, tasks, or queue. Its cached HTML contains
-// navigation only, and remains usable before sign-in and without a connection.
-const PlayShell = ({ children }: { children: ReactNode }) => (
-  <ShellFrame
-    account={
-      <p className="text-muted-foreground text-label px-4">
-        Solitaire is saved on this device and works offline.
-      </p>
-    }
-    groups={ownerNavigation()}
-  >
-    {children}
-  </ShellFrame>
-);
+// The cached HTML is always public. Session discovery only changes the chrome;
+// it never blocks or remounts the locally saved game, including while offline.
+const PlayShell = ({ children }: { children: ReactNode }) => {
+  const { data: session } = authClient.useSession();
+
+  return (
+    <ShellFrame
+      account={
+        <p className="text-muted-foreground text-label px-4">
+          Solitaire is saved on this device and works offline.
+        </p>
+      }
+      groups={ownerNavigation()}
+      guest={!session}
+    >
+      {children}
+    </ShellFrame>
+  );
+};
 
 export { FamilyShell, OwnerShell, PlayShell };

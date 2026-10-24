@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { authClient } from "@/lib/auth-client";
+
 import { SolitaireTable } from "./solitaire-table";
 
 const subscribeToNothing = () => () => {
@@ -19,9 +21,10 @@ const onServer = () => false;
  */
 export const SolitaireGame = () => {
   const isClient = useSyncExternalStore(subscribeToNothing, onClient, onServer);
+  const { data: session } = authClient.useSession();
 
   if (isClient) {
-    return <SolitaireTable />;
+    return <SolitaireTable guest={!session} />;
   }
 
   return (
