@@ -67,7 +67,8 @@ export const seed = internalMutation({
         address: string;
         channel: "discord" | "email" | "imessage" | "in_app";
         preferred: boolean;
-      }[]
+      }[],
+      trusted = true
     ) => ({
       channels,
       createdAt: now,
@@ -77,7 +78,7 @@ export const seed = internalMutation({
       ownerId: owner._id,
       relationship,
       sample: true,
-      trusted: true,
+      trusted,
     });
 
     await ctx.db.insert(
@@ -101,6 +102,23 @@ export const seed = internalMutation({
       sample("Marcus Rivera", "Grandson", 95, [
         { address: "100000000000000001", channel: "discord", preferred: true },
       ])
+    );
+    // A saved contact outside the trusted circle, so practice shows the difference.
+    await ctx.db.insert(
+      "contacts",
+      sample(
+        "Dana Whitfield",
+        "Neighbor",
+        40,
+        [
+          {
+            address: "dana.whitfield@example.com",
+            channel: "email",
+            preferred: true,
+          },
+        ],
+        false
+      )
     );
 
     const startsAt = nextTuesdayAt1030(now, owner.timeZone);
