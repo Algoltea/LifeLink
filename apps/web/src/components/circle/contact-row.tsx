@@ -116,4 +116,4 @@ const ContactRow = ({
   );
 };
 
-export { ContactRow };
+export { ContactRow, TrustedBadge };
