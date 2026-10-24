@@ -91,6 +91,8 @@ const ComposerSession = ({
   const live = useRef<LiveHandle | null>(null);
   // The microphone while a live session is still connecting; Stop and unmount release it.
   const pendingRig = useRef<AudioRig | null>(null);
+  // Ends a microphone request still waiting on the browser's permission prompt.
+  const voiceAbort = useRef<AbortController | null>(null);
   const dictation = useRef<{ stop: () => void } | null>(null);
   const captionId = useRef(0);
   const inputId = useId();
@@ -110,6 +112,7 @@ const ComposerSession = ({
     return () => {
       mounted.current = false;
       voiceRun.current += 1;
+      voiceAbort.current?.abort();
       pendingRig.current?.release();
       live.current?.stop();
       dictation.current?.stop();
@@ -184,6 +187,8 @@ const ComposerSession = ({
 
   const stopVoice = (): void => {
     voiceRun.current += 1;
+    voiceAbort.current?.abort();
+    voiceAbort.current = null;
     pendingRig.current?.release();
     pendingRig.current = null;
     live.current?.stop();
@@ -211,7 +216,10 @@ const ComposerSession = ({
 
       try {
         // The microphone comes first, while the press still counts as a gesture.
-        rig = await prepareAudio();
+        const controller = new AbortController();
+
+        voiceAbort.current = controller;
+        rig = await prepareAudio(controller.signal);
 
         if (cancelled()) {
           rig.release();
@@ -233,8 +241,17 @@ const ComposerSession = ({
           session.token,
           session.model,
           {
-            onCaption: addCaption,
+            // Callbacks from an attempt that already ended must not touch the current one.
+            onCaption: (who, piece) => {
+              if (!cancelled()) {
+                addCaption(who, piece);
+              }
+            },
             onClosed: (reason) => {
+              if (cancelled()) {
+                return;
+              }
+
               if (reason) {
                 toast(reason);
               }
@@ -245,7 +262,11 @@ const ComposerSession = ({
               (await send(request, "voice"))
                 ? "Prepared. It is on the screen now; nothing happens until it is approved there."
                 : "That could not be prepared. Please ask them to try again or type it.",
-            onSpeaking: setSpeaking,
+            onSpeaking: (now) => {
+              if (!cancelled()) {
+                setSpeaking(now);
+              }
+            },
           }
         );
 

@@ -109,8 +109,9 @@ const closeQuietly = async (context: AudioContext): Promise<void> => {
 /**
  * Ask for the microphone and wake both audio contexts. Call it straight from
  * the Speak press. Throws a MicrophoneError with a plain message when it can't start.
+ * Aborting `signal` gives everything back at once, even mid-prompt.
  */
-const prepareAudio = async (): Promise<AudioRig> => {
+const prepareAudio = async (signal: AbortSignal): Promise<AudioRig> => {
   const contexts: AudioContext[] = [];
   let stream: MediaStream | null = null;
 
@@ -124,6 +125,16 @@ const prepareAudio = async (): Promise<AudioRig> => {
       if (context.state !== "closed") {
         void closeQuietly(context);
       }
+    }
+  };
+
+  // Stop can come while the browser is still asking for permission.
+  signal.addEventListener("abort", releaseAll, { once: true });
+
+  const stopIfAborted = (): void => {
+    if (signal.aborted) {
+      releaseAll();
+      throw new DOMException("Voice was stopped.", "AbortError");
     }
   };
 
@@ -143,7 +154,9 @@ const prepareAudio = async (): Promise<AudioRig> => {
         noiseSuppression: true,
       },
     });
+    stopIfAborted();
     await Promise.all([capture.resume(), playback.resume()]);
+    stopIfAborted();
 
     let released = false;
 
