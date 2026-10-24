@@ -285,7 +285,7 @@ const CheckForm = ({
 
   return (
     <form
-      className="bg-surface text-foreground flex min-w-0 flex-col gap-5 rounded-xl px-5 py-6 sm:px-7"
+      className="bg-parchment text-foreground flex min-w-0 flex-col gap-5 rounded-xl px-5 py-6 sm:px-7"
       onSubmit={async (event) => {
         event.preventDefault();
 
