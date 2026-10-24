@@ -150,10 +150,16 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
           storageId: uploaded.storageId as Id<"_storage">,
         });
 
-        setPhotos((existing) => [
-          ...existing,
-          { id: photoId, name: file.name },
-        ]);
+        if (photoId === null) {
+          toast.error(
+            `${file.name}: Please choose a photo (JPEG, PNG, WebP, or HEIC).`
+          );
+        } else {
+          setPhotos((existing) => [
+            ...existing,
+            { id: photoId, name: file.name },
+          ]);
+        }
       } catch (error) {
         toast.error(
           `${file.name}: ${messageOf(error instanceof Error ? error : null)}`

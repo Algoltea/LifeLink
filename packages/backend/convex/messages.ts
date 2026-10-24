@@ -104,27 +104,35 @@ export const generatePhotoUploadUrl = mutation({
   },
 });
 
-/** Record an uploaded photo; the content type is checked from storage metadata, not trusted from the client. */
+/**
+ * Record an uploaded photo; the content type is checked from storage metadata,
+ * not trusted from the client. A refused file is deleted and null returned.
+ */
 export const registerPhoto = mutation({
   args: {
     caption: v.union(v.string(), v.null()),
     contactId: v.union(v.id("contacts"), v.null()),
     storageId: v.id("_storage"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"photos"> | null> => {
     const owner = await requireOwner(ctx);
-    const metadata = await ctx.db.system.get(args.storageId);
 
+    if (args.contactId !== null) {
+      requireOwned(await ctx.db.get(args.contactId), owner, "contact");
+    }
+
+    const metadata = await ctx.db.system.get("_storage", args.storageId);
+
+    // Returning rather than throwing keeps the delete: a thrown error would roll it back.
     if (
       metadata === null ||
       !ALLOWED_PHOTO_TYPES.has(metadata.contentType ?? "")
     ) {
-      await ctx.storage.delete(args.storageId);
-      throw new Error("Please choose a photo (JPEG, PNG, WebP, or HEIC).");
-    }
+      if (metadata !== null) {
+        await ctx.storage.delete(args.storageId);
+      }
 
-    if (args.contactId !== null) {
-      requireOwned(await ctx.db.get(args.contactId), owner, "contact");
+      return null;
     }
 
     return await ctx.db.insert("photos", {
