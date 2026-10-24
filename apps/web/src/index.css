@@ -1,2 +1,30 @@
 /* The shared UI package owns the workshop theme and accessible control tokens. */
 @import "@lifelink/ui/globals.css";
+
+@supports (interpolate-size: allow-keywords) {
+  .connection-disclosure::details-content {
+    interpolate-size: allow-keywords;
+    height: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      height 180ms ease-out,
+      opacity 180ms ease-out,
+      content-visibility 180ms allow-discrete;
+  }
+
+  .connection-disclosure[open]::details-content {
+    height: auto;
+    opacity: 1;
+  }
+}
+
+[data-motion="reduced"] .connection-disclosure::details-content {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connection-disclosure::details-content {
+    transition: none;
+  }
+}
