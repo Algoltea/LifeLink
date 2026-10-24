@@ -2,7 +2,12 @@
 
 import { Select } from "@base-ui/react/select";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { CheckIcon, ChevronsUpDownIcon, StarIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronsUpDownIcon,
+  StarIcon,
+} from "lucide-react";
 
 import { formatShortDay, money } from "@/lib/format";
 
@@ -18,6 +23,12 @@ const totalOf = (list: Doc<"groceryLists">): number =>
 
 const countOf = (list: Doc<"groceryLists">): string =>
   `${list.items.length} ${list.items.length === 1 ? "item" : "items"}`;
+
+/** The menu stays about one screen tall; older trips live on the past lists page. */
+const PAST_IN_MENU = 3;
+
+/** Not a list id, so choosing it can never select a list. */
+const SEE_ALL_PAST = "see-all-past";
 
 const ListOption = ({
   details,
@@ -53,12 +64,14 @@ const ListOption = ({
 const ListPicker = ({
   current,
   onChoose,
+  onSeeAllPast,
   past,
   selectedId,
   timeZone,
 }: {
   current: Doc<"groceryLists">[];
   onChoose: (listId: Id<"groceryLists">) => void;
+  onSeeAllPast: () => void;
   past: Doc<"groceryLists">[];
   selectedId: Id<"groceryLists"> | null;
   timeZone: string;
@@ -74,6 +87,12 @@ const ListPicker = ({
   return (
     <Select.Root
       onValueChange={(value) => {
+        if (value === SEE_ALL_PAST) {
+          onSeeAllPast();
+
+          return;
+        }
+
         const next = all.find((item) => item._id === value);
 
         if (next) {
@@ -147,13 +166,27 @@ const ListPicker = ({
                 <Select.GroupLabel className={GROUP_LABEL}>
                   Past lists
                 </Select.GroupLabel>
-                {past.map((item) => (
+                {past.slice(0, PAST_IN_MENU).map((item) => (
                   <ListOption
                     details={`Finished ${formatShortDay(item.archivedAt ?? item.updatedAt, timeZone)} · ${countOf(item)} · ${money(totalOf(item))}`}
                     key={item._id}
                     list={item}
                   />
                 ))}
+                <Select.Item className={ITEM} value={SEE_ALL_PAST}>
+                  <span className="col-start-2 flex min-w-0 flex-col">
+                    <Select.ItemText className="text-lg font-medium">
+                      See all past lists ({past.length})
+                    </Select.ItemText>
+                    <span className="text-muted-foreground text-base">
+                      Search, reuse, or delete finished trips
+                    </span>
+                  </span>
+                  <ArrowRightIcon
+                    aria-hidden="true"
+                    className="col-start-3 size-5"
+                  />
+                </Select.Item>
               </Select.Group>
             ) : null}
           </Select.Popup>

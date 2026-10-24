@@ -1,9 +1,8 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
-import { Dialog } from "@lifelink/ui/components/dialog";
 import { useMutation, useQuery } from "convex/react";
 import {
   CopyIcon,
@@ -11,8 +10,8 @@ import {
   PrinterIcon,
   SquareIcon,
   StarIcon,
-  Trash2Icon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type {
   ComponentProps,
   Dispatch,
@@ -28,6 +27,7 @@ import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay } from "@/lib/format";
 
+import { DeleteListDialog } from "./delete-list-dialog";
 import {
   ListEditor,
   UNDO_WINDOW_MS,
@@ -158,79 +158,6 @@ const GroceryWorkspace = ({
   );
 };
 
-const DeleteListDialog = ({
-  finalFocus,
-  onClose,
-  onDeleted,
-  target,
-}: {
-  finalFocus: RefObject<HTMLButtonElement | null>;
-  onClose: () => void;
-  onDeleted: (listId: Id<"groceryLists">) => void;
-  target: Doc<"groceryLists"> | null;
-}) => {
-  const deleteList = useMutation(api.groceries.deleteList);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const close = (): void => {
-    setDeleteError(null);
-    onClose();
-  };
-
-  return (
-    <Dialog
-      finalFocus={finalFocus}
-      description={`This permanently deletes “${target?.name ?? ""}” and all its items, budget, and preferences. This cannot be undone.${target?.archivedAt === undefined ? " To keep it for later, finish the trip instead." : ""}`}
-      onOpenChange={(open) => {
-        if (!open && !deleting) {
-          close();
-        }
-      }}
-      open={target !== null}
-      title="Delete this grocery list?"
-    >
-      {deleteError ? (
-        <p className="text-negative text-base" role="alert">
-          {deleteError}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-3">
-        <Button disabled={deleting} onClick={close} variant="outline">
-          Keep list
-        </Button>
-        <Button
-          aria-busy={deleting}
-          disabled={deleting}
-          onClick={async () => {
-            if (target === null || deleting) {
-              return;
-            }
-
-            setDeleting(true);
-            setDeleteError(null);
-
-            try {
-              await deleteList({ listId: target._id });
-              onDeleted(target._id);
-              close();
-              toast.success(`“${target.name}” deleted.`);
-            } catch (error) {
-              setDeleteError(errorText(error));
-            }
-
-            setDeleting(false);
-          }}
-          variant="destructive"
-        >
-          <Trash2Icon />
-          {deleting ? "Deleting…" : "Delete list"}
-        </Button>
-      </div>
-    </Dialog>
-  );
-};
-
 /** Runs a list change and reports any failure in a toast. */
 const attempt = async (work: () => Promise<void>): Promise<void> => {
   try {
@@ -240,7 +167,7 @@ const attempt = async (work: () => Promise<void>): Promise<void> => {
   }
 };
 
-type SetChosen = Dispatch<SetStateAction<Id<"groceryLists"> | null>>;
+type SetChosen = Dispatch<SetStateAction<string | null>>;
 
 /** Everything that creates, finishes, or reuses a list, each with its own feedback. */
 const useListActions = (setChosen: SetChosen) => {
@@ -335,7 +262,12 @@ const sortLists = (lists: Doc<"groceryLists">[]) => ({
   usual: lists.find((item) => item.usual === true) ?? null,
 });
 
-const GroceriesScreen = () => {
+/** `initialListId` comes from `?list=`, so the past lists page can open a list here. */
+const GroceriesScreen = ({
+  initialListId = null,
+}: {
+  initialListId?: string | null;
+}) => {
   const data = useQuery(api.groceries.lists);
   const { me } = usePreferences();
   const newListButton = useRef<HTMLButtonElement>(null);
@@ -344,7 +276,8 @@ const GroceriesScreen = () => {
     null
   );
 
-  const [chosen, setChosen] = useState<Id<"groceryLists"> | null>(null);
+  const [chosen, setChosen] = useState<string | null>(initialListId);
+  const router = useRouter();
 
   const { copyOf, finish, newList, reopen, toggleUsual } =
     useListActions(setChosen);
@@ -403,6 +336,7 @@ const GroceriesScreen = () => {
         <ListPicker
           current={current}
           onChoose={setChosen}
+          onSeeAllPast={() => router.push("/groceries/past")}
           past={past}
           selectedId={list?._id ?? null}
           timeZone={timeZone}
