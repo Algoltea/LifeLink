@@ -632,7 +632,7 @@ const ListEditor = ({
     <div className="@container flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         {/* With large text the name needs the full width, so the buttons wrap below it. */}
-        <div className="flex flex-wrap items-start gap-2">
+        <div className="flex max-w-xl flex-wrap items-start gap-2 xl:max-w-none">
           <h2 className="min-w-[min(100%,12rem)] flex-1 text-2xl leading-8 font-semibold break-words">
             {list.name}
           </h2>

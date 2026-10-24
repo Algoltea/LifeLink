@@ -174,32 +174,35 @@ const ListPicker = ({
       }}
       value={selectedId}
     >
-      <div className="flex max-w-xl flex-col gap-1.5">
-        <Select.Label className="text-muted-foreground text-label font-medium">
-          Switch lists, or open a past trip
-        </Select.Label>
-        <Select.Trigger className="border-control bg-raised hover:border-foreground data-[popup-open]:border-foreground min-h-control flex w-full items-center justify-between gap-3 rounded-md border px-4 py-2 text-left text-lg transition-colors">
-          <Select.Value className="min-w-0 break-words">
-            {() =>
-              selected === null ? (
-                "Choose a list"
-              ) : (
-                <>
-                  {selected.name}
-                  {selected.archivedAt === undefined ? null : (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · finished {formatShortDay(selected.archivedAt, timeZone)}
-                    </span>
-                  )}
-                </>
-              )
-            }
-          </Select.Value>
-          <Select.Icon className="text-muted-foreground shrink-0">
-            <ChevronsUpDownIcon aria-hidden="true" className="size-5" />
-          </Select.Icon>
-        </Select.Trigger>
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="flex max-w-xl min-w-0 flex-col gap-1.5 xl:max-w-none">
+          <Select.Label className="text-muted-foreground text-label font-medium">
+            Switch lists, or open a past trip
+          </Select.Label>
+          <Select.Trigger className="border-control bg-raised hover:border-foreground data-[popup-open]:border-foreground min-h-control flex w-full items-center justify-between gap-3 rounded-md border px-4 py-2 text-left text-lg transition-colors">
+            <Select.Value className="min-w-0 break-words">
+              {() =>
+                selected === null ? (
+                  "Choose a list"
+                ) : (
+                  <>
+                    {selected.name}
+                    {selected.archivedAt === undefined ? null : (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · finished{" "}
+                        {formatShortDay(selected.archivedAt, timeZone)}
+                      </span>
+                    )}
+                  </>
+                )
+              }
+            </Select.Value>
+            <Select.Icon className="text-muted-foreground shrink-0">
+              <ChevronsUpDownIcon aria-hidden="true" className="size-5" />
+            </Select.Icon>
+          </Select.Trigger>
+        </div>
       </div>
       <Select.Portal>
         <Select.Positioner
