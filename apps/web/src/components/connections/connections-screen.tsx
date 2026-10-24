@@ -40,12 +40,16 @@ const CAPABILITY_WORDS: Record<
 const NOT_SET_UP =
   "This service isn't set up for this app yet. Whoever runs LifeLink needs to finish the app setup.";
 
-const StatusPill = ({ row }: { row: ProviderRow }) => {
+const StatusPill = ({
+  demoMode,
+  row,
+}: {
+  demoMode: boolean;
+  row: ProviderRow;
+}) => {
   if (row.status === "active") {
-    return row.mode === "simulated" ? (
-      <Pill tone="simulated">Practice account</Pill>
-    ) : (
-      <Pill tone="positive">Connected</Pill>
+    return (
+      <Pill>{row.mode === "simulated" ? "Practice account" : "Connected"}</Pill>
     );
   }
 
@@ -65,6 +69,20 @@ const StatusPill = ({ row }: { row: ProviderRow }) => {
     return <Pill>No actions available yet</Pill>;
   }
 
+  if (demoMode && row.hasSavedRealConnection) {
+    return <Pill>Real connection saved</Pill>;
+  }
+
+  if (demoMode) {
+    return (
+      <Pill>
+        {row.definition.connectStyle === "oauth"
+          ? "Practice available"
+          : "Practice messages"}
+      </Pill>
+    );
+  }
+
   if (!row.developerReady) {
     return <Pill tone="warning">App setup needed</Pill>;
   }
@@ -80,13 +98,20 @@ const StatusPill = ({ row }: { row: ProviderRow }) => {
 
 const CapabilityList = ({
   capabilities,
+  developerReady,
 }: {
   capabilities: readonly Capability[];
+  developerReady: boolean;
 }) => (
   <ul className="flex max-w-prose flex-col gap-4">
     {capabilities.map((capability) => {
       const words = CAPABILITY_WORDS[capability.status];
       const Icon = words.icon;
+
+      const availability =
+        capability.status === "available" && !developerReady
+          ? "Available after app setup"
+          : words.text;
 
       return (
         <li className="flex gap-3" key={capability.id}>
@@ -102,14 +127,14 @@ const CapabilityList = ({
             <span
               className={
                 capability.status === "available"
-                  ? "text-lg"
-                  : "text-muted-foreground text-lg"
+                  ? "text-body"
+                  : "text-muted-foreground text-body"
               }
             >
               {capability.label}
             </span>
-            <span className="text-muted-foreground text-base">
-              {words.text}
+            <span className="text-muted-foreground text-label">
+              {availability}
               {capability.note ? `. ${capability.note}` : "."}
             </span>
           </div>
@@ -118,6 +143,44 @@ const CapabilityList = ({
     })}
   </ul>
 );
+
+const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
+  const hasAvailableActions = row.definition.capabilities.some(
+    (capability) => capability.status === "available"
+  );
+
+  const practiceBlocked =
+    demoMode &&
+    (row.hasSavedRealConnection ||
+      (row.connectionId !== null && row.mode !== "simulated"));
+
+  const canConnect =
+    hasAvailableActions &&
+    !practiceBlocked &&
+    row.status !== "active" &&
+    (demoMode || row.developerReady);
+
+  const canDisconnect =
+    row.connectionId !== null &&
+    !practiceBlocked &&
+    (!demoMode || hasAvailableActions);
+
+  let connectLabel = `Connect ${row.definition.label}`;
+
+  if (demoMode) {
+    connectLabel = "Use a practice account";
+  } else if (row.status === "error" || row.status === "pending") {
+    connectLabel = "Try connecting again";
+  }
+
+  return {
+    canConnect,
+    canDisconnect,
+    connectLabel,
+    needsSetup: hasAvailableActions && !row.developerReady && !demoMode,
+    practiceBlocked,
+  };
+};
 
 const OAuthActions = ({
   demoMode,
@@ -130,90 +193,119 @@ const OAuthActions = ({
   const disconnect = useAction(api.connections.disconnect);
   const connectPractice = useMutation(api.connections.connectPractice);
   const [busy, setBusy] = useState(false);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const { definition } = row;
+
+  const {
+    canConnect,
+    canDisconnect,
+    connectLabel,
+    needsSetup,
+    practiceBlocked,
+  } = oauthOptionsFor(demoMode, row);
+
+  const visibleError =
+    operationError ?? (row.status === "error" ? row.lastError : null);
+
+  const errorId = `connection-${definition.id}-error`;
 
   const run = async (work: () => Promise<void>): Promise<void> => {
     setBusy(true);
+    setOperationError(null);
 
     try {
       await work();
     } catch (error) {
-      toast.error(errorText(error));
+      setOperationError(errorText(error));
     }
 
     setBusy(false);
   };
 
-  if (row.status === "active" && row.connectionId !== null) {
-    const { connectionId } = row;
-
-    return (
-      <Button
-        aria-busy={busy}
-        className="self-start"
-        disabled={busy}
-        onClick={() =>
-          run(async () => {
-            await disconnect({ connectionId });
-            toast.success(
-              `${definition.label} is disconnected. Nothing will use it from now on.`
-            );
-          })
-        }
-        variant="destructive"
-      >
-        Disconnect {definition.label}
-      </Button>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3">
-      {row.developerReady ? null : (
-        <p className="text-muted-foreground text-base">{NOT_SET_UP}</p>
-      )}
-      <div className="flex flex-wrap gap-3">
-        {row.developerReady ? (
-          <Button
-            aria-busy={busy}
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                const { redirectUrl } = await start({
-                  provider: definition.id,
-                });
+      {canConnect || canDisconnect ? (
+        <div className="flex flex-wrap gap-3">
+          {canConnect ? (
+            <Button
+              aria-busy={busy}
+              aria-describedby={visibleError ? errorId : undefined}
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  if (demoMode) {
+                    await connectPractice({ provider: definition.id });
+                    toast.success(
+                      `A practice ${definition.label} account is connected. It never reaches the real service.`
+                    );
 
-                globalThis.location.assign(redirectUrl);
-              })
-            }
-          >
-            {row.status === "error"
-              ? "Try connecting again"
-              : `Connect ${definition.label}`}
-          </Button>
-        ) : null}
-        {demoMode ? (
-          <Button
-            aria-busy={busy}
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                await connectPractice({ provider: definition.id });
-                toast.success(
-                  `A practice ${definition.label} account is connected. It never reaches the real service.`
-                );
-              })
-            }
-            variant="outline"
-          >
-            Use a practice account
-          </Button>
-        ) : null}
-      </div>
-      {row.developerReady ? (
-        <p className="text-muted-foreground text-base">
-          You’ll sign in on {definition.label}’s own page. LifeLink never sees
-          your password.
+                    return;
+                  }
+
+                  const { redirectUrl } = await start({
+                    provider: definition.id,
+                  });
+
+                  globalThis.location.assign(redirectUrl);
+                })
+              }
+            >
+              {connectLabel}
+            </Button>
+          ) : null}
+          {canDisconnect ? (
+            <Button
+              aria-busy={busy}
+              aria-describedby={visibleError ? errorId : undefined}
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  if (row.connectionId === null) {
+                    return;
+                  }
+
+                  await disconnect({ connectionId: row.connectionId });
+                  toast.success(
+                    row.mode === "simulated"
+                      ? `The practice ${definition.label} account is disconnected.`
+                      : `${definition.label} is disconnected. Nothing will use it from now on.`
+                  );
+                })
+              }
+              variant="destructive"
+            >
+              {row.mode === "simulated"
+                ? "Disconnect practice account"
+                : `Disconnect ${definition.label}`}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {visibleError ? (
+        <p
+          className="text-negative text-body max-w-prose break-words"
+          id={errorId}
+          role="alert"
+        >
+          {visibleError}
+        </p>
+      ) : null}
+      {practiceBlocked ? (
+        <p className="bg-parchment text-body max-w-prose rounded-lg p-5">
+          Your real {definition.label} connection is saved. Practice accounts
+          cannot replace it. Turn off Practice mode in Settings to manage it.
+        </p>
+      ) : null}
+      {needsSetup ? (
+        <p className="text-muted-foreground text-label max-w-prose">
+          {NOT_SET_UP}
+        </p>
+      ) : null}
+      {canConnect ? (
+        <p className="text-muted-foreground text-label">
+          {demoMode
+            ? "This practice account never connects to the real service."
+            : `You’ll sign in on ${definition.label}’s own page. LifeLink never sees your password.`}
         </p>
       ) : null}
     </div>
@@ -227,27 +319,31 @@ const HandleNote = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
-  if (row.definition.id === "imessage" && demoMode) {
-    return (
-      <p className="text-base">
-        Practice mode uses simulated iMessages. No real iMessage setup or
-        contact enrollment is needed, and no messages reach your contacts.
-      </p>
-    );
-  }
-
-  if (!row.developerReady) {
-    return <p className="text-muted-foreground text-base">{NOT_SET_UP}</p>;
-  }
-
   if (row.definition.id === "imessage") {
     return (
-      <div className="bg-surface flex max-w-prose flex-col gap-4 rounded-lg p-5">
-        <p className="text-lg">
+      <div className="bg-parchment flex max-w-prose flex-col gap-4 rounded-lg p-5">
+        {demoMode || row.developerReady ? (
+          <Link
+            className={buttonVariants({ className: "self-start" })}
+            href="/circle"
+          >
+            Open Trusted circle
+          </Link>
+        ) : null}
+        {demoMode ? (
+          <p className="text-body">
+            Practice iMessages are simulated. No messages reach your contacts.
+            When you use real iMessage, follow these steps.
+          </p>
+        ) : null}
+        {!row.developerReady && !demoMode ? (
+          <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>
+        ) : null}
+        <p className="text-body">
           Link each person in Trusted circle to their existing Photon contact.
-          LifeLink does not register new people or use new seat capacity.
+          LifeLink does not register new contacts.
         </p>
-        <ol className="flex list-decimal flex-col gap-3 pl-6 text-lg leading-7">
+        <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
           <li>
             Save the exact phone number or Apple ID email address they send
             iMessages from. A phone number and an email address are separate
@@ -255,27 +351,35 @@ const HandleNote = ({
           </li>
           <li>
             Make sure this exact address is already registered in the Photon
-            dashboard. Choose Link iMessage in Trusted circle, then use the
-            assigned line shown for that contact.
+            dashboard. If it is missing, add the contact there first. Then
+            choose Link iMessage in Trusted circle and use the assigned number
+            shown for that contact.
           </li>
           <li>
-            Ask them to send the first iMessage to their assigned line from that
-            exact saved address. LifeLink can message them after their first
-            message arrives.
+            Ask them to send the first iMessage to their assigned number from
+            that exact saved address. LifeLink can message them after their
+            first message arrives.
           </li>
         </ol>
-        <Link
-          className={buttonVariants({ className: "self-start" })}
-          href="/circle"
-        >
-          Open Trusted circle
-        </Link>
       </div>
     );
   }
 
+  if (demoMode) {
+    return (
+      <p className="text-body">
+        Practice Discord messages are simulated. No messages reach your
+        contacts.
+      </p>
+    );
+  }
+
+  if (!row.developerReady) {
+    return <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>;
+  }
+
   return (
-    <p className="text-base">
+    <p className="text-body">
       Ready. Add each person’s Discord user ID in Trusted circle.
     </p>
   );
@@ -294,6 +398,8 @@ const ProviderRowDetails = ({
     (capability) => capability.status === "available"
   );
 
+  const hasAccount = row.connectionId !== null || row.hasSavedRealConnection;
+
   const summary =
     available.length > 0
       ? available
@@ -304,46 +410,46 @@ const ProviderRowDetails = ({
 
   return (
     <li className="border-rule border-t">
-      <details className="group">
-        <summary className="hover:bg-surface flex min-h-20 cursor-pointer list-none flex-wrap items-center justify-between gap-4 rounded-lg px-4 py-5 [&::-webkit-details-marker]:hidden">
+      <details className="group/provider">
+        <summary className="hover:bg-parchment flex min-h-20 cursor-pointer list-none flex-wrap items-center justify-between gap-4 rounded-lg px-4 py-5 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 flex-1 basis-64 flex-col gap-1">
-            <span className="text-lg font-semibold">{definition.label}</span>
-            <span className="text-muted-foreground max-w-prose text-lg leading-7">
+            <span className="text-body font-semibold">{definition.label}</span>
+            <span className="text-muted-foreground text-body max-w-prose">
               {summary}
             </span>
           </span>
           <span className="flex flex-wrap items-center gap-3">
-            <StatusPill row={row} />
+            <StatusPill demoMode={data.demoMode} row={row} />
             <ChevronDownIcon
               aria-hidden="true"
-              className="text-muted-foreground size-5 shrink-0 transition-transform group-open:rotate-180"
+              className="text-muted-foreground size-5 shrink-0 transition-transform group-open/provider:rotate-180 motion-reduce:transition-none"
             />
           </span>
           <span className="sr-only">Capabilities and setup</span>
         </summary>
         <div className="flex flex-col gap-5 px-4 pb-6">
-          <p className="text-muted-foreground max-w-prose text-lg leading-7">
-            {definition.id === "imessage"
-              ? "Your contacts don't need an invitation, a LifeLink account, or access to the Photon dashboard."
-              : `You need: ${definition.accountRequirement}`}
-          </p>
-          {row.accountLabel && row.status === "active" ? (
-            <p className="text-lg break-words">Account: {row.accountLabel}</p>
-          ) : null}
-          {row.lastError && row.status === "error" ? (
-            <p className="text-negative text-lg" role="alert">
-              {row.lastError}
-            </p>
-          ) : null}
-          <CapabilityList capabilities={definition.capabilities} />
-          {definition.connectStyle === "oauth" ? (
+          {definition.connectStyle === "oauth" &&
+          (available.length > 0 || hasAccount) ? (
             <OAuthActions demoMode={data.demoMode} row={row} />
           ) : null}
           {definition.connectStyle === "handle" ? (
             <HandleNote demoMode={data.demoMode} row={row} />
           ) : null}
-          {definition.connectStyle === "developer_only" ? (
-            <p className="text-muted-foreground max-w-prose text-lg leading-7">
+          <p className="text-muted-foreground text-body max-w-prose">
+            {definition.id === "imessage"
+              ? "Your contacts don't need an invitation, a LifeLink account, or access to the Photon dashboard."
+              : definition.accountRequirement}
+          </p>
+          {row.accountLabel && row.status === "active" ? (
+            <p className="text-body break-words">Account: {row.accountLabel}</p>
+          ) : null}
+          <CapabilityList
+            capabilities={definition.capabilities}
+            developerReady={row.developerReady}
+          />
+          {definition.connectStyle === "developer_only" &&
+          available.length > 0 ? (
+            <p className="text-muted-foreground text-body max-w-prose">
               {row.developerReady
                 ? "This works through the app's own account, so there's nothing for you to sign in to."
                 : NOT_SET_UP}
@@ -372,12 +478,6 @@ const ConnectionsScreen = () => {
         subline="Choose what you want help with. Open a service to see what it can do and how to set it up."
         title="Connections"
       />
-      {data?.demoMode ? (
-        <p className="bg-surface max-w-prose rounded-xl px-5 py-4 text-lg leading-7">
-          Practice mode is on. You can try practice accounts without contacting
-          a real service. “App setup needed” refers to the live connection.
-        </p>
-      ) : null}
       {data === undefined ? (
         <LoadingRows label="Loading connections" rows={5} />
       ) : null}
@@ -398,7 +498,7 @@ const ConnectionsScreen = () => {
                 key={group.title}
               >
                 <h2
-                  className="text-2xl leading-8 font-semibold"
+                  className="text-section font-semibold"
                   id={`group-${group.ids[0]}`}
                 >
                   {group.title}
@@ -416,13 +516,17 @@ const ConnectionsScreen = () => {
             );
           })}
       {data?.providers.some((row) => ADDITIONAL_IDS.has(row.definition.id)) ? (
-        <details className="border-rule rounded-xl border p-5">
-          <summary className="min-h-12 cursor-pointer text-lg font-semibold">
-            Other services and limitations
+        <details className="group/limitations border-rule rounded-xl border p-5">
+          <summary className="hover:bg-parchment text-body flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 rounded-lg font-semibold [&::-webkit-details-marker]:hidden">
+            <span>Other services and limitations</span>
+            <ChevronDownIcon
+              aria-hidden="true"
+              className="text-muted-foreground size-5 shrink-0 transition-transform group-open/limitations:rotate-180 motion-reduce:transition-none"
+            />
           </summary>
-          <p className="text-muted-foreground max-w-prose py-4 text-lg leading-7">
-            These services have no actions available in LifeLink yet. Review
-            their limitations before connecting an account.
+          <p className="text-muted-foreground text-body max-w-prose py-4">
+            These services have no actions available in LifeLink yet. Open a
+            service to read its limitations.
           </p>
           <ul>
             {data.providers
