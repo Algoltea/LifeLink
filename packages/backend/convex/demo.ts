@@ -7,6 +7,7 @@ import { v } from "convex/values";
 
 import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { recordIncoming } from "./lib/incoming";
 import { channelFor, firstName } from "./lib/journey";
 import {
@@ -38,6 +39,127 @@ const nextTuesdayAt1030 = (now: number, timeZone: string): number => {
   );
 };
 
+/** A long practice list, for trying the grocery screens with a big shop. */
+const LONG_LIST_NAME = "Monthly stock-up (practice)";
+
+/** Name, quantity, unit, and estimate in cents. */
+const LONG_LIST_ITEMS: [string, number, string | null, number][] = [
+  ["Bananas", 6, null, 329],
+  ["Gala apples", 3, "lb", 447],
+  ["Navel oranges", 4, null, 396],
+  ["Strawberries", 1, "container", 399],
+  ["Blueberries", 1, "pint", 449],
+  ["Red grapes", 2, "lb", 398],
+  ["Lemons", 3, null, 207],
+  ["Avocados", 2, null, 298],
+  ["Baby spinach", 1, "bag", 349],
+  ["Romaine lettuce", 1, "head", 229],
+  ["Carrots", 2, "lb", 198],
+  ["Celery", 1, "bunch", 199],
+  ["Broccoli crowns", 1, "lb", 249],
+  ["Yellow onions", 3, "lb", 349],
+  ["Garlic", 1, "head", 79],
+  ["Russet potatoes", 5, "lb", 499],
+  ["Sweet potatoes", 2, "lb", 298],
+  ["Cherry tomatoes", 1, "container", 349],
+  ["Cucumbers", 2, null, 198],
+  ["Green beans", 1, "lb", 299],
+  ["Mushrooms", 1, "container", 279],
+  ["Red bell peppers", 2, null, 358],
+  ["Zucchini", 2, null, 238],
+  ["Fresh parsley", 1, "bunch", 129],
+  ["Whole milk", 1, "gallon", 449],
+  ["Large eggs", 1, "dozen", 399],
+  ["Greek yogurt", 4, "cup", 549],
+  ["Cheddar cheese", 8, "oz", 399],
+  ["Butter", 4, "stick", 529],
+  ["Cottage cheese", 1, "tub", 379],
+  ["Sour cream", 1, "tub", 229],
+  ["Shredded mozzarella", 8, "oz", 349],
+  ["Half and half", 1, "pint", 249],
+  ["Orange juice", 1, "carton", 429],
+  ["Chicken breasts", 2, "lb", 798],
+  ["Ground turkey", 1, "lb", 599],
+  ["Salmon fillets", 1, "lb", 1199],
+  ["Pork chops", 2, "lb", 798],
+  ["Sliced turkey", 8, "oz", 549],
+  ["Bacon", 1, "pack", 649],
+  ["Canned tuna", 4, "can", 476],
+  ["Whole wheat bread", 1, "loaf", 399],
+  ["English muffins", 1, "pack", 349],
+  ["Bagels", 1, "bag", 399],
+  ["Dinner rolls", 1, "bag", 329],
+  ["Rolled oats", 1, "container", 449],
+  ["Bran flakes cereal", 1, "box", 429],
+  ["Brown rice", 2, "lb", 329],
+  ["Spaghetti", 1, "box", 179],
+  ["Marinara sauce", 1, "jar", 349],
+  ["Low-sodium chicken soup", 3, "can", 599],
+  ["Low-sodium chicken broth", 2, "carton", 498],
+  ["Black beans", 2, "can", 238],
+  ["Diced tomatoes", 2, "can", 258],
+  ["Peanut butter", 1, "jar", 399],
+  ["Strawberry jam", 1, "jar", 349],
+  ["Honey", 1, "bottle", 599],
+  ["Olive oil", 1, "bottle", 899],
+  ["All-purpose flour", 5, "lb", 399],
+  ["Sugar", 4, "lb", 379],
+  ["Coffee", 1, "bag", 899],
+  ["Black tea", 1, "box", 399],
+  ["Saltine crackers", 1, "box", 349],
+  ["Raisins", 1, "box", 299],
+  ["Unsalted almonds", 1, "bag", 699],
+  ["Applesauce cups", 1, "pack", 349],
+  ["Frozen peas", 1, "bag", 199],
+  ["Frozen mixed vegetables", 2, "bag", 398],
+  ["Frozen blueberries", 1, "bag", 449],
+  ["Vanilla ice cream", 1, "carton", 549],
+  ["Frozen fish sticks", 1, "box", 599],
+  ["Paper towels", 1, "pack", 999],
+  ["Toilet paper", 1, "pack", 1299],
+  ["Dish soap", 1, "bottle", 349],
+  ["Laundry detergent", 1, "bottle", 1199],
+  ["Trash bags", 1, "box", 899],
+  ["Aluminum foil", 1, "roll", 549],
+  ["Hand soap", 1, "bottle", 299],
+  ["Toothpaste", 1, "tube", 399],
+  ["Tissues", 2, "box", 398],
+  ["Vitamin D", 1, "bottle", 899],
+];
+
+/**
+ * Added on its own so accounts that already have sample data also get it the
+ * next time practice mode is turned on.
+ */
+const addLongList = async (ctx: MutationCtx, ownerId: Id<"profiles">) => {
+  const existing = await ctx.db
+    .query("groceryLists")
+    .withIndex("by_owner", (index) => index.eq("ownerId", ownerId))
+    .filter((row) => row.eq(row.field("name"), LONG_LIST_NAME))
+    .first();
+
+  if (existing !== null) {
+    return;
+  }
+
+  await ctx.db.insert("groceryLists", {
+    budgetCents: 40_000,
+    items: LONG_LIST_ITEMS.map(([name, quantity, unit, estimatedCents]) => ({
+      checked: false,
+      estimatedCents,
+      id: crypto.randomUUID(),
+      name,
+      quantity,
+      unit,
+    })),
+    lastHandoff: null,
+    name: LONG_LIST_NAME,
+    ownerId,
+    preferences: ["Store brand is fine", "Low sodium where possible"],
+    updatedAt: Date.now(),
+  });
+};
+
 export const seed = internalMutation({
   args: { ownerId: v.id("profiles") },
   handler: async (ctx, args) => {
@@ -54,6 +176,8 @@ export const seed = internalMutation({
       .first();
 
     if (existing !== null) {
+      await addLongList(ctx, owner._id);
+
       return;
     }
 
@@ -237,6 +361,8 @@ export const seed = internalMutation({
       preferences: ["Low sodium", "Store brand is fine"],
       updatedAt: now,
     });
+
+    await addLongList(ctx, owner._id);
 
     await ctx.db.insert("spendingLimits", {
       category: "groceries",

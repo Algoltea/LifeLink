@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { api } from "../convex/_generated/api";
+import { api, internal } from "../convex/_generated/api";
 import { connectFamily, newBackend, signUp } from "./harness";
 
 const setupList = async () => {
@@ -436,5 +436,26 @@ describe("undoing removals and reusing lists", () => {
     await expect(
       backend.run(async (ctx) => await ctx.db.get(listId))
     ).resolves.toMatchObject({ items: [{ checked: true }, {}, {}] });
+  });
+
+  it("gives practice accounts a long list, once", async () => {
+    const backend = newBackend();
+
+    const { id, person } = await signUp(backend, {
+      demo: false,
+      name: "Ruth",
+      role: "owner",
+      subject: "grocery-practice",
+    });
+
+    await backend.mutation(internal.demo.seed, { ownerId: id });
+    await backend.mutation(internal.demo.seed, { ownerId: id });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+    const long = lists.filter((list) => list.name.includes("practice"));
+
+    expect(lists[0]?.name).toBe("Weekly groceries");
+    expect(long).toHaveLength(1);
+    expect(long[0]?.items.length).toBeGreaterThanOrEqual(60);
   });
 });
