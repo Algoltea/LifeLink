@@ -20,6 +20,7 @@ import { dateKeyOf } from "./time";
 import { sampleForecast } from "./weather";
 
 const NEWS_FOR_CHAT = 5;
+const MINUTE_MS = 60_000;
 
 const weekdayOf = (date: string): string =>
   new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" }).format(
@@ -31,8 +32,11 @@ const both = (celsius: number) => ({
   fahrenheit: toUnit(celsius, "fahrenheit"),
 });
 
+const minutesSince = (fetchedAt: number): number =>
+  Math.max(0, Math.round((Date.now() - fetchedAt) / MINUTE_MS));
+
 /** Plain values the model can read aloud, in both units. */
-const forChat = (forecast: Forecast, practice: boolean) => ({
+const forChat = (forecast: Forecast, practice: boolean, fetchedAt: number) => ({
   days: forecast.days.map((day) => ({
     advice: weatherAdvice(day),
     chanceOfRainOrSnowPercent: day.precipitationChance,
@@ -49,6 +53,7 @@ const forChat = (forecast: Forecast, practice: boolean) => ({
   place: forecast.place,
   practice,
   status: "ok" as const,
+  updatedMinutesAgo: minutesSince(fetchedAt),
 });
 
 const weatherTool = (ownerId: Id<"profiles">) =>
@@ -72,16 +77,17 @@ const weatherTool = (ownerId: Id<"profiles">) =>
         return whose.demoMode
           ? forChat(
               sampleForecast(dateKeyOf(Date.now(), whose.location.timeZone)),
-              true
+              true,
+              Date.now()
             )
           : { status: "no_location" as const };
       }
 
-      const forecast = await ensureForecast(toolCtx, whose);
+      const found = await ensureForecast(toolCtx, whose);
 
-      return forecast === null
+      return found === null
         ? { status: "unavailable" as const }
-        : forChat(forecast, false);
+        : forChat(found.value, false, found.fetchedAt);
     },
     inputSchema: z.object({}),
   });
@@ -91,15 +97,16 @@ const newsTool = (ownerId: Id<"profiles">) =>
     description:
       'Get current news headlines. Use kind "good" for gentle, uplifting stories (the default) and "top" only when the person asks for the main or serious news. Read-only.',
     execute: async (toolCtx, input) => {
-      const headlines = await ensureHeadlines(toolCtx, input.kind, ownerId);
+      const found = await ensureHeadlines(toolCtx, input.kind, ownerId);
 
-      return headlines.length === 0
+      return found === null
         ? { status: "unavailable" as const }
         : {
-            headlines: headlines
+            headlines: found.value
               .slice(0, NEWS_FOR_CHAT)
               .map(({ source, title }) => ({ source, title })),
             status: "ok" as const,
+            updatedMinutesAgo: minutesSince(found.fetchedAt),
           };
     },
     inputSchema: z.object({ kind: z.enum(["good", "top"]) }),

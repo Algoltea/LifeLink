@@ -16,7 +16,8 @@ import {
 } from "./_generated/server";
 import type { ActionCtx, QueryCtx } from "./_generated/server";
 import { request } from "./integrations/http";
-import { onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
+import { dated, onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
+import type { Dated } from "./lib/claims";
 import { interleave, parseFeed } from "./lib/feeds";
 import { requireProfile } from "./lib/session";
 import schema from "./schema";
@@ -124,7 +125,7 @@ const ensureHeadlines = async (
   ctx: Pick<ActionCtx, "runMutation" | "runQuery">,
   kind: NewsKind,
   profileId: Id<"profiles">
-): Promise<Headline[]> => {
+): Promise<Dated<Headline[]> | null> => {
   const existing: Doc<"newsCache"> | null = await ctx.runQuery(
     internal.news.cached,
     { kind }
@@ -132,8 +133,13 @@ const ensureHeadlines = async (
 
   const now = Date.now();
 
+  const kept = dated(
+    existing && existing.headlines.length > 0 ? existing.headlines : null,
+    existing?.fetchedAt ?? now
+  );
+
   if (existing !== null && now - existing.fetchedAt < NEWS_REFRESH_MS) {
-    return existing.headlines;
+    return kept;
   }
 
   const claimed: boolean = await ctx.runMutation(internal.news.claim, {
@@ -142,14 +148,14 @@ const ensureHeadlines = async (
   });
 
   if (!claimed) {
-    return existing?.headlines ?? [];
+    return kept;
   }
 
   const lists = await Promise.all(NEWS_SOURCES[kind].map(readSource));
   const fresh = interleave(lists, STORED);
 
   if (fresh.length === 0) {
-    return existing?.headlines ?? [];
+    return kept;
   }
 
   await ctx.runMutation(internal.news.store, {
@@ -158,7 +164,7 @@ const ensureHeadlines = async (
     kind,
   });
 
-  return fresh;
+  return dated(fresh, now);
 };
 
 /** Called by Today when its headlines are missing or old. */
@@ -172,7 +178,7 @@ export const refresh = action({
 
     const fresh = await ensureHeadlines(ctx, args.kind, profileId);
 
-    return { available: fresh.length > 0 };
+    return { available: fresh !== null };
   },
 });
 

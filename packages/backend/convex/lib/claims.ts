@@ -79,6 +79,17 @@ const reserveFetch = async (
   return true;
 };
 
-export { onceUntilRetry, personClaim, reserveFetch };
+/** Cached outside data with the time it was fetched, so readers can say how old it is. */
+interface Dated<Value> {
+  fetchedAt: number;
+  value: Value;
+}
 
-export type { Claim };
+const dated = <Value>(
+  value: Value | null,
+  fetchedAt: number
+): Dated<Value> | null => (value === null ? null : { fetchedAt, value });
+
+export { dated, onceUntilRetry, personClaim, reserveFetch };
+
+export type { Claim, Dated };

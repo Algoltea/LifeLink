@@ -538,3 +538,25 @@ describe("confirming a postal code during setup", () => {
     expect(blank).toBeNull();
   });
 });
+
+describe("very long titles in CDATA", () => {
+  it("unwraps CDATA before clipping, so no marker shows", () => {
+    if (!SMITHSONIAN) {
+      throw new Error("Expected a Smithsonian source.");
+    }
+
+    const [headline] = parseFeed(
+      rss([
+        item(
+          "B".repeat(5000),
+          "https://example.org/c",
+          "Sat, 24 Oct 2026 08:00:00 GMT"
+        ),
+      ]),
+      SMITHSONIAN
+    );
+
+    expect(headline?.title).toMatch(/^B{10}/u);
+    expect(headline?.title).not.toContain("CDATA");
+  });
+});

@@ -7,7 +7,6 @@ import type { Headline, NewsSource } from "@lifelink/contracts/news";
 
 const ITEM_OPEN = /<item\b/u;
 const ITEM_CLOSE = "</item>";
-const CDATA = /^<!\[CDATA\[(?<text>[\s\S]*?)\]\]>$/u;
 const TAGS = /<[^>]+>/gu;
 const ENTITY = /&(?<name>#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/giu;
 const SPACE = /\s+/gu;
@@ -17,6 +16,8 @@ const MAX_ITEMS = 100;
 const MAX_ITEM_CHARS = 50_000;
 const MAX_TITLE_CHARS = 300;
 const MAX_URL_CHARS = 2000;
+
+/** Raw fields are capped before tags are stripped, so cleaning stays cheap. */
 const MAX_RAW_FIELD_CHARS = 4000;
 const MAX_CODE_POINT = 0x10_ff_ff;
 const SURROGATES = { first: 0xd8_00, last: 0xdf_ff } as const;
@@ -73,8 +74,19 @@ const itemsOf = (xml: string): string[] =>
         : [chunk.slice(start, end)];
     });
 
+const CDATA_OPEN = "<![CDATA[";
+const CDATA_CLOSE = "]]>";
+
+/** CDATA is unwrapped before the cap, so a long title cannot keep its opening marker. */
 const cleanText = (raw: string): string => {
-  const inner = CDATA.exec(raw.trim())?.groups?.text ?? raw;
+  const trimmed = raw.trim();
+
+  const wrapped =
+    trimmed.startsWith(CDATA_OPEN) && trimmed.endsWith(CDATA_CLOSE);
+
+  const inner = (
+    wrapped ? trimmed.slice(CDATA_OPEN.length, -CDATA_CLOSE.length) : trimmed
+  ).slice(0, MAX_RAW_FIELD_CHARS);
 
   return decodeEntities(inner.replaceAll(TAGS, " "))
     .replaceAll(SPACE, " ")
@@ -86,10 +98,7 @@ const tagValues = (item: string, tag: string): string[] =>
     ...item.matchAll(
       new RegExp(`<${tag}\\b[^>]*>(?<value>[\\s\\S]*?)</${tag}>`, "gu")
     ),
-  ].map((match) =>
-    // Raw fields are capped before cleaning so tag stripping stays cheap.
-    cleanText((match.groups?.value ?? "").slice(0, MAX_RAW_FIELD_CHARS))
-  );
+  ].map((match) => cleanText(match.groups?.value ?? ""));
 
 /** Headlines from one feed, newest first, without items the source asks to skip. */
 const parseFeed = (xml: string, source: NewsSource): Headline[] => {

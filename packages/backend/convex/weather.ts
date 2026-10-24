@@ -16,7 +16,8 @@ import {
   query,
 } from "./_generated/server";
 import type { ActionCtx, QueryCtx } from "./_generated/server";
-import { onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
+import { dated, onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
+import type { Dated } from "./lib/claims";
 import { requireProfile } from "./lib/session";
 import {
   findPlace,
@@ -165,13 +166,13 @@ export const claim = internalMutation({
 
 /**
  * The forecast for a saved location, fetched when the cached copy is old.
- * A failed fetch keeps the last good forecast instead of erasing it.
- * Shared with the assistant's weather tool.
+ * A failed fetch keeps the last good forecast instead of erasing it, so
+ * the answer carries when it was fetched. Shared with the assistant's tool.
  */
 const ensureForecast = async (
   ctx: Pick<ActionCtx, "runMutation" | "runQuery">,
   { location, profileId }: Whose
-): Promise<Forecast | null> => {
+): Promise<Dated<Forecast> | null> => {
   const key = locationKey(location);
 
   if (key === null) {
@@ -184,6 +185,7 @@ const ensureForecast = async (
   );
 
   const now = Date.now();
+  const kept = dated(existing?.forecast ?? null, existing?.fetchedAt ?? now);
 
   const age =
     existing === null ? Number.POSITIVE_INFINITY : now - existing.fetchedAt;
@@ -192,7 +194,7 @@ const ensureForecast = async (
     existing?.forecast === null ? NOT_FOUND_RETRY_MS : WEATHER_REFRESH_MS;
 
   if (existing !== null && age < freshFor) {
-    return existing.forecast;
+    return kept;
   }
 
   const claimed: boolean = await ctx.runMutation(internal.weather.claim, {
@@ -201,7 +203,7 @@ const ensureForecast = async (
   });
 
   if (!claimed) {
-    return existing?.forecast ?? null;
+    return kept;
   }
 
   try {
@@ -214,9 +216,9 @@ const ensureForecast = async (
       key,
     });
 
-    return fresh;
+    return dated(fresh, now);
   } catch {
-    return existing?.forecast ?? null;
+    return kept;
   }
 };
 
