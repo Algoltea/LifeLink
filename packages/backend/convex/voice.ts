@@ -1,0 +1,119 @@
+import { ConvexError, v } from "convex/values";
+
+import { internal } from "./_generated/api";
+import { action, internalQuery } from "./_generated/server";
+import { createLiveToken } from "./integrations/live";
+import {
+  MAX_SPEECH_CHARACTERS,
+  speechConfigurationError,
+  synthesizeSpeech as requestSpeech,
+} from "./integrations/tts";
+import type { SpeechAudio } from "./integrations/tts";
+
+export const nameForVoice = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (identity === null) {
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_auth_user", (index) =>
+        index.eq("authUserId", identity.subject)
+      )
+      .unique();
+
+    return profile?.role === "owner" ? profile.preferredName : null;
+  },
+});
+
+/**
+ * Mint a one-use Gemini Live token locked to the configured model, system
+ * instruction, and the submit_request tool. The long-lived key stays here.
+ */
+export const createLiveSession = action({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ expiresAt: number; model: string; token: string }> => {
+    const preferredName = await ctx.runQuery(internal.voice.nameForVoice, {});
+
+    if (preferredName === null) {
+      throw new ConvexError({
+        code: "not_signed_in",
+        message: "Please sign in again.",
+      });
+    }
+
+    const result = await createLiveToken(preferredName);
+
+    if (!result.ok) {
+      throw new ConvexError({
+        code: "voice_unavailable",
+        message: result.error,
+      });
+    }
+
+    return {
+      expiresAt: result.expiresAt,
+      model: result.model,
+      token: result.token,
+    };
+  },
+});
+
+/** Read text supplied by the caller; this endpoint never retrieves app records. */
+export const synthesizeSpeech = action({
+  args: { text: v.string() },
+  handler: async (ctx, args): Promise<SpeechAudio> => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (identity === null) {
+      throw new ConvexError({
+        code: "not_signed_in",
+        message: "Please sign in again to use read-aloud.",
+      });
+    }
+
+    const text = args.text.trim();
+
+    if (text.length === 0 || text.length > MAX_SPEECH_CHARACTERS) {
+      throw new ConvexError({
+        code: "speech_text_invalid",
+        message: "Please choose a shorter section to read aloud.",
+      });
+    }
+
+    const configurationError = speechConfigurationError();
+
+    if (configurationError !== null) {
+      throw new ConvexError({
+        code: "speech_unavailable",
+        message: configurationError,
+      });
+    }
+
+    // The limiter also requires the caller's own profile, including family members.
+    await ctx.runMutation(internal.speechlimits.consume, {
+      characters: text.length,
+    });
+    const result = await requestSpeech(text);
+
+    if (!result.ok) {
+      throw new ConvexError({
+        code: "speech_unavailable",
+        message: result.error,
+      });
+    }
+
+    return result.value;
+  },
+  returns: v.object({
+    audio: v.bytes(),
+    contentType: v.literal("audio/mpeg"),
+    model: v.string(),
+  }),
+});

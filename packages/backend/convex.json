@@ -1,0 +1,11 @@
+{
+  "node": {
+    "nodeVersion": "24",
+    "externalPackages": [
+      "@photon-ai/advanced-imessage",
+      "@grpc/grpc-js",
+      "nice-grpc",
+      "nice-grpc-common"
+    ]
+  }
+}
