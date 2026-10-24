@@ -485,6 +485,7 @@ export const saveSummary = internalMutation({
       await ctx.db.patch(args.emailId, {
         actionNeeded: summary.actionNeeded,
         summary: summary.summary,
+        summaryFlagged: email.summaryFlagged === true || summary.suspicious,
         suspicious: email.suspicious === true || summary.suspicious,
       });
     }

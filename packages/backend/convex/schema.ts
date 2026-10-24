@@ -312,6 +312,8 @@ export default defineSchema({
     selectedForReview: v.boolean(),
     subject: v.string(),
     summary: v.union(v.string(), v.null()),
+    // A consented cloud summary flagged this email; kept apart from local checks so a rules update can clear only its own flag.
+    summaryFlagged: v.optional(v.boolean()),
     suspicious: v.union(v.boolean(), v.null()),
   })
     .index("by_owner_received", ["ownerId", "receivedAt"])
@@ -577,8 +579,19 @@ export default defineSchema({
     signals: v.array(
       v.object({
         detail: v.string(),
+        // verified: found word for word in the checked text. image_unverified: read from a screenshot.
+        evidence: v.optional(
+          v.union(v.literal("verified"), v.literal("image_unverified"))
+        ),
         label: v.string(),
         quote: v.union(v.string(), v.null()),
+        stance: v.optional(
+          v.union(
+            v.literal("requests"),
+            v.literal("warns_against"),
+            v.literal("mentions")
+          )
+        ),
       })
     ),
     status: v.union(
@@ -586,6 +599,8 @@ export default defineSchema({
       v.literal("done"),
       v.literal("failed")
     ),
+    // Quotes the model gave that were not in the text, so they were removed.
+    unverifiedQuoteCount: v.optional(v.number()),
     verdict: v.union(
       v.literal("likely_scam"),
       v.literal("suspicious"),
@@ -593,7 +608,9 @@ export default defineSchema({
       v.literal("unsure")
     ),
     verificationTaskId: v.union(v.id("tasks"), v.null()),
-  }).index("by_owner_created", ["ownerId", "createdAt"]),
+  })
+    .index("by_owner_created", ["ownerId", "createdAt"])
+    .index("by_email", ["emailId"]),
 
   sharingGrants: defineTable({
     acceptedAt: v.union(v.number(), v.null()),

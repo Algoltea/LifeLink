@@ -7,6 +7,8 @@
  */
 import { z } from "zod";
 
+import { signalStances } from "./evidence";
+
 const nullableString = z.string().nullable();
 
 const assistantIntents = [
@@ -109,7 +111,14 @@ const scamReviewSchema = z.strictObject({
     z.strictObject({
       detail: z.string(),
       label: z.string(),
-      quote: nullableString,
+      quote: nullableString.describe(
+        "The exact words from the message, copied character for character, or null."
+      ),
+      stance: z
+        .enum(signalStances)
+        .describe(
+          "requests: the message asks the reader to do this. warns_against: the message tells the reader not to do this. mentions: anything else."
+        ),
     })
   ),
   verdict: z.enum(scamVerdicts),

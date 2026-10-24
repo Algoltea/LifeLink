@@ -2,7 +2,17 @@
  * Scam review for suspicious texts, emails, and screenshots. The model explains
  * in plain language; the app never clicks links or contacts the sender, and
  * asking a trusted person to double-check is an ordinary reviewed message.
+ *
+ * Model output is checked, not trusted: a quote is kept only if those exact
+ * words are in the checked text, words that warn *against* an action never
+ * count as a request for it, and the verdict never falls below the local check.
  */
+import {
+  locateQuote,
+  proseQuotesVerified,
+  stanceOf,
+} from "@lifelink/contracts/evidence";
+import type { SignalStance } from "@lifelink/contracts/evidence";
 import { scamReviewSchema } from "@lifelink/contracts/model-output";
 import type { ScamReviewResult } from "@lifelink/contracts/model-output";
 import { ConvexError, v } from "convex/values";
@@ -29,7 +39,29 @@ import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_TEXT = 8000;
 const MAX_SCREENSHOT_BYTES = 6 * 1024 * 1024;
-export const LOCAL_SCAN_VERSION = 1;
+const MAX_SIGNALS = 8;
+const MAX_STEPS = 5;
+export const LOCAL_SCAN_VERSION = 2;
+
+type Verdict = Doc<"scamReviews">["verdict"];
+
+type StoredSignal = Doc<"scamReviews">["signals"][number];
+
+const SEVERITY: Record<Verdict, number> = {
+  likely_safe: 0,
+  likely_scam: 2,
+  suspicious: 1,
+  unsure: 0,
+};
+
+const isFlagged = (verdict: Verdict): boolean => SEVERITY[verdict] > 0;
+
+/** "No clear warning signs" is never shown as safe. */
+const neverSafe = (verdict: Verdict): Verdict =>
+  verdict === "likely_safe" ? "unsure" : verdict;
+
+const WARNING_DETAIL =
+  "This message tells you not to do this. Real companies say this, and scammers copy it too, so check any other requests in it.";
 
 // ── Rules-based check (always available; labelled when it is the only check) ──
 
@@ -37,6 +69,8 @@ interface Rule {
   detail: string;
   label: string;
   pattern: RegExp;
+  /** How a warning *against* this is labelled. Rules without one ignore negation. */
+  warningLabel: string | null;
   weight: number;
 }
 
@@ -46,7 +80,8 @@ const RULES: Rule[] = [
       "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.",
     label: "Pressure to act fast",
     pattern:
-      /\b(?:urgent|immediately|within 24 hours|today only|suspended|final notice|act now|expires? (?:today|soon))\b/iu,
+      /\b(?:urgent|immediately|within 24 hours|today only|suspended|final notice|act now|expires? (?:today|soon))\b/giu,
+    warningLabel: null,
     weight: 2,
   },
   {
@@ -54,7 +89,8 @@ const RULES: Rule[] = [
       "This mentions sensitive details. Do not share passwords, codes, or account details in response to an unexpected message.",
     label: "Mentions private details",
     pattern:
-      /\b(?:password|bank (?:details|account)|account number|social security|ssn|medicare number|verification code|one[- ]time code|pin)\b/iu,
+      /\b(?:password|bank (?:details|account)|account number|social security|ssn|medicare number|verification code|one[- ]time code|pin)\b/giu,
+    warningLabel: "Warns against sharing private details",
     weight: 3,
   },
   {
@@ -62,48 +98,82 @@ const RULES: Rule[] = [
       "Requests for gift cards, transfers, or cryptocurrency deserve a separate check. These payments can be difficult to recover.",
     label: "Mentions a payment method",
     pattern:
-      /\b(?:gift cards?|wire (?:transfer|money)|bitcoin|crypto|zelle|venmo|cash app|western union)\b/iu,
+      /\b(?:gift cards?|wire (?:transfer|money)|bitcoin|crypto|zelle|venmo|cash app|western union)\b/giu,
+    warningLabel: "Warns against unusual payments",
     weight: 3,
   },
   {
     detail:
       "Links in unexpected messages can lead to fake sign-in pages. Go to the website yourself instead.",
     label: "Contains a link",
-    pattern: /\b(?:https?:\/\/|www\.)\S+/iu,
+    pattern: /\b(?:https?:\/\/|www\.)\S+/giu,
+    warningLabel: null,
     weight: 1,
   },
   {
     detail: "Threats of arrest or legal trouble are a common scare tactic.",
     label: "Threats",
-    pattern: /\b(?:arrest|warrant|lawsuit|police|legal action|irs)\b/iu,
+    pattern: /\b(?:arrest|warrant|lawsuit|police|legal action|irs)\b/giu,
+    warningLabel: "Warns against threats",
     weight: 2,
   },
   {
     detail: "Surprise winnings that need a fee first are almost always scams.",
     label: "Prize or windfall",
     pattern:
-      /\b(?:you(?:'ve| have)? won|winner|prize|lottery|inheritance|claim your)\b/iu,
+      /\b(?:you(?:'ve| have)? won|winner|prize|lottery|inheritance|claim your)\b/giu,
+    warningLabel: null,
     weight: 2,
   },
 ];
 
+interface RuleHit {
+  detail: string;
+  label: string;
+  quote: string;
+  stance: SignalStance;
+  weight: number;
+}
+
+/** The first use of a rule's words that is not a warning against them; otherwise the warning itself. */
+const ruleHit = (rule: Rule, text: string): RuleHit | null => {
+  let warning: RuleHit | null = null;
+
+  for (const match of text.matchAll(rule.pattern)) {
+    const stance =
+      rule.warningLabel === null ? "mentions" : stanceOf(text, match.index);
+
+    if (stance !== "warns_against") {
+      return {
+        detail: rule.detail,
+        label: rule.label,
+        quote: match[0],
+        stance,
+        weight: rule.weight,
+      };
+    }
+
+    warning ??= {
+      detail: WARNING_DETAIL,
+      label: rule.warningLabel ?? rule.label,
+      quote: match[0],
+      stance,
+      weight: 0,
+    };
+  }
+
+  return warning;
+};
+
 const rulesReview = (text: string): ScamReviewResult => {
   const hits = RULES.flatMap((rule) => {
-    const match = rule.pattern.exec(text);
+    const hit = ruleHit(rule, text);
 
-    return match === null
-      ? []
-      : [
-          {
-            detail: rule.detail,
-            label: rule.label,
-            quote: match[0],
-            weight: rule.weight,
-          },
-        ];
+    return hit === null ? [] : [hit];
   });
 
-  const score = hits.reduce((total, hit) => total + hit.weight, 0);
+  const warnings = hits.filter((hit) => hit.weight > 0);
+  const score = warnings.reduce((total, hit) => total + hit.weight, 0);
   let verdict: ScamReviewResult["verdict"] = "unsure";
 
   if (score >= 5) {
@@ -112,13 +182,17 @@ const rulesReview = (text: string): ScamReviewResult => {
     verdict = "suspicious";
   }
 
-  const explanation =
-    hits.length === 0
-      ? "This local check found no common warning signs in the available text. It cannot verify the sender or prove a message is genuine. Check unexpected requests with someone you trust."
-      : `This message shows ${hits.length} common warning ${hits.length === 1 ? "sign" : "signs"}: ${hits.map((hit) => hit.label.toLowerCase()).join(", ")}.`;
+  let explanation = `This message shows ${warnings.length} common warning ${warnings.length === 1 ? "sign" : "signs"}: ${warnings.map((hit) => hit.label.toLowerCase()).join(", ")}.`;
+
+  if (warnings.length === 0) {
+    explanation =
+      hits.length === 0
+        ? "This local check found no common warning signs in the available text. It cannot verify the sender or prove a message is genuine. Check unexpected requests with someone you trust."
+        : "This local check found no common warning signs, only advice not to share details or pay in unusual ways. That advice does not prove the message is genuine. Check unexpected requests with someone you trust.";
+  }
 
   return {
-    askTrustedContact: verdict !== "unsure" || hits.length > 0,
+    askTrustedContact: verdict !== "unsure" || warnings.length > 0,
     confidence: score >= 5 ? "medium" : "low",
     explanation,
     nextSteps: [
@@ -130,7 +204,144 @@ const rulesReview = (text: string): ScamReviewResult => {
       detail: hit.detail,
       label: hit.label,
       quote: hit.quote,
+      stance: hit.stance,
     })),
+    verdict,
+  };
+};
+
+/** Local rule quotes are cut from the checked text, so they are verified by construction. */
+const localSignals = (result: ScamReviewResult): StoredSignal[] =>
+  result.signals.map((signal) => ({
+    detail: signal.detail,
+    evidence: signal.quote === null ? undefined : "verified",
+    label: signal.label,
+    quote: signal.quote,
+    stance: signal.stance,
+  }));
+
+interface CheckedReview {
+  askTrustedContact: boolean;
+  confidence: ScamReviewResult["confidence"];
+  explanation: string;
+  nextSteps: string[];
+  signals: StoredSignal[];
+  unverifiedQuoteCount: number;
+  verdict: Verdict;
+}
+
+const CONFIDENCE_RANK = { high: 2, low: 0, medium: 1 } as const;
+
+const capConfidence = (
+  confidence: ScamReviewResult["confidence"],
+  cap: ScamReviewResult["confidence"]
+): ScamReviewResult["confidence"] =>
+  CONFIDENCE_RANK[confidence] > CONFIDENCE_RANK[cap] ? cap : confidence;
+
+const UNVERIFIED_EXPLANATION =
+  "The assistant's explanation quoted words that are not in the message, so it is not shown. Use what stood out below, and check with someone you trust before you act.";
+
+/**
+ * Hold a model's review to the text it was given. Quotes that are not in the
+ * text are removed with their signal; a warning *against* an action is only
+ * believed when the model and the local reading agree; and the verdict never
+ * falls below the local rules for the same text. Screenshots cannot be checked
+ * word for word, so their quotes are kept and labelled as unverified.
+ */
+const checkAgainstText = (
+  result: ScamReviewResult,
+  review: Pick<Doc<"scamReviews">, "inputKind" | "inputText">
+): CheckedReview => {
+  const source = review.inputText ?? "";
+  const fromImage = review.inputKind === "screenshot";
+  const local = rulesReview(source);
+  let unverifiedQuoteCount = 0;
+
+  const modelSignals = result.signals.flatMap((signal): StoredSignal[] => {
+    const cautious: SignalStance =
+      signal.stance === "warns_against" ? "mentions" : signal.stance;
+
+    if (signal.quote === null || signal.quote.trim().length === 0) {
+      return [
+        {
+          detail: signal.detail,
+          label: signal.label,
+          quote: null,
+          stance: cautious,
+        },
+      ];
+    }
+
+    const match = locateQuote(source, signal.quote);
+
+    if (match.found) {
+      const bothSayWarning =
+        signal.stance === "warns_against" &&
+        stanceOf(source, match.start) === "warns_against";
+
+      return [
+        {
+          detail: signal.detail,
+          evidence: "verified",
+          label: signal.label,
+          quote: match.text,
+          stance: bothSayWarning ? "warns_against" : cautious,
+        },
+      ];
+    }
+
+    if (fromImage) {
+      return [
+        {
+          detail: signal.detail,
+          evidence: "image_unverified",
+          label: signal.label,
+          quote: signal.quote.trim(),
+          stance: cautious,
+        },
+      ];
+    }
+
+    unverifiedQuoteCount += 1;
+
+    return [];
+  });
+
+  let { explanation } = result;
+
+  if (!fromImage && !proseQuotesVerified(source, explanation)) {
+    unverifiedQuoteCount += 1;
+    explanation = UNVERIFIED_EXPLANATION;
+  }
+
+  const modelVerdict = neverSafe(result.verdict);
+  const raised = SEVERITY[local.verdict] > SEVERITY[modelVerdict];
+  const verdict = raised ? local.verdict : modelVerdict;
+  const quoted = new Set(modelSignals.map((signal) => signal.quote));
+
+  // When the local rules are more worried than the model, show why.
+  const signals = raised
+    ? [
+        ...modelSignals,
+        ...localSignals(local).filter((signal) => !quoted.has(signal.quote)),
+      ]
+    : modelSignals;
+
+  let confidence = raised ? local.confidence : result.confidence;
+
+  if (unverifiedQuoteCount > 0) {
+    confidence = "low";
+  } else if (fromImage) {
+    confidence = capConfidence(confidence, "medium");
+  }
+
+  return {
+    askTrustedContact: result.askTrustedContact || isFlagged(verdict),
+    confidence,
+    explanation,
+    nextSteps: result.nextSteps.slice(0, MAX_STEPS),
+    signals: signals.slice(0, MAX_SIGNALS),
+    unverifiedQuoteCount,
     verdict,
   };
 };
@@ -138,7 +349,38 @@ const rulesReview = (text: string): ScamReviewResult => {
 const emailReviewText = (email: Doc<"emails">): string =>
   `From: ${(email.fromName ?? "").slice(0, 500)} <${email.fromAddress.slice(0, 500)}>\nSubject: ${email.subject.slice(0, 1000)}\n\n${email.bodyText.slice(0, 20_000)}`;
 
-/** Local-only, atomic with ingestion. Immutable imported text and a rules version key the cache. */
+/** Whether anything other than the local check has flagged this email. */
+const flaggedElsewhere = async (
+  ctx: MutationCtx,
+  email: Doc<"emails">
+): Promise<boolean> => {
+  // Older rows did not record a summary's flag separately; keep their flag if a cloud summary may have set it.
+  if (
+    email.summaryFlagged === true ||
+    (email.summaryFlagged === undefined && email.cloudAnalysisConsent === true)
+  ) {
+    return true;
+  }
+
+  const reviews = await ctx.db
+    .query("scamReviews")
+    .withIndex("by_email", (index) => index.eq("emailId", email._id))
+    .take(20);
+
+  return reviews.some(
+    (review) =>
+      review.automatic !== true &&
+      review.ownerId === email.ownerId &&
+      review.status === "done" &&
+      isFlagged(review.verdict)
+  );
+};
+
+/**
+ * Local-only, atomic with ingestion. Immutable imported text and a rules
+ * version key the cache. A rules update rewrites the earlier automatic result
+ * in place, so a corrected check replaces the old one everywhere it was shown.
+ */
 export const ensureEmailCheck = async (
   ctx: MutationCtx,
   email: Doc<"emails">
@@ -150,36 +392,69 @@ export const ensureEmailCheck = async (
   const inputText = emailReviewText(email);
   const result = rulesReview(inputText);
   const checkedAt = Date.now();
+  const verdict = neverSafe(result.verdict);
 
-  const reviewId = await ctx.db.insert("scamReviews", {
-    ...result,
-    automatic: true,
-    cloudAnalysisConsent: false,
-    createdAt: checkedAt,
-    emailId: email._id,
-    inputKind: "email",
-    inputText,
-    mode: email.mode,
+  const fields = {
+    askTrustedContact: result.askTrustedContact,
+    confidence: result.confidence,
+    explanation: result.explanation,
     model: `rules-v${LOCAL_SCAN_VERSION}`,
-    ownerId: email.ownerId,
-    screenshotId: null,
-    status: "done",
-    verificationTaskId: null,
-  });
+    nextSteps: result.nextSteps,
+    signals: localSignals(result),
+    status: "done" as const,
+    unverifiedQuoteCount: 0,
+    verdict,
+  };
 
-  const verdict = result.verdict === "likely_safe" ? "unsure" : result.verdict;
+  const previous =
+    email.scamCheck === undefined
+      ? null
+      : await ctx.db.get(email.scamCheck.reviewId);
+
+  let reviewId: Id<"scamReviews">;
+
+  if (
+    previous !== null &&
+    previous.automatic === true &&
+    previous.ownerId === email.ownerId
+  ) {
+    reviewId = previous._id;
+    await ctx.db.patch(reviewId, fields);
+  } else {
+    reviewId = await ctx.db.insert("scamReviews", {
+      ...fields,
+      automatic: true,
+      cloudAnalysisConsent: false,
+      createdAt: checkedAt,
+      emailId: email._id,
+      inputKind: "email",
+      inputText,
+      mode: email.mode,
+      ownerId: email.ownerId,
+      screenshotId: null,
+      verificationTaskId: null,
+    });
+  }
+
+  // Only this check's own earlier flag can be cleared by a rules update.
+  const previousLocalFlag =
+    email.scamCheck !== undefined && isFlagged(email.scamCheck.verdict);
+
+  const keepEarlierFlag =
+    email.suspicious === true &&
+    (!previousLocalFlag || (await flaggedElsewhere(ctx, email)));
+
   await ctx.db.patch(email._id, {
     scamCheck: {
       checkedAt,
       reviewId,
       rulesVersion: LOCAL_SCAN_VERSION,
-      verdict,
-      warningCount: result.signals.length,
+      verdict: verdict === "likely_safe" ? "unsure" : verdict,
+      warningCount: fields.signals.filter(
+        (signal) => signal.stance !== "warns_against"
+      ).length,
     },
-    suspicious:
-      email.suspicious === true ||
-      verdict === "likely_scam" ||
-      verdict === "suspicious",
+    suspicious: isFlagged(verdict) || keepEarlierFlag,
   });
 
   return reviewId;
@@ -217,9 +492,10 @@ const startReview = async (
     nextSteps: localResult.nextSteps,
     ownerId: owner._id,
     screenshotId: input.screenshotId,
-    signals: localResult.signals,
+    signals: localSignals(localResult),
     status: useCloud ? "reviewing" : "done",
-    verdict: localResult.verdict,
+    unverifiedQuoteCount: 0,
+    verdict: neverSafe(localResult.verdict),
     verificationTaskId: null,
   });
 
@@ -450,7 +726,8 @@ export const run = internalAction({
         {
           content: [
             "You help an older adult decide whether a message is a scam. Return only JSON.",
-            "Explain in two to four short, plain sentences. Quote the exact words that worry you.",
+            "Explain in two to four short, plain sentences. Quote the exact words that worry you, copied character for character.",
+            "For each signal, set stance: requests when the message asks the reader to do it, warns_against when the message tells the reader not to do it (for example, never share your code), and mentions otherwise. A warning against an action is not a request for it.",
             "Never tell them to click a link, call a number in the message, or reply to the sender.",
             "Recommend checking with someone they trust when there is any doubt.",
             "Never guarantee that a message is safe or genuine. Use unsure when you find no clear warning signs.",
@@ -486,35 +763,27 @@ export const finish = internalMutation({
       return;
     }
 
-    const result = decodeJson(scamReviewSchema, args.resultJson);
+    const decoded = decodeJson(scamReviewSchema, args.resultJson);
 
-    if (result === null) {
+    if (decoded === null) {
       await ctx.db.patch(args.reviewId, { status: "failed" });
 
       return;
     }
 
+    const checked = checkAgainstText(decoded, review);
+
     await ctx.db.patch(args.reviewId, {
-      askTrustedContact: result.askTrustedContact,
-      confidence: result.confidence,
-      explanation: result.explanation,
+      ...checked,
       model: args.model,
-      nextSteps: result.nextSteps.slice(0, 5),
-      signals: result.signals.slice(0, 8),
       status: "done",
-      verdict: result.verdict === "likely_safe" ? "unsure" : result.verdict,
     });
 
-    if (review?.emailId) {
+    if (review.emailId !== null && isFlagged(checked.verdict)) {
       const email = await ctx.db.get(review.emailId);
 
       if (email !== null && email.ownerId === review.ownerId) {
-        await ctx.db.patch(email._id, {
-          suspicious:
-            email.suspicious === true ||
-            result.verdict === "likely_scam" ||
-            result.verdict === "suspicious",
-        });
+        await ctx.db.patch(email._id, { suspicious: true });
       }
     }
   },
