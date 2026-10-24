@@ -6,13 +6,15 @@ import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ImagePlusIcon } from "lucide-react";
+import { ImagePlusIcon, PlusIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar } from "@/components/app/bits";
+import { IsoIcon } from "@/components/app/iso-icon";
 import {
   PhoneNumberField,
   defaultRegion,
@@ -70,7 +72,7 @@ const WAYS: Record<Way, WayDetails> = {
   imessage_email: {
     channel: "imessage",
     group: "imessage",
-    help: "The Apple ID email they use for iMessage. It is a different identity from their phone number. For live iMessage, they must already be registered in the Photon dashboard; after saving, choose Link iMessage on their contact below.",
+    help: "The Apple ID email they use for iMessage. It is a different identity from their phone number. To send real iMessages later, save this person, then choose Edit and Link iMessage.",
     label: "iMessage (Apple ID email)",
     phone: false,
     valueLabel: "Apple ID email",
@@ -78,7 +80,7 @@ const WAYS: Record<Way, WayDetails> = {
   imessage_phone: {
     channel: "imessage",
     group: "imessage",
-    help: "Their iPhone number. For live iMessage, they must already be registered in the Photon dashboard; after saving, choose Link iMessage on their contact below.",
+    help: "Their iPhone number. To send real iMessages later, save this person, then choose Edit and Link iMessage.",
     label: "iMessage (phone number)",
     phone: true,
     valueLabel: "Phone number",
@@ -102,6 +104,10 @@ const WAY_ORDER: readonly Way[] = [
 ];
 
 const EMAIL_LIKE = /@/u;
+
+/** Each group of the form starts on a quiet rule, so the form scans as three short steps. */
+const SECTION = "border-rule border-t pt-5";
+const LEGEND = "pb-3 text-lg leading-7 font-semibold";
 
 interface Row {
   key: string;
@@ -195,7 +201,12 @@ const WayRow = ({
   );
 
   return (
-    <div className="border-border flex flex-col gap-3 rounded-lg border p-4">
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        !preferred && "border-border bg-raised rounded-lg border p-4"
+      )}
+    >
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
           <Label htmlFor={selectId}>
@@ -252,7 +263,7 @@ const WayRow = ({
               value={row.value}
             />
           )}
-          <p className="text-muted-foreground text-base" id={helpId}>
+          <p className="text-muted-foreground text-label" id={helpId}>
             {details.help}
           </p>
         </div>
@@ -300,83 +311,87 @@ const PicturePicker = ({
   const shown = preview ?? current;
 
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="pb-2 text-lg font-semibold">Picture</legend>
-      <div className="flex flex-wrap items-center gap-4">
+    <fieldset className="flex min-w-0 flex-col gap-2">
+      <legend className="text-label pb-2 font-medium">Picture</legend>
+      <div className="flex flex-wrap items-start gap-4">
         <Avatar hue={hue} name={name || "?"} size="lg" src={shown} />
-        <input
-          accept="image/*"
-          aria-describedby={helpId}
-          className="sr-only"
-          onChange={async (event) => {
-            const [file] = event.target.files ?? [];
+        <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              accept="image/*"
+              aria-describedby={helpId}
+              className="sr-only"
+              onChange={async (event) => {
+                const [file] = event.target.files ?? [];
 
-            event.target.value = "";
+                event.target.value = "";
 
-            if (file === undefined) {
-              return;
-            }
+                if (file === undefined) {
+                  return;
+                }
 
-            if (preparing) {
-              return;
-            }
+                if (preparing) {
+                  return;
+                }
 
-            onPreparingChange(true);
-            setFailure(null);
+                onPreparingChange(true);
+                setFailure(null);
 
-            try {
-              const blob = await prepareAvatar(file);
+                try {
+                  const blob = await prepareAvatar(file);
 
-              onChange({
-                blob,
-                kind: "replace",
-                previewUrl: URL.createObjectURL(blob),
-              });
-            } catch (error) {
-              setFailure(
-                `${messageOf(error instanceof Error ? error : null)} Choose a picture to try again.`
-              );
-            }
+                  onChange({
+                    blob,
+                    kind: "replace",
+                    previewUrl: URL.createObjectURL(blob),
+                  });
+                } catch (error) {
+                  setFailure(
+                    `${messageOf(error instanceof Error ? error : null)} Choose a picture to try again.`
+                  );
+                }
 
-            onPreparingChange(false);
-          }}
-          ref={fileInput}
-          tabIndex={-1}
-          type="file"
-        />
-        <Button
-          aria-busy={preparing}
-          disabled={preparing}
-          onClick={() => fileInput.current?.click()}
-          type="button"
-          variant="outline"
-        >
-          <ImagePlusIcon />
-          {shown ? "Choose a different picture" : "Choose a picture"}
-        </Button>
-        {shown ? (
-          <Button
-            onClick={() =>
-              onChange(
-                contact?.avatarUrl ? { kind: "remove" } : { kind: "keep" }
-              )
-            }
-            type="button"
-            variant="ghost"
-          >
-            Remove picture
-          </Button>
-        ) : null}
+                onPreparingChange(false);
+              }}
+              ref={fileInput}
+              tabIndex={-1}
+              type="file"
+            />
+            <Button
+              aria-busy={preparing}
+              disabled={preparing}
+              onClick={() => fileInput.current?.click()}
+              type="button"
+              variant="outline"
+            >
+              <ImagePlusIcon />
+              {shown ? "Choose a different picture" : "Choose a picture"}
+            </Button>
+            {shown ? (
+              <Button
+                onClick={() =>
+                  onChange(
+                    contact?.avatarUrl ? { kind: "remove" } : { kind: "keep" }
+                  )
+                }
+                type="button"
+                variant="ghost"
+              >
+                Remove picture
+              </Button>
+            ) : null}
+          </div>
+          {failure ? (
+            <p className="text-destructive text-base" role="alert">
+              {failure}
+            </p>
+          ) : null}
+          <p className="text-muted-foreground text-label" id={helpId}>
+            Optional. The photo is made small and square on this device, and
+            location and camera details are removed before it is saved.
+          </p>
+        </div>
       </div>
-      {failure ? (
-        <p className="text-destructive text-base" role="alert">
-          {failure}
-        </p>
-      ) : null}
-      <p className="text-muted-foreground text-base" id={helpId}>
-        Optional. The photo is made small and square on this device, and
-        location and camera details are removed before it is saved.
-      </p>
     </fieldset>
   );
 };
@@ -538,90 +553,96 @@ const ContactForm = ({
         setBusy(false);
       }}
     >
-      <p className="text-muted-foreground text-base">
-        Choose{" "}
-        {contact === null && createdId === null
-          ? "Add this person"
-          : "Save changes"}{" "}
-        to save these details and the picture.
-      </p>
       <fieldset
         disabled={busy || preparing}
-        className="flex min-w-0 flex-col gap-5"
+        className="flex min-w-0 flex-col gap-6"
       >
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.name}>Name</Label>
-            <Input
-              id={ids.name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              value={name}
+        <div className={SECTION}>
+          <fieldset className="flex min-w-0 flex-col gap-4">
+            <legend className={LEGEND}>Who they are</legend>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.name}>Name</Label>
+                <Input
+                  id={ids.name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  value={name}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.relationship}>Who they are to you</Label>
+                <Input
+                  id={ids.relationship}
+                  onChange={(event) => setRelationship(event.target.value)}
+                  placeholder="Son, neighbor, friend"
+                  value={relationship}
+                />
+              </div>
+            </div>
+            <PicturePicker
+              change={picture}
+              contact={contact}
+              hue={contact?.hue ?? 30}
+              name={name}
+              onChange={setPicture}
+              preparing={preparing}
+              onPreparingChange={setPreparing}
             />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.relationship}>Who they are to you</Label>
-            <Input
-              id={ids.relationship}
-              onChange={(event) => setRelationship(event.target.value)}
-              placeholder="Son, neighbour, friend"
-              value={relationship}
-            />
-          </div>
+          </fieldset>
         </div>
-        <PicturePicker
-          change={picture}
-          contact={contact}
-          hue={contact?.hue ?? 30}
-          name={name}
-          onChange={setPicture}
-          preparing={preparing}
-          onPreparingChange={setPreparing}
-        />
-        <fieldset className="flex flex-col gap-4">
-          <legend className="pb-2 text-lg font-semibold">
-            How to reach them
-          </legend>
-          {rows.map((row, index) => (
-            <WayRow
-              key={row.key}
-              onChange={replaceRow}
-              onRemove={
-                index === 0
-                  ? null
-                  : () => setRows(rows.filter((other) => other.key !== row.key))
-              }
-              preferred={index === 0}
-              row={row}
-              usedGroups={groupsExcept(row.key)}
-            />
-          ))}
-          {remaining.length > 0 ? (
-            <Button
-              className="self-start"
-              onClick={() => {
-                const [way] = remaining;
-
-                if (way) {
-                  setRows([...rows, rowFor(way, "", defaultRegion())]);
+        <div className={SECTION}>
+          <fieldset className="flex min-w-0 flex-col gap-4">
+            <legend className={LEGEND}>How to reach them</legend>
+            {rows.map((row, index) => (
+              <WayRow
+                key={row.key}
+                onChange={replaceRow}
+                onRemove={
+                  index === 0
+                    ? null
+                    : () =>
+                        setRows(rows.filter((other) => other.key !== row.key))
                 }
-              }}
-              type="button"
-              variant="outline"
-            >
-              Add another way to reach them
-            </Button>
-          ) : null}
-        </fieldset>
-        <div className="flex items-center gap-4">
-          <Checkbox
-            checked={trusted}
-            id={ids.trusted}
-            onCheckedChange={(checked) => setTrusted(checked)}
-          />
-          <Label htmlFor={ids.trusted}>
-            In my trusted circle (LifeLink may suggest asking them for help)
-          </Label>
+                preferred={index === 0}
+                row={row}
+                usedGroups={groupsExcept(row.key)}
+              />
+            ))}
+            {remaining.length > 0 ? (
+              <Button
+                className="self-start"
+                onClick={() => {
+                  const [way] = remaining;
+
+                  if (way) {
+                    setRows([...rows, rowFor(way, "", defaultRegion())]);
+                  }
+                }}
+                type="button"
+                variant="outline"
+              >
+                <PlusIcon />
+                Add another way to reach them
+              </Button>
+            ) : null}
+          </fieldset>
+        </div>
+        <div className={SECTION}>
+          <fieldset className="flex min-w-0 flex-col gap-3">
+            <legend className={LEGEND}>Asking them for help</legend>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={trusted}
+                id={ids.trusted}
+                onCheckedChange={(checked) => setTrusted(checked)}
+              />
+              <IsoIcon kind="trusted" size={40} />
+              <Label htmlFor={ids.trusted}>
+                In my trusted circle. LifeLink may suggest asking them for help.
+              </Label>
+            </div>
+          </fieldset>
         </div>
       </fieldset>
       {failure ? (

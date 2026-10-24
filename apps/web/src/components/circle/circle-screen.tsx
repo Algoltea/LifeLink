@@ -11,25 +11,27 @@ import { Label } from "@lifelink/ui/components/label";
 import { Pill } from "@lifelink/ui/components/pill";
 import { Segmented } from "@lifelink/ui/components/segmented";
 import { useMutation, useQuery } from "convex/react";
-import { CopyIcon, PencilIcon, UserPlusIcon } from "lucide-react";
-import { useId, useState } from "react";
+import {
+  CopyIcon,
+  EyeIcon,
+  InfoIcon,
+  PencilIcon,
+  ShieldCheckIcon,
+  UserPlusIcon,
+} from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { Avatar, ReadAloudButton } from "@/components/app/bits";
+import { ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
-import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
 import { messageOf } from "@/lib/errors";
 import { formatDay } from "@/lib/format";
 
-import { ContactForm } from "./contact-form";
+import { ContactEditor } from "./contact-editor";
 import type { CircleContact } from "./contact-form";
-import { ContactIMessageSetup } from "./contact-imessage-setup";
-import type {
-  IMessageContact,
-  IMessageContext,
-} from "./contact-imessage-setup";
+import { ContactRow } from "./contact-row";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -254,7 +256,7 @@ const STATE_WORDS: Record<
   { label: string; tone: "accent" | "negative" | "neutral" | "warning" }
 > = {
   active: { label: "Sharing", tone: "accent" },
-  expired: { label: "Ended (expired)", tone: "neutral" },
+  expired: { label: "Ended", tone: "neutral" },
   invited: { label: "Invitation not used yet", tone: "warning" },
   revoked: { label: "Stopped", tone: "neutral" },
 };
@@ -437,66 +439,6 @@ const GrantCard = ({
   );
 };
 
-const ContactRow = ({
-  canManage,
-  contact,
-  imessageContext,
-  imessageRow,
-  onEdit,
-  onRemove,
-}: {
-  canManage: boolean;
-  contact: CircleContact;
-  imessageContext: IMessageContext | undefined;
-  imessageRow: IMessageContact | undefined;
-  onEdit: () => void;
-  onRemove: () => void;
-}) => (
-  <li className="border-rule grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 border-t py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
-    <Avatar hue={contact.hue} name={contact.name} src={contact.avatarUrl} />
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <span className="flex flex-wrap items-center gap-2 text-xl font-semibold">
-        {contact.name}
-        {contact.sample ? <Pill tone="simulated">Sample</Pill> : null}
-      </span>
-      <span className="text-muted-foreground text-base">
-        {contact.relationship || "Contact"}
-        {contact.trusted ? " · Trusted" : ""}
-      </span>
-      {contact.channels.map((channel) => (
-        <span className="text-base break-words" key={channel.channel}>
-          {CHANNEL_WORDS[channel.channel]}: {formatAddress(channel.address)}
-          {channel.preferred ? " (first choice)" : ""}
-        </span>
-      ))}
-      {(contact.savedHandles ?? []).map((handle) => (
-        <span className="text-base break-words" key={handle.service}>
-          WhatsApp: {formatAddress(handle.address)}{" "}
-          <span className="text-muted-foreground">
-            (saved only; LifeLink can’t send here yet)
-          </span>
-        </span>
-      ))}
-    </div>
-    <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-3 sm:row-start-1 sm:self-center">
-      <Button onClick={onEdit} size="sm" variant="outline">
-        Edit
-      </Button>
-      <Button onClick={onRemove} size="sm" variant="ghost">
-        Remove
-      </Button>
-    </div>
-    {contact.channels.some((channel) => channel.channel === "imessage") ? (
-      <ContactIMessageSetup
-        canManage={canManage}
-        contactName={contact.name}
-        context={imessageContext}
-        row={imessageRow}
-      />
-    ) : null}
-  </li>
-);
-
 const SharingSection = ({
   contacts,
   grants,
@@ -511,50 +453,168 @@ const SharingSection = ({
   return (
     <section
       aria-labelledby="sharing-heading"
-      className="bg-surface flex min-w-0 flex-col gap-4 rounded-xl p-5 sm:p-6"
+      className="bg-parchment flex min-w-0 flex-col gap-4 rounded-xl p-5 sm:p-6"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl leading-8 font-semibold" id="sharing-heading">
-          Sharing
-        </h2>
-        {inviting ? null : (
+      <h2 className="text-section font-semibold" id="sharing-heading">
+        Sharing
+      </h2>
+      <p className="flex items-start gap-3">
+        <ShieldCheckIcon
+          aria-hidden="true"
+          className="text-accent-foreground mt-0.5 size-6 shrink-0"
+        />
+        <span>
+          <strong className="font-semibold">Family can only look.</strong> They
+          can never send, approve, or spend anything for you.
+        </span>
+      </p>
+      <div className="border-rule flex flex-col gap-4 border-t pt-4">
+        {grants === undefined ? (
+          <LoadingRows layout="note" label="Loading sharing" rows={2} />
+        ) : null}
+        {grants !== undefined && grants.length === 0 ? (
+          <p className="text-muted-foreground">
+            You aren’t sharing anything with anyone.
+          </p>
+        ) : null}
+        {grants !== undefined && grants.length > 0 ? (
+          <ul className="[&>li:first-child]:border-t-0 [&>li:first-child]:pt-0">
+            {grants
+              .toSorted((left, right) => right.createdAt - left.createdAt)
+              .map((grant) => (
+                <GrantCard grant={grant} key={grant.id} timeZone={timeZone} />
+              ))}
+          </ul>
+        ) : null}
+        {contacts?.length === 0 ? (
+          <p className="text-muted-foreground">
+            Add a person to your circle before choosing what to share with them.
+          </p>
+        ) : null}
+        {inviting && contacts ? (
+          <InviteForm contacts={contacts} onDone={() => setInviting(false)} />
+        ) : (
           <Button
+            className="self-start"
             disabled={!contacts?.length}
             onClick={() => setInviting(true)}
             variant="outline"
           >
+            <EyeIcon aria-hidden="true" />
             Share with someone
           </Button>
         )}
       </div>
-      <p className="text-lg">
-        Family can only look. They can never send, approve, or spend anything
-        for you.
-      </p>
-      {contacts?.length === 0 ? (
-        <p className="text-muted-foreground text-lg leading-7">
-          Add a person to your circle before choosing what to share with them.
+    </section>
+  );
+};
+
+/** Says once, above the list, which people are samples to practice with. */
+const SampleNotice = ({ contacts }: { contacts: CircleContact[] }) => {
+  const samples = contacts.filter((contact) => contact.sample);
+
+  if (samples.length === 0) {
+    return null;
+  }
+
+  const names = new Intl.ListFormat("en", { type: "conjunction" }).format(
+    samples.map((contact) => contact.name.split(" ")[0] ?? contact.name)
+  );
+
+  let text = "These are sample people, so you can practice safely.";
+
+  if (samples.length < contacts.length) {
+    text =
+      samples.length === 1
+        ? `${names} is a sample person, so you can practice safely.`
+        : `${names} are sample people, so you can practice safely.`;
+  }
+
+  return (
+    <p className="bg-parchment flex items-start gap-3 rounded-xl px-5 py-3">
+      <InfoIcon
+        aria-hidden="true"
+        className="text-muted-foreground mt-1 size-5 shrink-0"
+      />
+      {text}
+    </p>
+  );
+};
+
+/** Removing someone always asks first; the person stays until it's confirmed. */
+const RemovePersonDialog = ({
+  onClose,
+  onRemoved,
+  person: removing,
+}: {
+  onClose: () => void;
+  onRemoved: () => void;
+  person: CircleContact | null;
+}) => {
+  const remove = useMutation(api.contacts.remove);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [shownFor, setShownFor] = useState<CircleContact | null>(removing);
+
+  // A new confirmation starts without the last one's error.
+  if (shownFor !== removing) {
+    setShownFor(removing);
+    setFailure(null);
+  }
+
+  return (
+    <Dialog
+      description={
+        removing
+          ? `${removing.name} will be removed, and anything you share with them stops right away.`
+          : undefined
+      }
+      onOpenChange={(open) => {
+        if (!open && !busy) {
+          onClose();
+        }
+      }}
+      open={removing !== null}
+      title={removing ? `Remove ${removing.name}?` : "Remove"}
+    >
+      {failure ? (
+        <p className="text-destructive text-base" role="alert">
+          {failure}
         </p>
       ) : null}
-      {inviting && contacts ? (
-        <InviteForm contacts={contacts} onDone={() => setInviting(false)} />
-      ) : null}
-      {grants === undefined ? (
-        <LoadingRows label="Loading sharing" rows={2} />
-      ) : null}
-      {grants !== undefined && grants.length === 0 ? (
-        <EmptyNote>You aren’t sharing anything with anyone.</EmptyNote>
-      ) : null}
-      {grants !== undefined && grants.length > 0 ? (
-        <ul>
-          {grants
-            .toSorted((left, right) => right.createdAt - left.createdAt)
-            .map((grant) => (
-              <GrantCard grant={grant} key={grant.id} timeZone={timeZone} />
-            ))}
-        </ul>
-      ) : null}
-    </section>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          disabled={busy}
+          aria-busy={busy}
+          onClick={async () => {
+            if (busy || removing === null) {
+              return;
+            }
+
+            setBusy(true);
+            setFailure(null);
+
+            try {
+              await remove({ contactId: removing._id });
+              toast.success(`${removing.name} was removed.`);
+              onRemoved();
+            } catch (error) {
+              setFailure(
+                `The person couldn’t be removed. ${errorText(error)} Try Remove again.`
+              );
+            }
+
+            setBusy(false);
+          }}
+          variant="destructive"
+        >
+          {busy ? "Removing…" : `Remove ${removing?.name.split(" ")[0] ?? ""}`}
+        </Button>
+        <Button disabled={busy} onClick={onClose} variant="ghost">
+          Keep
+        </Button>
+      </div>
+    </Dialog>
   );
 };
 
@@ -562,19 +622,38 @@ const CircleScreen = () => {
   const contacts = useQuery(api.contacts.list);
   const imessage = useQuery(api.imessage.list, {});
   const grants = useQuery(api.sharing.listGrants);
-  const remove = useMutation(api.contacts.remove);
   const { me } = usePreferences();
   const [editing, setEditing] = useState<CircleContact | "new" | null>(null);
   const [removing, setRemoving] = useState<CircleContact | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
+  const canManage = me?.profile?.role === "owner";
+  const addButton = useRef<HTMLButtonElement>(null);
+  const peopleHeading = useRef<HTMLHeadingElement>(null);
+  const editButtons = useRef(new Map<string, HTMLButtonElement>());
+
+  // Where focus goes once the editor closes: the control that opened it.
+  const focusAfterClose = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (editing === null && focusAfterClose.current) {
+      focusAfterClose.current();
+      focusAfterClose.current = null;
+    }
+  }, [editing]);
+
+  const closeEditor = (focusTarget: () => void) => {
+    focusAfterClose.current = focusTarget;
+    setEditing(null);
+  };
+
+  const rowFor = (contactId: string) =>
+    imessage?.contacts.find((row) => row.contactId === contactId);
 
   return (
     <>
       <PageHeader
         actions={
-          <Button onClick={() => setEditing("new")} size="lg">
+          <Button onClick={() => setEditing("new")} ref={addButton} size="lg">
             <UserPlusIcon />
             Add a person
           </Button>
@@ -582,60 +661,85 @@ const CircleScreen = () => {
         subline="The people you trust, how to reach them, and exactly what each one can see."
         title="Trusted circle"
       />
-      {editing === null ? null : (
-        <section
-          aria-label={
-            editing === "new" ? "Add a person" : `Edit ${editing.name}`
-          }
-          className="bg-surface max-w-prose rounded-xl p-5 sm:p-6"
-        >
-          <h2 className="pb-5 text-2xl leading-8 font-semibold">
-            {editing === "new" ? "Add a person" : `Edit ${editing.name}`}
-          </h2>
-          <ContactForm
-            contact={editing === "new" ? null : editing}
-            key={editing === "new" ? "new" : editing._id}
-            onDone={() => setEditing(null)}
-          />
-        </section>
-      )}
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,20.5rem)]">
         <section
           aria-labelledby="people-heading"
-          className="flex min-w-0 flex-col"
+          className="flex max-w-3xl min-w-0 flex-col gap-4"
         >
-          <h2
-            className="pb-3 text-2xl leading-8 font-semibold"
-            id="people-heading"
-          >
-            People
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2
+              className="text-section font-semibold outline-none"
+              id="people-heading"
+              ref={peopleHeading}
+              tabIndex={-1}
+            >
+              People
+            </h2>
+            {contacts !== undefined && contacts.length > 0 ? (
+              <span className="text-muted-foreground text-label">
+                {contacts.length === 1
+                  ? "1 person"
+                  : `${contacts.length} people`}
+              </span>
+            ) : null}
+          </div>
           {contacts === undefined ? (
-            <LoadingRows label="Loading people" rows={3} />
+            <LoadingRows layout="contacts" label="Loading people" rows={3} />
           ) : null}
-          {contacts !== undefined && contacts.length === 0 ? (
+          {contacts === undefined ? null : <SampleNotice contacts={contacts} />}
+          {editing === "new" ? (
+            <ContactEditor
+              canManage={canManage}
+              contact={null}
+              imessageContext={imessage}
+              imessageRow={undefined}
+              onDone={() => closeEditor(() => addButton.current?.focus())}
+            />
+          ) : null}
+          {contacts !== undefined &&
+          contacts.length === 0 &&
+          editing === null ? (
             <EmptyNote>
               No one yet. Add the people you’d like LifeLink to help you reach.
             </EmptyNote>
           ) : null}
           {contacts !== undefined && contacts.length > 0 ? (
-            <ul>
-              {contacts.map((contact) => (
-                <ContactRow
-                  canManage={me?.profile?.role === "owner"}
-                  contact={contact}
-                  imessageContext={imessage}
-                  imessageRow={imessage?.contacts.find(
-                    (row) => row.contactId === contact._id
-                  )}
-                  key={contact._id}
-                  onEdit={() => setEditing(contact)}
-                  onRemove={() => {
-                    setRemoving(contact);
-                    setFailure(null);
-                  }}
-                />
-              ))}
+            <ul className="flex flex-col gap-1">
+              {contacts.map((contact) =>
+                editing !== null &&
+                editing !== "new" &&
+                editing._id === contact._id ? (
+                  <li key={contact._id}>
+                    <ContactEditor
+                      canManage={canManage}
+                      contact={contact}
+                      imessageContext={imessage}
+                      imessageRow={rowFor(contact._id)}
+                      onDone={() =>
+                        closeEditor(() =>
+                          editButtons.current.get(contact._id)?.focus()
+                        )
+                      }
+                      onRemove={() => setRemoving(contact)}
+                    />
+                  </li>
+                ) : (
+                  <ContactRow
+                    contact={contact}
+                    editRef={(node) => {
+                      if (node) {
+                        editButtons.current.set(contact._id, node);
+                      } else {
+                        editButtons.current.delete(contact._id);
+                      }
+                    }}
+                    imessageContext={imessage}
+                    imessageRow={rowFor(contact._id)}
+                    key={contact._id}
+                    onEdit={() => setEditing(contact)}
+                  />
+                )
+              )}
             </ul>
           ) : null}
         </section>
@@ -645,68 +749,14 @@ const CircleScreen = () => {
           timeZone={timeZone}
         />
       </div>
-      <Dialog
-        description={
-          removing
-            ? `${removing.name} will be removed, and anything you share with them stops right away.`
-            : undefined
-        }
-        onOpenChange={(open) => {
-          if (!open && !busy) {
-            setRemoving(null);
-            setFailure(null);
-          }
+      <RemovePersonDialog
+        onClose={() => setRemoving(null)}
+        onRemoved={() => {
+          setRemoving(null);
+          closeEditor(() => peopleHeading.current?.focus());
         }}
-        open={removing !== null}
-        title={removing ? `Remove ${removing.name}?` : "Remove"}
-      >
-        {failure ? (
-          <p className="text-destructive text-base" role="alert">
-            {failure}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button
-            disabled={busy}
-            aria-busy={busy}
-            onClick={async () => {
-              if (busy || removing === null) {
-                return;
-              }
-
-              setBusy(true);
-              setFailure(null);
-
-              try {
-                await remove({ contactId: removing._id });
-                toast.success(`${removing.name} was removed.`);
-                setRemoving(null);
-              } catch (error) {
-                setFailure(
-                  `The person couldn’t be removed. ${errorText(error)} Try Remove again.`
-                );
-              }
-
-              setBusy(false);
-            }}
-            variant="destructive"
-          >
-            {busy
-              ? "Removing…"
-              : `Remove ${removing?.name.split(" ")[0] ?? ""}`}
-          </Button>
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setRemoving(null);
-              setFailure(null);
-            }}
-            variant="ghost"
-          >
-            Keep
-          </Button>
-        </div>
-      </Dialog>
+        person={removing}
+      />
     </>
   );
 };

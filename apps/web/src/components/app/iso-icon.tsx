@@ -1,11 +1,12 @@
 import { cn } from "@lifelink/ui/lib/utils";
 
 /**
- * Isometric "typewriter key" icons: what a connection can do, and what kind of
- * file a document is. Each object sits on the same round key, drawn at one
- * angle with one ink line. Paints map to theme tokens so the set follows
- * light, dark, and more-contrast themes. Geometry matches the Paper board
- * "Connections cards — Permission icons (isometric set)".
+ * Isometric "typewriter key" icons: what a connection can do, what kind of
+ * file a document is, and who is in the trusted circle. Each object sits on
+ * the same round key, drawn at one angle with one ink line. Paints map to
+ * theme tokens so the set follows light, dark, and more-contrast themes.
+ * Geometry matches the Paper board "Connections cards — Permission icons
+ * (isometric set)"; the trusted shield is on "Trusted circle v2 — trusted key icon".
  */
 type IsoIconKind =
   | "add"
@@ -24,6 +25,7 @@ type IsoIconKind =
   | "send"
   | "slides"
   | "spreadsheet"
+  | "trusted"
   | "unavailable";
 
 type Paint =
@@ -719,6 +721,49 @@ const FACETS: Record<IsoIconKind, readonly IconFacet[]> = {
       fill: "copper",
       stroke: "copper",
       width: 0.6,
+    },
+  ],
+  trusted: [
+    {
+      d: "M24.4 10.7L34.2 12.7L43.9 22L43.9 32.4L42.5 36.8L39.2 39.1L34.2 38.7L29.1 33.2L25.8 27.1L24.4 21.1Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M20.1 13.2L29.9 15.2L34.2 12.7L24.4 10.7Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M29.9 15.2L39.6 24.5L43.9 22L34.2 12.7Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M39.6 24.5L39.6 34.9L43.9 32.4L43.9 22Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M39.6 34.9L38.2 39.3L42.5 36.8L43.9 32.4Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M38.2 39.3L34.9 41.6L39.2 39.1L42.5 36.8Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M20.1 13.2L29.9 15.2L39.6 24.5L39.6 34.9L38.2 39.3L34.9 41.6L29.9 41.2L24.8 35.7L21.5 29.6L20.1 23.6Z",
+      fill: "copper",
+      stroke: "ink",
+    },
+    {
+      d: "M29.9 25L29.9 24.5L30.3 23.8L31.2 23.5L32.4 24.2L33.4 25.8L33.8 27.6L33.4 29L32.4 30L31.2 30.7L30.3 31.5L29.9 32.2L29.9 32.5L29.8 32.1L29.4 30.9L28.5 29.1L27.3 27.1L26.3 25L26 23.1L26.3 21.7L27.3 21.3L28.5 21.9L29.4 23.2L29.8 24.5L29.9 25Z",
+      fill: "paper",
+      stroke: "ink",
+      width: 1,
     },
   ],
   unavailable: [

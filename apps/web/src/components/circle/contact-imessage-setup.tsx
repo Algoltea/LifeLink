@@ -9,6 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { CopyIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
+import { SimulatedPill } from "@/components/app/bits";
 import { messageOf } from "@/lib/errors";
 
 type IMessageData = FunctionReturnType<typeof api.imessage.list>;
@@ -93,7 +94,7 @@ const FirstMessageInstructions = ({
       </Button>
       <output aria-live="polite" className="text-base">
         {copied
-          ? "Instructions copied. Share them with this contact yourself."
+          ? `Instructions copied. Send them to ${contactName} yourself.`
           : null}
       </output>
       {copyError ? (
@@ -302,6 +303,29 @@ const IMessageEnrollment = ({
   );
 };
 
+/** The one status a person's row shows for live iMessage, or null when nothing needs doing. */
+const ROW_WORDS: Record<
+  Exclude<IMessageContact["status"], "ready">,
+  { label: string; tone: "negative" | "neutral" | "warning" }
+> = {
+  failed: { label: "iMessage needs attention", tone: "negative" },
+  not_registered: { label: "iMessage not linked yet", tone: "neutral" },
+  registering: { label: "Linking iMessage", tone: "warning" },
+  waiting: { label: "Waiting for their first iMessage", tone: "warning" },
+};
+
+const imessageRowStatus = (
+  context: IMessageContext | undefined,
+  row: IMessageContact | undefined
+): { label: string; tone: "negative" | "neutral" | "warning" } | null => {
+  if (!context?.configured || context.practiceMode || !row) {
+    return null;
+  }
+
+  return row.status === "ready" ? null : ROW_WORDS[row.status];
+};
+
+/** Live iMessage setup for one saved person, shown inside their edit panel. */
 const ContactIMessageSetup = ({
   canManage,
   contactName,
@@ -319,8 +343,7 @@ const ContactIMessageSetup = ({
   if (!context) {
     unavailable = "Loading iMessage setup…";
   } else if (context.practiceMode) {
-    unavailable =
-      "Practice messages stay in LifeLink. No Photon contacts are linked and no real messages are checked. When you choose to use live iMessage, you can link a person already registered in the Photon dashboard.";
+    unavailable = `Practice messages stay in LifeLink, so there is nothing to set up here. When you switch to real iMessage, you can link ${contactName} here.`;
   } else if (!context.configured) {
     unavailable =
       "App setup needed. Whoever runs LifeLink must connect Photon before you can set up iMessage for this contact.";
@@ -329,38 +352,37 @@ const ContactIMessageSetup = ({
       "Only the account owner can set up or check iMessage for their contacts.";
   } else if (!row) {
     unavailable =
-      "An iMessage address is needed. Edit this contact to add their phone number or Apple ID email.";
+      "An iMessage address is needed. Add their phone number or Apple ID email above, then save.";
   }
 
   return (
-    <details
+    <section
       aria-labelledby={headingId}
-      className="bg-surface col-span-full w-full min-w-0 rounded-lg px-4 py-3"
+      className="border-rule flex min-w-0 flex-col gap-3 border-t pt-5"
     >
-      <summary
-        className="min-h-12 cursor-pointer content-center text-base font-semibold"
+      <h3
+        className="flex flex-wrap items-center gap-3 text-lg leading-7 font-semibold"
         id={headingId}
       >
-        iMessage for {contactName}
-      </summary>
-      <div className="flex flex-col gap-3 pb-2">
-        {unavailable ? (
-          <p aria-live="polite" className="text-muted-foreground text-base">
-            {unavailable}
-          </p>
-        ) : null}
-        {unavailable === null && row ? (
-          <IMessageEnrollment
-            contactName={contactName}
-            key={`${row.contactId}:${row.handle}`}
-            row={row}
-          />
-        ) : null}
-      </div>
-    </details>
+        iMessage setup
+        {context?.practiceMode ? <SimulatedPill /> : null}
+      </h3>
+      {unavailable ? (
+        <p aria-live="polite" className="text-muted-foreground text-label">
+          {unavailable}
+        </p>
+      ) : null}
+      {unavailable === null && row ? (
+        <IMessageEnrollment
+          contactName={contactName}
+          key={`${row.contactId}:${row.handle}`}
+          row={row}
+        />
+      ) : null}
+    </section>
   );
 };
 
-export { ContactIMessageSetup };
+export { ContactIMessageSetup, imessageRowStatus };
 
 export type { IMessageContact, IMessageContext };

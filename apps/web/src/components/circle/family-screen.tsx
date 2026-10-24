@@ -42,7 +42,7 @@ const JoinForm = () => {
 
   return (
     <form
-      className="bg-surface flex max-w-prose flex-col gap-4 rounded-xl p-5 sm:p-6"
+      className="bg-parchment flex max-w-prose flex-col gap-4 rounded-xl p-5 sm:p-6"
       onSubmit={async (event) => {
         event.preventDefault();
         setBusy(true);
@@ -208,7 +208,7 @@ const Conversation = ({
         Messages with {ownerName}
       </h3>
       {thread === undefined ? (
-        <LoadingRows label="Loading messages" rows={2} />
+        <LoadingRows layout="conversation" label="Loading messages" rows={2} />
       ) : null}
       {thread !== undefined && thread.length === 0 ? (
         <EmptyNote>No messages in LifeLink yet.</EmptyNote>
@@ -275,7 +275,9 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
   const overview = useQuery(api.family.overview, { ownerId });
 
   if (overview === undefined) {
-    return <LoadingRows label="Loading what was shared" rows={4} />;
+    return (
+      <LoadingRows layout="family" label="Loading what was shared" rows={4} />
+    );
   }
 
   if (overview === null) {
@@ -482,11 +484,15 @@ const FamilyScreen = () => {
   return (
     <>
       <PageHeader
-        subline="See only what each person chooses to share. You cannot approve actions or spend for them."
+        subline="See only what each person chooses to share. You can look, but never send, approve, or spend anything for them."
         title="Family"
       />
       {shared === undefined ? (
-        <LoadingRows label="Loading shared information" rows={3} />
+        <LoadingRows
+          layout="note"
+          label="Loading shared information"
+          rows={3}
+        />
       ) : null}
       {shared !== undefined && owners.length === 0 ? (
         <EmptyNote>
