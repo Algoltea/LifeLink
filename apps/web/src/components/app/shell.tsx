@@ -1,11 +1,14 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+import { Menu } from "@base-ui/react/menu";
 import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import {
+  ChevronsUpDownIcon,
+  FlaskConicalIcon,
   FolderOpenIcon,
   HeartHandshakeIcon,
   HomeIcon,
@@ -33,6 +36,7 @@ import { z } from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
+import { Avatar } from "./bits";
 import { BrandName } from "./brand";
 import {
   GuestAccountLinks,
@@ -51,7 +55,15 @@ interface NavItem {
 interface NavGroup {
   items: NavItem[];
   label: string | null;
+  /** Sits at the bottom of the sidebar, just above the account, apart from destinations. */
+  pinned?: boolean;
 }
+
+const SETTINGS_GROUP: NavGroup = {
+  items: [{ href: "/settings", icon: SettingsIcon, label: "Settings" }],
+  label: null,
+  pinned: true,
+};
 
 const WAITING = new Set([
   "needs_clarification",
@@ -82,10 +94,10 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
     items: [
       { href: "/circle", icon: HeartHandshakeIcon, label: "Trusted circle" },
       { href: "/connections", icon: PlugIcon, label: "Connections" },
-      { href: "/settings", icon: SettingsIcon, label: "Settings" },
     ],
     label: "Your setup",
   },
+  SETTINGS_GROUP,
 ];
 
 const useOwnerNav = (): NavGroup[] => {
@@ -101,12 +113,10 @@ const playRoleSchema = z.object({
 
 const PLAY_NAV: NavGroup[] = [
   {
-    items: [
-      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
-      { href: "/settings", icon: SettingsIcon, label: "Settings" },
-    ],
+    items: [{ href: "/solitaire", icon: SpadeIcon, label: "Solitaire" }],
     label: null,
   },
+  SETTINGS_GROUP,
 ];
 
 const FAMILY_NAV: NavGroup[] = [
@@ -114,10 +124,10 @@ const FAMILY_NAV: NavGroup[] = [
     items: [
       { href: "/family", icon: UsersRoundIcon, label: "Family" },
       { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
-      { href: "/settings", icon: SettingsIcon, label: "Settings" },
     ],
     label: null,
   },
+  SETTINGS_GROUP,
 ];
 
 const isActive = (pathname: string, href: string): boolean =>
@@ -133,9 +143,12 @@ const NavList = ({
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
+    <nav aria-label="Main" className="flex flex-1 flex-col gap-5">
       {groups.map((group) => (
-        <div className="flex flex-col gap-1" key={group.label ?? "main"}>
+        <div
+          className={cn("flex flex-col gap-1", group.pinned && "mt-auto")}
+          key={group.label ?? (group.pinned ? "pinned" : "main")}
+        >
           {group.label ? (
             <p className="text-muted-foreground text-label px-4 pb-1">
               {group.label}
@@ -187,21 +200,18 @@ const NavList = ({
   );
 };
 
-const SignOutButton = () => (
-  <Button
-    className="w-full justify-start"
-    onClick={async () => {
-      await authClient.signOut();
-      globalThis.location.assign("/sign-in");
-    }}
-    variant="ghost"
-  >
-    <LogOutIcon />
-    Sign out
-  </Button>
-);
+const ACCOUNT_HUE = 25;
 
-const AccountRow = () => {
+const ACCOUNT_ITEM =
+  "text-label min-h-control flex cursor-default items-center gap-3 rounded-md px-3 font-medium whitespace-nowrap outline-none select-none data-[highlighted]:bg-neutral-wash";
+
+const signOut = async (): Promise<void> => {
+  await authClient.signOut();
+  globalThis.location.assign("/sign-in");
+};
+
+/** One quiet account row; practice mode and sign out sit one deliberate step away. */
+const Account = () => {
   const { me } = usePreferences();
   const profile = me?.profile;
 
@@ -209,15 +219,71 @@ const AccountRow = () => {
     return null;
   }
 
+  const family = profile.role === "family";
+  let detail: string | null = null;
+
+  if (family) {
+    detail = "Family member";
+  } else if (profile.demoMode) {
+    detail = "Practice mode";
+  }
+
   return (
-    <div className="flex flex-col gap-1 px-4">
-      <p className="text-label font-medium">{profile.displayName}</p>
-      <p className="text-muted-foreground text-label">
-        {profile.role === "owner"
-          ? `${profile.preferredName}'s LifeLink`
-          : "Family member"}
-      </p>
-    </div>
+    <Menu.Root>
+      <Menu.Trigger className="hover:bg-neutral-wash data-[popup-open]:bg-neutral-wash min-h-control flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors">
+        <Avatar hue={ACCOUNT_HUE} name={profile.displayName} size="sm" />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="sr-only">Account menu for </span>
+          <span className="text-label truncate font-semibold">
+            {profile.displayName}
+          </span>
+          {detail ? (
+            <span className="text-brass-ink truncate text-[0.833rem] leading-snug">
+              {detail}
+            </span>
+          ) : null}
+        </span>
+        <ChevronsUpDownIcon
+          aria-hidden="true"
+          className="text-muted-foreground size-5 shrink-0"
+        />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner
+          align="start"
+          className="z-50"
+          side="top"
+          sideOffset={8}
+        >
+          <Menu.Popup className="border-border bg-raised flex w-[var(--anchor-width)] min-w-[13.333rem] flex-col rounded-xl border p-1.5 shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
+            {family ? null : (
+              <>
+                <Menu.LinkItem
+                  className={ACCOUNT_ITEM}
+                  render={<Link href="/settings#demo" />}
+                >
+                  <FlaskConicalIcon aria-hidden="true" className="size-5" />
+                  <span className="flex-1">Practice mode</span>
+                  <span className="bg-warning-wash text-warning rounded-full px-2 text-[0.833rem] font-semibold">
+                    {profile.demoMode ? "On" : "Off"}
+                  </span>
+                </Menu.LinkItem>
+                <Menu.Separator className="bg-border my-1 h-px" />
+              </>
+            )}
+            <Menu.Item
+              className={ACCOUNT_ITEM}
+              onClick={() => {
+                void signOut();
+              }}
+            >
+              <LogOutIcon aria-hidden="true" className="size-5" />
+              Sign out
+            </Menu.Item>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 };
 
@@ -421,13 +487,6 @@ const ShellFrame = ({
       </div>
     </div>
   </div>
-);
-
-const Account = () => (
-  <>
-    <AccountRow />
-    <SignOutButton />
-  </>
 );
 
 const OwnerShell = ({ children }: { children: ReactNode }) => {
