@@ -30,7 +30,6 @@ import { isRowStillShown } from "@/lib/list-beside-reader";
 
 import { EmailList } from "./email-list";
 import { EmailReader } from "./email-reader";
-import { InboxOverview } from "./inbox-overview";
 import { InboxPaging } from "./inbox-paging";
 
 const errorText = (cause: unknown): string =>
@@ -312,12 +311,6 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
         title="Email"
       />
       <MailboxStatus />
-      <InboxOverview
-        onSelect={(id) => {
-          openedFromList.current = false;
-          setSelectedId(id);
-        }}
-      />
       {explaining ? <ChecksExplained /> : null}
       {scanError === null ? null : (
         <div
