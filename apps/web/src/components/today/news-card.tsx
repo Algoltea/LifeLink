@@ -60,12 +60,12 @@ const NewsCard = () => {
 
   return (
     <section aria-labelledby="news-heading" className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 className="text-section font-semibold" id="news-heading">
           News
         </h2>
         <Segmented
-          className="w-auto flex-nowrap [&>*]:whitespace-nowrap"
+          className="w-auto flex-nowrap [&>*]:px-3 [&>*]:whitespace-nowrap sm:[&>*]:px-4"
           label="News type"
           onValueChange={async (next) => {
             setChosen(next);
