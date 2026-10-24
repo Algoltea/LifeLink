@@ -69,13 +69,17 @@ const dayLabel = (timestamp: number, timeZone: string): string => {
 
 /** Appointments and reminders in the same row rhythm as the family list. */
 const WeekList = ({
+  prompt,
   rows,
   timeZone,
 }: {
+  /** A first row that asks for something, such as a postal code. */
+  prompt?: ReactNode;
   rows: WeekRow[];
   timeZone: string;
 }) => (
   <SideSection headingId="week-heading" title="This week">
+    {prompt}
     {rows.length === 0 ? (
       <SideEmpty>Nothing booked this week.</SideEmpty>
     ) : (

@@ -23,7 +23,7 @@ import { NewsCard } from "@/components/today/news-card";
 import { FamilyList, WeekList } from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
-import { WeatherChip } from "@/components/today/weather";
+import { LocationPrompt, WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
 import { messageOf } from "@/lib/errors";
 import { dayKey, formatTime, relativeDay } from "@/lib/format";
@@ -209,7 +209,11 @@ const TodayContent = ({
           <Composer />
         </div>
         <aside className="flex flex-col gap-8">
-          <WeekList rows={week} timeZone={timeZone} />
+          <WeekList
+            prompt={<LocationPrompt state={weather} />}
+            rows={week}
+            timeZone={timeZone}
+          />
           <FamilyList messages={summary.messages} timeZone={timeZone} />
         </aside>
       </div>

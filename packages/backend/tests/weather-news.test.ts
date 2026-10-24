@@ -183,6 +183,26 @@ describe("weather on Today", () => {
     ).resolves.toStrictEqual({ status: "no_location" });
   });
 
+  it("marks the postal code step done once a place is saved", async () => {
+    const { person } = await ownerIn(null);
+    const before = await person.query(api.today.summary, {});
+
+    expect(before.gettingStarted.location).toBeFalsy();
+
+    await person.mutation(api.profiles.updateProfile, {
+      city: null,
+      displayName: "Ruth Alvarez",
+      postalCode: "10001",
+      preferredName: "Ruth",
+      signOffName: null,
+      timeZone: "America/New_York",
+    });
+
+    const after = await person.query(api.today.summary, {});
+
+    expect(after.gettingStarted.location).toBeTruthy();
+  });
+
   it("shows a sample week in practice mode without a place", async () => {
     const { person } = await ownerIn(null, true);
     const result = await person.query(api.weather.forecast, { today: TODAY });

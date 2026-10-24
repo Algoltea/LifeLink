@@ -36,6 +36,7 @@ const hideSteps = () => {
 interface Progress {
   asked: boolean;
   connected: boolean;
+  location: boolean;
   trusted: boolean;
 }
 
@@ -72,11 +73,25 @@ const stepsFor = (progress: Progress): Step[] => [
     href: "/ask",
     title: "Ask for a hand",
   },
+  {
+    action: "Add postal code",
+    description:
+      "LifeLink shows the weather on Today and next to each appointment.",
+    done: progress.location,
+    href: "/settings#profile",
+    title: "Add your postal code",
+  },
 ];
 
 /** True when a new owner should see the first-run steps. */
 const showsGettingStarted = (progress: Progress, hidden: boolean): boolean =>
-  !hidden && !(progress.asked && progress.connected && progress.trusted);
+  !hidden &&
+  !(
+    progress.asked &&
+    progress.connected &&
+    progress.location &&
+    progress.trusted
+  );
 
 const GettingStarted = ({ progress }: { progress: Progress }) => (
   <section aria-labelledby="getting-started-heading" className="flex flex-col">

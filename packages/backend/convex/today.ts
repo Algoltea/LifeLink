@@ -1,6 +1,7 @@
 import { query } from "./_generated/server";
 import { requireOwner } from "./lib/session";
 import { DAY, dateKeyOf, startOfLocalDay } from "./lib/time";
+import { locationKey } from "./lib/weather";
 
 const WAITING_STATUSES = new Set([
   "needs_clarification",
@@ -108,6 +109,7 @@ export const summary = query({
         connected: connections.some(
           (connection) => connection.status === "active"
         ),
+        location: locationKey(owner) !== null,
         trusted: firstContact !== null,
       },
       messages: recentMessages.map((message, index) => ({

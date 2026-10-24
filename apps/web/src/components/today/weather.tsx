@@ -10,6 +10,7 @@ import type {
 import { cn } from "@lifelink/ui/lib/utils";
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   CloudFogIcon,
   CloudIcon,
   CloudLightningIcon,
@@ -118,15 +119,47 @@ const WeekForecast = ({
   </>
 );
 
-const SettingsLink = ({ children }: { children: string }) => (
-  <Link
-    className="text-muted-foreground hover:text-foreground text-label min-h-control inline-flex items-center gap-2 underline"
-    href="/settings#profile"
-  >
-    <MapPinIcon aria-hidden="true" className="size-5" />
-    {children}
-  </Link>
-);
+/**
+ * The first row of the week list when weather has no place to use. It lives
+ * there, not in the header, because the weather matters most next to plans.
+ */
+const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
+  if (state?.status !== "no_location" && state?.status !== "not_found") {
+    return null;
+  }
+
+  const missing = state.status === "no_location";
+
+  return (
+    <Link
+      className="text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 rounded-lg px-3 py-3.5 transition-colors"
+      href="/settings#profile"
+    >
+      <MapPinIcon
+        aria-hidden="true"
+        className="text-muted-foreground size-5 shrink-0"
+      />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="text-body font-semibold">
+          {missing
+            ? "See the weather for your appointments"
+            : "We could not find your town"}
+        </span>
+        <span className="text-muted-foreground text-label">
+          <span className="sr-only">. </span>
+          {missing ? "Add your postal code" : "Check your postal code"}
+        </span>
+      </span>
+      <span
+        aria-hidden="true"
+        className="text-accent-foreground text-label inline-flex shrink-0 items-center gap-0.5 font-medium"
+      >
+        {missing ? "Add" : "Check"}
+        <ChevronRightIcon className="size-4" />
+      </span>
+    </Link>
+  );
+};
 
 /** Today's weather in the header; the week opens in a light popover. */
 const WeatherChip = ({
@@ -149,16 +182,9 @@ const WeatherChip = ({
     );
   }
 
-  if (state.status === "no_location") {
-    return <SettingsLink>Add your postal code for weather</SettingsLink>;
-  }
-
-  if (state.status === "not_found") {
-    return (
-      <SettingsLink>
-        We could not find your town. Check it in Settings
-      </SettingsLink>
-    );
+  // Without a usable place the header stays quiet; the week list asks for one.
+  if (state.status === "no_location" || state.status === "not_found") {
+    return null;
   }
 
   const { forecast } = state;
@@ -214,4 +240,4 @@ const WeatherChip = ({
   );
 };
 
-export { WeatherChip, WeatherIcon };
+export { LocationPrompt, WeatherChip, WeatherIcon };
