@@ -5,9 +5,13 @@ import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
 import {
   ArrowRightIcon,
   CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ChevronsUpDownIcon,
   StarIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { formatShortDay, money } from "@/lib/format";
 
@@ -29,6 +33,75 @@ const PAST_IN_MENU = 3;
 
 /** Not a list id, so choosing it can never select a list. */
 const SEE_ALL_PAST = "see-all-past";
+
+const ListPopup = ({ children }: { children: ReactNode }) => {
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
+    null
+  );
+
+  const [moreAbove, setMoreAbove] = useState(false);
+  const [moreBelow, setMoreBelow] = useState(false);
+
+  useEffect(() => {
+    if (scrollElement === null) {
+      return;
+    }
+
+    const updateHints = (): void => {
+      setMoreAbove(scrollElement.scrollTop > 1);
+      setMoreBelow(
+        scrollElement.scrollHeight -
+          scrollElement.clientHeight -
+          scrollElement.scrollTop >
+          1
+      );
+    };
+
+    const observer = new ResizeObserver(updateHints);
+    observer.observe(scrollElement);
+
+    if (scrollElement.firstElementChild) {
+      observer.observe(scrollElement.firstElementChild);
+    }
+
+    scrollElement.addEventListener("scroll", updateHints);
+    updateHints();
+
+    return () => {
+      observer.disconnect();
+      scrollElement.removeEventListener("scroll", updateHints);
+    };
+  }, [scrollElement]);
+
+  return (
+    <Select.Popup className="border-border bg-raised relative flex max-h-[min(32rem,var(--available-height))] w-[var(--anchor-width)] min-w-[min(20rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
+      <Select.List
+        className="min-h-0 overflow-y-auto p-1.5"
+        ref={setScrollElement}
+      >
+        <div>{children}</div>
+      </Select.List>
+      {moreAbove ? (
+        <div
+          aria-hidden="true"
+          className="border-border bg-raised text-muted-foreground pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-2 border-b py-2 text-base"
+        >
+          <ChevronUpIcon className="size-5" />
+          More lists above
+        </div>
+      ) : null}
+      {moreBelow ? (
+        <div
+          aria-hidden="true"
+          className="border-border bg-raised text-muted-foreground pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 border-t py-2 text-base"
+        >
+          <ChevronDownIcon className="size-5" />
+          Scroll for more lists
+        </div>
+      ) : null}
+    </Select.Popup>
+  );
+};
 
 const ListOption = ({
   details,
@@ -135,7 +208,7 @@ const ListPicker = ({
           className="z-50"
           sideOffset={8}
         >
-          <Select.Popup className="border-border bg-raised flex max-h-[min(32rem,var(--available-height))] w-[var(--anchor-width)] min-w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto rounded-xl border p-1.5 shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
+          <ListPopup>
             {current.length > 0 ? (
               <Select.Group>
                 <Select.GroupLabel className={GROUP_LABEL}>
@@ -189,7 +262,7 @@ const ListPicker = ({
                 </Select.Item>
               </Select.Group>
             ) : null}
-          </Select.Popup>
+          </ListPopup>
         </Select.Positioner>
       </Select.Portal>
     </Select.Root>
