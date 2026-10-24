@@ -1,311 +1,251 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { Button } from "@lifelink/ui/components/button";
-import { Label } from "@lifelink/ui/components/label";
-import { Textarea } from "@lifelink/ui/components/textarea";
-import { useMutation, useQuery } from "convex/react";
-import {
-  ImagePlusIcon,
-  LightbulbIcon,
-  ListChecksIcon,
-  XIcon,
-} from "lucide-react";
+import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { Button, buttonVariants } from "@lifelink/ui/components/button";
+import { cn } from "@lifelink/ui/lib/utils";
+import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { ChevronLeftIcon, ClockIcon, ListChecksIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
+import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 
-import { Avatar, ModePill } from "@/components/app/bits";
-import { PageHeader } from "@/components/app/page-header";
+import { Avatar, SimulatedPill } from "@/components/app/bits";
 import { usePreferences } from "@/components/app/preferences";
-import { EmptyNote, LoadingRows } from "@/components/app/states";
-import { ExplanationPanel } from "@/components/explain/explanation-panel";
+import { LoadingRows } from "@/components/app/states";
+import {
+  CHAT_READING_COLUMN,
+  CHAT_WORKSPACE,
+} from "@/components/assistant/chat-layout";
+import { useChatViewport } from "@/components/assistant/use-chat-viewport";
 import { RecapPanel } from "@/components/messages/recap-panel";
 import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
-import { messageOf } from "@/lib/errors";
-import { ago } from "@/lib/format";
 
-const STATUS_WORDS: Record<Doc<"messages">["status"], string> = {
-  delivered: "Delivered",
-  draft: "Draft, not sent",
-  failed: "Not sent",
-  read: "Read",
-  received: "Received",
-  sending: "Sending…",
-  sent: "Sent",
-  unknown: "Not sure it was sent",
-};
+import { ConversationList } from "./conversation";
+import { EMPTY_DRAFT, MessageComposer } from "./message-composer";
+import type { MessageDraft } from "./message-composer";
 
-const MAX_PHOTOS = 4;
+type Thread = NonNullable<FunctionReturnType<typeof api.messages.thread>>;
 
-const uploadResultSchema = z.object({ storageId: z.string() });
+/** How close to the end still counts as "reading the latest". */
+const FOLLOW_THRESHOLD = 48;
 
-interface PendingPhoto {
-  id: Id<"photos">;
-  name: string;
-}
+const SCROLL_KEYS = new Set([
+  "ArrowDown",
+  "ArrowUp",
+  "End",
+  "Home",
+  "PageDown",
+  "PageUp",
+  " ",
+]);
 
-const MessageGuidance = ({
+const EmptyConversation = ({
+  contact,
   firstName,
-  hasChannel,
-  photoCount,
-  practice,
 }: {
+  contact: Thread["contact"];
   firstName: string;
-  hasChannel: boolean;
-  photoCount: number;
-  practice: boolean;
 }) => (
-  <>
-    <p className="text-muted-foreground text-lg leading-7">
-      {practice
-        ? `This is a practice message. Nothing will be sent to ${firstName}.`
-        : `You’ll see exactly what ${firstName} will get, then approve it.`}
+  <div className="my-auto flex flex-col items-center gap-3 py-10 text-center">
+    <Avatar
+      hue={contact.hue}
+      name={contact.name}
+      size="lg"
+      src={contact.avatarUrl}
+    />
+    <p className="text-section font-semibold tracking-tight">
+      No messages with {firstName} yet
     </p>
-    {hasChannel ? null : (
-      <Link
-        className="text-lg leading-7 underline underline-offset-4"
-        href="/circle"
-      >
-        Add a way to reach {firstName} in Trusted circle.
-      </Link>
-    )}
-    {photoCount >= MAX_PHOTOS ? (
-      <p className="text-muted-foreground text-base">
-        You can attach up to {MAX_PHOTOS} photos. Remove one to add another.
-      </p>
-    ) : null}
-  </>
+    <p className="text-muted-foreground max-w-md text-lg">
+      Write below to start. You’ll see exactly what {firstName} will get before
+      anything is sent.
+    </p>
+  </div>
 );
 
-const ThreadScreen = ({ contactId }: { contactId: string }) => {
-  // SAFETY: the id comes from a LifeLink link; the query checks ownership and rejects anything else.
-  const thread = useQuery(api.messages.thread, {
-    contactId: contactId as Id<"contacts">,
-  });
+/** A slim chat header: back, who, how you reach them, and the recap. */
+const ConversationHeader = ({
+  allPractice,
+  contact,
+  onRecap,
+  recapOpen,
+  recapTriggerRef,
+  subline,
+}: {
+  allPractice: boolean;
+  contact: Thread["contact"];
+  onRecap: (() => void) | null;
+  recapOpen: boolean;
+  recapTriggerRef: RefObject<HTMLButtonElement | null>;
+  subline: string;
+}) => {
+  const heading = useRef<HTMLHeadingElement>(null);
 
-  const uploadUrl = useMutation(api.messages.generatePhotoUploadUrl);
-  const registerPhoto = useMutation(api.messages.registerPhoto);
-  const draft = useMutation(api.messages.draft);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, []);
+
+  return (
+    <header className="border-rule flex shrink-0 items-center gap-2 border-b pb-3 sm:gap-3 sm:pb-4">
+      <Link
+        className={buttonVariants({
+          className:
+            "text-muted-foreground hover:text-foreground -ml-3 px-3 sm:pr-4 sm:pl-2",
+          variant: "ghost",
+        })}
+        href="/messages"
+      >
+        <ChevronLeftIcon aria-hidden="true" className="size-6 sm:size-5" />
+        <span className="sr-only sm:not-sr-only">
+          <span className="sr-only">Back to </span>Messages
+        </span>
+      </Link>
+      <Avatar
+        className="size-10 text-base sm:size-12 sm:text-lg"
+        hue={contact.hue}
+        name={contact.name}
+        src={contact.avatarUrl}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h1
+          className="text-body sm:text-section truncate font-semibold tracking-tight outline-none"
+          ref={heading}
+          tabIndex={-1}
+        >
+          <span className="sr-only">Conversation with </span>
+          {contact.name}
+        </h1>
+        <p className="text-muted-foreground text-label truncate">{subline}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        {allPractice ? (
+          <SimulatedPill className="hidden sm:inline-flex" />
+        ) : null}
+        {onRecap ? (
+          <Button
+            aria-controls="recap-panel"
+            aria-expanded={recapOpen}
+            className="px-3.5 sm:px-4"
+            onClick={onRecap}
+            ref={recapTriggerRef}
+            size="sm"
+            variant="outline"
+          >
+            <ListChecksIcon aria-hidden="true" />
+            Recap
+            <span className="sr-only lg:not-sr-only"> this conversation</span>
+          </Button>
+        ) : null}
+      </div>
+    </header>
+  );
+};
+
+const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   const { me } = usePreferences();
-  const router = useRouter();
-  const [body, setBody] = useState("");
-  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
-  const [busy, setBusy] = useState(false);
+  const workspace = useChatViewport();
+  const [draft, setDraft] = useState<MessageDraft>(EMPTY_DRAFT);
   const [explaining, setExplaining] = useState<Id<"messages"> | null>(null);
   const [recapOpen, setRecapOpen] = useState(false);
-  const [fromSuggestion, setFromSuggestion] = useState(false);
-  const [notice, setNotice] = useState("");
-  const fileInput = useRef<HTMLInputElement>(null);
+  const viewport = useRef<HTMLElement>(null);
+  const followLatest = useRef(true);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const recapTriggerRef = useRef<HTMLButtonElement>(null);
   const explainTriggerRef = useRef<HTMLButtonElement>(null);
-  const bodyId = useId();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
-  if (thread === undefined) {
-    return (
-      <>
-        <PageHeader title="Conversation" />
-        <LoadingRows label="Loading conversation" rows={4} />
-      </>
-    );
-  }
-
-  const { contact } = thread;
+  const { contact, messages, pendingTaskIds } = thread;
+  const firstName = contact.name.split(" ")[0] ?? contact.name;
 
   const preferred =
     contact.channels.find((channel) => channel.preferred) ??
     contact.channels[0];
 
-  const firstName = contact.name.split(" ")[0] ?? contact.name;
+  const subline = preferred
+    ? `${contact.relationship} · ${CHANNEL_WORDS[preferred.channel]}${preferred.channel === "in_app" ? "" : ` to ${formatAddress(preferred.address)}`}`
+    : `${contact.relationship} · No way to reach ${firstName} yet`;
 
-  const addPhotos = async (files: FileList | null): Promise<void> => {
-    if (files === null) {
+  const allPractice =
+    messages.length > 0 &&
+    messages.every((message) => message.mode === "simulated");
+
+  // Open at the latest message, and keep it in view as new ones arrive or
+  // the workspace fits itself to the window, unless the person scrolled away.
+  useEffect(() => {
+    const panel = viewport.current;
+    const content = panel?.firstElementChild;
+
+    if (!panel || !content) {
       return;
     }
 
-    for (const file of [...files].slice(0, MAX_PHOTOS - photos.length)) {
-      try {
-        // oxlint-disable-next-line eslint/no-await-in-loop -- photos upload one at a time so a failure names the right file.
-        const url = await uploadUrl({});
-
-        // oxlint-disable-next-line eslint/no-await-in-loop -- see above.
-        const response = await fetch(url, {
-          body: file,
-          headers: { "Content-Type": file.type },
-          method: "POST",
-        });
-
-        // oxlint-disable-next-line eslint/no-await-in-loop -- see above.
-        const uploaded = uploadResultSchema.parse(await response.json());
-
-        // SAFETY: Convex storage returned this id for the file just uploaded; the mutation re-checks it.
-        // oxlint-disable-next-line eslint/no-await-in-loop -- see above.
-        const photoId = await registerPhoto({
-          caption: null,
-          contactId: contact._id,
-          storageId: uploaded.storageId as Id<"_storage">,
-        });
-
-        if (photoId === null) {
-          toast.error(
-            `${file.name}: Please choose a photo (JPEG, PNG, WebP, or HEIC).`
-          );
-        } else {
-          setPhotos((existing) => [
-            ...existing,
-            { id: photoId, name: file.name },
-          ]);
-        }
-      } catch (error) {
-        toast.error(
-          `${file.name}: ${messageOf(error instanceof Error ? error : null)}`
-        );
+    const stick = (): void => {
+      if (followLatest.current) {
+        panel.scrollTop = panel.scrollHeight;
       }
-    }
-  };
+    };
+
+    stick();
+    const observer = new ResizeObserver(stick);
+
+    observer.observe(panel);
+    observer.observe(content);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const [pendingTask] = pendingTaskIds;
 
   return (
-    <>
-      <nav
-        aria-label="Breadcrumb"
-        className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-lg"
-      >
-        <Link
-          className="inline-flex min-h-12 items-center hover:underline"
-          href="/messages"
-        >
-          Messages
-        </Link>
-        <span aria-hidden="true"> › </span>
-        {contact.name}
-      </nav>
-      <PageHeader
-        subline={
-          preferred
-            ? `${contact.relationship} · ${CHANNEL_WORDS[preferred.channel]}${preferred.channel === "in_app" ? "" : ` to ${formatAddress(preferred.address)}`}`
-            : `${contact.relationship} · Add a way to reach ${firstName} under Trusted circle.`
+    <div className={CHAT_WORKSPACE} ref={workspace}>
+      <ConversationHeader
+        allPractice={allPractice}
+        contact={contact}
+        onRecap={
+          messages.length > 0
+            ? () => {
+                followLatest.current = false;
+                setRecapOpen(true);
+              }
+            : null
         }
-        title={contact.name}
+        recapOpen={recapOpen}
+        recapTriggerRef={recapTriggerRef}
+        subline={subline}
       />
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_23rem]">
-        <section
-          aria-labelledby="history-heading"
-          className="flex min-w-0 flex-col gap-4"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2
-              className="text-2xl leading-8 font-semibold"
-              id="history-heading"
-            >
-              Conversation
-            </h2>
-            {thread.messages.length > 0 ? (
-              <Button
-                aria-controls="recap-panel"
-                aria-expanded={recapOpen}
-                ref={recapTriggerRef}
-                onClick={() => setRecapOpen(true)}
-                size="sm"
-                variant="outline"
-              >
-                <ListChecksIcon aria-hidden="true" />
-                Recap this conversation
-              </Button>
-            ) : null}
-          </div>
-          {thread.messages.length === 0 ? (
-            <EmptyNote>No messages with {firstName} yet.</EmptyNote>
-          ) : (
-            <ol className="flex flex-col gap-3" aria-live="polite">
-              {thread.messages.map((message) => (
-                <li
-                  className={
-                    message.direction === "incoming"
-                      ? "flex justify-start"
-                      : "flex justify-end"
-                  }
-                  key={message._id}
-                >
-                  <div
-                    className={
-                      message.direction === "incoming"
-                        ? "border-border bg-raised flex max-w-prose min-w-0 flex-col gap-3 rounded-xl border px-5 py-4"
-                        : "bg-surface flex max-w-prose min-w-0 flex-col gap-3 rounded-xl px-5 py-4"
-                    }
-                  >
-                    <p className="text-lg leading-7 break-words whitespace-pre-wrap">
-                      {message.body}
-                    </p>
-                    {message.photoIds.length > 0 ? (
-                      <p className="text-muted-foreground text-lg leading-7">
-                        {message.photoIds.length}{" "}
-                        {message.photoIds.length === 1 ? "photo" : "photos"}
-                      </p>
-                    ) : null}
-                    <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-lg leading-7">
-                      <Avatar
-                        hue={contact.hue}
-                        name={
-                          message.direction === "incoming"
-                            ? contact.name
-                            : (me?.profile?.preferredName ?? "Me")
-                        }
-                        size="sm"
-                        src={
-                          message.direction === "incoming"
-                            ? contact.avatarUrl
-                            : null
-                        }
-                      />
-                      {message.direction === "incoming" ? firstName : "You"} ·{" "}
-                      {ago(message.createdAt, timeZone)}
-                      {message.direction === "outgoing"
-                        ? ` · ${STATUS_WORDS[message.status]}`
-                        : ""}
-                      <ModePill mode={message.mode} />
-                    </p>
-                    {message.direction === "incoming" &&
-                    message.body.trim().length > 0 ? (
-                      <Button
-                        aria-controls="explanation-panel"
-                        aria-expanded={explaining === message._id}
-                        className="self-start whitespace-normal"
-                        onClick={(event) => {
-                          explainTriggerRef.current = event.currentTarget;
-                          setExplaining(message._id);
-                        }}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <LightbulbIcon aria-hidden="true" />
-                        Help me understand
-                      </Button>
-                    ) : null}
-                    {message.taskId &&
-                    message.direction === "outgoing" &&
-                    (message.status === "unknown" ||
-                      message.status === "failed") ? (
-                      <Link
-                        className="text-base font-semibold underline"
-                        // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
-                        href={`/tasks/${message.taskId}` as Route}
-                      >
-                        See what happened
-                      </Link>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Scrolling by hand decides whether the view keeps following new messages. */}
+      <section
+        aria-labelledby="history-heading"
+        className="min-h-48 flex-1 overflow-y-auto overscroll-contain px-1"
+        data-chat-transcript=""
+        onKeyDown={(event) => {
+          if (SCROLL_KEYS.has(event.key)) {
+            followLatest.current = false;
+          }
+        }}
+        onScroll={(event) => {
+          const panel = event.currentTarget;
+
+          followLatest.current =
+            panel.scrollHeight - panel.scrollTop - panel.clientHeight <
+            FOLLOW_THRESHOLD;
+        }}
+        ref={viewport}
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the conversation independently of the composer.
+        tabIndex={messages.length > 0 ? 0 : undefined}
+      >
+        <div
+          className={cn(
+            CHAT_READING_COLUMN,
+            "flex min-h-full flex-col gap-6 pt-2 pb-4"
           )}
-        </section>
-        <div className="flex min-w-0 flex-col gap-6">
+        >
+          <h2 className="sr-only" id="history-heading">
+            Conversation with {contact.name}
+          </h2>
           {recapOpen ? (
             <RecapPanel
               contactId={contact._id}
@@ -314,146 +254,79 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
               returnFocusRef={recapTriggerRef}
             />
           ) : null}
-          {explaining === null ? null : (
-            <ExplanationPanel
-              key={explaining}
-              onClose={() => setExplaining(null)}
-              returnFocusRef={explainTriggerRef}
+          {messages.length === 0 ? (
+            <EmptyConversation contact={contact} firstName={firstName} />
+          ) : (
+            <ConversationList
+              contact={contact}
+              explainTriggerRef={explainTriggerRef}
+              explaining={explaining}
+              messages={messages}
+              onExplain={(messageId) => {
+                followLatest.current = false;
+                setExplaining(messageId);
+              }}
+              onExplainClose={() => setExplaining(null)}
               onUseReply={(suggestion) => {
-                setBody(suggestion);
-                setFromSuggestion(true);
-                setNotice(
-                  "Reply added to your message. You can change it before reviewing."
-                );
+                setDraft({
+                  body: suggestion,
+                  fromSuggestion: true,
+                  notice:
+                    "Reply added to your message. You can change it before reviewing.",
+                });
                 bodyRef.current?.focus();
               }}
-              source={{ messageId: explaining }}
+              timeZone={timeZone}
             />
           )}
-          <section
-            aria-labelledby="write-heading"
-            className="bg-surface flex min-w-0 flex-col gap-4 rounded-xl px-5 py-6"
-          >
-            <h2 className="text-2xl leading-8 font-semibold" id="write-heading">
-              Write to {firstName}
-            </h2>
-            <form
-              className="flex flex-col gap-4"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                setBusy(true);
-
-                try {
-                  const taskId = await draft({
-                    body,
-                    contactId: contact._id,
-                    photoIds: photos.map((photo) => photo.id),
-                    startedFrom: fromSuggestion ? "suggestion" : undefined,
-                  });
-
-                  setBody("");
-                  setPhotos([]);
-                  setFromSuggestion(false);
-                  setNotice("");
-                  // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
-                  router.push(`/tasks/${taskId}` as Route);
-                } catch (error) {
-                  toast.error(messageOf(error instanceof Error ? error : null));
-                }
-
-                setBusy(false);
-              }}
-            >
-              <Label htmlFor={bodyId}>Your message</Label>
-              <Textarea
-                className="bg-raised"
-                id={bodyId}
-                onChange={(event) => {
-                  setBody(event.target.value);
-
-                  if (event.target.value.trim().length === 0) {
-                    setFromSuggestion(false);
-                  }
-                }}
-                ref={bodyRef}
-                rows={5}
-                value={body}
-              />
-              <output aria-live="polite" className="text-base">
-                {notice}
-              </output>
-              {photos.length > 0 ? (
-                <ul className="flex flex-col gap-2">
-                  {photos.map((photo) => (
-                    <li
-                      className="bg-raised flex items-center justify-between gap-2 rounded-lg px-4 py-2 text-base"
-                      key={photo.id}
-                    >
-                      <span className="truncate">{photo.name}</span>
-                      <Button
-                        aria-label={`Remove ${photo.name}`}
-                        onClick={() =>
-                          setPhotos((existing) =>
-                            existing.filter((item) => item.id !== photo.id)
-                          )
-                        }
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <XIcon />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <input
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                className="sr-only"
-                multiple
-                onChange={(event) => {
-                  void addPhotos(event.target.files);
-                }}
-                ref={fileInput}
-                tabIndex={-1}
-                type="file"
-              />
-              <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:flex-wrap">
-                <Button
-                  className="max-w-full py-3 whitespace-normal"
-                  disabled={photos.length >= MAX_PHOTOS}
-                  onClick={() => fileInput.current?.click()}
-                  type="button"
-                  variant="outline"
-                >
-                  <ImagePlusIcon />
-                  Add a photo
-                </Button>
-                <Button
-                  aria-busy={busy}
-                  className="max-w-full py-3 whitespace-normal"
-                  disabled={
-                    busy ||
-                    (body.trim().length === 0 && photos.length === 0) ||
-                    !preferred
-                  }
-                  type="submit"
-                >
-                  Review before sending
-                </Button>
-              </div>
-              <MessageGuidance
-                firstName={firstName}
-                hasChannel={Boolean(preferred)}
-                photoCount={photos.length}
-                practice={Boolean(me?.profile?.demoMode)}
-              />
-            </form>
-          </section>
         </div>
+      </section>
+      <div className={cn(CHAT_READING_COLUMN, "flex shrink-0 flex-col gap-3")}>
+        {pendingTask ? (
+          <p className="bg-parchment text-label flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1 pr-2 pl-4">
+            <ClockIcon
+              aria-hidden="true"
+              className="text-muted-foreground size-5 shrink-0"
+            />
+            <span className="min-w-0 flex-1">
+              {pendingTaskIds.length === 1
+                ? `A message to ${firstName} is waiting for your approval.`
+                : `${pendingTaskIds.length} messages to ${firstName} are waiting for your approval.`}
+            </span>
+            <Link
+              className="min-h-control inline-flex items-center px-2 font-semibold underline underline-offset-4"
+              // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
+              href={`/tasks/${pendingTask}` as Route}
+            >
+              Review it
+            </Link>
+          </p>
+        ) : null}
+        <MessageComposer
+          canReach={Boolean(preferred)}
+          contactId={contact._id}
+          draft={draft}
+          firstName={firstName}
+          inputRef={bodyRef}
+          onDraftChange={setDraft}
+          practice={Boolean(me?.profile?.demoMode)}
+        />
       </div>
-    </>
+    </div>
   );
+};
+
+const ThreadScreen = ({ contactId }: { contactId: string }) => {
+  // SAFETY: the id comes from a LifeLink link; the query checks ownership and rejects anything else.
+  const thread = useQuery(api.messages.thread, {
+    contactId: contactId as Id<"contacts">,
+  });
+
+  if (thread === undefined) {
+    return <LoadingRows layout="thread" label="Loading conversation" />;
+  }
+
+  return <ThreadWorkspace key={thread.contact._id} thread={thread} />;
 };
 
 export { ThreadScreen };

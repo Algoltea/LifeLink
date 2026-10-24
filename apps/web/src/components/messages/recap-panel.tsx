@@ -24,15 +24,15 @@ type Recap = Doc<"conversationRecaps">;
 
 const LOCAL_WORDS: Record<NonNullable<Recap["localReason"]>, string> = {
   chosen:
-    "Local recap: found by patterns, not full understanding. Nothing was sent to an AI provider.",
+    "Quick recap, made in LifeLink: found by patterns, not full understanding. Nothing was sent to an AI provider.",
   failed:
-    "Local recap. You asked for a cloud recap, but it didn’t finish. The provider may already have received these messages.",
+    "Quick recap, made in LifeLink. You asked for a cloud recap, but it didn’t finish. The provider may already have received these messages.",
   limit:
-    "Local recap. Today’s limit for cloud recaps has been reached, so nothing more was sent.",
+    "Quick recap, made in LifeLink. Today’s limit for cloud recaps has been reached, so nothing more was sent.",
   practice:
-    "Practice: a local recap. Practice messages are never sent to an AI provider.",
+    "Practice: a quick recap, made in LifeLink. Practice messages are never sent to an AI provider.",
   unavailable:
-    "Local recap. The cloud assistant isn’t set up, so nothing was sent to an AI provider.",
+    "Quick recap, made in LifeLink. The cloud assistant isn’t set up, so nothing was sent to an AI provider.",
 };
 
 const methodWords = (recap: Recap): string =>
@@ -310,8 +310,8 @@ const RequestForm = ({
     <div className="flex flex-col gap-3">
       {practice ? (
         <p className="text-base">
-          In Practice mode, LifeLink recaps locally. Practice messages are never
-          sent to an AI provider.
+          In Practice mode, LifeLink makes the recap itself. Practice messages
+          are never sent to an AI provider.
         </p>
       ) : (
         <label
@@ -328,7 +328,7 @@ const RequestForm = ({
           <span>
             Use the cloud assistant for a fuller recap. Your recent messages
             with this person are sent to the AI provider. Leave unchecked for a
-            local recap.
+            quick recap made in LifeLink.
           </span>
         </label>
       )}
@@ -385,7 +385,9 @@ const RecapPanel = ({
   const practice =
     me?.profile?.demoMode === true || view?.recap.mode === "simulated";
 
-  let body: ReactNode = <LoadingRows label="Loading the recap" rows={2} />;
+  let body: ReactNode = (
+    <LoadingRows layout="panel" label="Loading the recap" rows={2} />
+  );
 
   if (view === null) {
     body = (

@@ -30,7 +30,7 @@ const LOCAL_WORDS: Record<NonNullable<Explanation["localReason"]>, string> = {
   limit:
     "Local reading. Today’s limit for cloud readings has been reached, so nothing more was sent.",
   practice:
-    "Practice: a local reading. Practice messages are never sent to an AI provider.",
+    "Practice: explained in LifeLink. Practice messages are never sent to an AI provider.",
   unavailable:
     "Local reading. The cloud assistant isn’t set up, so nothing was sent to an AI provider.",
 };
