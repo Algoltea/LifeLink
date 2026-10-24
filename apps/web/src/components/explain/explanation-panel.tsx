@@ -255,14 +255,20 @@ const sectionsOf = (
                 <p className="text-lg leading-7 whitespace-pre-wrap">
                   {reply.draft}
                 </p>
-                <Button
-                  aria-label={`Use this reply: ${reply.label}`}
-                  className="self-start whitespace-normal"
-                  onClick={() => onUseReply(reply.draft)}
-                  variant="outline"
-                >
-                  Use this reply
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                  <ReadAloudButton
+                    label="Read this reply aloud"
+                    text={reply.draft}
+                  />
+                  <Button
+                    aria-label={`Use this reply: ${reply.label}`}
+                    className="whitespace-normal"
+                    onClick={() => onUseReply(reply.draft)}
+                    variant="outline"
+                  >
+                    Use this reply
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

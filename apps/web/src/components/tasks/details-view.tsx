@@ -2,7 +2,7 @@ import type { ActionDetails } from "@lifelink/contracts/actions";
 import { sharingScopes } from "@lifelink/contracts/sharing";
 import { cn } from "@lifelink/ui/lib/utils";
 
-import { Avatar } from "@/components/app/bits";
+import { Avatar, ReadAloudButton } from "@/components/app/bits";
 import { formatWhen, money } from "@/lib/format";
 
 const US_PHONE = /^\+1(?<area>\d{3})(?<exchange>\d{3})(?<line>\d{4})$/u;
@@ -61,6 +61,11 @@ const MessageSlip = ({
           {details.photoIds.length === 1 ? "photo" : "photos"}.
         </p>
       ) : null}
+      <ReadAloudButton
+        className="self-start"
+        label="Read the message aloud"
+        text={details.body}
+      />
     </div>
   </div>
 );
@@ -194,6 +199,11 @@ const DetailsView = ({
           )}
         >
           <p className="text-2xl leading-snug">{details.text}</p>
+          <ReadAloudButton
+            className="self-start"
+            label="Read the update aloud"
+            text={details.text}
+          />
           <p className="text-muted-foreground text-base">
             Only{" "}
             {granteeNames.length > 0
@@ -259,6 +269,11 @@ const DetailsView = ({
           <p className="text-xl leading-snug whitespace-pre-wrap">
             {details.body}
           </p>
+          <ReadAloudButton
+            className="self-start"
+            label="Read the email aloud"
+            text={`Subject: ${details.subject}. ${details.body}`}
+          />
           <p className="text-muted-foreground text-base">
             Saved as a draft in your{" "}
             {details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent
@@ -302,6 +317,11 @@ const DetailsView = ({
           <p className="text-xl leading-snug whitespace-pre-wrap">
             {details.body}
           </p>
+          <ReadAloudButton
+            className="self-start"
+            label="Read the note aloud"
+            text={details.body}
+          />
           <p className="text-muted-foreground text-base">
             It is saved as a new document in your Google Drive. Only you can see
             it unless you share it there.
