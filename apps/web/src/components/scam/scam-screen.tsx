@@ -8,7 +8,7 @@ import { Pill } from "@lifelink/ui/components/pill";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/app/page-header";
@@ -60,7 +60,7 @@ const checkButtonLabel = (source: Source, practice: boolean): string => {
 const checkGuidance = (source: Source, practice: boolean): string => {
   if (practice) {
     return source === "screenshot"
-      ? "Practice mode can’t check pictures. Paste the words instead."
+      ? "Practice mode can’t check screenshots. Choose Text instead."
       : "Practice checks stay on this device. Nothing is sent.";
   }
 
@@ -75,8 +75,8 @@ const validScreenshot = (file: File): boolean =>
   file.size <= MAX_SCREENSHOT_BYTES && file.type.startsWith("image/");
 
 const BASE_SOURCES = [
-  { label: "Paste the words", value: "text" },
-  { label: "A screenshot", value: "screenshot" },
+  { label: "Text", value: "text" },
+  { label: "Screenshot", value: "screenshot" },
 ] as const;
 
 const EMAIL_SOURCES = [
@@ -147,7 +147,6 @@ const CheckForm = ({
 }) => {
   const { me } = usePreferences();
   const practice = me?.profile?.demoMode === true;
-  const textRef = useRef<HTMLTextAreaElement>(null);
   const submit = useMutation(api.scam.submit);
   const uploadUrl = useMutation(api.messages.generatePhotoUploadUrl);
 
@@ -166,7 +165,6 @@ const CheckForm = ({
     source === "email" && email === null ? "text" : source;
 
   const screenshotReady = activeSource === "screenshot" && file !== null;
-  const screenshotMode = activeSource === "screenshot";
 
   const ready = canCheck(activeSource, text, file, practice, me === undefined);
 
@@ -185,7 +183,7 @@ const CheckForm = ({
 
     if (!response.ok) {
       throw new Error(
-        "The screenshot could not be uploaded. Try again, or paste its words instead."
+        "The screenshot could not be uploaded. Try again, or choose Text and type its words."
       );
     }
 
@@ -302,7 +300,6 @@ const CheckForm = ({
           <Label htmlFor={textId}>The message</Label>
           <Textarea
             id={textId}
-            ref={textRef}
             maxLength={8000}
             onChange={(event) => setText(event.target.value)}
             placeholder="Paste or type the words here"
@@ -324,21 +321,6 @@ const CheckForm = ({
       <p className="text-muted-foreground text-body max-w-prose">
         {checkGuidance(activeSource, practice)}
       </p>
-      {screenshotMode ? (
-        <Button
-          className="self-start whitespace-normal"
-          disabled={busy}
-          onClick={() => {
-            setSource("text");
-            setFormError(null);
-            requestAnimationFrame(() => textRef.current?.focus());
-          }}
-          type="button"
-          variant="outline"
-        >
-          Paste the words instead
-        </Button>
-      ) : null}
       {formError === null ? null : <ErrorNote>{formError}</ErrorNote>}
       <Button
         aria-busy={busy}
