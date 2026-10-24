@@ -487,13 +487,11 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
   const [saved, setSaved] = useState(false);
 
   const ids = {
-    city: useId(),
     name: useId(),
     preferred: useId(),
     signOff: useId(),
     timeZone: useId(),
     zip: useId(),
-    zipHint: useId(),
   };
 
   return (
@@ -521,15 +519,18 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
           const text = (key: string): string =>
             String(form.get(key) ?? "").trim();
 
+          const postalCode = text("zip") || null;
+
           setBusy(true);
           setFailure(null);
           setSaved(false);
 
           try {
             await update({
-              city: text("city") || null,
+              // Onboarding saves the town that matches the code; a new code makes it stale.
+              city: postalCode === profile.postalCode ? profile.city : null,
               displayName: text("name"),
-              postalCode: text("zip") || null,
+              postalCode,
               preferredName: text("preferred"),
               signOffName:
                 profile.role === "owner"
@@ -592,26 +593,13 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.city}>City</Label>
-            <Input
-              autoComplete="address-level2"
-              defaultValue={profile.city ?? ""}
-              id={ids.city}
-              name="city"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
             <Label htmlFor={ids.zip}>Postal code</Label>
             <Input
-              aria-describedby={ids.zipHint}
               autoComplete="postal-code"
               defaultValue={profile.postalCode ?? ""}
               id={ids.zip}
               name="zip"
             />
-            <span className="text-muted-foreground text-base" id={ids.zipHint}>
-              Used for the weather on Today.
-            </span>
           </div>
         </fieldset>
         <SaveFeedback failure={failure} state={submissionState(busy, saved)} />
