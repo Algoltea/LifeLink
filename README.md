@@ -122,15 +122,16 @@ Secrets never touch the browser or a committed file. There are three places:
 | **Today** | Greeting and briefing (read aloud on request), appointments, due reminders, what's waiting for approval, and recent family messages |
 | **Ask** | Separate saved conversations, streamed replies, inline reviews of the latest proposal, and a History drawer |
 | **Task** | A journey gauge (asked → sent → replied → confirmed → reminded), the exact message slip, approve, change, or cancel, earlier versions, and outcome handling |
-| **Messages** | Family threads over iMessage, email, Discord, or in-app, with photos, drafts that become tasks, and delivery status in words |
-| **Email** | Automatic local concern screening, optional AI analysis of emails you choose, and reply drafts that are never sent automatically |
-| **Scam check** | Paste text, pick an email, or upload a screenshot. You get a plain verdict, what stood out, what to do next, and **Ask someone you trust** |
+| **Messages** | Family threads over iMessage, email, Discord, or in-app, with photos, drafts that become tasks, and delivery status in words. **Help me understand** explains a received message (what it asks, dates, what's missing, labelled guesses) and offers up to three replies that only fill your message box. **Recap this conversation** separates what was agreed from what was only offered, shows what LifeLink's records show as done, and proposes next steps for review |
+| **Email** | Automatic local concern screening, optional AI analysis of emails you choose, **Help me understand**, and reply drafts that are never sent automatically |
+| **Scam check** | Paste text, pick an email, or upload a screenshot. You get a plain verdict, what stood out (only words really in the message), advice the message itself gives, what to do next, and **Ask someone you trust**. Screenshot quotes are labelled unverified |
+| **Conversation practice** | Short scripted rehearsals with made-up people: booking an appointment, asking for a ride, asking someone to repeat or write it down, and a suspicious caller. Ends with a recap; nothing is booked, sent, or saved |
 | **Trusted circle** | People and how to reach them, including **Set up iMessage** for each contact; plus sharing: one-time invitation codes with chosen scopes and an optional end date, scope changes, and immediate revoke |
 | **Family** (family member's view) | Only what was shared, re-checked on every read. Photos come through a permission-checked file route; there is an in-app reply |
 | **Groceries** | Saved lists, preferences, estimated costs, list budgets, and copy or print for shopping yourself |
 | **Solitaire** | Klondike with keyboard play, tap-to-move, undo, hints, and local save and resume. Works offline |
 | **Connections** | Each person's own accounts, with a plain capability list: works, not wired yet, or not offered |
-| **Settings** | Text size, contrast, light or dark, less movement, read-aloud, speaking speed, captions, profile, and Practice mode |
+| **Settings** | Text size, contrast, light or dark, less movement, read-aloud, speaking speed, captions, profile, Practice mode, and **How I like help**: short or detailed, one step at a time, a help language, and private notes |
 
 **Principles.**
 
@@ -362,8 +363,12 @@ tools/oxlint/anti-slop/  Vendored anti-slop plugin (MIT, provenance in UPSTREAM.
   - `events` covers duplicate webhooks.
   - `outcomes` covers unknown → reconcile → retry, and partial success.
   - `journey` covers the ride flow end to end.
+  - `scam` covers fabricated and paraphrased quotes, negated warnings, screenshot evidence, the verdict floor, and rescanning stored email.
+  - `explanations` and `recaps` cover word-for-word evidence, offers versus agreements, Practice and cloud consent, privacy from family, and preparing steps for review.
+  - `replies` covers refusals and maybes in the Practice reply reader.
 - **Solitaire:** rules, undo, and serialization.
-- **Contracts:** fingerprints.
+- **Rehearsals:** every script ends in a recap, with no loops, dead ends, links, phone numbers, or sample contacts, plus save and resume.
+- **Contracts:** fingerprints, quote evidence and stance, explanation and recap checks, draft safety, and the boundary that keeps private notes out of reply drafts.
 - **Discord bridge:** signing and DM filtering.
 - **Setup:** masked input, env merging, deployment detection, and mocked Photon project validation (read-only request, rejected credentials, and network failure).
 

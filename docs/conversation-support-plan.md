@@ -1,6 +1,6 @@
 # Conversation support: product and implementation plan
 
-Status: proposal for review. Nothing in this document is implemented yet, and approval of this plan does not authorize all five features. Each increment below needs its own go-ahead.
+Status: implemented on `feature/lifelink-conversation-support`, increments 1 to 5. Section 11 records where the implementation differs from this plan. The live phone companion (section 8) remains evaluation only.
 
 LifeLink's core flow still applies to everything here: _speak or type → review the exact action → approve → follow progress → see an accurate result._ None of these features adds a new way to send, save, or share anything. Any outward step goes through an existing action kind (`send_message`, `email_draft`, `create_reminder`, `calendar_event`) and the existing exact-version approval.
 
@@ -374,3 +374,21 @@ The rehearsal for a suspicious caller (increment 3) and the recaps of text conve
 - Read `packages/backend/AGENTS.md` and `convex/_generated/ai/guidelines.md` before backend changes, and regenerate Convex bindings with the backend's `codegen` command.
 - Use the project UI skills (`impeccable`, `design-taste-frontend`) for new screens. Then verify keyboard-only use, 390px and 1280px widths, and reduced motion in Practice mode in the browser.
 - No real messages, emails, or calendar changes are made during verification. Practice data only.
+
+## 11. Implementation notes
+
+What shipped differs from the plan above in these ways:
+
+- **Evidence labels.** Scam signals store `evidence: "verified" | "image_unverified"`. Local rule quotes are cut from the text, so they are `verified`. A model signal whose quote isn't in the text is removed entirely, not kept without its quote. An explanation that quotes absent words is withheld.
+- **Warning stance.** A model's `warns_against` is believed only when the local reading agrees at the same words. The local reading also treats conditionals ("if you don't…"), pressure ("don't forget to…"), and exceptions ("…except our agent") as requests.
+- **Email rescans.** A rules update rewrites the earlier automatic check in place, so a corrected result replaces the old one in history and in family Scam alerts. Rescanning clears only the local check's own flag. Flags from cloud summaries and manual cloud checks are kept.
+- **Suggested replies.** A separate model request writes the reply drafts from the message alone, so private notes and the help language can't shape words sent to someone else. If that request fails, the local suggestions remain.
+- **Rehearsals.** "Do it for real" suggests words to use in Ask rather than pre-filling it, because Ask has no pre-fill. Dictation uses the existing browser dictation.
+- **Preferences.** Phase B shipped with a narrow scope:
+  - The help language applies to cloud explanations and cloud scam results. Local readings stay in English and say so, and read-aloud and voice typing are unchanged.
+  - Notes are used only for message explanations. They aren't used for scam checks or recaps.
+- **Recaps.**
+  - Proposed steps are a confirming message or a reminder. Calendar steps aren't proposed yet.
+  - Only messages that were really sent count as something the person said.
+  - A step prepared from a Practice recap can't become real after Practice mode is turned off.
+- **Generated API types.** `convex/_generated/api.d.ts` was updated by hand for `explanations`, `recaps`, and `lib/usage`, because this worktree has no Convex deployment. Run the backend's `codegen` command against a deployment to confirm it matches.
