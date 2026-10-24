@@ -148,26 +148,24 @@ const WeatherChip = ({
 
   return (
     <Popover.Root>
-      <Popover.Trigger className="border-border bg-surface hover:border-control hover:bg-parchment data-[popup-open]:border-control text-label min-h-control inline-flex items-center gap-2.5 rounded-full border px-4 font-medium transition-colors">
+      {/* Text-sized to sit in the date line; the full row height keeps a large tap target. */}
+      <Popover.Trigger className="text-muted-foreground hover:text-foreground data-[popup-open]:text-foreground text-label min-h-control -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 transition-colors">
         <WeatherIcon
-          className="size-5"
+          className="size-4"
           code={forecast.current.code}
           night={!forecast.current.isDay}
         />
-        <span className="num font-semibold">
+        <span className="num text-foreground font-semibold">
           {degrees(forecast.current.temperatureC, unit)}
         </span>
         <span>{label}</span>
         {today ? (
-          <span className="text-muted-foreground num hidden sm:inline">
+          <span className="num hidden sm:inline">
             · H {degrees(today.highC, unit)} L {degrees(today.lowC, unit)}
           </span>
         ) : null}
         <span className="sr-only">. Show the week’s weather</span>
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="text-muted-foreground size-4"
-        />
+        <ChevronDownIcon aria-hidden="true" className="size-4" />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner align="end" className="z-50" sideOffset={8}>
