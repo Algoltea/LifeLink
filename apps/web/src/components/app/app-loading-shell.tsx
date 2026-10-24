@@ -228,7 +228,7 @@ const AppLoadingShell = ({ pathname }: { pathname: string }) => {
           groups={[]}
           navigation={<LoadingNavigation />}
           notices={
-            <div className="border-border bg-parchment flex min-h-[6.889rem] items-center border-b px-5 py-2 sm:min-h-[3.722rem]">
+            <div className="border-border bg-parchment flex min-h-[6.889rem] items-center border-b px-5 py-2 sm:min-h-[4.444rem]">
               <Skeleton className="h-4 w-96" />
             </div>
           }

@@ -343,7 +343,7 @@ const Notices = () => {
         </section>
       ))}
       {demo ? (
-        <div className="border-border bg-parchment text-muted-foreground text-label flex min-h-[3.722rem] flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
+        <div className="border-border bg-parchment text-muted-foreground text-label flex min-h-[4.444rem] flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
           <p>
             <strong className="font-semibold">Practice mode is on.</strong> No
             real messages are sent.
@@ -445,7 +445,7 @@ const ShellFrame = ({
         ) : (
           <>
             {/* Same height as the practice banner, so the logo and its text share one centre line. */}
-            <div className="flex h-[3.722rem] shrink-0 items-center">
+            <div className="flex h-[4.444rem] shrink-0 items-center">
               <Link
                 className="min-h-control hover:bg-neutral-wash flex items-center rounded-md px-4 transition-colors"
                 href={groups === FAMILY_NAV ? "/family" : "/"}
