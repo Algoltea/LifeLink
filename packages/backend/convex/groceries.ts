@@ -2,6 +2,11 @@
  * Saved grocery lists, preferences, and budgets. Retired shopping endpoints
  * remain callable so older clients get a clear explanation without creating work.
  */
+import {
+  groceryEstimateError,
+  groceryQuantityError,
+  groceryUnit,
+} from "@lifelink/contracts/groceries";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -75,6 +80,47 @@ const ownedList = async (
   return { list, owner };
 };
 
+export const deleteList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+    const now = Date.now();
+
+    // Retain historical permissions, but revoke any that refer to the deleted list.
+    const authorizations = ctx.db
+      .query("recurringAuthorizations")
+      .withIndex("by_owner", (index) => index.eq("ownerId", owner._id));
+
+    for await (const authorization of authorizations) {
+      if (
+        authorization.listId === list._id &&
+        authorization.revokedAt === null
+      ) {
+        await ctx.db.patch(authorization._id, { revokedAt: now });
+      }
+    }
+
+    await ctx.db.delete(list._id);
+    await audit(ctx, {
+      actor: "person",
+      detail: `Deleted grocery list: ${list.name}.`,
+      event: "groceries.list_deleted",
+      ownerId: owner._id,
+    });
+  },
+});
+
+export const unmarkAll = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+    await ctx.db.patch(list._id, {
+      items: list.items.map((item) => ({ ...item, checked: false })),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const addItem = mutation({
   args: {
     estimatedCents: v.union(v.number(), v.null()),
@@ -101,19 +147,29 @@ export const addItem = mutation({
       });
     }
 
+    const unit = args.unit?.trim() || null;
+
+    const validationError =
+      (groceryUnit(unit) === undefined
+        ? "Choose a unit from the list."
+        : null) ??
+      groceryQuantityError(args.quantity, unit) ??
+      groceryEstimateError(args.estimatedCents);
+
+    if (validationError !== null) {
+      throw new ConvexError({ code: "invalid", message: validationError });
+    }
+
     await ctx.db.patch(list._id, {
       items: [
         ...list.items,
         {
           checked: false,
-          estimatedCents:
-            args.estimatedCents === null
-              ? null
-              : Math.max(0, Math.round(args.estimatedCents)),
+          estimatedCents: args.estimatedCents,
           id: crypto.randomUUID(),
           name,
-          quantity: args.quantity === null ? null : Math.max(0, args.quantity),
-          unit: args.unit?.trim() || null,
+          quantity: args.quantity,
+          unit,
         },
       ],
       updatedAt: Date.now(),
@@ -135,6 +191,18 @@ export const updateItem = mutation({
     const items = list.items.map((item) => {
       if (item.id !== args.itemId) {
         return item;
+      }
+
+      const validationError =
+        (args.quantity === undefined
+          ? null
+          : groceryQuantityError(args.quantity, item.unit)) ??
+        (args.estimatedCents === undefined
+          ? null
+          : groceryEstimateError(args.estimatedCents));
+
+      if (validationError !== null) {
+        throw new ConvexError({ code: "invalid", message: validationError });
       }
 
       return {

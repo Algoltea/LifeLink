@@ -57,6 +57,7 @@ type ConnectionProviderId =
   | "gmail"
   | "outlook"
   | "google_calendar"
+  | "google_drive"
   | "paypal"
   | "facebook"
   | "instagram"
@@ -394,6 +395,29 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     id: "google_calendar",
     label: "Google Calendar",
     summary: "Add appointments to your calendar after you approve them.",
+  },
+  {
+    accountRequirement: "A Google account.",
+    capabilities: [
+      {
+        id: "drive.read",
+        label: "Find files you already keep in Drive",
+        note: "LifeLink sees file names and links, not what is inside them.",
+        status: "available",
+      },
+      {
+        id: "drive.create",
+        label: "Save appointment notes as a document after you approve it",
+        status: "available",
+      },
+    ],
+    composioToolkit: "googledrive",
+    connectStyle: "oauth",
+    developerIntegration: "composio",
+    id: "google_drive",
+    label: "Google Drive",
+    summary:
+      "Find your Drive files, and keep appointment notes there after you approve them.",
   },
   {
     accountRequirement: "Personal PayPal accounts cannot be connected here.",

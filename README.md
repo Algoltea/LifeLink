@@ -193,7 +193,7 @@ flowchart LR
   Bridge["Discord bridge<br/>(Bun, Gateway WS)"]
   OR["OpenRouter<br/>Gemini models"]
   GL["Gemini Live API"]
-  CO["Composio<br/>Gmail · Outlook · Calendar"]
+  CO["Composio<br/>Gmail · Outlook · Calendar · Drive"]
   PH["Photon<br/>iMessage"]
   DI["Discord REST"]
 
@@ -282,6 +282,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | **Gmail** | Composio | A Google account. | ✅ Read emails you pick for a summary<br>✅ Write a draft for you to review<br>✅ Send an email after you approve it<br>✅ Notice new mail (checked about once a minute)<br>✅ Find appointments in emails |
 | **Outlook** | Composio | A Microsoft account. Some work accounts need an administrator's consent. | ✅ Read emails you pick for a summary<br>✅ Write a draft for you to review<br>✅ Send an email after you approve it<br>✅ Notice new mail as it arrives<br>✅ Add an approved appointment to your Outlook calendar |
 | **Google Calendar** | Composio | A Google account. | ◻️ See your upcoming events (not wired yet)<br>✅ Add an approved appointment |
+| **Google Drive** | Composio | A Google account. | ✅ Find files you already keep in Drive<br>✅ Save appointment notes as a document after you approve it |
 | **PayPal** | Composio | The developer's PayPal app credentials. Personal sign-in is not offered. | ◻️ Look up invoices (not wired yet)<br>✖️ Send money to a person: PayPal's connector has no send-money action, and this app will not move money |
 | **Facebook** | Composio | A Facebook Page you manage. | ◻️ Post to a Page after approval; read and answer Page messages (not wired yet)<br>✖️ Personal timeline and friends' messages: not allowed by Facebook's API |
 | **Instagram** | Composio | An Instagram Business or Creator account. | ◻️ Share a photo post after approval; answer DMs within 24 hours (not wired yet)<br>✖️ Personal accounts: not supported by the API |
@@ -306,7 +307,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 - **Photon Spectrum Stable:** use the UUID project ID and project secret from your existing dashboard. Beta `pho_prj_...` / `pho_sk_...` credentials belong to a different API. Setup uses Basic authentication, keeps existing shared-line users, and configures the Stable webhook. See the [Spectrum API](https://photon.codes/docs/api-reference/introduction).
 - **Read-aloud:** ElevenLabs speech is served by OpenRouter's audio endpoint with the same OpenRouter key. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
 - **Composio:**
-  - Setup reuses or creates a Composio-managed auth config for Gmail, Outlook, Google Calendar, Facebook, and Instagram.
+  - Setup reuses or creates a Composio-managed auth config for Gmail, Outlook, Google Calendar, Google Drive, Facebook, and Instagram.
   - It points the project webhook at `<deployment>.convex.site/webhooks/composio`. It rotates the signing secret only if it doesn't already hold one, because rotating breaks other listeners.
   - PayPal and eBay need your own app credentials in the Composio dashboard.
 - **Webhooks need a cloud deployment.** A local deployment can't receive them, so setup skips webhook registration there and says so.

@@ -2,7 +2,7 @@
  * Composio REST v3.1 adapter (fetch only, so it runs in the default Convex
  * runtime). Each person's accounts are linked under their profile id as the
  * Composio user id. Tool slugs and argument names were checked against
- * docs.composio.dev/toolkits/{gmail,outlook,googlecalendar} in October 2026.
+ * docs.composio.dev/toolkits/{gmail,outlook,googlecalendar,googledrive} in October 2026.
  */
 import { z } from "zod";
 

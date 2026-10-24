@@ -6,6 +6,7 @@ import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import {
+  FolderOpenIcon,
   HeartHandshakeIcon,
   HomeIcon,
   LogOutIcon,
@@ -65,6 +66,7 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
       { href: "/ask", icon: MessageSquareTextIcon, label: "Ask LifeLink" },
       { href: "/messages", icon: MessagesSquareIcon, label: "Messages" },
       { href: "/email", icon: MailIcon, label: "Email" },
+      { href: "/documents", icon: FolderOpenIcon, label: "Documents" },
     ],
     label: null,
   },

@@ -20,6 +20,7 @@ import {
   sendDirectMessage,
 } from "./integrations/discord";
 import type { DiscordPhoto } from "./integrations/discord";
+import { findNote, saveNote } from "./integrations/drive";
 import { createDraft, findMail, sendMail } from "./integrations/mail";
 import type { MailAccount, OutgoingMail } from "./integrations/mail";
 import { photonConfig } from "./integrations/photon";
@@ -74,7 +75,8 @@ const providerFor = (
     }
 
     case "email_draft":
-    case "calendar_event": {
+    case "calendar_event":
+    case "drive_note": {
       return "composio";
     }
 
@@ -172,14 +174,16 @@ const cachedHandleFor = async (
   };
 };
 
-/** The connected mailbox or calendar an action uses, if any. */
+/** The connected mailbox, calendar, or Drive an action uses, if any. */
 const mailboxFor = async (
   ctx: ReaderCtx,
   details: ActionDetails,
   ownerId: Id<"profiles">
 ): Promise<MailAccount | null> => {
   const usesConnection =
-    details.kind === "email_draft" || details.kind === "calendar_event";
+    details.kind === "email_draft" ||
+    details.kind === "calendar_event" ||
+    details.kind === "drive_note";
 
   const usesMailbox =
     usesConnection ||
@@ -789,6 +793,37 @@ const performLive = async (
       };
     }
 
+    case "drive_note": {
+      if (start.mailbox === null) {
+        return {
+          handleCache: null,
+          result: {
+            error: "That Google Drive is no longer connected.",
+            kind: "failed_safe",
+          },
+        };
+      }
+
+      const saved = await saveNote(
+        {
+          connectedAccountId: start.mailbox.connectedAccountId,
+          userId: start.ownerId,
+        },
+        { body: details.body, title: details.title }
+      );
+
+      const result = fromTool(
+        saved.outcome,
+        "Saved the notes in your Google Drive."
+      );
+
+      return {
+        handleCache: null,
+        result:
+          result.kind === "succeeded" ? { ...result, url: saved.url } : result,
+      };
+    }
+
     case "grocery_handoff": {
       return {
         handleCache: null,
@@ -835,6 +870,10 @@ const performSimulated = (start: StartedAttempt): PerformResult => {
 
     case "calendar_event": {
       return simulated("nothing was added to your real calendar.");
+    }
+
+    case "drive_note": {
+      return simulated("nothing was saved in your real Google Drive.");
     }
 
     case "grocery_handoff": {
@@ -1411,6 +1450,32 @@ const reconcileCalendar = async (
     : { summary: "The event is not on your calendar.", verdict: "not_sent" };
 };
 
+const reconcileDrive = async (
+  context: UnknownContext,
+  mailbox: MailAccount,
+  title: string
+): Promise<Reconciliation> => {
+  const found = await findNote(
+    { connectedAccountId: mailbox.connectedAccountId, userId: mailbox.userId },
+    title,
+    context.startedAt
+  );
+
+  if (found === "cannot_tell") {
+    return CANNOT_TELL;
+  }
+
+  return found === "found"
+    ? {
+        summary: "Found the notes in your Google Drive.",
+        verdict: "went_through",
+      }
+    : {
+        summary: "The notes are not in your Google Drive.",
+        verdict: "not_sent",
+      };
+};
+
 /** Ask the provider what happened to an uncertain attempt. */
 const reconcileWithProvider = async (
   ctx: ActionCtx,
@@ -1437,6 +1502,10 @@ const reconcileWithProvider = async (
 
   if (details.kind === "calendar_event") {
     return await reconcileCalendar(context, mailbox, details.provider);
+  }
+
+  if (details.kind === "drive_note") {
+    return await reconcileDrive(context, mailbox, details.title);
   }
 
   const isMail =

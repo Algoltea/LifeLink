@@ -64,20 +64,20 @@ const createLiveToken = async (
 
   const outcome = await request({
     body: JSON.stringify({
-      expireTime: new Date(expiresAt).toISOString(),
-      liveConnectConstraints: {
-        config: {
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-          responseModalities: ["AUDIO"],
-          sessionResumption: {},
-          systemInstruction: {
-            parts: [{ text: systemInstructionFor(preferredName) }],
-          },
-          tools: [{ functionDeclarations: [SUBMIT_TOOL] }],
-        },
+      // REST uses the wire setup, rather than the SDK's liveConnectConstraints.
+      // Omitting fieldMask locks the complete setup to the server's values.
+      bidiGenerateContentSetup: {
+        generationConfig: { responseModalities: ["AUDIO"] },
+        inputAudioTranscription: {},
         model: `models/${model}`,
+        outputAudioTranscription: {},
+        sessionResumption: {},
+        systemInstruction: {
+          parts: [{ text: systemInstructionFor(preferredName) }],
+        },
+        tools: [{ functionDeclarations: [SUBMIT_TOOL] }],
       },
+      expireTime: new Date(expiresAt).toISOString(),
       newSessionExpireTime: new Date(now + 60_000).toISOString(),
       uses: 1,
     }),

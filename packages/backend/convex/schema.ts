@@ -111,6 +111,12 @@ const actionDetails = v.union(
     provider: v.union(v.literal("google_calendar"), v.literal("outlook")),
     startsAt: v.number(),
     title: v.string(),
+  }),
+  v.object({
+    body: v.string(),
+    connectionId: v.string(),
+    kind: v.literal("drive_note"),
+    title: v.string(),
   })
 );
 
@@ -147,7 +153,8 @@ export default defineSchema({
       v.literal("family_update"),
       v.literal("grocery_handoff"),
       v.literal("email_draft"),
-      v.literal("calendar_event")
+      v.literal("calendar_event"),
+      v.literal("drive_note")
     ),
     mode,
     ownerId: v.id("profiles"),
@@ -725,7 +732,8 @@ export default defineSchema({
       v.literal("family_update"),
       v.literal("grocery_handoff"),
       v.literal("email_draft"),
-      v.literal("calendar_event")
+      v.literal("calendar_event"),
+      v.literal("drive_note")
     ),
     label: v.string(),
     order: v.number(),
@@ -756,7 +764,8 @@ export default defineSchema({
       v.literal("grocery_handoff"),
       v.literal("scam_verification"),
       v.literal("email_draft"),
-      v.literal("calendar_event")
+      v.literal("calendar_event"),
+      v.literal("drive_note")
     ),
     mode,
     origin: v.union(
