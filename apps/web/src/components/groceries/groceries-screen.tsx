@@ -261,7 +261,7 @@ const GroceriesScreen = () => {
               return (
                 <div
                   className={cn(
-                    "group/list border-control flex max-w-full min-w-0 items-center rounded-md border transition-colors",
+                    "border-control flex max-w-full min-w-0 items-center rounded-md border transition-colors",
                     isCurrent
                       ? "bg-neutral-wash hover:bg-rule"
                       : "bg-raised hover:border-foreground hover:bg-parchment"
@@ -278,7 +278,7 @@ const GroceriesScreen = () => {
                   </Button>
                   <Button
                     aria-label={`Delete ${candidate.name}`}
-                    className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 transition-opacity group-focus-within/list:opacity-100 group-hover/list:opacity-100 hover:bg-transparent active:bg-transparent"
+                    className="text-muted-foreground hover:text-foreground shrink-0 hover:bg-transparent active:bg-transparent"
                     onClick={() => requestDelete(candidate)}
                     size="icon"
                     title={`Delete ${candidate.name}`}
