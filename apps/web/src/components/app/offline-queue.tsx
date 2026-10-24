@@ -16,12 +16,18 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { codeOf, messageOf } from "@/lib/errors";
-import { enqueue, readQueue, removeFromQueue } from "@/lib/offline-queue";
+import {
+  enqueue,
+  markQueueFailure,
+  readQueue,
+  removeFromQueue,
+} from "@/lib/offline-queue";
 import type { QueuedItem } from "@/lib/offline-queue";
 
 import { usePreferences } from "./preferences";
 
 interface OfflineValue {
+  dismissFailure: (id: string) => void;
   online: boolean;
   queue: QueuedItem[];
   queueApproval: (item: {
@@ -80,6 +86,10 @@ const OfflineQueueProvider = ({ children }: { children: ReactNode }) => {
         break;
       }
 
+      if (item.failure) {
+        continue;
+      }
+
       try {
         // oxlint-disable-next-line eslint/no-await-in-loop -- queued work is replayed in the order it was made.
         await (item.kind === "request"
@@ -104,14 +114,17 @@ const OfflineQueueProvider = ({ children }: { children: ReactNode }) => {
           break;
         }
 
-        toast.error(
-          `${item.kind === "approve" ? item.label : "Your request"}: ${messageOf(error instanceof Error ? error : null)}`
-        );
+        const message = messageOf(error instanceof Error ? error : null);
 
-        // Keep unsent work after connection failures. A reconnect retries it.
+        // Keep connection failures pending; reconnecting may safely retry them.
         if (codeOf(error instanceof Error ? error : null) === null) {
+          toast.error(message);
           break;
         }
+
+        // A rejected version/request must be reviewed rather than silently lost or replayed.
+        markQueueFailure(profileId, item.id, message);
+        continue;
       }
 
       removeFromQueue(profileId, item.id);
@@ -128,6 +141,14 @@ const OfflineQueueProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo<OfflineValue>(
     () => ({
+      dismissFailure: (id) => {
+        if (
+          profileId &&
+          readQueue(profileId).some((item) => item.id === id && item.failure)
+        ) {
+          removeFromQueue(profileId, id);
+        }
+      },
       online,
       queue: queue.filter((item) => item.profileId === profileId),
       queueApproval: (item) => {

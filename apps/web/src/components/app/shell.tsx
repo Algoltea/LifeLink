@@ -208,7 +208,9 @@ const AccountRow = () => {
 
 const Notices = () => {
   const { me } = usePreferences();
-  const { online, queue } = useOffline();
+  const { dismissFailure, online, queue } = useOffline();
+  const waiting = queue.filter((item) => !item.failure).length;
+  const rejected = queue.filter((item) => item.failure);
   const demo = me?.profile?.demoMode === true;
 
   return (
@@ -219,10 +221,46 @@ const Notices = () => {
           <span>
             You’re offline. You can keep writing; anything you approve will be
             checked again and sent when you’re back online.
-            {queue.length > 0 ? ` ${queue.length} waiting.` : ""}
+            {waiting > 0 ? ` ${waiting} waiting.` : ""}
           </span>
         </output>
       )}
+      {rejected.map((item) => (
+        <section
+          aria-label="Offline work needs your review"
+          className="border-border bg-negative-wash text-negative flex flex-col gap-3 border-b px-5 py-4 text-base"
+          key={item.id}
+        >
+          <p role="alert">
+            <strong>
+              {item.kind === "approve" ? item.label : "Your offline request"}{" "}
+              needs your review.
+            </strong>{" "}
+            {item.failure} It will not be tried again automatically.
+          </p>
+          {item.kind === "request" ? (
+            <details>
+              <summary className="min-h-control cursor-pointer content-center font-semibold">
+                Your original request
+              </summary>
+              <p className="max-w-prose wrap-anywhere whitespace-pre-wrap">
+                {item.text}
+              </p>
+            </details>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              className="min-h-control inline-flex items-center font-semibold underline"
+              href={item.kind === "approve" ? "/" : "/ask"}
+            >
+              {item.kind === "approve" ? "Review on Today" : "Open Ask"}
+            </Link>
+            <Button onClick={() => dismissFailure(item.id)} variant="outline">
+              Dismiss notice
+            </Button>
+          </div>
+        </section>
+      ))}
       {demo ? (
         <div className="border-border bg-parchment text-muted-foreground text-label flex flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
           <p>

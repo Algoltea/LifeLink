@@ -12,6 +12,7 @@ const queueKey = (profileId: string): string =>
 
 const queuedSchema = z.discriminatedUnion("kind", [
   z.object({
+    failure: z.string().optional(),
     id: z.string(),
     kind: z.literal("request"),
     profileId: z.string(),
@@ -21,6 +22,7 @@ const queuedSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     actionId: z.string(),
+    failure: z.string().optional(),
     fingerprint: z.string(),
     id: z.string(),
     kind: z.literal("approve"),
@@ -74,6 +76,20 @@ const removeFromQueue = (profileId: string, id: string): void => {
   );
 };
 
-export { enqueue, readQueue, removeFromQueue };
+/** A definitive rejection is retained for review and never replayed automatically. */
+const markQueueFailure = (
+  profileId: string,
+  id: string,
+  failure: string
+): void => {
+  writeQueue(
+    profileId,
+    readQueue(profileId).map((item) =>
+      item.id === id ? { ...item, failure } : item
+    )
+  );
+};
+
+export { enqueue, markQueueFailure, readQueue, removeFromQueue };
 
 export type { QueuedItem };
