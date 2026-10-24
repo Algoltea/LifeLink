@@ -5,32 +5,107 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { PlusIcon } from "lucide-react";
+import {
+  AlarmClockIcon,
+  CarIcon,
+  MessageSquareIcon,
+  SquarePenIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 import { useOffline } from "@/components/app/offline-queue";
-import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { Composer } from "@/components/voice/composer";
 import { messageOf } from "@/lib/errors";
+import { useGreeting } from "@/lib/greeting";
 
+import {
+  CHAT_READING_COLUMN,
+  CHAT_TOP_BAR,
+  CHAT_WORKSPACE,
+} from "./chat-layout";
+import { ChatLoadingWorkspace } from "./chat-loading-workspace";
 import { HistoryDrawer } from "./history-drawer";
 import { AssistantThread } from "./thread";
+import { useChatViewport } from "./use-chat-viewport";
 
 const SCROLL_END_THRESHOLD = 80;
+const DEFAULT_TIME_ZONE = "America/New_York";
+
+/** Ideas fill the box rather than sending, so the person can finish the sentence. */
+const SUGGESTIONS = [
+  {
+    Icon: CarIcon,
+    label: "Ask for a ride",
+    prompt: "Ask my family if someone can drive me to my appointment on ",
+  },
+  {
+    Icon: MessageSquareIcon,
+    label: "Write to family",
+    prompt: "Help me write a message to ",
+  },
+  {
+    Icon: AlarmClockIcon,
+    label: "Set a reminder",
+    prompt: "Remind me to ",
+  },
+] as const;
+
+/**
+ * A slim chat bar instead of a page title. The h1 still takes focus after
+ * navigation so screen reader and keyboard users land at the top.
+ */
+const ChatTopBar = ({
+  actions,
+  title,
+}: {
+  actions: ReactNode;
+  title: string | null;
+}) => {
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, []);
+
+  return (
+    <header className={CHAT_TOP_BAR}>
+      <h1
+        className="text-section min-w-0 truncate font-semibold tracking-tight outline-none"
+        ref={heading}
+        tabIndex={-1}
+      >
+        {title ? (
+          <>
+            <span className="sr-only">Ask LifeLink: </span>
+            {title}
+          </>
+        ) : (
+          "Ask LifeLink"
+        )}
+      </h1>
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+    </header>
+  );
+};
 
 /** Keep the bottom in view while replying, without pulling away from older messages. */
 const Conversation = ({
   disabled,
   draft,
+  firstName,
   onDraftChange,
   threadId,
+  timeZone,
 }: {
   disabled: boolean;
   draft: string;
+  firstName: string | null;
   onDraftChange: (text: string) => void;
   threadId: string | null;
+  timeZone: string;
 }) => {
   const { loadMore, results, status } = useUIMessages(
     api.assistant.listThreadMessages,
@@ -40,11 +115,17 @@ const Conversation = ({
 
   const viewport = useRef<HTMLElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  const composerArea = useRef<HTMLFieldSetElement>(null);
+
+  const greeting = useGreeting(timeZone);
+
   const followLatest = useRef(true);
+  const scrollingByUser = useRef(false);
   const { queue } = useOffline();
 
   const queuedRequests = queue.filter(
-    (item) => item.kind === "request" && item.threadId === threadId
+    (item) =>
+      item.kind === "request" && item.threadId === threadId && !item.failure
   );
 
   const hasMessages = results.length > 0 || queuedRequests.length > 0;
@@ -72,38 +153,70 @@ const Conversation = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5">
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- This keyboard-focusable scroll region distinguishes user scrolling from automatic layout updates. */}
       <section
         aria-label="Conversation with LifeLink"
         className={cn(
           "flex-1 px-1",
           hasMessages || loading
-            ? "min-h-40 overflow-y-auto overscroll-contain"
+            ? "min-h-48 overflow-y-auto overscroll-contain"
             : "flex min-h-max items-end justify-center"
         )}
+        onPointerDown={() => {
+          scrollingByUser.current = true;
+        }}
+        onWheel={() => {
+          scrollingByUser.current = true;
+        }}
+        onKeyDown={(event) => {
+          if (
+            [
+              "ArrowUp",
+              "ArrowDown",
+              "PageUp",
+              "PageDown",
+              "Home",
+              "End",
+              " ",
+            ].includes(event.key)
+          ) {
+            scrollingByUser.current = true;
+          }
+        }}
         onScroll={() => {
           const panel = viewport.current;
 
-          if (panel) {
+          if (panel && scrollingByUser.current) {
             followLatest.current =
               panel.scrollHeight - panel.scrollTop - panel.clientHeight <
               SCROLL_END_THRESHOLD;
+
+            if (followLatest.current) {
+              scrollingByUser.current = false;
+            }
           }
         }}
         ref={viewport}
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the transcript independently of the composer.
         tabIndex={hasMessages ? 0 : undefined}
       >
-        <div className="mx-auto w-full max-w-4xl pb-2" ref={content}>
+        <div className={cn(CHAT_READING_COLUMN, "pt-2 pb-4")} ref={content}>
           <h2 className="sr-only">Your conversation</h2>
           {loading ? (
-            <LoadingRows label="Loading your conversation" rows={2} />
+            <LoadingRows
+              layout="assistant-conversation"
+              label="Loading your conversation"
+              rows={2}
+            />
           ) : null}
           {!loading && !hasMessages ? (
-            <div className="mx-auto flex max-w-xl flex-col gap-3 pb-2 text-center">
-              <h3 className="text-2xl font-semibold">What can I help with?</h3>
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                Ask for a ride, write to family, or set a reminder. You’ll
-                review the details before anything happens.
+            <div className="flex flex-col items-center gap-2 pb-4 text-center">
+              <p className="text-page-title font-semibold tracking-tight sm:text-[2.222rem] sm:leading-tight">
+                {greeting}
+                {firstName ? `, ${firstName}` : ""}
+              </p>
+              <p className="text-muted-foreground text-lg">
+                What can I help with today?
               </p>
             </div>
           ) : null}
@@ -117,12 +230,12 @@ const Conversation = ({
           {queuedRequests.length > 0 ? (
             <ol
               aria-label="Messages waiting for connection"
-              className="mt-6 flex flex-col gap-4"
+              className="mt-8 flex flex-col gap-4"
             >
               {queuedRequests.map((item) =>
                 item.kind === "request" ? (
                   <li
-                    className="bg-surface ml-auto max-w-xl rounded-xl px-5 py-4"
+                    className="bg-neutral-wash ml-auto max-w-[min(36rem,85%)] rounded-3xl px-5 py-3.5"
                     key={item.id}
                   >
                     <p className="text-lg wrap-anywhere whitespace-pre-wrap">
@@ -140,8 +253,12 @@ const Conversation = ({
       </section>
       <fieldset
         aria-label="Write or speak to LifeLink"
-        className="mx-auto w-full max-w-4xl min-w-0 shrink-0 pb-[env(safe-area-inset-bottom)]"
+        className={cn(
+          CHAT_READING_COLUMN,
+          "min-w-0 shrink-0 pb-[env(safe-area-inset-bottom)]"
+        )}
         disabled={disabled || loading}
+        ref={composerArea}
       >
         <Composer
           draft={draft}
@@ -157,7 +274,34 @@ const Conversation = ({
           threadId={threadId ?? undefined}
         />
       </fieldset>
-      {!hasMessages && !loading ? <div className="min-h-0 flex-1" /> : null}
+      {!hasMessages && !loading ? (
+        <div className="min-h-0 flex-1">
+          <ul
+            aria-label="Ideas to start with"
+            className={cn(
+              CHAT_READING_COLUMN,
+              "flex flex-wrap justify-center gap-3"
+            )}
+          >
+            {SUGGESTIONS.map(({ Icon, label, prompt }) => (
+              <li key={label}>
+                <button
+                  className="border-border text-label hover:bg-parchment min-h-control inline-flex items-center gap-2 rounded-full border px-5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={disabled}
+                  onClick={() => {
+                    onDraftChange(prompt);
+                    composerArea.current?.querySelector("textarea")?.focus();
+                  }}
+                  type="button"
+                >
+                  <Icon aria-hidden="true" className="text-primary size-5" />
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -171,55 +315,21 @@ const AskWorkspace = () => {
     { initialNumItems: 20 }
   );
 
+  const { me } = usePreferences();
+
+  const activeConversation = history.results.find(
+    (conversation) => conversation.threadId === threadId
+  );
+
   const newConversation = useMutation(api.assistant.newConversation);
   const selectConversation = useMutation(api.assistant.selectConversation);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const workspace = useRef<HTMLDivElement>(null);
+  const workspace = useChatViewport(threadId);
 
   const [conversationError, setConversationError] = useState<string | null>(
     null
   );
-
-  useEffect(() => {
-    const element = workspace.current;
-    const parent = element?.parentElement;
-
-    if (!element || !parent) {
-      return;
-    }
-
-    const fitViewport = (): void => {
-      const top = element.getBoundingClientRect().top + globalThis.scrollY;
-
-      // oxlint-disable-next-line unicorn/prefer-number-coercion -- Computed CSS lengths include the px suffix, which Number cannot parse.
-      const bottomPadding = Number.parseFloat(
-        getComputedStyle(parent).paddingBottom
-      );
-
-      const viewportHeight =
-        globalThis.visualViewport?.height ?? globalThis.innerHeight;
-
-      element.style.height = `${Math.max(0, viewportHeight - top - bottomPadding)}px`;
-    };
-
-    fitViewport();
-    const observer = new ResizeObserver(fitViewport);
-    observer.observe(parent);
-
-    if (parent.parentElement) {
-      observer.observe(parent.parentElement);
-    }
-
-    globalThis.addEventListener("resize", fitViewport);
-    globalThis.visualViewport?.addEventListener("resize", fitViewport);
-
-    return () => {
-      observer.disconnect();
-      globalThis.removeEventListener("resize", fitViewport);
-      globalThis.visualViewport?.removeEventListener("resize", fitViewport);
-    };
-  }, []);
 
   const switchConversation = async (
     nextThreadId?: string
@@ -243,23 +353,10 @@ const AskWorkspace = () => {
   };
 
   return (
-    <div
-      className="flex h-[calc(100dvh-10rem)] min-h-[28rem] flex-col gap-4 sm:gap-6"
-      ref={workspace}
-    >
-      <PageHeader
-        className="shrink-0"
+    <div className={CHAT_WORKSPACE} ref={workspace}>
+      <ChatTopBar
         actions={
           <>
-            <Button
-              aria-busy={busy}
-              disabled={busy || threadId === undefined}
-              onClick={() => switchConversation()}
-              variant="ghost"
-            >
-              <PlusIcon aria-hidden="true" />
-              New chat
-            </Button>
             <HistoryDrawer
               activeThreadId={threadId}
               busy={busy}
@@ -273,18 +370,32 @@ const AskWorkspace = () => {
               onSelect={switchConversation}
               loadMore={() => history.loadMore(20)}
               historyStatus={history.status}
+              timeZone={me?.profile?.timeZone ?? DEFAULT_TIME_ZONE}
             />
+            <Button
+              aria-busy={busy}
+              disabled={busy || threadId === undefined}
+              onClick={() => switchConversation()}
+              variant="outline"
+            >
+              <SquarePenIcon aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">New chat</span>
+            </Button>
           </>
         }
-        title="Ask LifeLink"
+        title={
+          activeConversation?.hasMessages ? activeConversation.title : null
+        }
       />
       {conversationError ? <ErrorNote>{conversationError}</ErrorNote> : null}
       {threadId === undefined ? (
-        <LoadingRows label="Opening your conversation" rows={2} />
+        <LoadingRows layout="ask" label="Opening your conversation" rows={2} />
       ) : (
         <Conversation
           disabled={busy}
           draft={threadId ? (drafts[threadId] ?? "") : ""}
+          firstName={me?.profile?.preferredName ?? null}
+          timeZone={me?.profile?.timeZone ?? DEFAULT_TIME_ZONE}
           key={threadId ?? "new-conversation"}
           onDraftChange={(text) => {
             if (threadId) {
@@ -304,7 +415,7 @@ const AskScreen = () => {
   return me?.profile ? (
     <AskWorkspace key={me.profile._id} />
   ) : (
-    <LoadingRows label="Opening your conversation" rows={2} />
+    <ChatLoadingWorkspace />
   );
 };
 

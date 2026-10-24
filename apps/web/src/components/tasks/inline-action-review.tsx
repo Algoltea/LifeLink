@@ -14,7 +14,13 @@ const InlineActionReview = ({ actionId }: { actionId: string }) => {
   const headingId = useId();
 
   if (review === undefined) {
-    return <LoadingRows label="Loading the latest details" rows={2} />;
+    return (
+      <LoadingRows
+        layout="review"
+        label="Loading the latest details"
+        rows={2}
+      />
+    );
   }
 
   if (review === null) {
@@ -26,15 +32,23 @@ const InlineActionReview = ({ actionId }: { actionId: string }) => {
   }
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <h3 className="text-xl font-semibold" id={headingId}>
+    <section
+      aria-labelledby={headingId}
+      className="border-border bg-raised overflow-hidden rounded-2xl border"
+    >
+      <h3
+        className="border-border bg-parchment border-b px-5 py-3.5 text-lg font-semibold"
+        id={headingId}
+      >
         {review.title}
       </h3>
-      <ActionReview
-        hue={review.hue}
-        timeZone={review.timeZone}
-        view={review.view}
-      />
+      <div className="p-5">
+        <ActionReview
+          hue={review.hue}
+          timeZone={review.timeZone}
+          view={review.view}
+        />
+      </div>
     </section>
   );
 };
@@ -44,7 +58,13 @@ const InlineTaskReview = ({ taskId }: { taskId: string }) => {
   const actionIds = useQuery(api.assistant.taskActionIds, { taskId });
 
   if (actionIds === undefined) {
-    return <LoadingRows label="Loading the latest details" rows={2} />;
+    return (
+      <LoadingRows
+        layout="review"
+        label="Loading the latest details"
+        rows={2}
+      />
+    );
   }
 
   if (actionIds.length === 0) {
@@ -56,7 +76,7 @@ const InlineTaskReview = ({ taskId }: { taskId: string }) => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {actionIds.map((actionId) => (
         <InlineActionReview actionId={actionId} key={actionId} />
       ))}

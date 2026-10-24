@@ -83,11 +83,13 @@ const ReadAloudButton = ({
   label = "Read aloud",
   rate,
   text,
+  variant = "outline",
 }: {
   className?: string;
   label?: string;
   rate?: number;
   text: string;
+  variant?: "ghost" | "outline";
 }) => {
   const { preferences } = usePreferences();
   const { error, read, status, stop } = useSpeech();
@@ -116,13 +118,13 @@ const ReadAloudButton = ({
           await read(text, rate ?? preferences.speechRate);
         }}
         size="sm"
-        variant="outline"
+        variant={variant}
       >
         {speaking ? <VolumeXIcon /> : <Volume2Icon />}
         {speaking ? playbackLabel : label}
       </Button>
       {status === "ready" ? (
-        <Button onClick={stop} size="sm" variant="outline">
+        <Button onClick={stop} size="sm" variant={variant}>
           Stop reading
         </Button>
       ) : null}

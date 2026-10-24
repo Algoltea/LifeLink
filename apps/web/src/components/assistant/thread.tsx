@@ -4,6 +4,9 @@ import { useSmoothText } from "@convex-dev/agent/react";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { ReadAloudButton, useAutoReadAloud } from "@/components/app/bits";
@@ -33,6 +36,8 @@ const preparedOf = (message: UIMessage): PreparedTool[] =>
     return parsed.success ? [parsed.data.output] : [];
   });
 
+const COPIED_RESET_MS = 2000;
+
 const AssistantText = ({ message }: { message: UIMessage }) => {
   const [visible] = useSmoothText(message.text, {
     startStreaming: message.status === "streaming",
@@ -45,11 +50,60 @@ const AssistantText = ({ message }: { message: UIMessage }) => {
   );
 };
 
+const Thinking = () => (
+  <p className="text-muted-foreground flex min-h-9 items-center gap-3 text-lg">
+    <span aria-hidden="true" className="flex gap-1.5">
+      <span className="bg-primary size-2 rounded-full motion-safe:animate-pulse" />
+      <span className="bg-primary/60 size-2 rounded-full [animation-delay:150ms] motion-safe:animate-pulse" />
+      <span className="bg-primary/30 size-2 rounded-full [animation-delay:300ms] motion-safe:animate-pulse" />
+    </span>
+    Thinking…
+  </p>
+);
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCopied(false), COPIED_RESET_MS);
+
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <Button
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+        } catch {
+          toast(
+            "Copying isn't available here. You can select the text instead."
+          );
+        }
+      }}
+      size="sm"
+      variant="ghost"
+    >
+      {copied ? (
+        <CheckIcon aria-hidden="true" />
+      ) : (
+        <CopyIcon aria-hidden="true" />
+      )}
+      <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+    </Button>
+  );
+};
+
 const Bubble = ({ message }: { message: UIMessage }) => {
   if (message.role === "user") {
     return (
-      <li className="flex justify-end">
-        <p className="bg-surface max-w-[36rem] rounded-2xl rounded-br-md px-5 py-4 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
+      <li className="flex justify-end pl-10 sm:pl-16">
+        <p className="bg-neutral-wash rounded-3xl px-5 py-3.5 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
           <span className="sr-only">You said: </span>
           {message.text}
         </p>
@@ -61,16 +115,14 @@ const Bubble = ({ message }: { message: UIMessage }) => {
   const failed = message.status === "failed";
 
   return (
-    <li className="flex gap-3 sm:gap-4">
-      <span className="hidden shrink-0 pt-1 sm:block">
-        <BrandMark size={28} />
+    <li className="flex gap-4">
+      <span className="border-border bg-parchment hidden size-9 shrink-0 items-center justify-center rounded-full border sm:flex">
+        <BrandMark size={14} />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 sm:pt-0.5">
         <span className="sr-only">LifeLink said: </span>
         {message.text ? <AssistantText message={message} /> : null}
-        {message.status === "pending" && !message.text ? (
-          <p className="text-muted-foreground text-lg">Thinking…</p>
-        ) : null}
+        {message.status === "pending" && !message.text ? <Thinking /> : null}
         {failed ? (
           <p className="text-negative text-lg">
             That reply didn’t finish. Please ask again.
@@ -91,7 +143,10 @@ const Bubble = ({ message }: { message: UIMessage }) => {
           ) : null;
         })}
         {message.text && message.status !== "streaming" ? (
-          <ReadAloudButton className="self-start" text={message.text} />
+          <div className="-ml-4 flex flex-wrap items-center gap-1">
+            <ReadAloudButton text={message.text} variant="ghost" />
+            <CopyButton text={message.text} />
+          </div>
         ) : null}
       </div>
     </li>
@@ -133,7 +188,7 @@ const AssistantThread = ({
       ) : null}
       <ol
         aria-label="Conversation with LifeLink"
-        className="flex flex-col gap-6"
+        className="flex flex-col gap-8"
       >
         {messages.map((message) => (
           <Bubble key={message.key} message={message} />
