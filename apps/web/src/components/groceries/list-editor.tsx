@@ -13,9 +13,13 @@ import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
 import {
+  ArchiveRestoreIcon,
+  CheckCheckIcon,
   CopyPlusIcon,
+  PencilIcon,
   PlusIcon,
   RotateCcwIcon,
+  StarIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -300,7 +304,7 @@ const DetailsForm = ({
 
   return (
     <form
-      className="bg-surface flex flex-col gap-4 rounded-xl p-5"
+      className="bg-surface @container flex flex-col gap-4 rounded-xl p-5"
       onSubmit={async (event) => {
         event.preventDefault();
 
@@ -387,46 +391,221 @@ const DetailsForm = ({
   );
 };
 
-/** One list: items to tick off, its details, and its preferences. */
-const ListEditor = ({
-  list,
-  onCopy,
-  onDelete,
-  summary,
-}: {
-  list: Doc<"groceryLists">;
+interface ListActions {
   onCopy: () => void;
   onDelete: () => void;
-  summary: ReactNode;
+  onFinish: () => void;
+  onReopen: () => void;
+  onToggleUsual: () => void;
+}
+
+const SectionHeading = ({ children }: { children: ReactNode }) => (
+  <h3 className="text-xl leading-7 font-semibold">{children}</h3>
+);
+
+/** Finishing, unmarking, and reusing, kept below the list so the top stays calm. */
+const TripActions = ({
+  actions,
+  list,
+  tools,
+}: {
+  actions: ListActions;
+  list: Doc<"groceryLists">;
+  tools: ReactNode;
 }) => {
-  const [editingDetails, setEditingDetails] = useState(false);
-  const details = useRef<HTMLDetailsElement>(null);
-  const detailsTrigger = useRef<HTMLElement>(null);
+  const { onCopy, onFinish, onToggleUsual } = actions;
   const [resetting, setResetting] = useState(false);
   const unmarkAll = useMutation(api.groceries.unmarkAll);
   const hasMarkedItems = list.items.some((item) => item.checked);
-  const inCart = list.items.filter((item) => item.checked).length;
-  const toGet = list.items.length - inCart;
+  const allInCart = hasMarkedItems && list.items.every((item) => item.checked);
+  const archived = list.archivedAt !== undefined;
 
   return (
-    <div className="@container flex flex-col gap-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl leading-8 font-semibold">{list.name}</h2>
-          <p className="text-lg">
-            {toGet} {toGet === 1 ? "item" : "items"} to get
-            {inCart > 0 ? ` · ${inCart} in your cart` : null}
+    <>
+      {archived ? null : (
+        <section
+          aria-label="Done shopping?"
+          className="border-rule flex flex-col gap-3 border-t pt-5"
+        >
+          <SectionHeading>Done shopping?</SectionHeading>
+          {allInCart ? (
+            <p className="text-lg leading-7">Everything is in your cart.</p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              onClick={onFinish}
+              variant={allInCart ? "default" : "outline"}
+            >
+              <CheckCheckIcon />
+              Finish this trip
+            </Button>
+            <Button
+              aria-busy={resetting}
+              disabled={!hasMarkedItems || resetting}
+              onClick={async () => {
+                setResetting(true);
+
+                try {
+                  await unmarkAll({ listId: list._id });
+                } catch (error) {
+                  toast.error(errorText(error));
+                }
+
+                setResetting(false);
+              }}
+              variant="outline"
+            >
+              <RotateCcwIcon />
+              {resetting ? "Unmarking…" : "Unmark all"}
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-base">
+            Finishing moves this list to Past lists, where you can reuse it
+            later.
           </p>
-        </div>
-        {list.items.length > 0 ? (
+        </section>
+      )}
+      <section
+        aria-label="Take your list with you"
+        className="border-rule flex flex-col gap-3 border-t pt-5"
+      >
+        <SectionHeading>Take your list with you</SectionHeading>
+        {tools}
+      </section>
+      <section
+        aria-label="Use this list again"
+        className="border-rule flex flex-col gap-3 border-t pt-5"
+      >
+        <SectionHeading>Use this list again</SectionHeading>
+        <div className="flex flex-wrap gap-3">
           <Button
             className="whitespace-normal"
+            disabled={list.items.length === 0}
             onClick={onCopy}
             variant="outline"
           >
             <CopyPlusIcon />
             Start a new list from this one
           </Button>
+          <Button
+            aria-pressed={list.usual === true}
+            className="whitespace-normal"
+            onClick={onToggleUsual}
+            variant="outline"
+          >
+            <StarIcon className={list.usual ? "fill-current" : undefined} />
+            {list.usual ? "This is your usual list" : "Make this my usual list"}
+          </Button>
+        </div>
+        <p className="text-muted-foreground text-base">
+          {list.usual
+            ? "New lists can start from this one. Press again to stop."
+            : "Your usual list is what you need most weeks. Each new list can start from it."}
+        </p>
+      </section>
+    </>
+  );
+};
+
+/** One list: items to tick off, its details, and what to do when the trip is over. */
+const ListEditor = ({
+  actions,
+  finishedOn,
+  list,
+  summary,
+  tools,
+}: {
+  actions: ListActions;
+  finishedOn: string | null;
+  list: Doc<"groceryLists">;
+  summary: ReactNode;
+  tools: ReactNode;
+}) => {
+  const { onCopy, onDelete, onReopen, onToggleUsual } = actions;
+  const [editingDetails, setEditingDetails] = useState(false);
+  const detailsTrigger = useRef<HTMLButtonElement>(null);
+  const inCart = list.items.filter((item) => item.checked).length;
+  const toGet = list.items.length - inCart;
+
+  return (
+    <div className="@container flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-2">
+          <h2 className="min-w-0 flex-1 text-2xl leading-8 font-semibold break-words">
+            {list.name}
+          </h2>
+          <Button
+            aria-label="Usual list"
+            aria-pressed={list.usual === true}
+            className="-my-2 shrink-0"
+            onClick={onToggleUsual}
+            size="icon"
+            title={list.usual ? "Your usual list" : "Make this your usual list"}
+            variant="ghost"
+          >
+            <StarIcon className={list.usual ? "fill-current" : undefined} />
+          </Button>
+          <Button
+            aria-controls="grocery-details"
+            aria-expanded={editingDetails}
+            className="-my-2 shrink-0"
+            onClick={() => setEditingDetails((open) => !open)}
+            ref={detailsTrigger}
+            variant="outline"
+          >
+            <PencilIcon />
+            Edit details
+          </Button>
+        </div>
+        <p className="text-lg">
+          {toGet} {toGet === 1 ? "item" : "items"} to get
+          {inCart > 0 ? ` · ${inCart} in your cart` : null}
+        </p>
+      </div>
+      {finishedOn === null ? null : (
+        <div className="bg-surface flex flex-col gap-3 rounded-xl p-5">
+          <p className="text-lg leading-7">
+            You finished this trip on {finishedOn}. It is kept under Past lists
+            so you can reuse it.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="whitespace-normal"
+              disabled={list.items.length === 0}
+              onClick={onCopy}
+            >
+              <CopyPlusIcon />
+              Start a new list from this one
+            </Button>
+            <Button
+              className="whitespace-normal"
+              onClick={onReopen}
+              variant="outline"
+            >
+              <ArchiveRestoreIcon />
+              Move back to current lists
+            </Button>
+            <Button
+              className="text-negative whitespace-normal"
+              onClick={onDelete}
+              variant="outline"
+            >
+              <Trash2Icon />
+              Delete permanently
+            </Button>
+          </div>
+        </div>
+      )}
+      <div id="grocery-details">
+        {editingDetails ? (
+          <DetailsForm
+            list={list}
+            onDelete={onDelete}
+            onDone={() => {
+              setEditingDetails(false);
+              detailsTrigger.current?.focus();
+            }}
+          />
         ) : null}
       </div>
       {summary}
@@ -461,65 +640,9 @@ const ListEditor = ({
           ))}
         </ul>
       ) : null}
-      <details
-        ref={details}
-        onToggle={(event) => setEditingDetails(event.currentTarget.open)}
-      >
-        <summary
-          className="min-h-control cursor-pointer py-3 text-lg font-medium"
-          ref={detailsTrigger}
-        >
-          Edit list details
-        </summary>
-        {editingDetails ? (
-          <DetailsForm
-            list={list}
-            onDelete={onDelete}
-            onDone={() => {
-              if (details.current) {
-                details.current.open = false;
-              }
-
-              setEditingDetails(false);
-              detailsTrigger.current?.focus();
-            }}
-          />
-        ) : null}
-      </details>
-      {list.items.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            aria-busy={resetting}
-            aria-describedby="grocery-reset-help"
-            disabled={!hasMarkedItems || resetting}
-            onClick={async () => {
-              setResetting(true);
-
-              try {
-                await unmarkAll({ listId: list._id });
-              } catch (error) {
-                toast.error(errorText(error));
-              }
-
-              setResetting(false);
-            }}
-            variant="outline"
-          >
-            <RotateCcwIcon />
-            {resetting ? "Unmarking…" : "Unmark all"}
-          </Button>
-          <p
-            className="text-muted-foreground text-base"
-            id="grocery-reset-help"
-          >
-            {hasMarkedItems
-              ? "Reuse this list for your next shopping trip."
-              : "All items are already unmarked."}
-          </p>
-        </div>
-      ) : null}
+      <TripActions actions={actions} list={list} tools={tools} />
     </div>
   );
 };
 
-export { ListEditor, listAsText, quantityWords };
+export { ListEditor, UNDO_WINDOW_MS, listAsText, quantityWords };
