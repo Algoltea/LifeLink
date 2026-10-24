@@ -11,7 +11,8 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { CheckIcon, ChevronDownIcon, MinusIcon, XIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
@@ -321,7 +322,7 @@ const HandleNote = ({
 }) => {
   if (row.definition.id === "imessage") {
     return (
-      <div className="bg-parchment flex max-w-prose flex-col gap-4 rounded-lg p-5">
+      <div className="flex max-w-prose flex-col gap-4">
         {demoMode || row.developerReady ? (
           <Link
             className={buttonVariants({ className: "self-start" })}
@@ -385,6 +386,72 @@ const HandleNote = ({
   );
 };
 
+const DISCLOSURE_MOTION_MS = 180;
+
+const ConnectionDisclosure = ({
+  children,
+  className,
+  name,
+}: {
+  children: ReactNode;
+  className: string;
+  name?: string;
+}) => {
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (scrollTimer.current !== null) {
+        clearTimeout(scrollTimer.current);
+      }
+    },
+    []
+  );
+
+  const followOpening = (event: SyntheticEvent<HTMLDetailsElement>): void => {
+    const disclosure = event.currentTarget;
+
+    if (event.target !== disclosure) {
+      return;
+    }
+
+    if (scrollTimer.current !== null) {
+      clearTimeout(scrollTimer.current);
+    }
+
+    if (!disclosure.open) {
+      return;
+    }
+
+    const reducedMotion =
+      document.documentElement.dataset.motion === "reduced" ||
+      globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Wait for the previous panel to collapse before choosing the scroll destination.
+    scrollTimer.current = setTimeout(
+      () => {
+        if (disclosure.open && disclosure.isConnected) {
+          disclosure.querySelector("summary")?.scrollIntoView({
+            behavior: reducedMotion ? "instant" : "smooth",
+            block: "start",
+          });
+        }
+      },
+      reducedMotion ? 0 : DISCLOSURE_MOTION_MS
+    );
+  };
+
+  return (
+    <details
+      className={`connection-disclosure ${className}`}
+      name={name}
+      onToggle={followOpening}
+    >
+      {children}
+    </details>
+  );
+};
+
 const ProviderRowDetails = ({
   data,
   row,
@@ -410,7 +477,10 @@ const ProviderRowDetails = ({
 
   return (
     <li className="border-rule border-t">
-      <details className="group/provider">
+      <ConnectionDisclosure
+        className="group/provider"
+        name="connection-provider"
+      >
         <summary className="hover:bg-parchment flex min-h-20 cursor-pointer list-none flex-wrap items-center justify-between gap-4 rounded-lg px-4 py-5 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 flex-1 basis-64 flex-col gap-1">
             <span className="text-body font-semibold">{definition.label}</span>
@@ -427,7 +497,7 @@ const ProviderRowDetails = ({
           </span>
           <span className="sr-only">Capabilities and setup</span>
         </summary>
-        <div className="flex flex-col gap-5 px-4 pb-6">
+        <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
           {definition.connectStyle === "oauth" &&
           (available.length > 0 || hasAccount) ? (
             <OAuthActions demoMode={data.demoMode} row={row} />
@@ -456,7 +526,7 @@ const ProviderRowDetails = ({
             </p>
           ) : null}
         </div>
-      </details>
+      </ConnectionDisclosure>
     </li>
   );
 };
@@ -516,7 +586,7 @@ const ConnectionsScreen = () => {
             );
           })}
       {data?.providers.some((row) => ADDITIONAL_IDS.has(row.definition.id)) ? (
-        <details className="group/limitations border-rule rounded-xl border p-5">
+        <ConnectionDisclosure className="group/limitations border-rule rounded-xl border p-5">
           <summary className="hover:bg-parchment text-body flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 rounded-lg font-semibold [&::-webkit-details-marker]:hidden">
             <span>Other services and limitations</span>
             <ChevronDownIcon
@@ -539,7 +609,7 @@ const ConnectionsScreen = () => {
                 />
               ))}
           </ul>
-        </details>
+        </ConnectionDisclosure>
       ) : null}
     </>
   );
