@@ -181,6 +181,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
               Who is LifeLink for?
             </legend>
             <Segmented
+              disabled={busy}
               label="Who is LifeLink for?"
               onValueChange={setRole}
               options={ROLES}
@@ -292,6 +293,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
               <div className="flex items-start gap-4 pt-1">
                 <Checkbox
                   checked={demo}
+                  disabled={busy}
                   id={ids.demo}
                   onCheckedChange={(checked) => setDemo(checked)}
                 />
