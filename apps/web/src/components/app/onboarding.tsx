@@ -41,7 +41,6 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
     preferred: useId(),
     signOff: useId(),
     timeZone: useId(),
-    zip: useId(),
   };
 
   const submit = async (form: FormData): Promise<void> => {
@@ -54,7 +53,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
       await complete({
         city: text("city") || null,
         displayName: text("name"),
-        postalCode: text("zip") || null,
+        postalCode: null,
         preferredName: text("preferred"),
         role,
         signOffName: text("signOff") || null,
@@ -146,27 +145,10 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
             />
           </div>
           {role === "owner" ? (
-            <>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.city}>Town or city (optional)</Label>
-                <Input
-                  autoComplete="address-level2"
-                  id={ids.city}
-                  name="city"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.zip}>
-                  ZIP code (optional, for grocery stores)
-                </Label>
-                <Input
-                  autoComplete="postal-code"
-                  id={ids.zip}
-                  inputMode="numeric"
-                  name="zip"
-                />
-              </div>
-            </>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.city}>Town or city (optional)</Label>
+              <Input autoComplete="address-level2" id={ids.city} name="city" />
+            </div>
           ) : null}
         </fieldset>
         {role === "owner" && demoModeAllowed ? (

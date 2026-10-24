@@ -16,16 +16,18 @@ LifeLink prepares useful actions and lets the person understand and approve the 
 
 ## Operating Context
 
-The existing Next.js app includes Today, Ask LifeLink, task detail, Messages, Email, Scam check, Trusted circle, Family, Groceries, Connections, Settings, onboarding, authentication, and offline Solitaire. Preserve all existing behavior during the visual replacement.
+The existing Next.js app includes Today, Ask LifeLink, task detail, Messages, Email, Scam check, Trusted circle, Family, Groceries, Connections, Settings, onboarding, authentication, and offline Solitaire. Preserve these supported screens and their behavior during the visual replacement; retired shopping flows follow the recovery behavior below.
 
 ## Capabilities and Constraints
 
 - Conversation is the main assistant workspace. Show the current action review inline and prior work in an optional right-hand History drawer. Task detail remains a valid alternate entry.
-- Approval names the destination, exact content or purchase details, consequences, and version. Editing invalidates approval for the previous version. Preparing a draft is not sending it.
-- Practice mode simulates outcomes. Mark sample data, accounts, messages, replies, rides, and shopping as practice. Never present a simulated event as a real completion.
+- Approval names the destination, exact content, consequences, and version. Editing invalidates approval for the previous version. Preparing a draft is not sending it.
+- Practice mode simulates outcomes. Mark sample data, accounts, messages, replies, rides, and grocery lists as practice. Never present a simulated event as a real completion.
 - Email surfaces automatic scam signals with a reason and useful next step; the manual Scam check remains available as a backup.
 - Connections retain provider-specific capabilities and setup requirements. Use understandable task-oriented groupings without concealing connection state or permission scope.
 - iMessage links an existing registered contact through Spectrum Stable. LifeLink does not provision new people or charge new-user capacity. If the contact is missing, direct the person to add them in the Photon dashboard and retry. Existing users are retained. Internal API naming does not change this user-facing contract.
+- Groceries retain lists, preferences, budgets, and copy and print options. No shopping actions or Instacart integration controls are shown.
+- LifeLink's live Instacart integration was retired on 2026-10-24. The unused internal adapter is retained, but no live shopping handoff is available. The obsolete `/groceries/practice` shopping route provides recovery to grocery lists at `/groceries`.
 - Family is read-only: a family member cannot send, approve, or spend for the owner.
 - Solitaire remains available offline and retains its navigation context. The offline fallback gives a clear retry path and access to the game.
 - No external messages or live transactions are authorized by the design exercise.

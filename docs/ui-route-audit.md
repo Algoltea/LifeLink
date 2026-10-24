@@ -1,6 +1,6 @@
 # LifeLink route design and evidence
 
-Updated 2026-10-24. The agreed Paper coverage is complete: **25 artboards, comprising 21 desktop route/state views and 4 phone views**. All 25 were screenshot-reviewed. No artboards remain to be created. This document separates Paper artifact review from live implementation verification.
+Updated 2026-10-24 after Instacart retirement. The original agreed coverage comprises **25 artboards: 21 desktop route/state views and 4 phone views**. All 25 were screenshot-reviewed at the original design handoff; the seven changed artboards were reviewed again for retirement. The retirement pass added no artboards. This document separates Paper artifact review from live implementation verification.
 
 ## Direction and handoff
 
@@ -10,7 +10,23 @@ Paper page: [LifeLink — Drafting Room](https://app.paper.design/file/01M5E0FMP
 
 Review metadata: file `01M5E0FMPJ5SFRDW65NMHE45W7`; page `p-6-0`; **Desktop — Connections** artboard `4KJ-0`. IDs are handoff metadata, not product copy. The canvas is arranged into desktop rows with phone states below.
 
-Final Paper inventory confirmed 25 artboards, and `finish_working_on_nodes` returned OK for all 25.
+The original handoff confirmed 25 artboards, and `finish_working_on_nodes` returned OK for all 25. The retirement pass preserves those artboards and also completed `finish_working_on_nodes` successfully.
+
+## Instacart retirement — 2026-10-24
+
+LifeLink's live Instacart integration is retired. Grocery lists, preferences, budgets, and copy/print remain supported; the unused adapter stays internal and does not represent an available connection or shopping action. This pass edits only the existing Drafting Room page, [PRODUCT.md](../apps/web/PRODUCT.md), and this audit. Prior Paper pages and file-wide tokens are unchanged.
+
+| Existing artboard | Retirement change |
+| --- | --- |
+| Desktop — Connections · `4KJ-0` | Removed the grocery-shopping connection row and its store-handoff promotion. |
+| Phone — Connections · `5S9-0` | Removed the shopping row; retained the remaining connection actions and help. |
+| Desktop — Groceries · `4V5-0` | Retained the list, sample budget/estimate, and copy/print controls. Removed the shopping-review action and handoff copy; no standing-permission control was present. |
+| Desktop — Shopping unavailable · `4Z4-0` | Renamed the former Practice shopping artboard and replaced the simulated store list with a retirement explanation and **Return to my list** recovery action. This is representative legacy-route recovery, not an active shopping flow. |
+| Desktop — Settings · `52K-0` | Removed purchase wording from the practice notice. No spending link was present in this artboard. |
+| Desktop — Ask empty · `3VY-0` | Removed purchase wording from the practice notice. |
+| Desktop — Onboarding · `5AD-0` | Removed the optional grocery-store ZIP field. |
+
+All seven changed artboards were inspected before and after editing. Review verdict: spacing remains deliberate, type and contrast are readable, repeated rows align, content fits, and the recovery screen has one clear primary action. The phone Connections and onboarding frames fit their reduced content. Page-scoped text searches found no remaining Instacart, checkout, retailer, standing-permission, purchase-practice, or ZIP promotion. Remaining shopping/store wording describes the retained list, price estimates, or unavailability. No new artboards or live app/provider checks were used for this pass.
 
 ## Evidence actually inspected
 
@@ -38,7 +54,7 @@ Every row below is **created and screenshot-reviewed**. Named states are represe
 | `/circle` | Desktop — Trusted circle | `4O4-0` | Who do I trust and what can they see? |
 | `/family` | Desktop — Family | `4RM-0` | What has my relative chosen to share? |
 | `/groceries` | Desktop — Groceries | `4V5-0` | What do I need and what might it cost? |
-| `/groceries/practice` | Desktop — Practice shopping | `4Z4-0` | What would shopping do in practice? |
+| `/groceries/practice` · legacy recovery | Desktop — Shopping unavailable | `4Z4-0` | How do I return to my grocery list? |
 | `/settings` | Desktop — Settings | `52K-0` | How do I make LifeLink comfortable? |
 | `/sign-in` | Desktop — Sign in | `599-0` | How do I enter my account? |
 | `onboarding` | Desktop — Onboarding | `5AD-0` | How do I start with the right details? |
@@ -56,7 +72,7 @@ The Trusted circle board includes an iMessage setup preview: link an existing re
 
 The desktop Ask conversation contains the current review and a right-side History drawer. Task detail retains the alternate entry. Mobile Ask contains both empty and inline-review states, each with a compact textarea, microphone, and **Ask** action in one dock. Phone Connections is a full scrolling view; the other phone boards show the opening viewport. All sample people, accounts, dates, messages, results, and prices are explicitly practice examples.
 
-## Screenshot review and corrections
+## Original handoff screenshot review and corrections
 
 Final verdict: spacing is deliberate, typography and contrast are readable, repeated rows align, content fits its frames, and route-specific compositions avoid a repetitive card grid.
 
@@ -70,7 +86,9 @@ Final verdict: spacing is deliberate, typography and contrast are readable, repe
 
 Token contrast calculations using WCAG sRGB luminance: ink on paper **15.39:1**, muted on paper **6.31:1**, muted on parchment **5.86:1**, paper on copper **7.11:1**, and control border on paper **3.31:1**. These are exact token-pair calculations, not a comprehensive runtime accessibility audit. Brass remains a hardware detail.
 
-## Implementation QA boundary and remaining caveats
+## Historical implementation QA and remaining caveats
+
+The following reports belong to the original design/implementation handoff, before Instacart retirement. They are retained as historical evidence and do not verify the retirement changes. Current implementation validation belongs to the parent task.
 
 Parent reports full lint, typecheck, **154 tests**, and production build passing, plus completed route visual baselines and mobile fixes. Those are parent-owned results, not checks rerun by this design agent. Parent's phone Today journey now uses vertical steps; DESIGN.md records that responsive contract without adding an unrequested phone Today artboard.
 
@@ -78,4 +96,4 @@ Parent reports full lint, typecheck, **154 tests**, and production build passing
 
 The requested external Opus review did not complete because of quota; parent owns the scheduled retry. No independent Opus approval is claimed.
 
-Paper is static. Its review does not establish keyboard/focus behavior, authentication, exact-version enforcement, voice behavior, network recovery, responsive behavior at every width, or offline persistence. Refer to parent implementation/QA evidence for those behaviors. No real messages, provider connections, purchases, or account changes were performed by this design task. Ownership remained Paper plus PRODUCT.md, DESIGN.md, and this audit; no app code was edited.
+Paper is static. Its review does not establish keyboard/focus behavior, authentication, exact-version enforcement, voice behavior, network recovery, responsive behavior at every width, or offline persistence. Refer to parent implementation/QA evidence for those behaviors. No real messages, provider connections, purchases, or account changes were performed by either design pass. Original ownership was Paper plus PRODUCT.md, DESIGN.md, and this audit; retirement ownership is limited to Paper, PRODUCT.md, and this audit. No app code was edited by these design passes.

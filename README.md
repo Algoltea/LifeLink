@@ -65,7 +65,7 @@ Progress, without any secrets, is recorded in `.lifelink/setup-state.json`.
 | --- | --- |
 | `--yes` | No questions. Keeps existing values and skips integrations that aren't set up. Also used automatically when there's no terminal (CI) |
 | `--reconfigure` | Asks again about integrations that are already set up, so you can change a key |
-| `--only=<id>` | One integration: `openrouter`, `gemini_live`, `composio`, `photon`, `discord`, or `instacart` |
+| `--only=<id>` | One integration: `openrouter`, `gemini_live`, `composio`, `photon`, or `discord` |
 | `--agent=<name>` | Install the skills for a specific agent, for example `codex` |
 | `--skip-install` | Don't run `bun install` |
 
@@ -127,7 +127,7 @@ Secrets never touch the browser or a committed file. There are three places:
 | **Scam check** | Paste text, pick an email, or upload a screenshot. You get a plain verdict, what stood out, what to do next, and **Ask someone you trust** |
 | **Trusted circle** | People and how to reach them, including **Set up iMessage** for each contact; plus sharing: one-time invitation codes with chosen scopes and an optional end date, scope changes, and immediate revoke |
 | **Family** (family member's view) | Only what was shared, re-checked on every read. Photos come through a permission-checked file route; there is an in-app reply |
-| **Groceries** | Lists, preferences, budget, per-order and monthly limits, and bounded standing permission. Handoff to Instacart, or print or copy |
+| **Groceries** | Saved lists, preferences, estimated costs, list budgets, and copy or print for shopping yourself |
 | **Solitaire** | Klondike with keyboard play, tap-to-move, undo, hints, and local save and resume. Works offline |
 | **Connections** | Each person's own accounts, with a plain capability list: works, not wired yet, or not offered |
 | **Settings** | Text size, contrast, light or dark, less movement, read-aloud, speaking speed, captions, profile, and Practice mode |
@@ -196,7 +196,6 @@ flowchart LR
   CO["Composio<br/>Gmail · Outlook · Calendar"]
   PH["Photon<br/>iMessage"]
   DI["Discord REST"]
-  IC["Instacart IDP"]
 
   UI <-->|"realtime"| Q1
   UI --> M
@@ -204,7 +203,7 @@ flowchart LR
   UI <-->|"audio + captions"| Live
   Live -.->|"submit_request tool → same mutation"| M
   M --> S --> A
-  A --> OR & CO & PH & DI & IC
+  A --> OR & CO & PH & DI
   A -->|"mint token"| GL
   Agent --> OR
   CO -->|"signed webhook"| H
@@ -289,7 +288,6 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | **eBay** | Composio | The developer's eBay app credentials. | ◻️ Search listings (not wired yet)<br>✖️ Your listings, orders, or purchases: the connector only covers public search |
 | **iMessage** | Photon Spectrum Stable | Link an existing dashboard registration in **Trusted circle**. Each person texts their assigned number first; no Photon account or dashboard teammate invitation is needed. | ✅ Send a text or photo after you approve it<br>✅ Receive replies<br>◻️ Delivery/read updates (not wired; receipts confirm provider acceptance)<br>✖️ Start a conversation before that contact texts their assigned shared-line number |
 | **Discord** | Discord bot | The family member shares a server with the bot, or has messaged it first. | ✅ Send a direct message after you approve it<br>✅ Receive replies (needs the bridge running with `bun run dev`) |
-| **Instacart** | Instacart IDP | Instacart in the US or Canada. You check out on Instacart. | ✅ Open your list as an Instacart shopping page<br>✅ See stores near your ZIP code<br>✖️ Place the order or see prices: the API can't check out, show prices, or report status |
 
 ✅ implemented in LifeLink · ◻️ the provider supports it but no screen uses it yet · ✖️ the provider doesn't offer it. Live-provider verification is listed under [Project status](#project-status).
 
@@ -302,7 +300,6 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | Composio | `COMPOSIO_API_KEY`, plus `COMPOSIO_AUTH_CONFIGS` and `COMPOSIO_WEBHOOK_SECRET` (provisioned) | `GET /api/v3.1/auth_configs?limit=1` | Sample email in Practice mode only |
 | Photon Spectrum Stable | `SPECTRUM_PROJECT_SECRET`, `SPECTRUM_PROJECT_ID`, plus `SPECTRUM_WEBHOOK_SECRET` (provisioned) | Basic-auth `GET https://spectrum.photon.codes/projects/{projectId}` | No iMessage |
 | Discord | `DISCORD_BOT_TOKEN`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY` | `GET /api/v10/users/@me` | No Discord |
-| Instacart | `INSTACART_API_KEY`, `INSTACART_ENVIRONMENT` | `GET /idp/v1/retailers?postal_code=10001` | Print or copy the list |
 
 **Provisioning notes**
 
@@ -313,7 +310,8 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
   - It points the project webhook at `<deployment>.convex.site/webhooks/composio`. It rotates the signing secret only if it doesn't already hold one, because rotating breaks other listeners.
   - PayPal and eBay need your own app credentials in the Composio dashboard.
 - **Webhooks need a cloud deployment.** A local deployment can't receive them, so setup skips webhook registration there and says so.
-- **Instacart** is not accepting new developer applications as of October 2026.
+
+**Grocery shopping:** Instacart is removed from this release. Lists, estimated costs, budgets, copy, and print remain available. LifeLink does not open shopping pages, look up stores, or run recurring shopping handoffs, even if an old Instacart key is configured. Setup no longer asks for that key. Existing task history remains readable; the unused adapter is retained internally. See [retirement details](docs/instacart-retirement.md). Instacart's [developer application page](https://company.instacart.com/business/developers) currently says new applications are closed.
 
 ### Set up iMessage for a contact
 
@@ -386,7 +384,6 @@ tools/oxlint/anti-slop/  Vendored anti-slop plugin (MIT, provenance in UPSTREAM.
 - Composio OAuth, triggers, and webhook registration.
 - Spectrum Stable shared-user discovery, first-text conversation setup, approved sends, and webhooks.
 - Discord Gateway and DMs.
-- Instacart links.
 
 Setup uses documented read-only validation calls; passing those checks does not establish end-to-end delivery. Treat the first live run of each integration as the real test.
 

@@ -9,7 +9,7 @@
  *   --yes            no questions; keep existing values, skip new integrations
  *   --reconfigure    ask again about integrations that are already set up
  *   --only=<id>      only this integration (openrouter, gemini_live, composio,
- *                    photon, discord, instacart)
+ *                    photon, discord)
  *   --agent=<name>   agent to install skills for (default: detected)
  *   --skip-install   don't run `bun install`
  */
@@ -41,7 +41,6 @@ import {
   checkComposio,
   checkDiscord,
   checkGemini,
-  checkInstacart,
   checkOpenRouter,
   checkPhoton,
   createPhotonWebhook,
@@ -626,10 +625,10 @@ const validate = async (
     }
 
     case "instacart": {
-      return await checkInstacart(
-        value("INSTACART_API_KEY"),
-        value("INSTACART_ENVIRONMENT")
-      );
+      return {
+        detail: "Instacart has been removed from this release.",
+        status: "rejected",
+      };
     }
 
     default: {
@@ -1040,6 +1039,24 @@ const summarize = (): number => {
 
 const main = async (): Promise<number> => {
   write(bold("\nLifeLink setup"));
+
+  if (
+    only !== null &&
+    !developerIntegrations.some((integration) => integration.id === only)
+  ) {
+    record("integration-option", {
+      detail:
+        only === "instacart"
+          ? "Instacart has been removed from this release. Grocery lists, budgets, copy, and print still work."
+          : `Unknown integration. Choose ${developerIntegrations.map((integration) => integration.id).join(", ")}.`,
+      group: "required",
+      label: "Integration selection",
+      status: "failed",
+    });
+
+    return summarize();
+  }
+
   note(
     askQuestions
       ? "Press Enter to accept the value in brackets. Secrets are hidden as you type."

@@ -461,31 +461,10 @@ const checkDiscord = async (
 const discordInstallUrl = (applicationId: string): string =>
   `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(applicationId)}&scope=bot&permissions=0`;
 
-// ── Instacart ──────────────────────────────────────────────────────────────
-
-const instacartBase = (environment: string): string =>
-  environment === "production"
-    ? "https://connect.instacart.com"
-    : "https://connect.dev.instacart.tools";
-
-const checkInstacart = async (
-  key: string,
-  environment: string
-): Promise<CheckResult> =>
-  judge(
-    await call({
-      headers: { Accept: "application/json", Authorization: `Bearer ${key}` },
-      url: `${instacartBase(environment)}/idp/v1/retailers?postal_code=10001&country_code=US`,
-    }),
-    `key accepted (${environment})`,
-    "Instacart"
-  );
-
 export {
   checkComposio,
   checkDiscord,
   checkGemini,
-  checkInstacart,
   checkOpenRouter,
   checkPhoton,
   createPhotonWebhook,
