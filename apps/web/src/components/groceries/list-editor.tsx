@@ -88,9 +88,7 @@ const ItemRow = ({
           htmlFor={checkboxId}
         >
           {item.name}
-          {item.checked ? (
-            <span className="sr-only"> (already have it)</span>
-          ) : null}
+          {item.checked ? <span className="sr-only"> (in cart)</span> : null}
         </Label>
         <span className="text-muted-foreground text-base">
           {[
@@ -374,7 +372,8 @@ const ListEditor = ({
   const [resetting, setResetting] = useState(false);
   const unmarkAll = useMutation(api.groceries.unmarkAll);
   const hasMarkedItems = list.items.some((item) => item.checked);
-  const openCount = list.items.filter((item) => !item.checked).length;
+  const inCart = list.items.filter((item) => item.checked).length;
+  const toGet = list.items.length - inCart;
 
   return (
     <div className="@container flex flex-col gap-5">
@@ -382,7 +381,8 @@ const ListEditor = ({
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl leading-8 font-semibold">{list.name}</h2>
           <p className="text-lg">
-            {openCount} {openCount === 1 ? "item" : "items"} to buy
+            {toGet} {toGet === 1 ? "item" : "items"} to get
+            {inCart > 0 ? ` · ${inCart} in your cart` : null}
           </p>
         </div>
       </div>
@@ -405,8 +405,8 @@ const ListEditor = ({
         </ul>
       )}
       <p className="text-muted-foreground text-lg leading-7">
-        Tick an item when you already have it; ticked items are left out when
-        you copy or print the list.
+        Tick an item when it is in your cart. It stays in the total, and is left
+        out when you copy or print the list.
       </p>
       {list.preferences.length > 0 ? (
         <ul

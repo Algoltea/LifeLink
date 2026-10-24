@@ -33,29 +33,42 @@ const Line = ({
   </div>
 );
 
-/** Keep the early summary and detailed receipt based on the same unchecked items. */
+const sumOf = (items: Doc<"groceryLists">["items"]): number =>
+  items.reduce((total, item) => total + (item.estimatedCents ?? 0), 0);
+
+/**
+ * Keep the early summary and detailed receipt based on the same numbers.
+ * Ticked items are in the cart, so they still count toward the total: ticking
+ * one moves money from "still to get" to "in your cart" without freeing budget.
+ */
 const estimateFor = (list: Doc<"groceryLists">) => {
-  const open = list.items.filter((item) => !item.checked);
-  const guessed = open.filter((item) => item.estimatedCents !== null);
-
-  const estimate = guessed.reduce(
-    (total, item) => total + (item.estimatedCents ?? 0),
-    0
-  );
-
+  const { items } = list;
+  const inCart = items.filter((item) => item.checked);
+  const estimate = sumOf(items);
+  const inCartCents = sumOf(inCart);
   const budget = list.budgetCents;
 
   return {
     budget,
     estimate,
-    guessed,
-    open,
+    inCart,
+    inCartCents,
+    items,
+    missingEstimates: items.some((item) => item.estimatedCents === null),
     overBudget: budget !== null && estimate > budget,
+    toGetCents: estimate - inCartCents,
   };
 };
 
 const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
-  const { open, guessed, estimate, budget, overBudget } = estimateFor(list);
+  const {
+    budget,
+    estimate,
+    inCart,
+    inCartCents,
+    missingEstimates,
+    overBudget,
+  } = estimateFor(list);
 
   return (
     <section aria-label="Budget summary" className="flex flex-col gap-2">
@@ -65,6 +78,9 @@ const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
           value={money(estimate)}
           className="font-semibold"
         />
+        {inCart.length > 0 ? (
+          <Line label="In your cart" value={money(inCartCents)} />
+        ) : null}
         <Line
           label="Budget"
           value={budget === null ? "Not set" : money(budget)}
@@ -77,7 +93,7 @@ const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
           />
         )}
       </dl>
-      {guessed.length < open.length ? (
+      {missingEstimates ? (
         <p className="text-muted-foreground text-base">
           Some items have no estimate, so the real total may be higher.
         </p>
@@ -93,7 +109,7 @@ const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
 const useScrollable = () => {
   const [scrollable, setScrollable] = useState(false);
 
-  const items = useCallback((element: HTMLUListElement | null) => {
+  const itemList = useCallback((element: HTMLUListElement | null) => {
     if (!element) {
       setScrollable(false);
 
@@ -120,7 +136,7 @@ const useScrollable = () => {
     };
   }, []);
 
-  return { items, scrollable };
+  return { itemList, scrollable };
 };
 
 /**
@@ -135,8 +151,18 @@ const Receipt = ({
   list: Doc<"groceryLists">;
   ref?: Ref<HTMLElement>;
 }) => {
-  const { open, guessed, estimate, budget, overBudget } = estimateFor(list);
-  const { items, scrollable } = useScrollable();
+  const {
+    budget,
+    estimate,
+    inCart,
+    inCartCents,
+    items,
+    missingEstimates,
+    overBudget,
+    toGetCents,
+  } = estimateFor(list);
+
+  const { itemList, scrollable } = useScrollable();
 
   return (
     <section
@@ -155,25 +181,31 @@ const Receipt = ({
         <p className="text-muted-foreground break-words">{list.name}</p>
       </header>
       <Rule />
-      {open.length === 0 ? (
+      {items.length === 0 ? (
         <p className="text-muted-foreground text-center">
-          Nothing left to buy.
+          Nothing on this list yet.
         </p>
       ) : (
         <ul
           aria-label="Items to buy"
           className="flex flex-col gap-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain"
-          ref={items}
+          ref={itemList}
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll a long list inside the sticky receipt.
           tabIndex={scrollable ? 0 : undefined}
         >
-          {open.map((item) => (
+          {items.map((item) => (
             <li
-              className="flex flex-col gap-1 @min-[16em]:flex-row @min-[16em]:items-baseline @min-[16em]:justify-between @min-[16em]:gap-4"
+              className={cn(
+                "flex flex-col gap-1 @min-[16em]:flex-row @min-[16em]:items-baseline @min-[16em]:justify-between @min-[16em]:gap-4",
+                item.checked && "text-muted-foreground line-through"
+              )}
               key={item.id}
             >
               <span className="min-w-0 break-words">
                 {item.name}
+                {item.checked ? (
+                  <span className="sr-only"> (in cart)</span>
+                ) : null}
                 {item.quantity === null ? null : (
                   <span className="text-muted-foreground">
                     {" "}
@@ -202,7 +234,13 @@ const Receipt = ({
       ) : null}
       <Rule />
       <dl className="flex flex-col gap-2">
-        <Line label="Items" value={`${open.length}`} />
+        <Line label="Items" value={`${items.length}`} />
+        {inCart.length > 0 ? (
+          <>
+            <Line label="In your cart" value={money(inCartCents)} />
+            <Line label="Still to get" value={money(toGetCents)} />
+          </>
+        ) : null}
         <Line
           className="text-lg font-semibold"
           label="Estimated total"
@@ -223,7 +261,7 @@ const Receipt = ({
           />
         )}
       </dl>
-      {guessed.length < open.length ? (
+      {missingEstimates ? (
         <>
           <Rule />
           <p className="text-muted-foreground text-center">
@@ -246,11 +284,16 @@ const ReceiptBar = ({
   list: Doc<"groceryLists">;
   onShow: () => void;
 }) => {
-  const { open, estimate, budget, overBudget } = estimateFor(list);
+  const { budget, estimate, inCart, items, overBudget } = estimateFor(list);
 
-  if (open.length === 0) {
+  if (items.length === 0) {
     return null;
   }
+
+  const count =
+    inCart.length > 0
+      ? `${inCart.length} of ${items.length} in your cart`
+      : `${items.length} ${items.length === 1 ? "item" : "items"}`;
 
   return (
     <button
@@ -259,7 +302,7 @@ const ReceiptBar = ({
       type="button"
     >
       <span className="min-w-0">
-        {open.length} {open.length === 1 ? "item" : "items"} · {money(estimate)}
+        {count} · {money(estimate)}
         {budget === null ? null : ` of ${money(budget)} budget`}
         {overBudget ? (
           <span className="text-negative font-semibold"> · Over budget</span>
