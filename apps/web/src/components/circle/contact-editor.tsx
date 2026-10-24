@@ -11,10 +11,12 @@ import type {
   IMessageContact,
   IMessageContext,
 } from "./contact-imessage-setup";
+import { ContactTelegramSetup } from "./contact-telegram-setup";
 
 /**
  * Add or edit a person in place, where they sit in the list. Everything about
- * one person lives here: their details, live iMessage setup, and removal.
+ * one person lives here: their details, live iMessage and Telegram setup,
+ * and removal.
  */
 const ContactEditor = ({
   canManage,
@@ -71,6 +73,13 @@ const ContactEditor = ({
           row={imessageRow}
         />
       ) : null}
+      {contact === null ? null : (
+        <ContactTelegramSetup
+          canManage={canManage}
+          contactId={contact._id}
+          contactName={contact.name}
+        />
+      )}
       {contact === null || onRemove === undefined ? null : (
         <div className="border-rule flex flex-wrap items-center justify-between gap-3 border-t pt-5">
           <p className="text-muted-foreground text-label min-w-0 flex-1 basis-64">

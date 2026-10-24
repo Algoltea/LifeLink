@@ -4,9 +4,11 @@ import type { DeveloperIntegrationId } from "@lifelink/contracts/integrations";
 
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { TELEGRAM_CAPTION_LIMIT } from "../integrations/telegram";
 import { readEnv } from "./env";
 import { readyImessageRoute } from "./imessage";
 import { grantAllows } from "./permissions";
+import { verifiedTelegramChat } from "./telegram";
 
 type ReaderCtx = MutationCtx | QueryCtx;
 
@@ -86,6 +88,36 @@ const activeMailbox = async (
   );
 };
 
+/** Telegram: configured, sent only to the chat the contact proved, and photo captions within the limit. */
+const telegramProblems = async (
+  ctx: ReaderCtx,
+  contact: Doc<"contacts">,
+  details: Extract<ActionDetails, { kind: "send_message" }>
+): Promise<string[]> => {
+  if (!developerConfigured("telegram")) {
+    return [
+      "Telegram is not set up for this app yet. Ask whoever set it up to run bun run dev:setup --only=telegram.",
+    ];
+  }
+
+  if ((await verifiedTelegramChat(ctx, contact._id)) !== details.address) {
+    return [
+      `Link ${contact.name}'s Telegram in Trusted circle first: send them their link and ask them to tap Start.`,
+    ];
+  }
+
+  if (
+    details.photoIds.length > 0 &&
+    details.body.length > TELEGRAM_CAPTION_LIMIT
+  ) {
+    return [
+      `Telegram allows ${TELEGRAM_CAPTION_LIMIT} characters with photos. Shorten the message or send the photos separately.`,
+    ];
+  }
+
+  return [];
+};
+
 const contactProblems = async (
   ctx: ReaderCtx,
   owner: Doc<"profiles">,
@@ -130,6 +162,10 @@ const contactProblems = async (
 
   if (details.channel === "discord" && !developerConfigured("discord")) {
     return ["Discord is not set up for this app yet."];
+  }
+
+  if (details.channel === "telegram") {
+    return await telegramProblems(ctx, contact, details);
   }
 
   if (

@@ -10,16 +10,19 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import { startCodeOf } from "./integrations/telegram";
 import { readEnv } from "./lib/env";
 import {
   acceptImessageConversation,
   conversationValidator,
 } from "./lib/imessage";
 import { recordIncoming } from "./lib/incoming";
+import { bindTelegramChat } from "./lib/telegram";
 
 const MAX_PAYLOAD = 4000;
+const START_COMMAND = /^\/start\b/u;
 
-type Provider = "composio" | "discord" | "photon";
+type Provider = "composio" | "discord" | "photon" | "telegram";
 
 /** Insert the event once. Returns null when the same event was already recorded. */
 const recordEvent = async (
@@ -78,7 +81,7 @@ const settle = async (
  */
 const routeToContact = async (
   ctx: MutationCtx,
-  channel: "discord" | "imessage",
+  channel: "discord" | "imessage" | "telegram",
   address: string
 ): Promise<Doc<"contacts"> | null> => {
   const normalized = address.trim().toLowerCase();
@@ -333,6 +336,233 @@ export const discordMessage = internalMutation({
       ownerId: contact.ownerId,
       photoIds: [],
       providerMessageId: `discord:${args.messageId}`,
+    });
+    await settle(ctx, eventId, "processed", contact.ownerId);
+
+    return "processed";
+  },
+});
+
+// ── Telegram (webhook, secret-token checked by the HTTP route) ────────────
+
+const notifyTelegram = async (
+  ctx: MutationCtx,
+  chatId: string,
+  text: string
+): Promise<void> => {
+  await ctx.scheduler.runAfter(0, internal.telegram.notify, { chatId, text });
+};
+
+interface TelegramChat {
+  chatId: string;
+  firstName: string | null;
+  username: string | null;
+}
+
+/** `/start <code>`: the one contact the code was made for, or null when unknown or expired. */
+const linkByCode = async (
+  ctx: MutationCtx,
+  code: string,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks"> | null> => {
+  const link = await ctx.db
+    .query("telegramLinks")
+    .withIndex("by_code", (index) => index.eq("code", code))
+    .unique();
+
+  if (
+    link === null ||
+    link.codeExpiresAt === null ||
+    link.codeExpiresAt < Date.now()
+  ) {
+    return null;
+  }
+
+  return (await bindTelegramChat(ctx, link, chat)) === null ? null : link;
+};
+
+/** Contacts saved with this chat's Telegram username and not linked yet. Telegram verifies usernames. */
+const linkByUsername = async (
+  ctx: MutationCtx,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks">[]> => {
+  if (chat.username === null) {
+    return [];
+  }
+
+  const waiting = await ctx.db
+    .query("telegramLinks")
+    .withIndex("by_expected_username", (index) =>
+      index.eq("expectedUsername", chat.username?.toLowerCase())
+    )
+    .collect();
+
+  const bound: Doc<"telegramLinks">[] = [];
+
+  for (const link of waiting.filter((item) => item.chatId === null)) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each binding patches its own contact, in order.
+    if ((await bindTelegramChat(ctx, link, chat)) !== null) {
+      bound.push(link);
+    }
+  }
+
+  return bound;
+};
+
+const connectedNotice = async (
+  ctx: MutationCtx,
+  links: Doc<"telegramLinks">[]
+): Promise<string> => {
+  const owners = await Promise.all(
+    links.map(async (link) => await ctx.db.get(link.ownerId))
+  );
+
+  const names = [
+    ...new Set(owners.flatMap((owner) => (owner ? [owner.preferredName] : []))),
+  ];
+
+  return `You're connected. Messages from ${names.join(" and ") || "your family member"} will arrive here, and your replies go back to them.`;
+};
+
+/** A bare `/start` from a chat nobody is waiting for: explain how to get connected. */
+const startHelp = (chat: TelegramChat, alreadyLinked: boolean): string => {
+  if (alreadyLinked) {
+    return "You're already connected. Anything you send here goes to your family member in LifeLink.";
+  }
+
+  const username = chat.username === null ? "" : ` @${chat.username}`;
+
+  return `Hi${chat.firstName ? ` ${chat.firstName}` : ""}! To connect, ask your family member to add your Telegram username${username} in LifeLink, or to send you their LifeLink link. Then tap Start again.`;
+};
+
+/** Link this chat by code and by username. Returns what got linked, or null for a dead code. */
+const linkTelegramChat = async (
+  ctx: MutationCtx,
+  text: string,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks">[] | null> => {
+  const code = START_COMMAND.test(text.trim()) ? startCodeOf(text) : null;
+  const bound: Doc<"telegramLinks">[] = [];
+
+  if (code !== null) {
+    const link = await linkByCode(ctx, code, chat);
+
+    if (link === null) {
+      return null;
+    }
+
+    bound.push(link);
+  }
+
+  bound.push(...(await linkByUsername(ctx, chat)));
+
+  if (bound.length > 0) {
+    await notifyTelegram(ctx, chat.chatId, await connectedNotice(ctx, bound));
+  }
+
+  return bound;
+};
+
+export const telegramUpdate = internalMutation({
+  args: {
+    chatId: v.string(),
+    chatType: v.string(),
+    firstName: v.union(v.string(), v.null()),
+    fromBot: v.boolean(),
+    hasPhoto: v.boolean(),
+    messageId: v.string(),
+    payload: v.string(),
+    text: v.string(),
+    updateId: v.string(),
+    username: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const eventId = await recordEvent(
+      ctx,
+      "telegram",
+      args.updateId,
+      "message",
+      args.payload
+    );
+
+    if (eventId === null) {
+      return "duplicate";
+    }
+
+    // Only one-to-one chats with real people; groups and bots never reach a household.
+    if (args.chatType !== "private" || args.fromBot) {
+      await settle(ctx, eventId, "ignored", null, "Not a private chat.");
+
+      return "ignored";
+    }
+
+    const chat = {
+      chatId: args.chatId,
+      firstName: args.firstName,
+      username: args.username,
+    };
+
+    const bound = await linkTelegramChat(ctx, args.text, chat);
+
+    if (bound === null) {
+      await notifyTelegram(
+        ctx,
+        args.chatId,
+        "This link has expired or was already used. Ask the person who uses LifeLink to send you a new one."
+      );
+      await settle(ctx, eventId, "ignored", null, "Unknown or expired link.");
+
+      return "ignored";
+    }
+
+    const contact = await routeToContact(ctx, "telegram", args.chatId);
+
+    // `/start` is only ever a way in, never a message to the family.
+    if (START_COMMAND.test(args.text.trim())) {
+      if (bound.length === 0) {
+        await notifyTelegram(
+          ctx,
+          args.chatId,
+          startHelp(chat, contact !== null)
+        );
+      }
+
+      await settle(
+        ctx,
+        eventId,
+        bound.length > 0 ? "processed" : "ignored",
+        bound[0]?.ownerId ?? contact?.ownerId ?? null
+      );
+
+      return bound.length > 0 ? "processed" : "ignored";
+    }
+
+    const body =
+      args.text.trim() ||
+      (args.hasPhoto ? "(Sent a photo. Open Telegram to see it.)" : "");
+
+    if (contact === null || body.length === 0) {
+      await settle(
+        ctx,
+        eventId,
+        "ignored",
+        null,
+        contact === null
+          ? "The chat is not linked to anyone's contact."
+          : "Empty message."
+      );
+
+      return "ignored";
+    }
+
+    await recordIncoming(ctx, {
+      body,
+      channel: "telegram",
+      contactId: contact._id,
+      mode: "live",
+      ownerId: contact.ownerId,
+      photoIds: [],
+      providerMessageId: `telegram:${args.chatId}:${args.messageId}`,
     });
     await settle(ctx, eventId, "processed", contact.ownerId);
 

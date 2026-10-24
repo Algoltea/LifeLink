@@ -46,7 +46,10 @@ const NOT_SET_UP =
   "This is not turned on yet. Ask the person who set up LifeLink to turn it on.";
 
 const GROUPS = [
-  { ids: ["imessage", "discord"], title: "Message family and friends" },
+  {
+    ids: ["imessage", "discord", "telegram"],
+    title: "Message family and friends",
+  },
   { ids: ["gmail", "outlook"], title: "Read and write email" },
   { ids: ["google_calendar", "google_drive"], title: "Manage appointments" },
 ] as const;
@@ -670,6 +673,16 @@ const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
       <p className="text-body">
         {demoMode ? "When you use real Discord, add" : "Add"} each person’s
         Discord user ID in Trusted circle.
+      </p>
+    );
+  }
+
+  if (definition.id === "telegram") {
+    return (
+      <p className="text-body">
+        {demoMode ? "When you use real Telegram, open" : "Open"} each person in
+        Trusted circle, choose Link Telegram, and send them their link. They tap
+        Start once.
       </p>
     );
   }

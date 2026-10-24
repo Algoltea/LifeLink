@@ -18,14 +18,19 @@ const formatAddress = (address: string): string => {
 };
 
 const CHANNEL_WORDS: Record<
-  "discord" | "email" | "imessage" | "in_app",
+  "discord" | "email" | "imessage" | "in_app" | "telegram",
   string
 > = {
   discord: "Discord direct message",
   email: "Email",
   imessage: "iMessage",
   in_app: "LifeLink message",
+  telegram: "Telegram",
 };
+
+/** Channels whose address is an internal id, meaningless to show a person. */
+const hidesAddress = (channel: keyof typeof CHANNEL_WORDS): boolean =>
+  channel === "in_app" || channel === "telegram";
 
 /**
  * The exact, consequential details of an action, shown the way they will
@@ -50,7 +55,7 @@ const MessageSlip = ({
         </span>
         <span className="text-muted-foreground text-base [overflow-wrap:anywhere]">
           By {CHANNEL_WORDS[details.channel]}
-          {details.channel === "in_app"
+          {hidesAddress(details.channel)
             ? ""
             : ` to ${formatAddress(details.address)}`}
         </span>
@@ -98,10 +103,9 @@ const Fact = ({
 const spokenDetails = (details: ActionDetails, timeZone: string): string => {
   switch (details.kind) {
     case "send_message": {
-      const route =
-        details.channel === "in_app"
-          ? ""
-          : ` to ${formatAddress(details.address)}`;
+      const route = hidesAddress(details.channel)
+        ? ""
+        : ` to ${formatAddress(details.address)}`;
 
       return `To ${details.contactName}, by ${CHANNEL_WORDS[details.channel]}${route}. The message says: ${details.body}`;
     }
@@ -376,4 +380,10 @@ const DetailsView = ({
   }
 };
 
-export { CHANNEL_WORDS, DetailsView, formatAddress, spokenDetails };
+export {
+  CHANNEL_WORDS,
+  DetailsView,
+  formatAddress,
+  hidesAddress,
+  spokenDetails,
+};

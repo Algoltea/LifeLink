@@ -462,17 +462,81 @@ const checkDiscord = async (
 const discordInstallUrl = (applicationId: string): string =>
   `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(applicationId)}&scope=bot&permissions=0`;
 
+// ── Telegram ───────────────────────────────────────────────────────────────
+
+// The token is part of every Bot API URL, so URLs here are never printed.
+const telegramMethod = (token: string, method: string): string =>
+  `https://api.telegram.org/bot${token}/${method}`;
+
+/** Reads the bot's own profile and returns its username; sends nothing. */
+const checkTelegram = async (
+  token: string
+): Promise<CheckResult & { username: string | null }> => {
+  const answer = await call({
+    headers: {},
+    url: telegramMethod(token, "getMe"),
+  });
+
+  // Telegram answers 401 or 404 for a wrong token.
+  const result =
+    answer?.status === 404
+      ? {
+          detail: "Telegram rejected the token (HTTP 404)",
+          status: "rejected" as const,
+        }
+      : judge(answer, "bot token accepted", "Telegram");
+
+  if (result.status !== "ok" || answer === null) {
+    return { ...result, username: null };
+  }
+
+  const username = stringAt(answer.body, "result", "username");
+
+  return {
+    detail:
+      username === null ? "bot token accepted" : `signed in as @${username}`,
+    status: "ok",
+    username,
+  };
+};
+
+/** Points the bot at Convex. Idempotent: Telegram replaces any earlier webhook. */
+const setTelegramWebhook = async (
+  token: string,
+  siteUrl: string,
+  secret: string
+): Promise<CheckResult> => {
+  const answer = await call({
+    body: JSON.stringify({
+      allowed_updates: ["message"],
+      secret_token: secret,
+      url: `${siteUrl}/webhooks/telegram`,
+    }),
+    headers: {},
+    method: "POST",
+    url: telegramMethod(token, "setWebhook"),
+  });
+
+  return judge(
+    answer,
+    `webhook set to ${siteUrl}/webhooks/telegram`,
+    "Telegram"
+  );
+};
+
 export {
   checkComposio,
   checkDiscord,
   checkGemini,
   checkOpenRouter,
   checkPhoton,
+  checkTelegram,
   createPhotonWebhook,
   discordInstallUrl,
   ensureAuthConfigs,
   ensureComposioWebhook,
   isLocalUrl,
+  setTelegramWebhook,
 };
 
 export type { CheckResult, CheckStatus };

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import { executionProblems } from "./lib/capabilities";
 import { requireOwned, requireOwner } from "./lib/session";
 
 const ACTIVE_STATUSES = new Set<Doc<"tasks">["status"]>([
@@ -48,7 +49,11 @@ const granteeNamesOf = async (
   return names.flatMap((name) => (name === null ? [] : [name]));
 };
 
-const actionView = async (ctx: QueryCtx, action: Doc<"actions">) => {
+const actionView = async (
+  ctx: QueryCtx,
+  owner: Doc<"profiles">,
+  action: Doc<"actions">
+) => {
   const versions = await ctx.db
     .query("actionVersions")
     .withIndex("by_action_version", (index) => index.eq("actionId", action._id))
@@ -87,6 +92,13 @@ const actionView = async (ctx: QueryCtx, action: Doc<"actions">) => {
       ? await granteeNamesOf(ctx, current.details.granteeIds)
       : [];
 
+  // The same checks approval runs, so the screen can explain a block before
+  // the person presses approve instead of after.
+  const blockers =
+    action.status === "awaiting_approval" && current !== null
+      ? await executionProblems(ctx, owner, current.details, action.mode)
+      : [];
+
   return {
     action,
     attempts: attempts.map((attempt) => ({
@@ -98,6 +110,7 @@ const actionView = async (ctx: QueryCtx, action: Doc<"actions">) => {
       startedAt: attempt.startedAt,
       version: attempt.version,
     })),
+    blockers,
     current,
     currentApproval:
       approvals.find(
@@ -142,7 +155,7 @@ export const detail = query({
       .collect();
 
     const views = await Promise.all(
-      actions.map(async (action) => await actionView(ctx, action))
+      actions.map(async (action) => await actionView(ctx, owner, action))
     );
 
     const contact =

@@ -828,6 +828,9 @@ const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
   ["instagram.messages", "replies"],
   ["instagram.post", "post"],
   ["paypal.invoices", "read"],
+  ["telegram.first_contact", "message"],
+  ["telegram.receive", "replies"],
+  ["telegram.send", "message"],
   ["paypal.send_money", "money"],
 ]);
 

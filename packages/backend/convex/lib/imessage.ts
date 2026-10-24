@@ -157,14 +157,78 @@ const acceptImessageConversation = async (
   return enrollment;
 };
 
+/**
+ * Sent once, above the first message in a new iMessage conversation, so the
+ * recipient knows who this number is (and iOS can suggest saving it). Only the
+ * recipient sees it: LifeLink's own thread and review show the message alone.
+ */
+const imessageIntroduction = (ownerName: string): string =>
+  [
+    `LifeLink: This conversation is connected to ${ownerName}'s LifeLink account. Messages from this number are sent on ${ownerName}'s behalf, and your replies go directly to ${ownerName}. Save this number as "LifeLink" to recognize future messages.`,
+    "",
+    `Message from ${ownerName}:`,
+  ].join("\n");
+
+/** What actually goes out: the introduction, when there is one, then the approved words unchanged. */
+const withIntroduction = (introduction: string | null, body: string): string =>
+  introduction === null ? body : `${introduction}\n${body}`;
+
+/** The ready conversation behind this send, while it still needs its introduction. */
+const enrollmentNeedingIntroduction = async (
+  ctx: ReaderCtx,
+  ownerId: Id<"profiles">,
+  contactId: string,
+  address: string
+): Promise<Doc<"imessageEnrollments"> | null> => {
+  const projectId = readEnv("SPECTRUM_PROJECT_ID");
+
+  if (projectId === null) {
+    return null;
+  }
+
+  const enrollment = await ctx.db
+    .query("imessageEnrollments")
+    .withIndex("by_project_handle", (index) =>
+      index.eq("projectId", projectId).eq("handle", address.trim())
+    )
+    .unique();
+
+  const needsIntroduction =
+    enrollment !== null &&
+    enrollment.ownerId === ownerId &&
+    enrollment.contactId === contactId &&
+    !enrollment.introducedAt;
+
+  return needsIntroduction ? enrollment : null;
+};
+
+/** Once a send that carried the introduction is confirmed, later messages go without it. */
+const markIntroduced = async (
+  ctx: MutationCtx,
+  attempt: Doc<"executionAttempts">
+): Promise<void> => {
+  const enrollmentId = attempt.imessageIntroduction?.enrollmentId;
+
+  const enrollment =
+    enrollmentId === undefined ? null : await ctx.db.get(enrollmentId);
+
+  if (enrollment !== null && !enrollment.introducedAt) {
+    await ctx.db.patch(enrollment._id, { introducedAt: Date.now() });
+  }
+};
+
 export {
   acceptImessageConversation,
   contactImessageHandle,
   conversationValidator,
   currentEnrollmentContact,
+  enrollmentNeedingIntroduction,
+  imessageIntroduction,
+  markIntroduced,
   photonReconciliationValidator,
   photonRouteValidator,
   readyImessageRoute,
+  withIntroduction,
 };
 
 export type { PhotonRoute };

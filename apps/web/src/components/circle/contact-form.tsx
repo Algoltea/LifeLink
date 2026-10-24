@@ -32,13 +32,14 @@ type PictureChange =
   | { blob: Blob; kind: "replace"; previewUrl: string }
   | { kind: "remove" };
 
-type Channel = "discord" | "email" | "imessage";
+type Channel = "discord" | "email" | "imessage" | "telegram";
 
 type Way =
   | "discord"
   | "email"
   | "imessage_email"
   | "imessage_phone"
+  | "telegram"
   | "whatsapp";
 
 interface WayDetails {
@@ -85,6 +86,14 @@ const WAYS: Record<Way, WayDetails> = {
     phone: true,
     valueLabel: "Phone number",
   },
+  telegram: {
+    channel: "telegram",
+    group: "telegram",
+    help: "Their Telegram username, like @sam_alvarez (in Telegram: Settings, then Username). After you save, ask them to open @LifeLinkMessage_Bot in Telegram and tap Start. No username? Leave it blank and use the Telegram link below.",
+    label: "Telegram",
+    phone: false,
+    valueLabel: "Telegram username",
+  },
   whatsapp: {
     channel: null,
     group: "whatsapp",
@@ -100,10 +109,40 @@ const WAY_ORDER: readonly Way[] = [
   "imessage_email",
   "email",
   "discord",
+  "telegram",
   "whatsapp",
 ];
 
 const EMAIL_LIKE = /@/u;
+
+/** Keyboard and autofill hints for the ways typed into a plain text box. */
+const TEXT_INPUT = {
+  autoComplete: "off",
+  inputMode: "text",
+  type: "text",
+} as const;
+
+const EMAIL_INPUT = {
+  autoComplete: "email",
+  inputMode: "email",
+  type: "email",
+} as const;
+
+const INPUT_STYLE: Record<
+  Way,
+  {
+    autoComplete: "email" | "off";
+    inputMode: "email" | "numeric" | "text";
+    type: "email" | "text";
+  }
+> = {
+  discord: { ...TEXT_INPUT, inputMode: "numeric" },
+  email: EMAIL_INPUT,
+  imessage_email: EMAIL_INPUT,
+  imessage_phone: TEXT_INPUT,
+  telegram: TEXT_INPUT,
+  whatsapp: TEXT_INPUT,
+};
 
 /** Each group of the form starts on a quiet rule, so the form scans as three short steps. */
 const SECTION = "border-rule border-t pt-5";
@@ -139,7 +178,8 @@ const initialRows = (contact: CircleContact | null): Row[] => {
   const sendable = contact.channels
     .toSorted((a, b) => Number(b.preferred) - Number(a.preferred))
     .flatMap((item) => {
-      if (item.channel === "in_app") {
+      // Telegram comes from its link record below, which also covers a username not yet linked.
+      if (item.channel === "in_app" || item.channel === "telegram") {
         return [];
       }
 
@@ -156,13 +196,40 @@ const initialRows = (contact: CircleContact | null): Row[] => {
     rowFor(handle.service, handle.address, region)
   );
 
-  const rows = [...sendable, ...saved];
+  const telegramRow =
+    contact.telegram === null
+      ? []
+      : [rowFor("telegram", contact.telegram.username ?? "", region)];
+
+  const telegramFirst =
+    contact.telegram?.preferred === true ||
+    contact.channels.some(
+      (item) => item.channel === "telegram" && item.preferred
+    );
+
+  const rows = telegramFirst
+    ? [...telegramRow, ...sendable, ...saved]
+    : [...sendable, ...telegramRow, ...saved];
 
   if (rows[0] === undefined || rows[0].way === "whatsapp") {
     return [rowFor("", "", region), ...rows];
   }
 
   return rows;
+};
+
+/** Telegram as the form chose it: a username to wait for (blank links by one-time link), or none. */
+const telegramChoiceOf = (
+  rows: Row[]
+): { preferred: boolean; username: string | null } | null => {
+  const index = rows.findIndex((row) => row.way === "telegram");
+  const row = rows[index];
+
+  if (row === undefined) {
+    return null;
+  }
+
+  return { preferred: index === 0, username: row.value.trim() || null };
 };
 
 const addressOf = (row: Row): string => {
@@ -192,6 +259,7 @@ const WayRow = ({
   const valueId = useId();
   const helpId = useId();
   const details = row.way === "" ? null : WAYS[row.way];
+  const input = row.way === "" ? TEXT_INPUT : INPUT_STYLE[row.way];
 
   // WhatsApp can't be preferred: LifeLink has nothing to send it with.
   const choices = WAY_ORDER.filter(
@@ -253,13 +321,14 @@ const WayRow = ({
           ) : (
             <Input
               aria-describedby={helpId}
-              autoComplete={row.way === "discord" ? "off" : "email"}
+              autoComplete={input.autoComplete}
               id={valueId}
-              inputMode={row.way === "discord" ? "numeric" : "email"}
+              inputMode={input.inputMode}
               onChange={(event) =>
                 onChange({ ...row, value: event.target.value })
               }
-              type={row.way === "discord" ? "text" : "email"}
+              placeholder={row.way === "telegram" ? "@username" : undefined}
+              type={input.type}
               value={row.value}
             />
           )}
@@ -413,6 +482,7 @@ const ContactForm = ({
   const [relationship, setRelationship] = useState(contact?.relationship ?? "");
   const [trusted, setTrusted] = useState(contact?.trusted ?? true);
   const [rows, setRows] = useState<Row[]>(() => initialRows(contact));
+
   const [busy, setBusy] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -480,7 +550,8 @@ const ContactForm = ({
           const channel = row.way === "" ? null : WAYS[row.way].channel;
           const address = addressOf(row);
 
-          return channel && address
+          // Telegram is saved as a username to wait for, never as an address.
+          return channel && channel !== "telegram" && address
             ? [{ address, channel, preferred: index === 0 }]
             : [];
         });
@@ -520,6 +591,7 @@ const ContactForm = ({
               name,
               relationship,
               savedHandles,
+              telegram: telegramChoiceOf(rows),
               trusted,
             });
             setCreatedId(savedId);
@@ -530,6 +602,7 @@ const ContactForm = ({
               name,
               relationship,
               savedHandles,
+              telegram: telegramChoiceOf(rows),
               trusted,
             });
             savedId = existingId;

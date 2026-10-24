@@ -9,7 +9,7 @@
  *   --yes            no questions; keep existing values, skip new integrations
  *   --reconfigure    ask again about integrations that are already set up
  *   --only=<id>      only this integration (openrouter, gemini_live, composio,
- *                    photon, discord)
+ *                    photon, discord, telegram)
  *   --agent=<name>   agent to install skills for (default: detected)
  *   --skip-install   don't run `bun install`
  */
@@ -43,11 +43,13 @@ import {
   checkGemini,
   checkOpenRouter,
   checkPhoton,
+  checkTelegram,
   createPhotonWebhook,
   discordInstallUrl,
   ensureAuthConfigs,
   ensureComposioWebhook,
   isLocalUrl,
+  setTelegramWebhook,
 } from "./providers";
 import type { CheckResult } from "./providers";
 import { lastLines, run } from "./run";
@@ -535,6 +537,8 @@ const PROVISIONED = new Set([
   "COMPOSIO_AUTH_CONFIGS",
   "COMPOSIO_WEBHOOK_SECRET",
   "SPECTRUM_WEBHOOK_SECRET",
+  "TELEGRAM_BOT_USERNAME",
+  "TELEGRAM_WEBHOOK_SECRET",
 ]);
 
 const FALLBACKS: Record<DeveloperIntegrationId, string> = {
@@ -547,6 +551,8 @@ const FALLBACKS: Record<DeveloperIntegrationId, string> = {
   openrouter:
     "LifeLink uses its built-in rules planner (fine for Practice mode; no free-form help)",
   photon: "iMessage stays unavailable; email and Discord still work",
+  telegram:
+    "Telegram stays unavailable; iMessage, email, and Discord still work",
 };
 
 const askValue = async (
@@ -622,6 +628,10 @@ const validate = async (
         value("DISCORD_BOT_TOKEN"),
         value("DISCORD_APPLICATION_ID")
       );
+    }
+
+    case "telegram": {
+      return await checkTelegram(value("TELEGRAM_BOT_TOKEN"));
     }
 
     case "instacart": {
@@ -806,6 +816,42 @@ const provisionDiscord = (
   ];
 };
 
+const provisionTelegram = async (
+  values: Map<string, string>,
+  siteUrl: string
+): Promise<string[]> => {
+  const token = values.get("TELEGRAM_BOT_TOKEN") ?? "";
+  const check = await checkTelegram(token);
+
+  if (check.username !== null) {
+    values.set("TELEGRAM_BOT_USERNAME", check.username);
+  }
+
+  if (isLocalUrl(siteUrl)) {
+    return [
+      "webhook skipped: a local deployment can't receive Telegram replies or links; use a cloud deployment",
+    ];
+  }
+
+  // Telegram allows only letters, digits, _ and - in the secret, so hex it is.
+  const secret =
+    values.get("TELEGRAM_WEBHOOK_SECRET") || randomBytes(32).toString("hex");
+
+  values.set("TELEGRAM_WEBHOOK_SECRET", secret);
+
+  const webhook = await setTelegramWebhook(token, siteUrl, secret);
+
+  if (webhook.status !== "ok") {
+    warn(`${webhook.detail}.`);
+
+    return [
+      "no webhook yet, so links and replies won't arrive; run setup again",
+    ];
+  }
+
+  return [webhook.detail];
+};
+
 const provision = async (
   id: DeveloperIntegrationId,
   values: Map<string, string>,
@@ -831,6 +877,13 @@ const provision = async (
 
   if (id === "discord") {
     return provisionDiscord(values, context.convexEnv, context.deployment);
+  }
+
+  if (id === "telegram") {
+    return await provisionTelegram(
+      values,
+      context.deployment.siteUrl ?? context.siteUrl
+    );
   }
 
   return [];
