@@ -15,6 +15,8 @@ interface SegmentedProps<Value extends string> {
   label: string;
   onValueChange: (value: Value) => void;
   options: readonly SegmentedOption<Value>[];
+  /** Fill the container at every width, splitting it evenly between options. */
+  stretch?: boolean;
   value: Value;
 }
 
@@ -25,13 +27,15 @@ const Segmented = <Value extends string>({
   label,
   onValueChange,
   options,
+  stretch = false,
   value,
 }: SegmentedProps<Value>) => (
   <RadioGroup
     aria-label={label}
     disabled={disabled}
     className={cn(
-      "border-border bg-parchment inline-flex w-full max-w-full flex-wrap gap-1 rounded-lg border p-1 sm:w-fit",
+      "border-border bg-parchment inline-flex w-full max-w-full flex-wrap gap-1 rounded-lg border p-1",
+      !stretch && "sm:w-fit",
       className
     )}
     onValueChange={(next) => {
@@ -45,7 +49,10 @@ const Segmented = <Value extends string>({
   >
     {options.map((option) => (
       <Radio.Root
-        className="text-foreground data-unchecked:hover:bg-neutral-wash data-checked:bg-primary data-checked:text-primary-foreground data-checked:hover:bg-primary-hover text-label min-h-control inline-flex min-w-12 flex-1 items-center justify-center rounded-md px-4 py-2 font-medium transition-colors sm:flex-none"
+        className={cn(
+          "text-foreground data-unchecked:hover:bg-neutral-wash data-checked:bg-primary data-checked:text-primary-foreground data-checked:hover:bg-primary-hover text-label min-h-control inline-flex min-w-12 flex-1 items-center justify-center rounded-md px-4 py-2 font-medium transition-colors",
+          !stretch && "sm:flex-none"
+        )}
         key={option.value}
         value={option.value}
       >
