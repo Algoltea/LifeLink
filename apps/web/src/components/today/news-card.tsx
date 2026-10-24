@@ -81,40 +81,43 @@ const NewsCard = () => {
           value={kind}
         />
       </div>
-      {headlines.length === 0 ? (
-        <output className="text-muted-foreground text-body block py-1">
-          {news === undefined || (news.fetchedAt === null && !failed)
-            ? "Loading news…"
-            : "News is not available right now. Please try again later."}
-        </output>
-      ) : (
-        <ul className="motion-enter flex flex-col" key={kind}>
-          {headlines.map((headline) => (
-            <li
-              className="border-rule border-t py-1 first:border-t-0"
-              key={headline.url}
-            >
-              <a
-                className="text-foreground hover:bg-parchment -mx-3 flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors"
-                href={headline.url}
-                rel="noopener noreferrer"
-                target="_blank"
-                title={headline.title}
+      {/* Three rows tall, so switching kinds does not shrink the page and scroll it. */}
+      <div className="min-h-48">
+        {headlines.length === 0 ? (
+          <output className="text-muted-foreground text-body block py-1">
+            {news === undefined || (news.fetchedAt === null && !failed)
+              ? "Loading news…"
+              : "News is not available right now. Please try again later."}
+          </output>
+        ) : (
+          <ul className="motion-enter flex flex-col" key={kind}>
+            {headlines.map((headline) => (
+              <li
+                className="border-rule border-t py-1 first:border-t-0"
+                key={headline.url}
               >
-                <span className="text-body min-w-0 flex-1 truncate">
-                  {headline.title}
-                </span>
-                <span className="text-muted-foreground text-label flex shrink-0 items-center gap-1.5">
-                  <span className="sr-only">, from </span>
-                  {headline.source}
-                  <ExternalLinkIcon aria-hidden="true" className="size-4" />
-                  <span className="sr-only">, opens in a new tab</span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+                <a
+                  className="text-foreground hover:bg-parchment -mx-3 flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors"
+                  href={headline.url}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  title={headline.title}
+                >
+                  <span className="text-body min-w-0 flex-1 truncate">
+                    {headline.title}
+                  </span>
+                  <span className="text-muted-foreground text-label flex shrink-0 items-center gap-1.5">
+                    <span className="sr-only">, from </span>
+                    {headline.source}
+                    <ExternalLinkIcon aria-hidden="true" className="size-4" />
+                    <span className="sr-only">, opens in a new tab</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {single && headlines.length > 0 ? (
         <a
           className="text-accent-foreground text-label min-h-control -mr-3 inline-flex items-center gap-1.5 self-end px-3 font-medium"
