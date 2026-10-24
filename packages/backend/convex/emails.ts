@@ -1,3 +1,4 @@
+import { INBOX_PAGE_SIZE, localInboxInsight } from "@lifelink/contracts/inbox";
 /**
  * Email through each person's own Gmail or Outlook connection. Summaries run
  * only on emails the person picks. New mail gets a local scam check; cloud
@@ -9,6 +10,7 @@ import {
   emailSummarySchema,
 } from "@lifelink/contracts/model-output";
 import type { EmailSummary } from "@lifelink/contracts/model-output";
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -30,6 +32,7 @@ import {
   structuredCompletion,
 } from "./integrations/openrouter";
 import { audit } from "./lib/audit";
+import { inboxMessage, knownEmailSenders } from "./lib/emailpriority";
 import { createTask } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
@@ -37,7 +40,97 @@ import { isoWithOffset, parseAbsoluteIso } from "./lib/time";
 import { SUGGESTION_RATIONALE } from "./messages";
 import { ensureEmailCheck, LOCAL_SCAN_VERSION } from "./scam";
 
-const LIST_LIMIT = 25;
+const LIST_LIMIT = INBOX_PAGE_SIZE;
+
+const emailRow = (email: Doc<"emails">, knownSenders: ReadonlySet<string>) => ({
+  fromAddress: email.fromAddress,
+  fromName: email.fromName,
+  id: email._id,
+  mode: email.mode,
+  needsSafetyCheck: email.scamCheck?.rulesVersion !== LOCAL_SCAN_VERSION,
+  preview: email.bodyText.slice(0, 160),
+  priority: localInboxInsight(inboxMessage(email, knownSenders)).category,
+  provider: email.provider,
+  receivedAt: email.receivedAt,
+  scamCheck: email.scamCheck,
+  subject: email.subject,
+  summary: email.summary,
+  suspicious: email.suspicious,
+});
+
+export const page = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    if (args.paginationOpts.numItems !== INBOX_PAGE_SIZE) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "Open emails in pages of 15.",
+      });
+    }
+
+    const result = await ctx.db
+      .query("emails")
+      .withIndex("by_owner_received", (index) => index.eq("ownerId", owner._id))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const knownSenders = await knownEmailSenders(ctx, owner);
+
+    return {
+      ...result,
+      page: result.page.map((email) => emailRow(email, knownSenders)),
+    };
+  },
+});
+
+export const selectedRow = query({
+  args: { emailId: v.string() },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+    const id = ctx.db.normalizeId("emails", args.emailId);
+
+    if (id === null) {
+      return null;
+    }
+
+    const email = await ctx.db.get(id);
+
+    if (email?.ownerId !== owner._id) {
+      return null;
+    }
+
+    return emailRow(email, await knownEmailSenders(ctx, owner));
+  },
+});
+
+export const olderAvailable = query({
+  args: {},
+  handler: async (ctx) => {
+    const owner = await requireOwner(ctx);
+
+    if (owner.demoMode) {
+      return false;
+    }
+
+    const connections = await ctx.db
+      .query("connections")
+      .withIndex("by_owner", (index) => index.eq("ownerId", owner._id))
+      .take(100);
+
+    return connections.some(
+      (connection) =>
+        connection.mode === "live" &&
+        connection.status === "active" &&
+        (connection.provider === "gmail" ||
+          connection.provider === "outlook") &&
+        connection.externalAccountId !== null &&
+        (connection.mailPaging?.accountId !== connection.externalAccountId ||
+          connection.mailPaging.nextCursor !== null)
+    );
+  },
+});
 
 export const list = query({
   args: {},
@@ -50,34 +143,39 @@ export const list = query({
       .order("desc")
       .take(LIST_LIMIT);
 
-    return emails.map((email) => ({
-      fromAddress: email.fromAddress,
-      fromName: email.fromName,
-      id: email._id,
-      mode: email.mode,
-      needsSafetyCheck: email.scamCheck?.rulesVersion !== LOCAL_SCAN_VERSION,
-      preview: email.bodyText.slice(0, 160),
-      provider: email.provider,
-      receivedAt: email.receivedAt,
-      scamCheck: email.scamCheck,
-      subject: email.subject,
-      summary: email.summary,
-      suspicious: email.suspicious,
-    }));
+    const knownSenders = await knownEmailSenders(ctx, owner);
+
+    return emails.map((email) => emailRow(email, knownSenders));
   },
 });
 
 /** Backfill only the visible inbox using local rules; never fetches provider mail. */
 export const checkRecent = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { emailIds: v.optional(v.array(v.id("emails"))) },
+  handler: async (ctx, args) => {
     const owner = await requireOwner(ctx);
 
-    const emails = await ctx.db
-      .query("emails")
-      .withIndex("by_owner_received", (index) => index.eq("ownerId", owner._id))
-      .order("desc")
-      .take(LIST_LIMIT);
+    if ((args.emailIds?.length ?? 0) > LIST_LIMIT) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "Check up to 15 emails at a time.",
+      });
+    }
+
+    const emails =
+      args.emailIds === undefined
+        ? await ctx.db
+            .query("emails")
+            .withIndex("by_owner_received", (index) =>
+              index.eq("ownerId", owner._id)
+            )
+            .order("desc")
+            .take(LIST_LIMIT)
+        : await Promise.all(
+            args.emailIds.map(async (id) =>
+              requireOwned(await ctx.db.get(id), owner, "email")
+            )
+          );
 
     await Promise.all(
       emails.map(async (email) => await ensureEmailCheck(ctx, email))
@@ -110,19 +208,25 @@ export const mailboxesFor = internalQuery({
     const connections = await ctx.db
       .query("connections")
       .withIndex("by_owner", (index) => index.eq("ownerId", args.ownerId))
-      .collect();
+      .take(100);
 
     return connections.flatMap((connection) => {
       const isMail =
         connection.provider === "gmail" || connection.provider === "outlook";
 
       return isMail &&
+        connection.mode === "live" &&
         connection.status === "active" &&
         connection.externalAccountId !== null
         ? [
             {
               connectedAccountId: connection.externalAccountId,
               connectionId: connection._id,
+              mailPaging:
+                connection.mailPaging?.accountId ===
+                connection.externalAccountId
+                  ? connection.mailPaging
+                  : undefined,
               provider:
                 connection.provider === "outlook"
                   ? ("outlook" as const)
@@ -279,10 +383,69 @@ export const storeSynced = internalMutation({
   },
 });
 
-/** Fetch recent mail from every connected mailbox. */
+/** Persist a provider page only if its account and continuation still match. */
+export const storeMailPage = internalMutation({
+  args: {
+    accountId: v.string(),
+    connectionId: v.id("connections"),
+    expectedCursor: v.union(v.string(), v.null()),
+    messages: v.array(mailValidator),
+    nextCursor: v.union(v.string(), v.null()),
+    older: v.boolean(),
+    ownerId: v.id("profiles"),
+    provider: v.union(v.literal("gmail"), v.literal("outlook")),
+  },
+  handler: async (ctx, args): Promise<number> => {
+    const owner = await ctx.db.get(args.ownerId);
+    const connection = await ctx.db.get(args.connectionId);
+
+    if (
+      !owner ||
+      owner.demoMode ||
+      !connection ||
+      connection.ownerId !== args.ownerId ||
+      connection.status !== "active" ||
+      connection.mode !== "live" ||
+      connection.provider !== args.provider ||
+      connection.externalAccountId !== args.accountId
+    ) {
+      throw new ConvexError({
+        code: "changed",
+        message:
+          "This mailbox changed while loading. Reconnect it and try again.",
+      });
+    }
+
+    const previous =
+      connection.mailPaging?.accountId === args.accountId
+        ? connection.mailPaging
+        : undefined;
+
+    if (args.older && (previous?.nextCursor ?? null) !== args.expectedCursor) {
+      return 0;
+    }
+
+    const added: number = await ctx.runMutation(internal.emails.storeSynced, {
+      connectionId: args.connectionId,
+      messages: args.messages,
+      ownerId: args.ownerId,
+      provider: args.provider,
+    });
+
+    if (args.older || previous === undefined || previous.nextCursor === null) {
+      await ctx.db.patch(connection._id, {
+        mailPaging: { accountId: args.accountId, nextCursor: args.nextCursor },
+      });
+    }
+
+    return added;
+  },
+});
+
+/** Refresh the first page, or explicitly import the next page from each mailbox. */
 export const refresh = action({
-  args: {},
-  handler: async (ctx): Promise<{ added: number; errors: string[] }> => {
+  args: { older: v.optional(v.boolean()) },
+  handler: async (ctx, args): Promise<{ added: number; errors: string[] }> => {
     const ownerId = await ctx.runQuery(internal.emails.ownerForSync, {});
 
     if (ownerId === null) {
@@ -299,11 +462,24 @@ export const refresh = action({
     const results = await Promise.all(
       mailboxes.map(
         async (mailbox): Promise<{ added: number; error: string | null }> => {
-          const result = await listRecentMail({
-            connectedAccountId: mailbox.connectedAccountId,
-            provider: mailbox.provider,
-            userId: ownerId,
-          });
+          const older = args.older === true;
+
+          if (older && mailbox.mailPaging?.nextCursor === null) {
+            return { added: 0, error: null };
+          }
+
+          const cursor = older
+            ? (mailbox.mailPaging?.nextCursor ?? null)
+            : null;
+
+          const result = await listRecentMail(
+            {
+              connectedAccountId: mailbox.connectedAccountId,
+              provider: mailbox.provider,
+              userId: ownerId,
+            },
+            cursor
+          );
 
           if (!result.ok) {
             return {
@@ -313,14 +489,55 @@ export const refresh = action({
           }
 
           const added: number = await ctx.runMutation(
-            internal.emails.storeSynced,
+            internal.emails.storeMailPage,
             {
+              accountId: mailbox.connectedAccountId,
               connectionId: mailbox.connectionId,
+              expectedCursor: cursor,
               messages: result.messages,
+              nextCursor: result.nextCursor,
+              older,
               ownerId,
               provider: mailbox.provider,
             }
           );
+
+          // Older mailboxes from before paging was introduced need their first cursor once.
+          if (
+            older &&
+            mailbox.mailPaging === undefined &&
+            added === 0 &&
+            result.nextCursor !== null
+          ) {
+            const next = await listRecentMail(
+              {
+                connectedAccountId: mailbox.connectedAccountId,
+                provider: mailbox.provider,
+                userId: ownerId,
+              },
+              result.nextCursor
+            );
+
+            if (!next.ok) {
+              return { added, error: next.error };
+            }
+
+            const nextAdded: number = await ctx.runMutation(
+              internal.emails.storeMailPage,
+              {
+                accountId: mailbox.connectedAccountId,
+                connectionId: mailbox.connectionId,
+                expectedCursor: result.nextCursor,
+                messages: next.messages,
+                nextCursor: next.nextCursor,
+                older: true,
+                ownerId,
+                provider: mailbox.provider,
+              }
+            );
+
+            return { added: added + nextAdded, error: null };
+          }
 
           return { added, error: null };
         }

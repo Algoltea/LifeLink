@@ -2,6 +2,7 @@
 
 import { useSmoothText } from "@convex-dev/agent/react";
 import type { UIMessage } from "@convex-dev/agent/react";
+import { inboxChatSummarySchema } from "@lifelink/contracts/inbox-chat";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
@@ -15,6 +16,8 @@ import {
   InlineActionReview,
   InlineTaskReview,
 } from "@/components/tasks/inline-action-review";
+
+import { EmailSummaryCard } from "./email-summary-card";
 
 const toolPartSchema = z.object({
   output: z.object({
@@ -114,6 +117,10 @@ const Bubble = ({ message }: { message: UIMessage }) => {
   const prepared = preparedOf(message);
   const failed = message.status === "failed";
 
+  const emailSummary = z
+    .object({ inboxSummary: inboxChatSummarySchema })
+    .safeParse(message.metadata);
+
   return (
     <li className="flex gap-4">
       <span className="border-border bg-parchment hidden size-9 shrink-0 items-center justify-center rounded-full border sm:flex">
@@ -121,7 +128,12 @@ const Bubble = ({ message }: { message: UIMessage }) => {
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-4 sm:pt-0.5">
         <span className="sr-only">LifeLink said: </span>
-        {message.text ? <AssistantText message={message} /> : null}
+        {emailSummary.success ? (
+          <EmailSummaryCard summary={emailSummary.data.inboxSummary} />
+        ) : null}
+        {!emailSummary.success && message.text ? (
+          <AssistantText message={message} />
+        ) : null}
         {message.status === "pending" && !message.text ? <Thinking /> : null}
         {failed ? (
           <p className="text-negative text-lg">

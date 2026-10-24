@@ -192,7 +192,11 @@ const localFor = (
 
 /** Explain a received message or email. Returns the explanation to watch. */
 export const request = mutation({
-  args: { ...sourceArgs, allowCloudAnalysis: v.optional(v.boolean()) },
+  args: {
+    ...sourceArgs,
+    allowCloudAnalysis: v.optional(v.boolean()),
+    refresh: v.optional(v.boolean()),
+  },
   handler: async (ctx, args): Promise<Id<"messageExplanations">> => {
     const owner = await requireOwner(ctx);
     const source = await loadSource(ctx, owner, args);
@@ -211,7 +215,10 @@ export const request = mutation({
         : latest.helpStyleKey === undefined ||
           latest.helpStyleKey === styleKey);
 
-    if (latest !== null && stillFits) {
+    if (
+      latest !== null &&
+      (latest.status === "explaining" || (stillFits && args.refresh !== true))
+    ) {
       return latest._id;
     }
 

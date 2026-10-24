@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { INBOX_PAGE_SIZE } from "@lifelink/contracts/inbox";
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -15,6 +16,7 @@ import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -28,6 +30,7 @@ import { isRowStillShown } from "@/lib/list-beside-reader";
 
 import { EmailList } from "./email-list";
 import { EmailReader } from "./email-reader";
+import { InboxPaging } from "./inbox-paging";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -182,10 +185,24 @@ const ChecksExplained = () => (
 );
 
 const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
-  const emails = useQuery(api.emails.list);
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const cursor = cursors.at(-1) ?? null;
+
+  const page = useQuery(api.emails.page, {
+    paginationOpts: { cursor, numItems: INBOX_PAGE_SIZE },
+  });
+
+  const emails = page?.page;
+  const pageFocusPending = useRef(false);
   const checkRecent = useMutation(api.emails.checkRecent);
   const { me } = usePreferences();
   const [selectedId, setSelectedId] = useState<string | null>(initialEmailId);
+
+  const selectedRow = useQuery(
+    api.emails.selectedRow,
+    selectedId === null ? "skip" : { emailId: selectedId }
+  );
+
   const [explaining, setExplaining] = useState(false);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   const inboxHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -217,15 +234,23 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
     returningTo.current = null;
   }, [selectedId]);
   const [scanError, setScanError] = useState<string | null>(null);
-  const needsChecks = emails?.some((email) => email.needsSafetyCheck) ?? false;
+
+  const scanIds = useMemo(
+    () =>
+      emails
+        ?.filter((email) => email.needsSafetyCheck)
+        .map((email) => email.id) ?? [],
+    [emails]
+  );
+
   useEffect(() => {
-    if (!needsChecks) {
+    if (scanIds.length === 0) {
       return;
     }
 
     const check = async () => {
       try {
-        await checkRecent({});
+        await checkRecent({ emailIds: scanIds });
         setScanError(null);
       } catch (error) {
         setScanError(errorText(error));
@@ -233,9 +258,23 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
     };
 
     void check();
-  }, [checkRecent, needsChecks]);
+  }, [checkRecent, scanIds]);
+  useEffect(() => {
+    if (page === undefined || !pageFocusPending.current) {
+      return;
+    }
+
+    pageFocusPending.current = false;
+    inboxHeadingRef.current?.focus({ preventScroll: true });
+    inboxHeadingRef.current?.scrollIntoView({
+      behavior: "instant",
+      block: "start",
+    });
+  }, [page]);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
-  const selected = emails?.find((email) => email.id === selectedId) ?? null;
+
+  const selected =
+    emails?.find((email) => email.id === selectedId) ?? selectedRow ?? null;
 
   // Focus stays on the row beside the reader, so say what opened instead.
   const announceOpened = useEffectEvent((id: string | null) => {
@@ -323,6 +362,15 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
             rowRefs={rowRefs}
             selectedId={selectedId}
             timeZone={timeZone}
+          />
+          <InboxPaging
+            page={page}
+            cursors={cursors}
+            onNavigate={(next) => {
+              pageFocusPending.current = true;
+              setSelectedId(null);
+              setCursors(next);
+            }}
           />
         </section>
         {selected === null ? (

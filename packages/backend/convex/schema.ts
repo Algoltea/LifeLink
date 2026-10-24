@@ -308,6 +308,12 @@ export default defineSchema({
     connectedAt: v.union(v.number(), v.null()),
     externalAccountId: v.union(v.string(), v.null()),
     lastError: v.union(v.string(), v.null()),
+    mailPaging: v.optional(
+      v.object({
+        accountId: v.string(),
+        nextCursor: v.union(v.string(), v.null()),
+      })
+    ),
     mode,
     ownerId: v.id("profiles"),
     pendingAttemptId: v.union(v.string(), v.null()),

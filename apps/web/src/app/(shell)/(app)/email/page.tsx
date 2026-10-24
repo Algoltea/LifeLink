@@ -17,6 +17,7 @@ const EmailPage = async ({
   return (
     <EmailScreen
       initialEmailId={parsed.success ? (parsed.data.id ?? null) : null}
+      key={parsed.success ? (parsed.data.id ?? "inbox") : "inbox"}
     />
   );
 };

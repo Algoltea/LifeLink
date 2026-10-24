@@ -114,7 +114,8 @@ const checkExplanation = (
     })
     .slice(0, MAX_REPLIES);
 
-  let plainSummary = clip(raw.plainSummary);
+  // Preserve complete sentences, including any warning at the end of the summary.
+  let plainSummary = raw.plainSummary.trim();
 
   if (!proseQuotesVerified(source, plainSummary)) {
     droppedCount += 1;

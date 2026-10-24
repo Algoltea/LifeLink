@@ -59,6 +59,37 @@ const explain = async (
 };
 
 describe("explaining a received message", () => {
+  it("can refresh a saved reading instead of returning an older shortened summary", async () => {
+    const backend = newBackend();
+
+    const { contactId, owner, ownerId } = await ownerWithContact(
+      backend,
+      false
+    );
+
+    const messageId = await received(backend, ownerId, contactId);
+    const first = await explain(owner, messageId);
+    await backend.run(async (ctx) => {
+      await ctx.db.patch(first._id, {
+        plainSummary: "An older summary cut off in the midd",
+      });
+    });
+
+    const refreshedId = await owner.mutation(api.explanations.request, {
+      allowCloudAnalysis: false,
+      messageId,
+      refresh: true,
+    });
+
+    const refreshed = await owner.query(api.explanations.forSource, {
+      messageId,
+    });
+
+    expect(refreshedId).not.toBe(first._id);
+    expect(refreshed?.plainSummary).not.toContain("cut off in the midd");
+    expect(refreshed?.method).toBe("local");
+  });
+
   it("gives a local reading quoted from the message", async () => {
     const backend = newBackend();
 

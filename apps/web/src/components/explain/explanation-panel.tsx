@@ -140,7 +140,9 @@ const sectionsOf = (
     {
       content: (
         <Part level={level} title="In plain words">
-          <p className="text-lg leading-relaxed">{explanation.plainSummary}</p>
+          <p className="min-w-0 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
+            {explanation.plainSummary}
+          </p>
         </Part>
       ),
       key: "summary",
@@ -382,7 +384,7 @@ const RequestForm = ({
           setBusy(true);
 
           try {
-            await request({ ...source, allowCloudAnalysis });
+            await request({ ...source, allowCloudAnalysis, refresh: upgrade });
           } catch (error) {
             toast.error(messageOf(error instanceof Error ? error : null));
           }
@@ -459,9 +461,7 @@ const ExplanationPanel = ({
           level={level}
           onUseReply={onUseReply}
         />
-        {explanation.method === "local" ? (
-          <RequestForm practice={practice} source={source} upgrade />
-        ) : null}
+        <RequestForm practice={practice} source={source} upgrade />
       </>
     );
   }

@@ -27,11 +27,10 @@ import {
   CHAT_WORKSPACE,
 } from "./chat-layout";
 import { ChatLoadingWorkspace } from "./chat-loading-workspace";
+import { EmailSummaryPreset } from "./email-summary-preset";
 import { HistoryDrawer } from "./history-drawer";
 import { AssistantThread } from "./thread";
-import { useChatViewport } from "./use-chat-viewport";
 
-const SCROLL_END_THRESHOLD = 80;
 const DEFAULT_TIME_ZONE = "America/New_York";
 
 /** Ideas fill the box rather than sending, so the person can finish the sentence. */
@@ -86,12 +85,14 @@ const ChatTopBar = ({
           "Ask LifeLink"
         )}
       </h1>
-      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
+        {actions}
+      </div>
     </header>
   );
 };
 
-/** Keep the bottom in view while replying, without pulling away from older messages. */
+/** Let the document grow with the conversation so long replies use page scrolling. */
 const Conversation = ({
   disabled,
   draft,
@@ -113,14 +114,10 @@ const Conversation = ({
     { initialNumItems: 30, stream: true }
   );
 
-  const viewport = useRef<HTMLElement>(null);
-  const content = useRef<HTMLDivElement>(null);
   const composerArea = useRef<HTMLFieldSetElement>(null);
 
   const greeting = useGreeting(timeZone);
 
-  const followLatest = useRef(true);
-  const scrollingByUser = useRef(false);
   const { queue } = useOffline();
 
   const queuedRequests = queue.filter(
@@ -131,76 +128,22 @@ const Conversation = ({
   const hasMessages = results.length > 0 || queuedRequests.length > 0;
   const loading = threadId !== null && status === "LoadingFirstPage";
 
-  useEffect(() => {
-    const panel = viewport.current;
-    const transcript = content.current;
-
-    if (!panel || !transcript) {
-      return;
-    }
-
-    const observer = new ResizeObserver(() => {
-      if (followLatest.current) {
-        panel.scrollTop = panel.scrollHeight;
-      }
-    });
-
-    observer.observe(transcript);
-    observer.observe(panel);
-
-    return () => observer.disconnect();
-  }, []);
+  const followResponse = (): void => {
+    composerArea.current?.scrollIntoView({ block: "end" });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5">
-      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- This keyboard-focusable scroll region distinguishes user scrolling from automatic layout updates. */}
       <section
         aria-label="Conversation with LifeLink"
         className={cn(
-          "flex-1 px-1",
+          "px-1",
           hasMessages || loading
-            ? "min-h-48 overflow-y-auto overscroll-contain"
-            : "flex min-h-max items-end justify-center"
+            ? "min-h-48 shrink-0"
+            : "flex flex-1 items-end justify-center"
         )}
-        onPointerDown={() => {
-          scrollingByUser.current = true;
-        }}
-        onWheel={() => {
-          scrollingByUser.current = true;
-        }}
-        onKeyDown={(event) => {
-          if (
-            [
-              "ArrowUp",
-              "ArrowDown",
-              "PageUp",
-              "PageDown",
-              "Home",
-              "End",
-              " ",
-            ].includes(event.key)
-          ) {
-            scrollingByUser.current = true;
-          }
-        }}
-        onScroll={() => {
-          const panel = viewport.current;
-
-          if (panel && scrollingByUser.current) {
-            followLatest.current =
-              panel.scrollHeight - panel.scrollTop - panel.clientHeight <
-              SCROLL_END_THRESHOLD;
-
-            if (followLatest.current) {
-              scrollingByUser.current = false;
-            }
-          }
-        }}
-        ref={viewport}
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the transcript independently of the composer.
-        tabIndex={hasMessages ? 0 : undefined}
       >
-        <div className={cn(CHAT_READING_COLUMN, "pt-2 pb-4")} ref={content}>
+        <div className={cn(CHAT_READING_COLUMN, "pt-2 pb-4")}>
           <h2 className="sr-only">Your conversation</h2>
           {loading ? (
             <LoadingRows
@@ -263,21 +206,14 @@ const Conversation = ({
         <Composer
           draft={draft}
           onDraftChange={onDraftChange}
-          onSubmitted={() => {
-            followLatest.current = true;
-            const panel = viewport.current;
-
-            if (panel) {
-              panel.scrollTop = panel.scrollHeight;
-            }
-          }}
+          onSubmitted={followResponse}
           threadId={threadId ?? undefined}
         />
       </fieldset>
-      {!hasMessages && !loading ? (
-        <div className="min-h-0 flex-1">
+      {loading ? null : (
+        <div className={hasMessages ? "shrink-0" : "min-h-0 flex-1"}>
           <ul
-            aria-label="Ideas to start with"
+            aria-label="Quick actions"
             className={cn(
               CHAT_READING_COLUMN,
               "flex flex-wrap justify-center gap-3"
@@ -299,9 +235,16 @@ const Conversation = ({
                 </button>
               </li>
             ))}
+            <li key="email-summary">
+              <EmailSummaryPreset
+                disabled={disabled}
+                onSubmitted={followResponse}
+                threadId={threadId}
+              />
+            </li>
           </ul>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };
@@ -325,7 +268,6 @@ const AskWorkspace = () => {
   const selectConversation = useMutation(api.assistant.selectConversation);
   const [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const workspace = useChatViewport(threadId);
 
   const [conversationError, setConversationError] = useState<string | null>(
     null
@@ -353,7 +295,7 @@ const AskWorkspace = () => {
   };
 
   return (
-    <div className={CHAT_WORKSPACE} ref={workspace}>
+    <div className={CHAT_WORKSPACE}>
       <ChatTopBar
         actions={
           <>
