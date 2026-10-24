@@ -4,7 +4,7 @@ import type { api } from "@lifelink/backend/convex/_generated/api";
 import { Pill } from "@lifelink/ui/components/pill";
 import { cn } from "@lifelink/ui/lib/utils";
 import type { FunctionReturnType } from "convex/server";
-import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
+import { CircleAlertIcon, ClockIcon, TriangleAlertIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -18,7 +18,10 @@ import { previewOf } from "./message-bits";
 
 type ThreadRow = FunctionReturnType<typeof api.messages.threads>[number];
 
-/** At most one status per row: a message that may not have gone out, or no way to reach them. */
+/**
+ * At most one status per row: a message that may not have gone out, one
+ * waiting for approval, or no way to reach them.
+ */
 const RowStatus = ({ thread }: { thread: ThreadRow }) => {
   const { last } = thread;
 
@@ -31,6 +34,19 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
         <Pill className="text-label font-semibold" tone="negative">
           <CircleAlertIcon aria-hidden="true" className="size-4" />
           {last.status === "failed" ? "Not sent" : "Not sure it was sent"}
+        </Pill>
+      </span>
+    );
+  }
+
+  if (thread.waiting > 0) {
+    return (
+      <span className="flex pt-1.5">
+        <Pill className="text-label font-semibold" tone="warning">
+          <ClockIcon aria-hidden="true" className="size-4" />
+          {thread.waiting === 1
+            ? "Waiting for your approval"
+            : `${thread.waiting} waiting for your approval`}
         </Pill>
       </span>
     );
