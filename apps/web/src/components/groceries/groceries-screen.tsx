@@ -22,7 +22,7 @@ import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 
 import { ListEditor, listAsText, quantityWords } from "./list-editor";
-import { BudgetSummary, Receipt } from "./receipt";
+import { BudgetSummary, Receipt, ReceiptBar } from "./receipt";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -105,27 +105,53 @@ const GroceryWorkspace = ({
 }: {
   list: Doc<"groceryLists">;
   onDelete: () => void;
-}) => (
-  <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-    <section aria-label="List" className="min-w-0">
-      <ListEditor
-        key={list._id}
-        list={list}
-        onDelete={onDelete}
-        summary={
-          <>
-            <BudgetSummary list={list} />
-            <ListTools list={list} />
-          </>
-        }
-      />
-    </section>
-    <div className="flex min-w-0 flex-col gap-8">
-      <Receipt list={list} />
+}) => {
+  const receipt = useRef<HTMLElement>(null);
+
+  const showReceipt = (): void => {
+    const target = receipt.current;
+
+    if (!target) {
+      return;
+    }
+
+    const reducedMotion =
+      document.documentElement.dataset.motion === "reduced" ||
+      globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    target.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+    target.focus({ preventScroll: true });
+  };
+
+  return (
+    <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section aria-label="List" className="min-w-0">
+        <ListEditor
+          key={list._id}
+          list={list}
+          onDelete={onDelete}
+          summary={
+            <>
+              {/* On wide screens the sticky receipt already shows these totals. */}
+              <div className="xl:hidden">
+                <BudgetSummary list={list} />
+              </div>
+              <ListTools list={list} />
+            </>
+          }
+        />
+      </section>
+      <ReceiptBar list={list} onShow={showReceipt} />
+      <div className="flex min-w-0 flex-col gap-8 xl:sticky xl:top-8">
+        <Receipt list={list} ref={receipt} />
+      </div>
+      <PrintableList list={list} />
     </div>
-    <PrintableList list={list} />
-  </div>
-);
+  );
+};
 
 const GroceriesScreen = () => {
   const data = useQuery(api.groceries.lists);

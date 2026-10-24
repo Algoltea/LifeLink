@@ -1,5 +1,9 @@
+"use client";
+
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { cn } from "@lifelink/ui/lib/utils";
+import type { Ref } from "react";
+import { useCallback, useState } from "react";
 
 import { money } from "@/lib/format";
 
@@ -82,14 +86,64 @@ const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
   );
 };
 
-/** The estimate against the budget, laid out like a shop receipt. */
-const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
+/**
+ * Whether the item list is taller than the space the sticky receipt gives it.
+ * Only then does it need a tab stop so keyboard users can scroll it.
+ */
+const useScrollable = () => {
+  const [scrollable, setScrollable] = useState(false);
+
+  const items = useCallback((element: HTMLUListElement | null) => {
+    if (!element) {
+      setScrollable(false);
+
+      return;
+    }
+
+    const measure = () =>
+      setScrollable(element.scrollHeight > element.clientHeight);
+
+    // Resizing covers the window; mutations cover items being added or renamed.
+    const resizes = new ResizeObserver(measure);
+    const mutations = new MutationObserver(measure);
+    resizes.observe(element);
+    mutations.observe(element, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    measure();
+
+    return () => {
+      resizes.disconnect();
+      mutations.disconnect();
+    };
+  }, []);
+
+  return { items, scrollable };
+};
+
+/**
+ * The estimate against the budget, laid out like a shop receipt. On wide
+ * screens it follows the editor down the page; a long item list scrolls inside
+ * it so the totals always stay in view.
+ */
+const Receipt = ({
+  list,
+  ref,
+}: {
+  list: Doc<"groceryLists">;
+  ref?: Ref<HTMLElement>;
+}) => {
   const { open, guessed, estimate, budget, overBudget } = estimateFor(list);
+  const { items, scrollable } = useScrollable();
 
   return (
     <section
       aria-labelledby="receipt-heading"
-      className="bg-raised text-foreground border-control @container flex min-w-0 flex-col gap-4 rounded-none border px-6 py-8 font-mono text-base leading-7 shadow-[0_8px_16px_rgb(0_0_0/0.12)] dark:shadow-[0_8px_20px_rgb(0_0_0/0.5)]"
+      className="bg-raised text-foreground border-control @container flex min-w-0 scroll-mt-20 flex-col gap-4 rounded-none border px-6 py-8 font-mono text-base leading-7 shadow-[0_8px_16px_rgb(0_0_0/0.12)] xl:max-h-[calc(100svh-4rem)] dark:shadow-[0_8px_20px_rgb(0_0_0/0.5)]"
+      ref={ref}
+      tabIndex={-1}
     >
       <header className="flex flex-col items-center gap-1 text-center">
         <h2
@@ -106,7 +160,13 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
           Nothing left to buy.
         </p>
       ) : (
-        <ul aria-label="Items to buy" className="flex flex-col gap-2">
+        <ul
+          aria-label="Items to buy"
+          className="flex flex-col gap-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain"
+          ref={items}
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll a long list inside the sticky receipt.
+          tabIndex={scrollable ? 0 : undefined}
+        >
           {open.map((item) => (
             <li
               className="flex flex-col gap-1 @min-[16em]:flex-row @min-[16em]:items-baseline @min-[16em]:justify-between @min-[16em]:gap-4"
@@ -135,6 +195,11 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
           ))}
         </ul>
       )}
+      {scrollable ? (
+        <p className="text-muted-foreground text-center">
+          Scroll the list to see every item.
+        </p>
+      ) : null}
       <Rule />
       <dl className="flex flex-col gap-2">
         <Line label="Items" value={`${open.length}`} />
@@ -170,4 +235,41 @@ const Receipt = ({ list }: { list: Doc<"groceryLists"> }) => {
   );
 };
 
-export { BudgetSummary, Receipt };
+/**
+ * A compact total that stays at the bottom of narrow screens, where the
+ * receipt sits far below the editor. Tapping it jumps to the receipt.
+ */
+const ReceiptBar = ({
+  list,
+  onShow,
+}: {
+  list: Doc<"groceryLists">;
+  onShow: () => void;
+}) => {
+  const { open, estimate, budget, overBudget } = estimateFor(list);
+
+  if (open.length === 0) {
+    return null;
+  }
+
+  return (
+    <button
+      className="bg-raised border-control hover:bg-parchment min-h-control sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border px-5 py-3 text-left text-lg tabular-nums shadow-[0_-4px_16px_rgb(0_0_0/0.12)] transition-colors xl:hidden dark:shadow-[0_-4px_20px_rgb(0_0_0/0.5)]"
+      onClick={onShow}
+      type="button"
+    >
+      <span className="min-w-0">
+        {open.length} {open.length === 1 ? "item" : "items"} · {money(estimate)}
+        {budget === null ? null : ` of ${money(budget)} budget`}
+        {overBudget ? (
+          <span className="text-negative font-semibold"> · Over budget</span>
+        ) : null}
+      </span>
+      <span className="font-medium underline underline-offset-4">
+        See estimate
+      </span>
+    </button>
+  );
+};
+
+export { BudgetSummary, Receipt, ReceiptBar };
