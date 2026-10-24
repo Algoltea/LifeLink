@@ -1,3 +1,4 @@
+import { INBOX_PAGE_SIZE } from "@lifelink/contracts/inbox";
 /**
  * Gmail and Outlook through Composio. A requested sync imports recent inbox
  * messages; sends and drafts happen only after approval. Scam checks run locally
@@ -8,6 +9,7 @@ import { z } from "zod";
 import { localDateTimeIn } from "../lib/time";
 import { executeTool } from "./composio";
 import type { ToolOutcome } from "./composio";
+import type { JsonObject } from "./http";
 
 type MailProvider = "gmail" | "outlook";
 
@@ -40,7 +42,10 @@ const gmailMessageSchema = z
   .loose();
 
 const gmailListSchema = z
-  .object({ messages: z.array(gmailMessageSchema).optional() })
+  .object({
+    messages: z.array(gmailMessageSchema),
+    nextPageToken: z.string().optional(),
+  })
   .loose();
 
 const outlookMessageSchema = z
@@ -159,30 +164,63 @@ const parseOutlook = (data: ToolOutcome & { kind: "ok" }): MailSummary[] => {
 
 type MailListResult =
   | { error: string; ok: false }
-  | { messages: MailSummary[]; ok: true };
+  | { messages: MailSummary[]; nextCursor: string | null; ok: true };
+
+const continuationFor = (
+  provider: MailProvider,
+  gmailToken: string | null,
+  count: number,
+  skip: number
+): string | null => {
+  if (provider === "gmail") {
+    return gmailToken || null;
+  }
+
+  return count === INBOX_PAGE_SIZE ? String(skip + count) : null;
+};
 
 const listRecentMail = async (
-  account: MailAccount
+  account: MailAccount,
+  cursor: string | null = null,
+  execute: typeof executeTool = executeTool
 ): Promise<MailListResult> => {
+  const skip =
+    account.provider === "outlook" && cursor !== null ? Number(cursor) : 0;
+
+  if (!Number.isSafeInteger(skip) || skip < 0) {
+    return {
+      error:
+        "The mailbox page could not be read. Check for new email and try again.",
+      ok: false,
+    };
+  }
+
+  const gmailArguments: JsonObject = {
+    include_payload: false,
+    max_results: INBOX_PAGE_SIZE,
+    query: "in:inbox",
+    verbose: true,
+  };
+
+  if (cursor !== null) {
+    gmailArguments.page_token = cursor;
+  }
+
   const outcome =
     account.provider === "gmail"
-      ? await executeTool(
+      ? await execute(
           "GMAIL_FETCH_EMAILS",
           account.userId,
           account.connectedAccountId,
-          {
-            include_payload: false,
-            max_results: 15,
-            query: "in:inbox newer_than:21d",
-            verbose: true,
-          }
+          gmailArguments
         )
-      : await executeTool(
+      : await execute(
           "OUTLOOK_LIST_MESSAGES",
           account.userId,
           account.connectedAccountId,
           {
             folder: "inbox",
+            orderby: ["receivedDateTime desc"],
             select: [
               "id",
               "subject",
@@ -192,7 +230,8 @@ const listRecentMail = async (
               "body",
               "conversationId",
             ],
-            top: 15,
+            skip,
+            top: INBOX_PAGE_SIZE,
           }
         );
 
@@ -200,13 +239,46 @@ const listRecentMail = async (
     return { error: outcome.error, ok: false };
   }
 
+  const gmail = gmailListSchema.safeParse(outcome.data);
+  const outlook = outlookListSchema.safeParse(outcome.data);
+
+  if (
+    account.provider === "gmail"
+      ? !gmail.success
+      : !outlook.success ||
+        (outlook.data.messages === undefined &&
+          outlook.data.value === undefined)
+  ) {
+    return {
+      error:
+        "The mailbox returned an unreadable page. Your saved emails are still here.",
+      ok: false,
+    };
+  }
+
   const messages =
     account.provider === "gmail" ? parseGmail(outcome) : parseOutlook(outcome);
+
+  const nextCursor = continuationFor(
+    account.provider,
+    gmail.success ? (gmail.data.nextPageToken ?? null) : null,
+    messages.length,
+    skip
+  );
+
+  if (cursor !== null && nextCursor === cursor) {
+    return {
+      error:
+        "The mailbox returned the same page. Your saved emails are still here; try again later.",
+      ok: false,
+    };
+  }
 
   return {
     messages: messages.toSorted(
       (left, right) => right.receivedAt - left.receivedAt
     ),
+    nextCursor,
     ok: true,
   };
 };

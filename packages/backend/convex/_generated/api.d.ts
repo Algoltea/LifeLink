@@ -27,6 +27,7 @@ import type * as family from "../family.js";
 import type * as groceries from "../groceries.js";
 import type * as http from "../http.js";
 import type * as imessage from "../imessage.js";
+import type * as inbox from "../inbox.js";
 import type * as integrations_calendar from "../integrations/calendar.js";
 import type * as integrations_composio from "../integrations/composio.js";
 import type * as integrations_discord from "../integrations/discord.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   groceries: typeof groceries;
   http: typeof http;
   imessage: typeof imessage;
+  inbox: typeof inbox;
   "integrations/calendar": typeof integrations_calendar;
   "integrations/composio": typeof integrations_composio;
   "integrations/discord": typeof integrations_discord;
