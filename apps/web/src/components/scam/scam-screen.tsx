@@ -10,6 +10,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowRightIcon,
+  ChevronDownIcon,
   ImageIcon,
   MailIcon,
   ShieldCheckIcon,
@@ -44,6 +45,7 @@ interface EmailChoice {
   fromAddress: string;
   fromName: string | null;
   id: Id<"emails">;
+  mode: "live" | "simulated";
   subject: string;
 }
 
@@ -179,12 +181,61 @@ const formReady = ({
   );
 };
 
-const submitLabel = (photo: boolean, busy: boolean): string => {
+const submitLabel = (source: Source, busy: boolean): string => {
   if (busy) {
-    return photo ? "Uploading your photo…" : "Checking the message…";
+    return source === "screenshot"
+      ? "Uploading your photo…"
+      : "Checking the message…";
   }
 
-  return photo ? "Check this photo" : "Check this message";
+  const labels: Record<Source, string> = {
+    email: "Check this email",
+    screenshot: "Check this photo",
+    text: "Check this message",
+  };
+
+  return labels[source];
+};
+
+const CheckPrivacyNote = ({
+  cloudAvailable,
+  email,
+  practice,
+  source,
+}: {
+  cloudAvailable: boolean;
+  email: EmailChoice | null;
+  practice: boolean;
+  source: Source;
+}) => {
+  if (source === "email" && email?.mode === "simulated") {
+    return (
+      <p className="text-muted-foreground text-label">
+        This is a practice email. It is checked on this device without cloud AI.
+      </p>
+    );
+  }
+
+  if (cloudAvailable) {
+    return (
+      <p className="text-muted-foreground text-label">
+        An AI service reads this to check it. Leave out passwords and card
+        numbers.
+      </p>
+    );
+  }
+
+  if (source === "screenshot") {
+    return null;
+  }
+
+  return (
+    <p className="text-muted-foreground text-label">
+      {practice
+        ? "Practice checks use common warning signs. Nothing is sent to an AI service."
+        : "AI checks are not available right now. LifeLink uses common warning signs instead."}
+    </p>
+  );
 };
 
 /** Manual checks use AI by default; Practice and unavailable services use local rules. */
@@ -298,20 +349,7 @@ const CheckForm = ({
         inFlight.current = false;
       }}
     >
-      <div className="flex flex-col gap-1">
-        <h2
-          className="text-section font-semibold"
-          id="message-check-heading"
-          tabIndex={-1}
-        >
-          Check a message
-        </h2>
-        <p className="text-muted-foreground text-label">
-          A letter, a text, a screenshot or an email. Choose the easiest way to
-          show it.
-        </p>
-      </div>
-      <fieldset className="min-w-0" disabled={busy}>
+      <fieldset className="min-w-0" disabled={busy} id="message-check-sources">
         <legend className="sr-only">
           How would you like to show the message?
         </legend>
@@ -402,19 +440,12 @@ const CheckForm = ({
           ) : null}
         </>
       ) : null}
-      {cloudAvailable ? (
-        <p className="text-muted-foreground text-label">
-          An AI service reads this to check it. Leave out passwords and card
-          numbers.
-        </p>
-      ) : null}
-      {!photo && !cloudAvailable ? (
-        <p className="text-muted-foreground text-label">
-          {practice
-            ? "Practice checks use common warning signs. Nothing is sent to an AI service."
-            : "AI checks are not available right now. LifeLink uses common warning signs instead."}
-        </p>
-      ) : null}
+      <CheckPrivacyNote
+        cloudAvailable={cloudAvailable}
+        email={selected}
+        practice={practice}
+        source={source}
+      />
       {formError ? (
         <p className="text-negative text-lg" role="alert">
           {formError}
@@ -429,7 +460,7 @@ const CheckForm = ({
           type="submit"
         >
           <ShieldCheckIcon aria-hidden="true" />
-          {submitLabel(photo, busy)}
+          {submitLabel(source, busy)}
         </Button>
       </div>
       {busy ? (
@@ -565,7 +596,9 @@ const useReviewSelection = (emailId: string | null) => {
     setInitialSource(source);
     setFormVersion((version) => version + 1);
     requestAnimationFrame(() =>
-      document.querySelector<HTMLElement>("#message-check-heading")?.focus()
+      document
+        .querySelector<HTMLInputElement>("#message-check-sources input:checked")
+        ?.focus()
     );
   };
 
@@ -585,42 +618,83 @@ const useReviewSelection = (emailId: string | null) => {
   };
 };
 
-const ScamPageIntro = ({ active }: { active: boolean }) => {
-  const [explaining, setExplaining] = useState(false);
+const ScamPageIntro = ({ active }: { active: boolean }) =>
+  active ? (
+    <h1 className="sr-only">Scam call check</h1>
+  ) : (
+    <PageHeader
+      subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
+      title="Scam check"
+    />
+  );
+
+const CheckGuidance = () => (
+  <details className="group border-rule rounded-xl border p-4 sm:p-5">
+    <summary className="min-h-control flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+      What can a scam check tell me?
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="size-5 shrink-0 transition-transform group-open:rotate-180"
+      />
+    </summary>
+    <div className="flex max-w-prose flex-col gap-3 pt-3 text-lg">
+      <p>
+        A check looks for common warning signs. It can’t confirm who sent a
+        message or whether it’s true.
+      </p>
+      <p>
+        An AI service helps with message and photo checks. Photos stay with your
+        check until you delete it. Practice checks never use AI.
+      </p>
+      <p>
+        Read the result, follow “What to do now”, or ask someone you trust for a
+        second opinion. You choose what happens next.
+      </p>
+    </div>
+  </details>
+);
+
+const SelectedCheck = ({
+  selection,
+}: {
+  selection: ReturnType<typeof useReviewSelection>;
+}) => {
+  const { current, openForm, setDeletingReview, timeZone } = selection;
+
+  if (current === undefined) {
+    return (
+      <LoadingRows label="Opening your check" layout="check-form" rows={2} />
+    );
+  }
+
+  if (current === null) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-lg">
+          This check is no longer available. You can start a new one.
+        </p>
+        <Button onClick={() => openForm()}>Start a new check</Button>
+      </div>
+    );
+  }
 
   return (
-    <>
-      {active ? (
-        <h1 className="sr-only">Scam call check</h1>
-      ) : (
-        <PageHeader
-          actions={
-            <Button
-              aria-expanded={explaining}
-              onClick={() => setExplaining((open) => !open)}
-              variant="ghost"
-            >
-              <ShieldCheckIcon aria-hidden="true" />
-              How checks work
-            </Button>
-          }
-          subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
-          title="Scam check"
-        />
-      )}
-      {explaining && !active ? (
-        <p className="border-rule text-label max-w-prose border-b pb-5">
-          A check looks for common warning signs; it can’t confirm who sent a
-          message or whether it’s true. An AI service helps with message and
-          photo checks. Photos stay with your check until you delete it.
-          Practice checks never use AI. You choose what to do next.
-        </p>
-      ) : null}
-    </>
+    <ScamResult
+      key={current._id}
+      onCheckAnother={() => openForm()}
+      onDeleted={() => openForm()}
+      onDeleting={setDeletingReview}
+      onTryPhoto={() => openForm("screenshot")}
+      onTypeWords={() => openForm("text")}
+      review={current}
+      timeZone={timeZone}
+    />
   );
 };
 
 const ScamScreen = ({ emailId }: { emailId: string | null }) => {
+  const selection = useReviewSelection(emailId);
+
   const {
     current,
     earlier,
@@ -628,35 +702,19 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
     emails,
     formVersion,
     initialSource,
-    openForm,
     setCurrentId,
-    setDeletingReview,
     showingResult,
     timeZone,
     waitingForEmail,
-  } = useReviewSelection(emailId);
+  } = selection;
 
   const [callActive, setCallActive] = useState(false);
   const showResult = !callActive && showingResult;
 
   return (
     <>
-      <ScamPageIntro active={callActive} />
-      {showResult && current ? (
-        <ScamResult
-          key={current._id}
-          onCheckAnother={() => openForm()}
-          onDeleted={() => openForm()}
-          onDeleting={setDeletingReview}
-          onTryPhoto={() => openForm("screenshot")}
-          onTypeWords={() => openForm("text")}
-          review={current}
-          timeZone={timeZone}
-        />
-      ) : null}
-      {showResult && current === undefined ? (
-        <LoadingRows label="Opening your check" layout="check-form" rows={2} />
-      ) : null}
+      {showResult && current ? null : <ScamPageIntro active={callActive} />}
+      {showResult ? <SelectedCheck selection={selection} /> : null}
       <div
         className={cn(
           "grid min-w-0 items-start gap-8",
@@ -700,6 +758,7 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
           <CallScreening onActiveChange={setCallActive} />
         </div>
       </div>
+      {callActive ? null : <CheckGuidance />}
       {callActive ? null : (
         <section
           aria-labelledby="history-heading"

@@ -22,7 +22,7 @@ const TodayHeader = ({
 }: {
   lines: string[];
   preferredName: string;
-  /** Read after the day's lines: weather, messages, and email. Empty parts are skipped. */
+  /** Read after the day's lines: weather and messages. Empty parts are skipped. */
   spoken: string[];
   timeZone: string;
   weather: ReactNode;

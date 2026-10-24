@@ -2,16 +2,15 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
-import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
-import { useQuery } from "convex/react";
 import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
   FolderOpenIcon,
   HeartHandshakeIcon,
   HomeIcon,
+  LayersIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -33,6 +32,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { authClient } from "@/lib/auth-client";
 
 import { Avatar } from "./bits";
@@ -45,10 +45,11 @@ import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 
 interface NavItem {
-  count?: number;
   href: Route;
   icon: LucideIcon;
   label: string;
+  /** Left out of the phone menu, because the page needs a tablet-sized screen. */
+  wideOnly?: boolean;
 }
 
 interface NavGroup {
@@ -64,16 +65,26 @@ const SETTINGS_GROUP: NavGroup = {
   pinned: true,
 };
 
-const WAITING = new Set([
-  "needs_clarification",
-  "awaiting_approval",
-  "needs_attention",
-]);
+const SOLITAIRE: NavItem = {
+  href: "/solitaire",
+  icon: SpadeIcon,
+  label: "Solitaire",
+};
 
-const ownerNavigation = (waiting = 0): NavGroup[] => [
+const MAHJONG: NavItem = {
+  href: "/mahjong",
+  icon: LayersIcon,
+  label: "Mahjong",
+  wideOnly: true,
+};
+
+/** Public games: prefetched so they open quickly and get cached for offline play. */
+const PUBLIC_GAMES = new Set<string>([SOLITAIRE.href, MAHJONG.href]);
+
+const ownerNavigation = (): NavGroup[] => [
   {
     items: [
-      { count: waiting, href: "/", icon: HomeIcon, label: "Today" },
+      { href: "/", icon: HomeIcon, label: "Today" },
       { href: "/ask", icon: MessageSquareTextIcon, label: "Ask LifeLink" },
       { href: "/messages", icon: MessagesSquareIcon, label: "Messages" },
       { href: "/email", icon: MailIcon, label: "Email" },
@@ -85,9 +96,12 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
     items: [
       { href: "/scam", icon: ShieldCheckIcon, label: "Scam check" },
       { href: "/groceries", icon: ShoppingBasketIcon, label: "Groceries" },
-      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
     ],
     label: "Help with",
+  },
+  {
+    items: [SOLITAIRE, MAHJONG],
+    label: "Games",
   },
   {
     items: [
@@ -101,7 +115,7 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
 
 const PLAY_NAV: NavGroup[] = [
   {
-    items: [{ href: "/solitaire", icon: SpadeIcon, label: "Solitaire" }],
+    items: [SOLITAIRE, MAHJONG],
     label: null,
   },
   SETTINGS_GROUP,
@@ -111,7 +125,8 @@ const FAMILY_NAV: NavGroup[] = [
   {
     items: [
       { href: "/family", icon: UsersRoundIcon, label: "Family" },
-      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
+      SOLITAIRE,
+      MAHJONG,
     ],
     label: null,
   },
@@ -148,7 +163,10 @@ const NavList = ({
               const Icon = item.icon;
 
               return (
-                <li key={item.href}>
+                <li
+                  className={item.wideOnly ? HIDE_ON_PHONES : undefined}
+                  key={item.href}
+                >
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -158,7 +176,7 @@ const NavList = ({
                     )}
                     href={item.href}
                     onClick={onNavigate}
-                    prefetch={item.href === "/solitaire" ? true : undefined}
+                    prefetch={PUBLIC_GAMES.has(item.href) ? true : undefined}
                   >
                     <Icon
                       aria-hidden="true"
@@ -171,12 +189,6 @@ const NavList = ({
                       strokeWidth={1.75}
                     />
                     <span className="flex-1">{item.label}</span>
-                    {item.count ? (
-                      <span className="num bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-sm font-semibold">
-                        {item.count}
-                        <span className="sr-only"> waiting for you</span>
-                      </span>
-                    ) : null}
                   </Link>
                 </li>
               );
@@ -482,13 +494,13 @@ const ShellFrame = ({
 
 const PLAY_ACCOUNT = (
   <p className="text-muted-foreground text-label px-4">
-    Solitaire is saved on this device and works offline.
+    Your games are saved on this device and work offline.
   </p>
 );
 
 /**
- * One frame for every signed-in screen and public Solitaire, so navigating
- * between them only swaps the page. The cached Solitaire HTML is always public:
+ * One frame for every signed-in screen and the public games, so navigating
+ * between them only swaps the page. The cached game HTML is always public:
  * session discovery only changes the chrome and never blocks or remounts the
  * locally saved game, including while offline.
  */
@@ -498,21 +510,13 @@ const AppShell = ({ children }: { children: ReactNode }) => {
   const profile = me?.profile ?? null;
   const isOwner = profile?.role === "owner";
 
-  // The task count is owner-only; guests and family members never query it.
-  const tasks = useQuery(
-    api.tasks.list,
-    isOwner ? { include: "active" } : "skip"
-  );
-
-  const waiting = tasks?.filter((task) => WAITING.has(task.status)).length ?? 0;
-
   // Signed in but the profile is still loading or offline: keep the minimal navigation.
   let groups = PLAY_NAV;
 
   if (profile?.role === "family") {
     groups = FAMILY_NAV;
   } else if (isOwner) {
-    groups = ownerNavigation(waiting);
+    groups = ownerNavigation();
   }
 
   return (

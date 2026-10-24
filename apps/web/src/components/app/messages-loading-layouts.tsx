@@ -177,7 +177,11 @@ const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
   return (
     <>
       <PageHeader
-        actions={<LoadingButton>Trusted circle</LoadingButton>}
+        actions={
+          <LoadingButton icon size="default">
+            Add a person
+          </LoadingButton>
+        }
         className={cn("items-center", besideOnly)}
         title="Messages"
       />

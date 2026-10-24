@@ -57,9 +57,7 @@ const PhotoInput = ({
     const capture = captureRef.current;
 
     const cancelled = () =>
-      setError(
-        "No photo was taken. You can try again or choose from photos below."
-      );
+      setError("No photo was taken. Try again or choose a photo.");
 
     capture?.addEventListener("cancel", cancelled);
 
@@ -138,9 +136,7 @@ const PhotoInput = ({
 
     if (!navigator.mediaDevices?.getUserMedia) {
       captureRef.current?.click();
-      setError(
-        "If the camera doesn’t open, choose a photo you’ve already taken below."
-      );
+      setError("If the camera doesn’t open, use Choose a photo instead.");
 
       return;
     }
@@ -166,7 +162,7 @@ const PhotoInput = ({
     } catch {
       if (cameraRequest.current === request) {
         setError(
-          "The camera couldn’t open. Allow camera access in your browser, or choose a photo you’ve already taken below."
+          "The camera couldn’t open. Allow camera access in your browser, or use Choose a photo instead."
         );
       }
     }
@@ -190,7 +186,7 @@ const PhotoInput = ({
 
     if (!context) {
       closeCamera();
-      setError("The photo couldn’t be taken. Choose a photo below instead.");
+      setError("The photo couldn’t be taken. Choose a photo instead.");
 
       return;
     }
@@ -205,9 +201,7 @@ const PhotoInput = ({
 
         if (blob === null) {
           closeCamera();
-          setError(
-            "The photo couldn’t be taken. Choose a photo below instead."
-          );
+          setError("The photo couldn’t be taken. Choose a photo instead.");
 
           return;
         }
@@ -271,75 +265,77 @@ const PhotoInput = ({
           </div>
         </div>
       ) : (
-        <button
-          aria-describedby={guidanceId}
-          aria-label={
-            file
-              ? "Choose a different photo"
-              : "Choose or drop a photo of your message"
-          }
-          className={cn(
-            "border-control bg-parchment hover:border-primary relative flex min-h-44 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border-2 border-dashed p-5 text-center disabled:cursor-not-allowed",
-            dragging && "border-primary bg-neutral-wash",
-            file && preview && "h-59 p-0"
-          )}
-          disabled={disabled}
-          onClick={() => chooserRef.current?.click()}
-          onDragLeave={() => setDragging(false)}
-          onDragOver={(event) => {
-            event.preventDefault();
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              aria-describedby={guidanceId}
+              className={cn(
+                "flex-1 basis-36 gap-1.5 px-2",
+                dragging && "border-primary bg-neutral-wash"
+              )}
+              disabled={disabled}
+              onClick={() => chooserRef.current?.click()}
+              onDragLeave={() => setDragging(false)}
+              onDragOver={(event) => {
+                event.preventDefault();
 
-            if (!disabled) {
-              setDragging(true);
-            }
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            setDragging(false);
-
-            if (event.dataTransfer.files.length > 1) {
-              setError(
-                "Choose one photo at a time so it’s clear what is being checked."
-              );
-
-              return;
-            }
-
-            choose(event.dataTransfer.files[0]);
-          }}
-          type="button"
-        >
-          {file && preview ? (
-            <Image
-              alt="Your selected photo, ready for you to check"
-              className="object-contain"
-              fill
-              onError={() => {
-                setError(
-                  "This photo can’t be opened. Choose another JPEG, PNG or WebP photo, or type the words instead."
-                );
-                onFile(null);
+                if (!disabled) {
+                  setDragging(true);
+                }
               }}
-              sizes="(max-width: 768px) 100vw, 700px"
-              src={preview}
-              unoptimized
-            />
-          ) : (
-            <>
-              <ImageIcon
-                aria-hidden="true"
-                className="text-muted-foreground size-7"
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+
+                if (event.dataTransfer.files.length > 1) {
+                  setError(
+                    "Choose one photo at a time so it’s clear what is being checked."
+                  );
+
+                  return;
+                }
+
+                choose(event.dataTransfer.files[0]);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ImageIcon aria-hidden="true" />
+              {file ? "Change photo" : "Choose a photo"}
+            </Button>
+            <Button
+              aria-busy={cameraPending}
+              className="flex-1 basis-36 gap-1.5 px-2"
+              disabled={disabled || cameraPending}
+              onClick={openCamera}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <CameraIcon aria-hidden="true" />
+              {cameraPending ? "Opening camera…" : "Take a photo"}
+            </Button>
+          </div>
+          {file && preview ? (
+            <div className="bg-parchment relative h-59 overflow-hidden rounded-xl">
+              <Image
+                alt="Your selected photo, ready for you to check"
+                className="object-contain"
+                fill
+                onError={() => {
+                  setError(
+                    "This photo can’t be opened. Choose another JPEG, PNG or WebP photo, or type the words instead."
+                  );
+                  onFile(null);
+                }}
+                sizes="(max-width: 768px) 100vw, 700px"
+                src={preview}
+                unoptimized
               />
-              <span className="text-body font-semibold">Drop a photo here</span>
-              <span className="text-muted-foreground text-label">
-                JPEG, PNG or WebP · up to 6 MB
-              </span>
-              <span className="text-label font-medium underline underline-offset-4">
-                Choose a photo
-              </span>
-            </>
-          )}
-        </button>
+            </div>
+          ) : null}
+        </div>
       )}
 
       {file ? (
@@ -359,38 +355,13 @@ const PhotoInput = ({
       ) : null}
       <p className="text-label flex items-start gap-2" id={guidanceId}>
         <LightbulbIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
-        Keep all the words in view.
+        A letter, text message, or screenshot. Keep all the words in view.
       </p>
       {error ? (
         <p className="text-negative text-lg" role="alert">
           {error}
         </p>
       ) : null}
-      {cameraOpen ? null : (
-        <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
-          <Button
-            aria-busy={cameraPending}
-            className="sm:flex-1"
-            disabled={disabled || cameraPending}
-            onClick={openCamera}
-            type="button"
-            variant="outline"
-          >
-            <CameraIcon aria-hidden="true" />
-            {cameraPending ? "Opening camera…" : "Take a photo"}
-          </Button>
-          <Button
-            className="underline underline-offset-4 sm:flex-1"
-            disabled={disabled}
-            onClick={() => chooserRef.current?.click()}
-            type="button"
-            variant="ghost"
-          >
-            <ImageIcon aria-hidden="true" />
-            Choose from photos
-          </Button>
-        </div>
-      )}
       {cameraPending ? (
         <Button onClick={closeCamera} type="button" variant="ghost">
           Cancel camera

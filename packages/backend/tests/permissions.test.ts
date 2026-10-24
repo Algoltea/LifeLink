@@ -55,6 +55,126 @@ describe("family access", () => {
     ).resolves.toBeNull();
   });
 
+  it("keeps permissions tied to the correct contact when names match", async () => {
+    const backend = newBackend();
+    const { owner, contactId } = await ownerWithContact(backend, false);
+
+    const otherContactId = await owner.mutation(api.contacts.create, {
+      channels: [
+        {
+          address: "another-sam@example.com",
+          channel: "email",
+          preferred: true,
+        },
+      ],
+      name: "Sam Alvarez",
+      relationship: "Friend",
+      trusted: true,
+    });
+
+    const first = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const second = await owner.mutation(api.sharing.createInvite, {
+      contactId: otherContactId,
+      expiresInDays: 7,
+      scopes: ["groceries.view"],
+    });
+
+    const grants = await owner.query(api.sharing.listGrants, {});
+
+    expect(grants.find((grant) => grant.id === first.grantId)).toMatchObject({
+      contactId,
+      scopes: ["appointments.view"],
+      state: "invited",
+    });
+    expect(grants.find((grant) => grant.id === second.grantId)).toMatchObject({
+      contactId: otherContactId,
+      scopes: ["groceries.view"],
+      state: "invited",
+    });
+
+    await owner.mutation(api.sharing.updateScopes, {
+      grantId: first.grantId,
+      scopes: ["rides.view"],
+    });
+    await owner.mutation(api.sharing.revoke, { grantId: second.grantId });
+    const updated = await owner.query(api.sharing.listGrants, {});
+
+    expect(
+      updated.find((grant) => grant.contactId === contactId)
+    ).toMatchObject({ scopes: ["rides.view"], state: "invited" });
+    expect(
+      updated.find((grant) => grant.contactId === otherContactId)
+    ).toMatchObject({ scopes: ["groceries.view"], state: "revoked" });
+
+    const { person: stranger } = await signUp(backend, {
+      demo: false,
+      name: "Another Owner",
+      role: "owner",
+      subject: "another-owner",
+    });
+
+    await expect(
+      stranger.query(api.sharing.listGrants, {})
+    ).resolves.toStrictEqual([]);
+  });
+
+  it("expires unused invitation codes without ending accepted sharing", async () => {
+    const backend = newBackend();
+    const { owner, contactId } = await ownerWithContact(backend, false);
+
+    const invitation = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const { grantId: acceptedId } = await connectFamily(backend, owner, [
+      "rides.view",
+    ]);
+
+    await backend.run(async (ctx) => {
+      const createdAt = Date.now() - 15 * DAY;
+      await ctx.db.patch(invitation.grantId, { createdAt });
+      await ctx.db.patch(acceptedId, { createdAt });
+    });
+
+    const grants = await owner.query(api.sharing.listGrants, {});
+    expect(
+      grants.find((grant) => grant.id === invitation.grantId)
+    ).toMatchObject({
+      contactId,
+      state: "expired",
+    });
+    expect(grants.find((grant) => grant.id === acceptedId)).toMatchObject({
+      state: "active",
+    });
+
+    const replacement = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const { person: family } = await signUp(backend, {
+      demo: false,
+      name: "New Family Member",
+      role: "family",
+      subject: "replacement-family",
+    });
+
+    await expect(
+      family.mutation(api.sharing.acceptInvite, { code: invitation.code })
+    ).rejects.toThrow(/invalid_code/u);
+    await expect(
+      family.mutation(api.sharing.acceptInvite, { code: replacement.code })
+    ).resolves.toBeDefined();
+  });
+
   it("denies an expired grant", async () => {
     const backend = newBackend();
     const { owner, ownerId } = await ownerWithContact(backend, false);

@@ -11,7 +11,7 @@ LifeLink was built at SBUHacks 2026 (October 23 to 25) with Claude Code and Code
 - Define shared data contracts in `packages/contracts/src`; web and backend both consume them. Model output is a proposal. Convex validates and authorizes actions.
 - Keep authorization, approval versioning, retries, outcome reconciliation, and provider calls in `packages/backend/convex`. Tests live in `packages/backend/tests`; provider adapters live in `convex/integrations`.
 - Route entry points live in `apps/web/src/app`. Feature screens live in `src/components`; shared app state and navigation live in `src/components/app`.
-- Put reusable controls and tokens in `packages/ui`. Solitaire rules belong in `packages/solitaire`, with browser rendering and persistence in `apps/web/src/features/solitaire`.
+- Put reusable controls and tokens in `packages/ui`. Solitaire rules belong in `packages/solitaire`, with browser rendering and persistence in `apps/web/src/features/solitaire`. Mahjong follows the same split: `packages/mahjong` and `apps/web/src/features/mahjong`.
 - Keep setup automation in `scripts/setup`. The Discord bridge is a separate Bun process in `apps/discord-bridge`; it forwards events to the backend.
 
 ## Generated and local files
@@ -26,6 +26,6 @@ LifeLink was built at SBUHacks 2026 (October 23 to 25) with Claude Code and Code
 
 ## Validation
 
-After setup, run `bun run check`, `bun run check-types`, and `bun run test` from the root. Run `bun run build` to verify production compilation. A fresh checkout may need Next.js route types generated before its first standalone typecheck. Tests cover contracts, the backend lifecycle, solitaire, the bridge, and setup. Live-provider delivery requires separate verification described in the README.
+After setup, run `bun run check`, `bun run check-types`, and `bun run test` from the root. Run `bun run build` to verify production compilation. A fresh checkout may need Next.js route types generated before its first standalone typecheck. Tests cover web narration, contracts, the backend lifecycle, solitaire, mahjong, the bridge, and setup. Live-provider delivery requires separate verification described in the README.
 
 At the initial import, formatting/lint, typechecks, and all 154 tests passed. The production build could not complete in the agent environment: Turbopack's CSS worker failed while binding a local port with `Operation not permitted`, including on a retry with elevated permissions. Repeat `bun run build` in a normal development terminal before treating production compilation as verified.

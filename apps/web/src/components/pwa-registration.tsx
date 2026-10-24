@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Registers the service worker (offline fallback, offline solitaire). Never caches private pages. */
+/** Registers the service worker (offline fallback, offline solitaire and mahjong). Never caches private pages. */
 const PwaRegistration = () => {
   useEffect(() => {
     if (

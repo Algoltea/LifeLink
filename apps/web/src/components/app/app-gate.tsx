@@ -14,7 +14,7 @@ import { LoadingRows } from "./states";
 const FAMILY_PATHS = ["/family", "/settings"];
 
 // Open to everyone, offline included: never gated on the session or setup.
-const PUBLIC_PATHS = ["/solitaire"];
+const PUBLIC_PATHS = ["/solitaire", "/mahjong"];
 
 /**
  * Signed in → finish setup → the owner's or the family member's screens.

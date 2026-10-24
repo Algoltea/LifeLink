@@ -48,7 +48,14 @@ const GuestPlayInvitation = () => (
     </div>
     <GuestAccountLinks />
     <p className="text-muted-foreground text-label">
-      Solitaire is yours to enjoy without signing up.
+      <Link className="text-accent-foreground underline" href="/solitaire">
+        Solitaire
+      </Link>{" "}
+      and{" "}
+      <Link className="text-accent-foreground underline" href="/mahjong">
+        Mahjong
+      </Link>{" "}
+      are yours to enjoy without signing up.
     </p>
   </section>
 );

@@ -1,0 +1,20 @@
+{
+  "name": "@lifelink/mahjong",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mahjong solitaire rules engine: tile sets, layouts, winnable seeded deals, matching, shuffle, undo, and save/resume serialization.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

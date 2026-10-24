@@ -12,18 +12,12 @@ import { useState } from "react";
 import { ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
-import { TaskPanel } from "@/components/tasks/task-panel";
 import {
   GettingStarted,
   showsGettingStarted,
   useStepsHidden,
 } from "@/components/today/getting-started";
-import {
-  LatestEmail,
-  newestEmails,
-  scamLevelOf,
-} from "@/components/today/latest-email";
-import type { EmailRow } from "@/components/today/latest-email";
+import { LatestEmail } from "@/components/today/latest-email";
 import { NewsCard } from "@/components/today/news-card";
 import {
   FamilyList,
@@ -47,15 +41,9 @@ import {
 
 type TodaySummary = FunctionReturnType<typeof api.today.summary>;
 
-/** Live facts use the same query as the review list, so a morning snapshot cannot contradict it. */
+/** Appointments and reminders form the short overview on Today. */
 const currentBriefing = (summary: TodaySummary): string[] => {
-  const waiting = summary.waitingOnYou.length;
-
-  const lines = [
-    waiting > 0
-      ? `${waiting} ${waiting === 1 ? "request needs" : "requests need"} your review.`
-      : "Nothing needs your review right now.",
-  ];
+  const lines: string[] = [];
 
   const [next] = summary.appointments;
 
@@ -94,23 +82,6 @@ const spokenMessages = (messages: TodaySummary["messages"]): string => {
     : `You have messages from ${new Intl.ListFormat("en-US", { type: "conjunction" }).format(names)} in the last two days.`;
 };
 
-/** Only a flagged email is read aloud, the worst level first. */
-const spokenEmail = (emails: EmailRow[] | undefined): string => {
-  const levels = newestEmails(emails ?? []).map(scamLevelOf);
-  const scams = levels.filter((level) => level === "likely_scam").length;
-  const warnings = levels.filter((level) => level === "warning").length;
-
-  if (scams > 0) {
-    return `${scams === 1 ? "One email is likely a scam" : `${scams} emails are likely scams`}. Proceed with caution.`;
-  }
-
-  if (warnings > 0) {
-    return `${warnings === 1 ? "One email has" : `${warnings} emails have`} warning signs. Proceed with caution.`;
-  }
-
-  return "";
-};
-
 const DueReminder = ({
   reminder,
 }: {
@@ -121,7 +92,7 @@ const DueReminder = ({
   const [dismissError, setDismissError] = useState<string | null>(null);
 
   return (
-    <div className="motion-enter border-border bg-warning-wash flex flex-col gap-4 rounded-xl border px-5 py-4">
+    <div className="border-border bg-warning-wash flex flex-col gap-4 rounded-xl border px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="flex items-center gap-3 text-lg leading-7 font-semibold">
           <BellRingIcon aria-hidden="true" className="size-5 shrink-0" />
@@ -170,10 +141,7 @@ const TodayContent = ({
   const weather = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
-  // The same query as Latest email, so the spoken warning matches the rows.
-  const emails = useQuery(api.emails.list);
   const lines = currentBriefing(summary);
-  const tasks = [...summary.waitingOnYou, ...summary.progressing].slice(0, 3);
 
   // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
   const welcome =
@@ -218,7 +186,6 @@ const TodayContent = ({
         spoken={[
           forecast ? spokenWeather(forecast, unit) : "",
           spokenMessages(summary.messages),
-          spokenEmail(emails),
         ]}
         timeZone={timeZone}
         weather={<WeatherChip state={weather} unit={unit} />}
@@ -229,22 +196,8 @@ const TodayContent = ({
       ))}
 
       {/* Groups sit further apart than the rows inside them. One column on a phone, in the same order. */}
-      <div className="motion-enter flex flex-col gap-10">
+      <div className="flex flex-col gap-10">
         {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
-        {/* With nothing to review the group steps aside; the header line already says so. */}
-        {tasks.length > 0 ? (
-          <section
-            aria-labelledby="review-heading"
-            className="motion-enter flex flex-col gap-4"
-          >
-            <h2 className="text-section font-semibold" id="review-heading">
-              Needs you
-            </h2>
-            {tasks.map((task) => (
-              <TaskPanel key={task._id} taskId={task._id} />
-            ))}
-          </section>
-        ) : null}
         {/* Side by side on a wide screen; the wide gap stands in for panel edges. */}
         <div className="grid items-start gap-x-12 gap-y-10 @min-[56rem]/content:grid-cols-2">
           <WeekList rows={week} timeZone={timeZone} weather={weather} />

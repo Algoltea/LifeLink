@@ -4,6 +4,7 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import { buttonVariants } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
+import { UserPlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ReactNode } from "react";
@@ -34,10 +35,11 @@ const MessagesFrame = ({ children }: { children: ReactNode }) => {
       <PageHeader
         actions={
           <Link
-            className={buttonVariants({ size: "sm", variant: "outline" })}
-            href="/circle"
+            className={buttonVariants()}
+            href={{ pathname: "/circle", query: { add: "1" } }}
           >
-            Trusted circle
+            <UserPlusIcon aria-hidden="true" />
+            Add a person
           </Link>
         }
         className={cn("items-center", besideOnly)}
@@ -51,9 +53,9 @@ const MessagesFrame = ({ children }: { children: ReactNode }) => {
           action={
             <Link
               className="min-h-control inline-flex items-center text-lg font-semibold underline"
-              href="/circle"
+              href={{ pathname: "/circle", query: { add: "1" } }}
             >
-              Add someone
+              Add a person
             </Link>
           }
         >

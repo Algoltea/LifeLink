@@ -196,7 +196,18 @@ export const get = query({
       )
       .first();
 
-    return { appointment, email };
+    const review = email.scamCheck
+      ? await ctx.db.get(email.scamCheck.reviewId)
+      : null;
+
+    const warningSigns =
+      review?.ownerId === owner._id && review.emailId === email._id
+        ? review.signals
+            .filter((signal) => signal.stance !== "warns_against")
+            .map((signal) => signal.label)
+        : [];
+
+    return { appointment, email, warningSigns };
   },
 });
 

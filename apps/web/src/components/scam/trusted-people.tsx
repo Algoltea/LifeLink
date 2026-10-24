@@ -101,7 +101,7 @@ const TrustedPersonRow = ({
   const phone = phoneFor(contact);
   const channel = messageChannelFor(contact);
   const fallbackId = useId();
-  const needsDetails = phone === null || channel === null;
+  const needsDetails = channel === null;
   const callEnabled = canCall && phone !== null && !disabled;
 
   return (
@@ -130,7 +130,7 @@ const TrustedPersonRow = ({
             aria-label={`Call ${contact.name}`}
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "text-body min-h-control flex-1 px-4"
+              "min-h-control flex-1 px-4"
             )}
             href={`tel:${phone}`}
           >
@@ -142,7 +142,7 @@ const TrustedPersonRow = ({
           <Button
             aria-describedby={needsDetails ? fallbackId : reviewNoteId}
             aria-label={`Call ${contact.name}`}
-            className="text-body min-h-control flex-1 px-4"
+            className="min-h-control flex-1 px-4"
             disabled
             type="button"
             variant="outline"
@@ -154,15 +154,15 @@ const TrustedPersonRow = ({
         <Button
           aria-busy={busy}
           aria-describedby={channel === null ? fallbackId : reviewNoteId}
-          aria-label={`Message ${contact.name}`}
-          className="text-body min-h-control flex-1 px-4"
+          aria-label={`Prepare a message to ${contact.name}`}
+          className="min-h-control flex-1 px-4"
           disabled={disabled || channel === null}
           onClick={onMessage}
           type="button"
           variant="outline"
         >
           <MessageCircleIcon aria-hidden="true" />
-          {busy ? "Preparing…" : "Message"}
+          {busy ? "Preparing…" : "Prepare message"}
         </Button>
       </div>
       {needsDetails ? (
@@ -172,7 +172,7 @@ const TrustedPersonRow = ({
         >
           {phone === null ? "No phone number is saved. " : null}
           {channel === null ? "No way to message them is saved. " : null}
-          Add a way to reach them in your{" "}
+          Save their contact details in your{" "}
           <Link
             className="font-medium underline underline-offset-4"
             href="/circle"
@@ -208,7 +208,10 @@ const TrustedPeople = ({
   const reviewNoteId = useId();
   const body = message ?? CALL_HELP_MESSAGE;
   const canCall = me?.profile?.demoMode === false;
-  const trusted = contacts?.filter((contact) => contact.trusted);
+
+  const trusted = contacts?.filter(
+    (contact) => contact.trusted && !contact.sample
+  );
 
   const prepareMessage = async (contact: CircleContact): Promise<void> => {
     if (disabled || preparing.current || messageChannelFor(contact) === null) {
@@ -228,7 +231,7 @@ const TrustedPeople = ({
       router.push(`/tasks/${taskId}` as Route);
     } catch (error) {
       setFailure(
-        `The message to ${contact.name} couldn’t be prepared. ${messageOf(error instanceof Error ? error : null)} Nothing was sent. Try Message again.`
+        `The message to ${contact.name} couldn’t be prepared. ${messageOf(error instanceof Error ? error : null)} Nothing was sent. Try Prepare message again.`
       );
       preparing.current = false;
       setBusyContactId(null);
@@ -248,21 +251,49 @@ const TrustedPeople = ({
 
   if (trusted.length === 0) {
     return (
-      <p className="text-body">
-        Add someone you trust to your{" "}
-        <Link
-          className="font-medium underline underline-offset-4"
-          href="/circle"
-        >
-          Trusted circle
-        </Link>{" "}
-        to ask for help checking this.
-      </p>
+      <div className="bg-parchment flex flex-col gap-3 rounded-xl p-5">
+        <p className="text-body">
+          A second opinion can help. Add someone you know to your{" "}
+          <Link
+            className="font-medium underline underline-offset-4"
+            href="/circle"
+          >
+            Trusted circle
+          </Link>{" "}
+          to ask for help checking this. You’ll review any message before it is
+          sent.
+        </p>
+        <Link className={buttonVariants({ variant: "outline" })} href="/circle">
+          Add a trusted person
+        </Link>
+      </div>
     );
   }
 
   return (
     <div className="text-body flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-2" id={reviewNoteId}>
+        <p>
+          {reviewId
+            ? "Prepare a message asking someone to help with this check. You can read and change it before approving it. Nothing is sent yet."
+            : "Prepare a message asking for help with the call. You can read and change it before approving it. Nothing is sent yet."}
+        </p>
+        {me?.profile?.demoMode ? (
+          <p className="text-muted-foreground">
+            Calls are unavailable in Practice mode.
+          </p>
+        ) : null}
+        {me?.profile ? null : (
+          <p className="text-muted-foreground">
+            Calls are unavailable until your account settings load.
+          </p>
+        )}
+        {disabled ? (
+          <p className="text-muted-foreground">
+            Call and Prepare message are unavailable right now.
+          </p>
+        ) : null}
+      </div>
       <ul aria-label="Trusted people" className="flex min-w-0 flex-col">
         {trusted.map((contact) => (
           <TrustedPersonRow
@@ -276,34 +307,6 @@ const TrustedPeople = ({
           />
         ))}
       </ul>
-      <div className="flex flex-col gap-2" id={reviewNoteId}>
-        {reviewId ? (
-          <p className="text-muted-foreground">
-            Message prepares a request about this check. It opens for your
-            review before you decide whether to send it.
-          </p>
-        ) : (
-          <p className="text-muted-foreground">
-            Message opens a draft for your review. You can change it before
-            approving. Nothing is sent now.
-          </p>
-        )}
-        {me?.profile?.demoMode ? (
-          <p className="text-muted-foreground">
-            Calls are unavailable in Practice mode.
-          </p>
-        ) : null}
-        {me?.profile ? null : (
-          <p className="text-muted-foreground">
-            Calls are unavailable until your account settings load.
-          </p>
-        )}
-        {disabled ? (
-          <p className="text-muted-foreground">
-            Call and Message are unavailable right now.
-          </p>
-        ) : null}
-      </div>
 
       {failure ? (
         <p className="text-negative" role="alert">

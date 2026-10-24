@@ -460,6 +460,47 @@ const storeEmail = async (
   });
 
 describe("rescanning stored email with the updated rules", () => {
+  it("shows actual warning reasons inline without counting protective advice as a warning", async () => {
+    const backend = newBackend();
+    const { id, person } = await owner(backend);
+    const genuineId = await storeEmail(backend, id);
+
+    const suspiciousId = await storeEmail(backend, id, {
+      bodyText: SCAM_TEXT,
+      providerMessageId: "m-2",
+    });
+
+    await person.mutation(api.emails.checkRecent, {
+      emailIds: [genuineId, suspiciousId],
+    });
+
+    const genuine = await person.query(api.emails.get, { emailId: genuineId });
+
+    const suspicious = await person.query(api.emails.get, {
+      emailId: suspiciousId,
+    });
+
+    expect(genuine.warningSigns).toStrictEqual([]);
+    expect(suspicious.warningSigns).toStrictEqual(
+      expect.arrayContaining([
+        "Pressure to act fast",
+        "Mentions private details",
+        "Mentions a payment method",
+      ])
+    );
+
+    const stranger = await signUp(backend, {
+      demo: false,
+      name: "Pat",
+      role: "owner",
+      subject: "another-owner",
+    });
+
+    await expect(
+      stranger.person.query(api.emails.get, { emailId: suspiciousId })
+    ).rejects.toThrow(/not_found/u);
+  });
+
   it("replaces the false alarm everywhere it was shown", async () => {
     const backend = newBackend();
     const { id, person } = await owner(backend);

@@ -26,7 +26,7 @@ const LoadingNavigationRow = () => (
 
 const LoadingNavigation = () => (
   <div className="flex flex-1 flex-col gap-5" data-loading-part="navigation">
-    {[5, 3, 2].map((rows, group) => (
+    {[5, 2, 2, 2].map((rows, group) => (
       <div className="flex flex-col gap-1" key={group}>
         {group > 0 ? (
           <div className="flex h-[1.583rem] items-center px-4 pb-1">
