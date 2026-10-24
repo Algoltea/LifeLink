@@ -17,7 +17,7 @@ const LAYER_SHIFT = 0.12;
 const TILE_SPAN = 2;
 
 /** Tile widths, in rem, so the board follows the person's text-size setting. */
-const MIN_TILE_REM = 2.5;
+const MIN_TILE_REM = 2.25;
 
 const MAX_TILE_REM = 4.5;
 
@@ -50,13 +50,17 @@ const extentOf = (layout: Layout): Extent => {
 const percent = (part: number, whole: number): string =>
   `${(part / whole) * PERCENT}%`;
 
-/** Room kept above the board so the message line can stay in view while playing. */
-const ROOM_ABOVE_BOARD = "8rem";
+/**
+ * Measured room taken above and around the board (page padding, header,
+ * message line, and the board's own padding), so the whole page fits on the
+ * screen without scrolling.
+ */
+const ROOM_AROUND_BOARD = "19rem";
 
 /**
  * The board keeps the layout's proportions and grows between a minimum and a
- * maximum tile size, but never taller than the screen, so every tile and the
- * message line can be seen together. The minimum wins on very short screens.
+ * maximum tile size, but never taller than the screen allows, so the page
+ * fits without scrolling. The minimum wins on very short screens.
  */
 export const boardStyle = (layout: Layout): CSSProperties => {
   const { across, down } = extentOf(layout);
@@ -65,7 +69,7 @@ export const boardStyle = (layout: Layout): CSSProperties => {
 
   return {
     aspectRatio: `${across} / ${down * TILE_HEIGHT_PER_WIDTH}`,
-    maxWidth: `min(${tilesAcross * MAX_TILE_REM}rem, calc((100svh - ${ROOM_ABOVE_BOARD}) * ${widthPerHeight}))`,
+    maxWidth: `min(${tilesAcross * MAX_TILE_REM}rem, calc((100svh - ${ROOM_AROUND_BOARD}) * ${widthPerHeight}))`,
     minWidth: `${tilesAcross * MIN_TILE_REM}rem`,
   };
 };

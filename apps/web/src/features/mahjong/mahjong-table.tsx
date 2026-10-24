@@ -58,15 +58,26 @@ const directionFor = (key: string): Direction | null => {
 
 const layoutName = (layout: LayoutId): string => layoutFor(layout).name;
 
-const formatSavedAt = (savedAt: string): string => {
+/** When the game was saved, as it reads in a sentence: "today at 5:43 PM" or "on Oct 24 at 5:43 PM". */
+const savedWhen = (savedAt: string): string => {
   const date = new Date(savedAt);
 
-  return Number.isNaN(date.getTime())
-    ? "earlier"
-    : date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+  if (Number.isNaN(date.getTime())) {
+    return "earlier";
+  }
+
+  const time = date.toLocaleTimeString(undefined, { timeStyle: "short" });
+
+  if (date.toDateString() === new Date().toDateString()) {
+    return `today at ${time}`;
+  }
+
+  const day = date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
+
+  return `on ${day} at ${time}`;
 };
 
 const STUCK = "No pairs are free. Shuffle the tiles or undo.";
@@ -81,7 +92,10 @@ const outcomeNote = (state: GameState): string => {
 
 const openingMessage = (loaded: LoadedGame): string => {
   if (loaded.resumedFrom) {
-    return `Resumed your last game.${outcomeNote(loaded.state)}`;
+    // A finished game is never resumed, so the only note it can need is that it is stuck.
+    const stuck = hasMovesLeft(loaded.state) ? "" : ` ${STUCK}`;
+
+    return `Resumed your game from ${savedWhen(loaded.resumedFrom)}.${stuck}`;
   }
 
   return loaded.discarded
@@ -91,7 +105,9 @@ const openingMessage = (loaded: LoadedGame): string => {
 
 /** The playable board. Client-only: it reads the saved game from localStorage while it first renders. */
 export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
-  const [opening, setOpening] = useState(() => loadGame("easy"));
+  // Read once when the table mounts; the opening state never changes afterwards.
+  // oxlint-disable-next-line react/hook-use-state -- Only the first value is needed.
+  const [opening] = useState(() => loadGame("easy"));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState(() => firstFreeTile(opening.state));
   const [selected, setSelected] = useState<number | null>(null);
@@ -240,11 +256,6 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
   const startNewGame = (layout: LayoutId = preferredLayout) => {
     const next = freshGame(layout);
 
-    setOpening((current) => ({
-      ...current,
-      discarded: null,
-      resumedFrom: null,
-    }));
     commit(
       next,
       `Dealt a new ${layoutName(layout)} game.`,
@@ -317,7 +328,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
         <p className="text-muted-foreground text-body">
           {guest
             ? "A quiet tile game. No account needed."
-            : "A quiet tile game. Available offline."}
+            : "A quiet tile game."}
         </p>
         <p className="num text-muted-foreground text-label">
           {layoutName(game.layout)} layout
@@ -331,17 +342,6 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
           </span>
         </p>
       </header>
-
-      {opening.resumedFrom === null ? null : (
-        <div className="bg-parchment flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
-          <p className="text-body">
-            Resumed your last game, saved {formatSavedAt(opening.resumedFrom)}.
-          </p>
-          <Button onClick={() => startNewGame()} size="sm" variant="outline">
-            Start fresh instead
-          </Button>
-        </div>
-      )}
 
       <output
         aria-live="polite"
