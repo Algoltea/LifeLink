@@ -16,14 +16,14 @@ const serverDate = (): string => "";
 const TodayHeader = ({
   lines,
   preferredName,
-  spokenWeather,
+  spoken,
   timeZone,
   weather,
 }: {
   lines: string[];
   preferredName: string;
-  /** Read after the day's lines; null while the forecast is unknown. */
-  spokenWeather: string | null;
+  /** Read after the day's lines: weather, messages, and email. Empty parts are skipped. */
+  spoken: string[];
   timeZone: string;
   weather: ReactNode;
 }) => {
@@ -68,9 +68,9 @@ const TodayHeader = ({
       <div className="flex flex-wrap items-center gap-3">
         <ReadAloudButton
           label="Read my day aloud"
-          text={[`${salutation}.`, ...lines, spokenWeather ?? ""]
-            .join(" ")
-            .trim()}
+          text={[`${salutation}.`, ...lines, ...spoken]
+            .filter(Boolean)
+            .join(" ")}
         />
       </div>
     </header>

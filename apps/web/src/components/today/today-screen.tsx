@@ -18,7 +18,12 @@ import {
   showsGettingStarted,
   useStepsHidden,
 } from "@/components/today/getting-started";
-import { LatestEmail } from "@/components/today/latest-email";
+import {
+  LatestEmail,
+  newestEmails,
+  scamLevelOf,
+} from "@/components/today/latest-email";
+import type { EmailRow } from "@/components/today/latest-email";
 import { NewsCard } from "@/components/today/news-card";
 import {
   FamilyList,
@@ -74,6 +79,36 @@ const currentBriefing = (summary: TodaySummary): string[] => {
   }
 
   return lines;
+};
+
+/** Who wrote in the last two days, by first name, the same people as the Messages list. */
+const spokenMessages = (messages: TodaySummary["messages"]): string => {
+  const names = [
+    ...new Set(
+      messages.map((message) => message.contactName.split(" ")[0] ?? "")
+    ),
+  ].filter(Boolean);
+
+  return names.length === 0
+    ? ""
+    : `You have messages from ${new Intl.ListFormat("en-US", { type: "conjunction" }).format(names)} in the last two days.`;
+};
+
+/** Only a flagged email is read aloud, the worst level first. */
+const spokenEmail = (emails: EmailRow[] | undefined): string => {
+  const levels = newestEmails(emails ?? []).map(scamLevelOf);
+  const scams = levels.filter((level) => level === "likely_scam").length;
+  const warnings = levels.filter((level) => level === "warning").length;
+
+  if (scams > 0) {
+    return `${scams === 1 ? "One email is likely a scam" : `${scams} emails are likely scams`}. Proceed with caution.`;
+  }
+
+  if (warnings > 0) {
+    return `${warnings === 1 ? "One email has" : `${warnings} emails have`} warning signs. Proceed with caution.`;
+  }
+
+  return "";
 };
 
 const DueReminder = ({
@@ -135,6 +170,8 @@ const TodayContent = ({
   const { state: weather, unavailable } = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
+  // The same query as Latest email, so the spoken warning matches the rows.
+  const emails = useQuery(api.emails.list);
   const lines = currentBriefing(summary);
   const tasks = [...summary.waitingOnYou, ...summary.progressing].slice(0, 3);
 
@@ -178,7 +215,11 @@ const TodayContent = ({
       <TodayHeader
         lines={lines}
         preferredName={summary.preferredName}
-        spokenWeather={forecast ? spokenWeather(forecast, unit) : null}
+        spoken={[
+          forecast ? spokenWeather(forecast, unit) : "",
+          spokenMessages(summary.messages),
+          spokenEmail(emails),
+        ]}
         timeZone={timeZone}
         weather={
           <WeatherChip state={weather} unavailable={unavailable} unit={unit} />

@@ -1,7 +1,9 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { ChevronRightIcon, ShieldAlertIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -12,6 +14,30 @@ import { formatWhen } from "@/lib/format";
 
 const SHOWN = 3;
 const MAILBOX_IDS = new Set(["gmail", "outlook"]);
+
+type EmailRow = FunctionReturnType<typeof api.emails.list>[number];
+
+type ScamLevel = "likely_scam" | "warning";
+
+/** The same words as the scam check screen, so a flag reads the same everywhere. */
+const SCAM_LABELS: Record<ScamLevel, string> = {
+  likely_scam: "Likely a scam",
+  warning: "Warning signs",
+};
+
+/** A summary flag without a scam verdict counts as warning signs. */
+const scamLevelOf = (email: EmailRow): ScamLevel | null => {
+  if (email.scamCheck?.verdict === "likely_scam") {
+    return "likely_scam";
+  }
+
+  return email.suspicious === true || email.scamCheck?.verdict === "suspicious"
+    ? "warning"
+    : null;
+};
+
+/** The emails Today shows, newest first. */
+const newestEmails = (emails: EmailRow[]): EmailRow[] => emails.slice(0, SHOWN);
 
 /** The three newest emails, each opening in Email; a warning shows when a check flagged one. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
@@ -27,7 +53,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
       MAILBOX_IDS.has(provider.definition.id) && provider.status === "active"
   );
 
-  const newest = emails.slice(0, SHOWN);
+  const newest = newestEmails(emails);
 
   // The rule above sits here, not in Messages, so it never shows above nothing while email loads.
   return (
@@ -67,10 +93,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
       ) : (
         <ul className="flex flex-col gap-1">
           {newest.map((email) => {
-            const flagged =
-              email.suspicious === true ||
-              email.scamCheck?.verdict === "likely_scam" ||
-              email.scamCheck?.verdict === "suspicious";
+            const level = scamLevelOf(email);
 
             return (
               <li key={email.id}>
@@ -94,13 +117,20 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
                       </time>
                     </span>
                     <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
-                      {flagged ? (
-                        <span className="text-warning inline-flex shrink-0 items-center gap-1 font-semibold">
+                      {level ? (
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 items-center gap-1 font-semibold",
+                            level === "likely_scam"
+                              ? "text-negative"
+                              : "text-warning"
+                          )}
+                        >
                           <ShieldAlertIcon
                             aria-hidden="true"
                             className="size-4"
                           />
-                          Check first
+                          {SCAM_LABELS[level]}
                           <span className="sr-only">,</span>
                         </span>
                       ) : null}
@@ -120,4 +150,6 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   );
 };
 
-export { LatestEmail };
+export { LatestEmail, newestEmails, scamLevelOf };
+
+export type { EmailRow };
