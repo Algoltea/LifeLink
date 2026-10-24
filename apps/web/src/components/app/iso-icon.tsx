@@ -2,11 +2,11 @@ import { cn } from "@lifelink/ui/lib/utils";
 
 /**
  * Isometric "typewriter key" icons for what a connection can do. Each object
- * sits on the same round key, drawn at one angle with one ink line. Paints map
- * to theme tokens so the set follows light, dark, and more-contrast themes.
- * Geometry matches the Paper set "Connections cards — Permission icons".
+ * sits on the same round key, drawn at one angle with one ink line. Paints map to theme tokens so the set follows
+ * light, dark, and more-contrast themes. Geometry matches the Paper board
+ * "Connections cards — Permission icons (isometric set)".
  */
-type PermissionIconKind =
+type IsoIconKind =
   | "add"
   | "calendar"
   | "draft"
@@ -71,7 +71,7 @@ const KEY_BASE: readonly IconFacet[] = [
   },
 ];
 
-const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
+const FACETS: Record<IsoIconKind, readonly IconFacet[]> = {
   add: [
     {
       d: "M20.1 35.6L39.6 46.9L39.6 28.1L20.1 16.9Z",
@@ -508,7 +508,7 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
   ],
 };
 
-const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
+const KIND_BY_CAPABILITY = new Map<string, IsoIconKind>([
   ["calendar.create", "add"],
   ["calendar.read", "calendar"],
   ["discord.receive", "replies"],
@@ -534,7 +534,7 @@ const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
   ["paypal.send_money", "money"],
 ]);
 
-const permissionIconFor = (capabilityId: string): PermissionIconKind =>
+const permissionIconFor = (capabilityId: string): IsoIconKind =>
   KIND_BY_CAPABILITY.get(capabilityId) ?? "unavailable";
 
 const FacetPath = ({ facet }: { facet: IconFacet }) => (
@@ -549,14 +549,14 @@ const FacetPath = ({ facet }: { facet: IconFacet }) => (
   />
 );
 
-/** Decorative: always pair it with the capability's words. */
-const PermissionIcon = ({
+/** Decorative: always pair it with words that say the same thing. */
+const IsoIcon = ({
   className,
   kind,
   size = 56,
 }: {
   className?: string;
-  kind: PermissionIconKind;
+  kind: IsoIconKind;
   size?: number;
 }) => (
   <svg
@@ -575,6 +575,6 @@ const PermissionIcon = ({
   </svg>
 );
 
-export { PermissionIcon, permissionIconFor };
+export { IsoIcon, permissionIconFor };
 
-export type { PermissionIconKind };
+export type { IsoIconKind };
