@@ -27,8 +27,9 @@ import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { z } from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
@@ -93,6 +94,20 @@ const useOwnerNav = (): NavGroup[] => {
 
   return ownerNavigation(waiting);
 };
+
+const playRoleSchema = z.object({
+  role: z.enum(["family", "owner"]).nullable(),
+});
+
+const PLAY_NAV: NavGroup[] = [
+  {
+    items: [
+      { href: "/solitaire", icon: SpadeIcon, label: "Solitaire" },
+      { href: "/settings", icon: SettingsIcon, label: "Settings" },
+    ],
+    label: null,
+  },
+];
 
 const FAMILY_NAV: NavGroup[] = [
   {
@@ -433,6 +448,54 @@ const FamilyShell = ({ children }: { children: ReactNode }) => (
 // it never blocks or remounts the locally saved game, including while offline.
 const PlayShell = ({ children }: { children: ReactNode }) => {
   const { data: session } = authClient.useSession();
+  const sessionId = session?.session.id ?? null;
+
+  const [resolvedRole, setResolvedRole] = useState<{
+    sessionId: string;
+    role: "family" | "owner";
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadRole = async (): Promise<void> => {
+      try {
+        const response = await fetch("/api/play-role", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const parsed = playRoleSchema.safeParse(await response.json());
+
+        if (parsed.success && parsed.data.role && !controller.signal.aborted) {
+          setResolvedRole({ role: parsed.data.role, sessionId });
+        }
+      } catch {
+        // Offline play stays available with the minimal navigation while the role is unknown.
+      }
+    };
+
+    void loadRole();
+
+    return () => controller.abort();
+  }, [sessionId]);
+
+  const role = resolvedRole?.sessionId === sessionId ? resolvedRole.role : null;
+  let groups = PLAY_NAV;
+
+  if (role === "family") {
+    groups = FAMILY_NAV;
+  } else if (role === "owner") {
+    groups = ownerNavigation();
+  }
 
   return (
     <ShellFrame
@@ -441,7 +504,7 @@ const PlayShell = ({ children }: { children: ReactNode }) => {
           Solitaire is saved on this device and works offline.
         </p>
       }
-      groups={ownerNavigation()}
+      groups={groups}
       guest={!session}
     >
       {children}
