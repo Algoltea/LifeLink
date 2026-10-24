@@ -83,15 +83,17 @@ const appExtras = {
     other: "Other: type the + code yourself",
   },
   signIn: {
-    body: "LifeLink helps you keep in touch with family and keep track of your day. Nothing is sent without your say-so.",
+    backHome: "Back to home",
+    body: "Sign in to see today’s messages and appointments. Nothing is sent until you say so.",
     breakPrompt: "Just taking a break?",
     busy: "One moment…",
     connectionError:
       "We couldn’t connect. Check your internet connection and try again.",
     createAccount: "Create account",
+    createBody: "It takes about a minute. Family comes later.",
     createError: "We could not create the account. Please try again.",
     createOption: "Create an account",
-    createTitle: "Create your account",
+    createTitle: "Get started.",
     email: "Email",
     friend: "Friend",
     hide: "Hide",
@@ -101,6 +103,12 @@ const appExtras = {
     modeLabel: "Sign in or create an account",
     name: "Your full name",
     or: ", or ",
+    paintingAlt: {
+      "sign-in":
+        "Claude Monet, Woman with a Parasol: a woman holding a green parasol stands on a windy hilltop against a bright sky, her young son in the grass nearby.",
+      "sign-up":
+        "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte: people rest on a sunny riverside lawn while a couple under a parasol stands beside a small dog and a pet monkey.",
+    },
     password: "Password",
     passwordHint: (count: number): string => `At least ${count} characters.`,
     passwordMinimum: (count: number): string =>
@@ -110,7 +118,7 @@ const appExtras = {
     show: "Show",
     showPassword: "Show password",
     signIn: "Sign in",
-    welcome: "Welcome back",
+    welcome: "Welcome back.",
   },
   timeZone: {
     all: "All time zones",

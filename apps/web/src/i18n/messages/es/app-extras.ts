@@ -86,15 +86,17 @@ const appExtras: typeof EnglishAppExtras = {
     other: "Otro: escriba el código +",
   },
   signIn: {
-    body: "LifeLink le ayuda a mantenerse en contacto con su familia y organizar su día. No se envía nada sin su permiso.",
+    backHome: "Volver al inicio",
+    body: "Inicie sesión para ver los mensajes y las citas de hoy. No se envía nada hasta que usted lo autorice.",
     breakPrompt: "¿Solo quiere descansar un rato?",
     busy: "Un momento…",
     connectionError:
       "No pudimos conectarnos. Compruebe su conexión a internet e inténtelo de nuevo.",
     createAccount: "Crear cuenta",
+    createBody: "Solo toma un minuto. Puede agregar a su familia después.",
     createError: "No pudimos crear la cuenta. Inténtelo de nuevo.",
     createOption: "Crear una cuenta",
-    createTitle: "Cree su cuenta",
+    createTitle: "Comencemos.",
     email: "Correo electrónico",
     friend: "Amigo",
     hide: "Ocultar",
@@ -104,6 +106,12 @@ const appExtras: typeof EnglishAppExtras = {
     modeLabel: "Iniciar sesión o crear una cuenta",
     name: "Su nombre completo",
     or: ", o ",
+    paintingAlt: {
+      "sign-in":
+        "Claude Monet, Woman with a Parasol: una mujer sostiene una sombrilla verde en una colina ventosa bajo un cielo luminoso, con su hijo pequeño cerca, entre la hierba.",
+      "sign-up":
+        "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte: varias personas descansan sobre el césped soleado junto al río, mientras una pareja bajo una sombrilla está junto a un perro pequeño y un mono de compañía.",
+    },
     password: "Contraseña",
     passwordHint: (count: number): string => `Al menos ${count} caracteres.`,
     passwordMinimum: (count: number): string =>
@@ -113,7 +121,7 @@ const appExtras: typeof EnglishAppExtras = {
     show: "Mostrar",
     showPassword: "Mostrar contraseña",
     signIn: "Iniciar sesión",
-    welcome: "Le damos la bienvenida de nuevo",
+    welcome: "Le damos la bienvenida de nuevo.",
   },
   timeZone: {
     all: "Todas las zonas horarias",
