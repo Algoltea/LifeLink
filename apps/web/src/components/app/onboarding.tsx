@@ -1,0 +1,213 @@
+"use client";
+
+import { api } from "@lifelink/backend/convex/_generated/api";
+import { Button } from "@lifelink/ui/components/button";
+import { Checkbox } from "@lifelink/ui/components/checkbox";
+import { Input } from "@lifelink/ui/components/input";
+import { Label } from "@lifelink/ui/components/label";
+import { Segmented } from "@lifelink/ui/components/segmented";
+import { useMutation } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useId, useState } from "react";
+
+import { messageOf } from "@/lib/errors";
+
+import { BrandName } from "./brand";
+
+type Role = "family" | "owner";
+
+const ROLES = [
+  { label: "It's for me", value: "owner" },
+  { label: "I'm joining a family member", value: "family" },
+] as const;
+
+const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
+  const complete = useMutation(api.profiles.completeOnboarding);
+  const router = useRouter();
+  const [role, setRole] = useState<Role>("owner");
+  const [demo, setDemo] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Onboarding renders only in the browser (after the profile query), so the device's zone is safe to read here.
+  const [timeZone, setTimeZone] = useState(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+
+  const ids = {
+    city: useId(),
+    demo: useId(),
+    name: useId(),
+    preferred: useId(),
+    signOff: useId(),
+    timeZone: useId(),
+    zip: useId(),
+  };
+
+  const submit = async (form: FormData): Promise<void> => {
+    setBusy(true);
+    setProblem(null);
+
+    const text = (key: string): string => String(form.get(key) ?? "").trim();
+
+    try {
+      await complete({
+        city: text("city") || null,
+        displayName: text("name"),
+        postalCode: text("zip") || null,
+        preferredName: text("preferred"),
+        role,
+        signOffName: text("signOff") || null,
+        startInDemoMode: role === "owner" && demo,
+        timeZone: text("timeZone") || timeZone,
+      });
+      router.replace(role === "family" ? "/family" : "/");
+    } catch (error) {
+      setProblem(messageOf(error instanceof Error ? error : null));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <main
+      className="mx-auto flex w-full max-w-3xl flex-col gap-7 px-5 py-8"
+      id="main"
+    >
+      <div className="border-border border-b pb-5">
+        <BrandName />
+      </div>
+      <div className="flex flex-col gap-3">
+        <h1 className="text-mobile-title sm:text-page-title font-semibold tracking-tight">
+          Let’s get you set up
+        </h1>
+        <p className="text-muted-foreground text-body">
+          A few details so messages sound like you and times are right. You can
+          change any of this later in Settings.
+        </p>
+      </div>
+      <form
+        className="flex flex-col gap-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit(new FormData(event.currentTarget));
+        }}
+      >
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-section pb-2 font-semibold">
+            Who is LifeLink for?
+          </legend>
+          <Segmented
+            label="Who is LifeLink for?"
+            onValueChange={setRole}
+            options={ROLES}
+            value={role}
+          />
+          <p className="text-muted-foreground text-base">
+            {role === "owner"
+              ? "You'll use LifeLink every day. Family members see only what you choose to share."
+              : "You'll see only what your family member shares with you. You'll need the invitation code they give you."}
+          </p>
+        </fieldset>
+        <fieldset className="border-border grid gap-5 border-t pt-6 sm:grid-cols-2">
+          <legend className="text-section pr-3 font-semibold">About you</legend>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label htmlFor={ids.name}>Your full name</Label>
+            <Input autoComplete="name" id={ids.name} name="name" required />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={ids.preferred}>
+              What should LifeLink call you?
+            </Label>
+            <Input
+              autoComplete="given-name"
+              id={ids.preferred}
+              name="preferred"
+              required
+            />
+          </div>
+          {role === "owner" ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.signOff}>How you sign your messages</Label>
+              <Input
+                id={ids.signOff}
+                name="signOff"
+                placeholder="For example: Mom, or Grandma Ruth"
+              />
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={ids.timeZone}>Time zone</Label>
+            <Input
+              id={ids.timeZone}
+              name="timeZone"
+              onChange={(event) => setTimeZone(event.target.value)}
+              required
+              value={timeZone}
+            />
+          </div>
+          {role === "owner" ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.city}>Town or city (optional)</Label>
+                <Input
+                  autoComplete="address-level2"
+                  id={ids.city}
+                  name="city"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.zip}>
+                  ZIP code (optional, for grocery stores)
+                </Label>
+                <Input
+                  autoComplete="postal-code"
+                  id={ids.zip}
+                  inputMode="numeric"
+                  name="zip"
+                />
+              </div>
+            </>
+          ) : null}
+        </fieldset>
+        {role === "owner" && demoModeAllowed ? (
+          <section className="border-border bg-parchment rounded-lg border p-5">
+            <div className="flex items-start gap-4 pt-1">
+              <Checkbox
+                checked={demo}
+                id={ids.demo}
+                onCheckedChange={(checked) => setDemo(checked)}
+              />
+              <div className="flex flex-col gap-1">
+                <Label htmlFor={ids.demo}>Start in practice mode</Label>
+                <p className="text-muted-foreground text-label">
+                  Adds sample family members, an appointment email, and practice
+                  replies. Nothing is really sent. Every practice result is
+                  marked Practice. You can turn it off in Settings.
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+        {problem ? (
+          <p
+            className="bg-negative-wash text-negative rounded-lg px-4 py-3 text-base"
+            role="alert"
+          >
+            {problem}
+          </p>
+        ) : null}
+        <Button
+          aria-busy={busy}
+          className="self-start"
+          disabled={busy}
+          size="lg"
+          type="submit"
+        >
+          {busy ? "Setting up…" : "Continue"}
+        </Button>
+      </form>
+    </main>
+  );
+};
+
+export { Onboarding };

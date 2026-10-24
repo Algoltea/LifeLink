@@ -1,0 +1,2 @@
+/* The shared UI package owns the workshop theme and accessible control tokens. */
+@import "@lifelink/ui/globals.css";

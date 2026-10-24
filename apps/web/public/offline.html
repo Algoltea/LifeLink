@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fffdf8" />
+    <title>You're offline · LifeLink</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ground: #fffdf8;
+        --surface: #faf4e8;
+        --text: #2d2118;
+        --muted: #6c5c4c;
+        --accent: #8f3f25;
+        --brass: #ac741c;
+        font-family: "IBM Plex Sans", Arial, sans-serif;
+        font-size: calc(18px * var(--text-scale, 1));
+        line-height: 1.5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ground: #211a16;
+          --surface: #2b221c;
+          --text: #f3ecdd;
+          --muted: #c9bea8;
+          --accent: #f0a78c;
+          --brass: #d3a85b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        background: var(--ground);
+        color: var(--text);
+      }
+      main {
+        max-width: 34rem;
+        padding: 2rem;
+        border-radius: 1rem;
+        background: var(--surface);
+        border: 1px solid var(--brass);
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-weight: 600;
+        font-size: 1.778rem;
+        line-height: 1.2;
+      }
+      p {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+      a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 3rem;
+        padding: 0 1.5rem;
+        border-radius: 0.444rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+      }
+      a.primary {
+        background: var(--accent);
+        color: var(--ground);
+      }
+      a:focus-visible {
+        outline: 3px solid var(--brass);
+        outline-offset: 3px;
+      }
+    </style>
+    <script>
+      try {
+        var display = JSON.parse(
+          localStorage.getItem("lifelink:display") || "{}"
+        );
+        var scale = Number(display.textScale);
+        if (scale >= 1 && scale <= 1.6) {
+          document.documentElement.style.setProperty(
+            "--text-scale",
+            String(scale)
+          );
+        }
+      } catch (error) {}
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>You're offline</h1>
+      <p>
+        This page needs the internet. You can still play Solitaire while you
+        wait.
+      </p>
+      <p class="muted">
+        Requests and approvals saved to your offline queue stay on this device.
+        LifeLink checks them again when you're connected before carrying them
+        out.
+      </p>
+      <div class="actions">
+        <a class="primary" href="/">Try again</a>
+        <a href="/solitaire">Play solitaire (works offline)</a>
+      </div>
+    </main>
+  </body>
+</html>
