@@ -120,6 +120,10 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
       return `${details.title}. ${formatWhen(details.startsAt, timeZone)}${details.location ? `, at ${details.location}` : ""}.`;
     }
 
+    case "drive_note": {
+      return `A note in your Google Drive called ${details.title}. It says: ${details.body}`;
+    }
+
     default: {
       return details satisfies never;
     }
@@ -281,6 +285,28 @@ const DetailsView = ({
               : "Outlook"}
           </Fact>
         </dl>
+      );
+    }
+
+    case "drive_note": {
+      return (
+        <div
+          className={cn(
+            "border-border bg-raised flex flex-col gap-4 rounded-xl border px-6 py-6",
+            className
+          )}
+        >
+          <dl className="grid gap-4">
+            <Fact label="Document">{details.title}</Fact>
+          </dl>
+          <p className="text-xl leading-snug whitespace-pre-wrap">
+            {details.body}
+          </p>
+          <p className="text-muted-foreground text-base">
+            It is saved as a new document in your Google Drive. Only you can see
+            it unless you share it there.
+          </p>
+        </div>
       );
     }
 

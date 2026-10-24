@@ -79,8 +79,16 @@ interface CalendarEventDetails {
   title: string;
 }
 
+interface DriveNoteDetails {
+  body: string;
+  connectionId: string;
+  kind: "drive_note";
+  title: string;
+}
+
 type ActionDetails =
   | CalendarEventDetails
+  | DriveNoteDetails
   | ConfirmArrangementDetails
   | CreateReminderDetails
   | EmailDraftDetails
@@ -169,6 +177,15 @@ const consequentialDetails = (details: ActionDetails): CanonicalValue => {
       };
     }
 
+    case "drive_note": {
+      return {
+        body: details.body,
+        connectionId: details.connectionId,
+        kind: details.kind,
+        title: details.title,
+      };
+    }
+
     default: {
       return details satisfies never;
     }
@@ -180,7 +197,8 @@ const reachesOutside = (kind: ActionKind): boolean =>
   kind === "send_message" ||
   kind === "email_draft" ||
   kind === "grocery_handoff" ||
-  kind === "calendar_event";
+  kind === "calendar_event" ||
+  kind === "drive_note";
 
 export { consequentialDetails, messageChannels, reachesOutside };
 
@@ -190,6 +208,7 @@ export type {
   CalendarEventDetails,
   ConfirmArrangementDetails,
   CreateReminderDetails,
+  DriveNoteDetails,
   EmailDraftDetails,
   FamilyUpdateDetails,
   GroceryHandoffDetails,

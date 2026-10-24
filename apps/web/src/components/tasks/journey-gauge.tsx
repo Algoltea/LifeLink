@@ -6,6 +6,7 @@ import {
   CalendarPlusIcon,
   CircleCheckIcon,
   CircleHelpIcon,
+  FilePlusIcon,
   MailIcon,
   MessageCircleIcon,
   MinusIcon,
@@ -53,6 +54,10 @@ const markFor = (kind: Step["kind"], className: string): ReactNode => {
 
     case "calendar_event": {
       return <CalendarPlusIcon aria-hidden="true" className={className} />;
+    }
+
+    case "drive_note": {
+      return <FilePlusIcon aria-hidden="true" className={className} />;
     }
 
     default: {

@@ -513,6 +513,8 @@ const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
   ["calendar.read", "calendar"],
   ["discord.receive", "replies"],
   ["discord.send", "message"],
+  ["drive.create", "add"],
+  ["drive.read", "read"],
   ["ebay.search", "read"],
   ["ebay.selling", "money"],
   ["email.appointments", "calendar"],

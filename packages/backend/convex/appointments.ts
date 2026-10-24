@@ -5,7 +5,7 @@ import { audit } from "./lib/audit";
 import { createTask } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
-import { DAY, MINUTE } from "./lib/time";
+import { DAY, formatWhen, MINUTE } from "./lib/time";
 
 export const upcoming = query({
   args: { days: v.number() },
@@ -159,6 +159,79 @@ export const proposeCalendarEvent = mutation({
           connection.provider === "outlook" ? "outlook" : "google_calendar",
         startsAt: appointment.startsAt,
         title: appointment.title,
+      },
+      mode,
+      ownerId: owner._id,
+      proposedBy: "person",
+      rationale: null,
+      stepId: stepIds[0] ?? null,
+      taskId,
+    });
+
+    return taskId;
+  },
+});
+
+/** Propose saving the appointment's details as a note in Google Drive. Reviewed and approved like anything else. */
+export const proposeDriveNote = mutation({
+  args: {
+    appointmentId: v.id("appointments"),
+    connectionId: v.id("connections"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    const appointment = requireOwned(
+      await ctx.db.get(args.appointmentId),
+      owner,
+      "appointment"
+    );
+
+    const connection = requireOwned(
+      await ctx.db.get(args.connectionId),
+      owner,
+      "connection"
+    );
+
+    if (connection.provider !== "google_drive") {
+      throw new ConvexError({
+        code: "invalid",
+        message: "Choose a Google Drive connection.",
+      });
+    }
+
+    const mode = owner.demoMode ? "simulated" : "live";
+    const when = formatWhen(appointment.startsAt, owner.timeZone);
+
+    const lines = [
+      appointment.title,
+      `When: ${when}`,
+      appointment.location === null ? null : `Where: ${appointment.location}`,
+      appointment.providerName === null
+        ? null
+        : `With: ${appointment.providerName}`,
+      appointment.notes === null ? null : `Notes: ${appointment.notes}`,
+    ];
+
+    const { stepIds, taskId } = await createTask(ctx, {
+      appointmentId: appointment._id,
+      contactId: null,
+      kind: "drive_note",
+      mode,
+      origin: "text",
+      ownerId: owner._id,
+      request: "Save to Google Drive",
+      steps: [{ kind: "drive_note", label: "Save notes to your Drive" }],
+      title: `Save ${appointment.title} notes to your Drive`,
+    });
+
+    await createAction(ctx, {
+      ambiguities: [],
+      details: {
+        body: lines.filter((line) => line !== null).join("\n"),
+        connectionId: connection._id,
+        kind: "drive_note",
+        title: `${appointment.title} (${when})`,
       },
       mode,
       ownerId: owner._id,
