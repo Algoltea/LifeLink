@@ -32,14 +32,13 @@ type ProviderRow = ConnectionsData["providers"][number];
 
 type ProviderId = ProviderRow["definition"]["id"];
 
-const CAPABILITY_WORDS: Record<CapabilityStatus, string> = {
-  available: "Works in LifeLink",
-  not_offered: "Not possible with this service",
-  not_wired: "The service allows it, but LifeLink doesn't use it yet",
+const LIMIT_TAGS: Record<Exclude<CapabilityStatus, "available">, string> = {
+  not_offered: "Not possible",
+  not_wired: "Coming later",
 };
 
 const NOT_SET_UP =
-  "This service isn't set up for this app yet. Whoever runs LifeLink needs to finish the app setup.";
+  "This is not turned on yet. Ask the person who set up LifeLink to turn it on.";
 
 const GROUPS = [
   { ids: ["imessage", "discord"], title: "Message family and friends" },
@@ -49,7 +48,7 @@ const GROUPS = [
 
 const ADDITIONAL_IDS = new Set(["paypal", "facebook", "instagram", "ebay"]);
 
-const ADDITIONAL_TITLE = "Other services";
+const ADDITIONAL_TITLE = "Coming later";
 
 const groupTitleFor = (id: ProviderId): string =>
   GROUPS.find((group) => group.ids.some((groupId) => groupId === id))?.title ??
@@ -72,40 +71,31 @@ const statusFor = (demoMode: boolean, row: ProviderRow): StatusWords => {
   }
 
   if (row.status === "pending") {
-    return { text: "Waiting to finish", tone: "warning" };
+    return { text: "Not finished", tone: "warning" };
   }
 
   if (row.status === "error") {
-    return { text: "Didn’t finish", tone: "negative" };
+    return { text: "Did not connect", tone: "negative" };
   }
 
   if (!row.definition.capabilities.some(isAvailable)) {
-    return { text: "No actions available yet", tone: "neutral" };
+    return { text: "Coming later", tone: "neutral" };
   }
 
   if (demoMode && row.hasSavedRealConnection) {
-    return { text: "Real connection saved", tone: "neutral" };
+    return { text: "Real account saved", tone: "neutral" };
   }
 
   if (demoMode) {
-    return {
-      text:
-        row.definition.connectStyle === "oauth"
-          ? "Practice available"
-          : "Practice messages",
-      tone: "neutral",
-    };
+    return { text: "Practice", tone: "neutral" };
   }
 
   if (!row.developerReady) {
-    return { text: "App setup needed", tone: "warning" };
+    return { text: "Not turned on", tone: "warning" };
   }
 
   return {
-    text:
-      row.definition.connectStyle === "oauth"
-        ? "Ready to connect"
-        : "Available",
+    text: row.definition.connectStyle === "oauth" ? "Not connected" : "Ready",
     tone: "neutral",
   };
 };
@@ -146,25 +136,32 @@ const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
   };
 };
 
-const thingsCount = (count: number): string =>
-  count === 1 ? "1 thing" : `${count} things`;
-
 const cardCountFor = (demoMode: boolean, row: ProviderRow): string => {
-  const { capabilities } = row.definition;
-  const available = capabilities.filter(isAvailable).length;
-  const notYet = capabilities.length - available;
+  const available = row.definition.capabilities.filter(isAvailable).length;
+  const things = available === 1 ? "1 thing" : `${available} things`;
 
   if (available === 0) {
-    return "Nothing it can do yet";
+    return "Coming later";
   }
 
   if (!row.developerReady && !demoMode) {
-    return `${thingsCount(available)}, after app setup`;
+    return `Can do ${things} once turned on`;
   }
 
-  return notYet > 0
-    ? `${thingsCount(available)} it can do · ${notYet} not yet`
-    : `${thingsCount(available)} it can do`;
+  return `Can do ${things}`;
+};
+
+/** The card's call to action names what opening it leads to. */
+const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
+  if (row.status === "active") {
+    return "Manage";
+  }
+
+  if (!row.developerReady && !demoMode) {
+    return "Details";
+  }
+
+  return row.definition.connectStyle === "handle" ? "Set up" : "Connect";
 };
 
 const cardIconsFor = (row: ProviderRow): IsoIconKind[] => {
@@ -193,7 +190,7 @@ const ProviderCard = ({
   return (
     <li className="flex">
       <button
-        aria-label={`${definition.label}. ${status.text}. Open to see everything it can do.`}
+        aria-label={`${definition.label}. ${status.text}. ${cardActionFor(demoMode, row)}.`}
         className="border-border bg-surface hover:border-control hover:bg-parchment flex w-full cursor-pointer flex-col gap-5 rounded-xl border p-5 text-left transition-colors duration-150 motion-reduce:transition-none sm:p-6"
         onClick={() => onOpen(definition.id)}
         type="button"
@@ -227,7 +224,7 @@ const ProviderCard = ({
             {cardCountFor(demoMode, row)}
           </span>
           <span className="text-accent-foreground text-label flex items-center gap-1 font-medium">
-            Open
+            {cardActionFor(demoMode, row)}
             <ChevronRightIcon aria-hidden="true" className="size-5" />
           </span>
         </span>
@@ -257,62 +254,27 @@ const CardGrid = ({
   </ul>
 );
 
-const CapabilityRow = ({
-  capability,
-  developerReady,
-}: {
-  capability: Capability;
-  developerReady: boolean;
-}) => {
-  const available = isAvailable(capability);
-
-  const availability =
-    available && !developerReady
-      ? "Available after app setup"
-      : CAPABILITY_WORDS[capability.status];
-
-  return (
-    <li className="flex items-center gap-4">
-      <IsoIcon
-        className={available ? undefined : "opacity-55"}
-        kind={permissionIconFor(capability.id)}
-      />
-      <span className="flex min-w-0 flex-col">
-        <span
-          className={
-            available ? "text-body" : "text-muted-foreground text-body"
-          }
-        >
-          {capability.label}
-        </span>
-        <span className="text-muted-foreground text-label">
-          {availability}
-          {capability.note ? `. ${capability.note}` : "."}
-        </span>
-      </span>
-    </li>
-  );
-};
-
-const CapabilitySection = ({
+const CanDoSection = ({
   capabilities,
-  developerReady,
-  title,
 }: {
   capabilities: readonly Capability[];
-  developerReady: boolean;
-  title: string;
 }) =>
   capabilities.length === 0 ? null : (
     <section className="flex flex-col gap-2">
-      <h3 className="text-label font-medium">{title}</h3>
+      <h3 className="text-label font-medium">Can do</h3>
       <ul className="flex flex-col gap-2">
         {capabilities.map((capability) => (
-          <CapabilityRow
-            capability={capability}
-            developerReady={developerReady}
-            key={capability.id}
-          />
+          <li className="flex items-center gap-4" key={capability.id}>
+            <IsoIcon kind={permissionIconFor(capability.id)} />
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body">{capability.label}</span>
+              {capability.note ? (
+                <span className="text-muted-foreground text-label">
+                  {capability.note}
+                </span>
+              ) : null}
+            </span>
+          </li>
         ))}
       </ul>
     </section>
@@ -378,8 +340,8 @@ const HandleNote = ({
 
 const introFor = (row: ProviderRow): string =>
   row.definition.capabilities.some(isAvailable)
-    ? `Here is everything LifeLink can do with ${row.definition.label}. Nothing is sent until you approve it.`
-    : `LifeLink can’t do anything with ${row.definition.label} yet. Here is what stands in the way.`;
+    ? `LifeLink can do these things with ${row.definition.label}. Nothing is sent until you approve it.`
+    : `LifeLink can’t do anything with ${row.definition.label} yet.`;
 
 const requirementFor = (row: ProviderRow): string =>
   row.definition.id === "imessage"
@@ -577,6 +539,77 @@ const ConnectionDisclosure = ({
   );
 };
 
+const LIMITS_TITLE = "What LifeLink can’t do yet";
+
+const LimitRows = ({
+  capabilities,
+}: {
+  capabilities: readonly Capability[];
+}) => (
+  <ul className="flex flex-col gap-3">
+    {capabilities.map((capability) => (
+      <li
+        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+        key={capability.id}
+      >
+        <span className="flex min-w-0 flex-1 basis-56 flex-col">
+          <span className="text-body">{capability.label}</span>
+          {capability.note ? (
+            <span className="text-muted-foreground text-label">
+              {capability.note}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-muted-foreground text-label shrink-0">
+          {capability.status === "available"
+            ? null
+            : LIMIT_TAGS[capability.status]}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
+
+/**
+ * Limits stay one tap away so the window leads with what works. A service
+ * with nothing available shows them openly, since they are all there is.
+ */
+const Limits = ({
+  capabilities,
+  collapsed,
+}: {
+  capabilities: readonly Capability[];
+  collapsed: boolean;
+}) => {
+  if (capabilities.length === 0) {
+    return null;
+  }
+
+  if (!collapsed) {
+    return (
+      <section className="flex flex-col gap-3">
+        <h3 className="text-label font-medium">{LIMITS_TITLE}</h3>
+        <LimitRows capabilities={capabilities} />
+      </section>
+    );
+  }
+
+  return (
+    <ConnectionDisclosure className="group/limits border-border border-t pt-2">
+      <summary className="text-label flex min-h-12 list-none items-center justify-between gap-4 font-medium [&::-webkit-details-marker]:hidden">
+        {LIMITS_TITLE} ({capabilities.length})
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="text-muted-foreground size-5 shrink-0 transition-transform group-open/limits:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      <div className="pt-1 pb-2">
+        <LimitRows capabilities={capabilities} />
+      </div>
+    </ConnectionDisclosure>
+  );
+};
+
 const DialogBody = ({
   demoMode,
   row,
@@ -615,16 +648,8 @@ const DialogBody = ({
       {row.accountLabel && row.status === "active" ? (
         <p className="text-body break-words">Account: {row.accountLabel}</p>
       ) : null}
-      <CapabilitySection
-        capabilities={available}
-        developerReady={row.developerReady}
-        title={`What ${definition.label} can do`}
-      />
-      <CapabilitySection
-        capabilities={notYet}
-        developerReady={row.developerReady}
-        title="Not available yet"
-      />
+      <CanDoSection capabilities={available} />
+      <Limits capabilities={notYet} collapsed={available.length > 0} />
       <div className="bg-parchment flex flex-col gap-1 rounded-lg px-5 py-4">
         <p className="text-label font-medium">What you need</p>
         <p className="text-body">{requirementFor(row)}</p>
@@ -724,7 +749,7 @@ const ConnectionsScreen = () => {
   return (
     <>
       <PageHeader
-        subline="Choose what you want help with. Open a card to see everything it can do before you connect."
+        subline="Connect the services you already use. Open one to see what LifeLink can do with it."
         title="Connections"
       />
       {data === undefined ? (
@@ -769,12 +794,9 @@ const ConnectionsScreen = () => {
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-4 rounded-xl px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
             <IsoIcon kind="unavailable" size={48} />
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold">
-                Other services and limitations
-              </span>
+              <span className="text-body font-semibold">Coming later</span>
               <span className="text-muted-foreground text-label">
-                {additionalRows.map((row) => row.definition.label).join(", ")}.
-                See what isn’t available yet.
+                {additionalRows.map((row) => row.definition.label).join(", ")}
               </span>
             </span>
             <ChevronDownIcon
@@ -782,17 +804,32 @@ const ConnectionsScreen = () => {
               className="text-muted-foreground size-5 shrink-0 transition-transform group-open/limitations:rotate-180 motion-reduce:transition-none"
             />
           </summary>
-          <div className="flex flex-col gap-4 px-5 pb-6 sm:px-6">
-            <p className="text-muted-foreground text-body max-w-prose">
-              These services have no actions available in LifeLink yet. Open a
-              card to read its limitations.
-            </p>
-            <CardGrid
-              demoMode={data.demoMode}
-              onOpen={setOpenId}
-              rows={additionalRows}
-            />
-          </div>
+          <ul className="border-border mx-5 mb-4 border-t sm:mx-6">
+            {additionalRows.map((row) => (
+              <li
+                className="border-border border-b last:border-b-0"
+                key={row.definition.id}
+              >
+                <button
+                  aria-label={`${row.definition.label}. ${row.definition.summary} Details.`}
+                  className="hover:text-accent-foreground flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 motion-reduce:transition-none"
+                  onClick={() => setOpenId(row.definition.id)}
+                  type="button"
+                >
+                  <span className="text-body w-28 shrink-0 font-semibold sm:w-36">
+                    {row.definition.label}
+                  </span>
+                  <span className="text-muted-foreground text-label min-w-0 flex-1">
+                    {row.definition.summary}
+                  </span>
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="text-muted-foreground size-5 shrink-0"
+                  />
+                </button>
+              </li>
+            ))}
+          </ul>
         </ConnectionDisclosure>
       ) : null}
       <ConnectionDialog

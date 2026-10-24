@@ -334,8 +334,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "gmail",
     label: "Gmail",
-    summary:
-      "Summaries of emails you choose, drafts, and appointments found in your mail.",
+    summary: "Read, write, and send email. Find appointments in your mail.",
   },
   {
     accountRequirement:
@@ -380,7 +379,6 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "calendar.read",
         label: "See your upcoming events",
-        note: "Your existing calendar events are not shown in LifeLink yet.",
         status: "not_wired",
       },
       {
@@ -416,8 +414,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "google_drive",
     label: "Google Drive",
-    summary:
-      "Find your Drive files, and keep appointment notes there after you approve them.",
+    summary: "Find your files and save appointment notes.",
   },
   {
     accountRequirement: "Personal PayPal accounts cannot be connected here.",
@@ -425,13 +422,12 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "paypal.invoices",
         label: "Look up invoices",
-        note: "Invoice lookup is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "paypal.send_money",
         label: "Send money to a person",
-        note: "LifeLink cannot send money through PayPal.",
+        note: "LifeLink never sends money.",
         status: "not_offered",
       },
     ],
@@ -440,8 +436,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "paypal",
     label: "PayPal",
-    summary:
-      "Invoice lookup is not available yet. LifeLink does not send payments.",
+    summary: "Invoices are coming later. LifeLink never sends money.",
   },
   {
     accountRequirement:
@@ -450,19 +445,17 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "facebook.page_post",
         label: "Post to a Page after you approve it",
-        note: "Posting to Facebook Pages is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "facebook.page_inbox",
         label: "Read and answer your Page's messages",
-        note: "Facebook Page messages are not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "facebook.personal",
         label: "Personal timeline and friends' messages",
-        note: "Facebook does not allow apps to read or send personal Messenger chats.",
+        note: "Facebook does not let apps read or send personal Messenger chats.",
         status: "not_offered",
       },
     ],
@@ -471,7 +464,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "facebook",
     label: "Facebook",
-    summary: "Facebook Pages only.",
+    summary: "Business Pages only. Coming later.",
   },
   {
     accountRequirement: "An Instagram Business or Creator account.",
@@ -479,19 +472,16 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "instagram.post",
         label: "Share a photo post after you approve it",
-        note: "Sharing Instagram posts is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "instagram.messages",
         label: "Answer direct messages",
-        note: "Instagram replies are not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "instagram.personal",
         label: "Personal accounts",
-        note: "Personal Instagram accounts are not supported.",
         status: "not_offered",
       },
     ],
@@ -500,7 +490,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "instagram",
     label: "Instagram",
-    summary: "Business and Creator accounts only.",
+    summary: "Business and Creator accounts only. Coming later.",
   },
   {
     accountRequirement: "Personal eBay accounts cannot be connected here.",
@@ -508,13 +498,11 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "ebay.search",
         label: "Search eBay listings",
-        note: "Searching eBay is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "ebay.selling",
         label: "Your listings, orders, or purchases",
-        note: "LifeLink cannot manage your eBay account, purchases, or sales.",
         status: "not_offered",
       },
     ],
@@ -523,7 +511,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "ebay",
     label: "eBay",
-    summary: "Search is not available yet. LifeLink cannot buy or sell items.",
+    summary: "Search is coming later. LifeLink never buys or sells.",
   },
   {
     accountRequirement:
@@ -532,20 +520,20 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "imessage.send",
         label: "Send a text or photo after you approve it",
-        note: "They must text their assigned number before you can send an approved message.",
+        note: "Works after they send the first message.",
         status: "available",
       },
       { id: "imessage.receive", label: "Receive replies", status: "available" },
       {
         id: "imessage.delivery",
         label: "Delivery updates",
-        note: "LifeLink can confirm that the messaging service accepted your message, but not that it was delivered or read.",
+        note: "LifeLink knows your message was sent, but not if it was read.",
         status: "not_wired",
       },
       {
         id: "imessage.first_contact",
         label: "Start a conversation with someone new",
-        note: "Each contact must text their assigned shared-line number first.",
+        note: "Each person must send the first message.",
         status: "not_offered",
       },
     ],
@@ -554,7 +542,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     id: "imessage",
     label: "iMessage (Photon)",
     summary:
-      "Set up each contact's shared iMessage number in Trusted circle, then exchange messages after they text first.",
+      "Text with family and friends. Each person sends the first message.",
   },
   {
     accountRequirement:
@@ -568,7 +556,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "discord.receive",
         label: "Receive replies",
-        note: "Replies depend on LifeLink's Discord connection staying online.",
+        note: "Replies arrive while LifeLink's Discord bot is online.",
         status: "available",
       },
     ],

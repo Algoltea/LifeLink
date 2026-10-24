@@ -132,7 +132,7 @@ const LoadingPage = ({
       return (
         <>
           <PageHeader
-            subline="Choose what you want help with. Open a card to see everything it can do before you connect."
+            subline="Connect the services you already use. Open one to see what LifeLink can do with it."
             title="Connections"
           />
           <LoadingRows label="Loading connections" layout="connections" />
