@@ -2,6 +2,7 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { api } from "@lifelink/backend/convex/_generated/api";
+import { findDeveloperIntegration } from "@lifelink/contracts/integrations";
 import type {
   Capability,
   CapabilityStatus,
@@ -267,18 +268,16 @@ const CanDoSection = ({
   capabilities: readonly Capability[];
 }) =>
   capabilities.length === 0 ? null : (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-label font-medium">Can do</h3>
-      <ul className="flex flex-col gap-2">
+    <section className="flex flex-col gap-3">
+      <h3 className="text-body font-semibold">Can do</h3>
+      <ul className="flex flex-col gap-4">
         {capabilities.map((capability) => (
           <li className="flex items-center gap-4" key={capability.id}>
             <IsoIcon kind={permissionIconFor(capability.id)} />
             <span className="flex min-w-0 flex-col">
-              <span className="text-body">{capability.label}</span>
+              <span className="text-body font-medium">{capability.label}</span>
               {capability.note ? (
-                <span className="text-muted-foreground text-label">
-                  {capability.note}
-                </span>
+                <span className="text-body">{capability.note}</span>
               ) : null}
             </span>
           </li>
@@ -288,7 +287,7 @@ const CanDoSection = ({
   );
 
 const IMessageSteps = () => (
-  <div className="bg-parchment flex flex-col gap-4 rounded-lg p-5">
+  <div className="flex flex-col gap-4">
     <p className="text-body">
       Link each person in Trusted circle to their existing Photon contact.
       LifeLink does not register new contacts.
@@ -321,26 +320,19 @@ const HandleNote = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
-  const isIMessage = row.definition.id === "imessage";
-  const service = isIMessage ? "iMessages" : "Discord messages";
+  const service =
+    row.definition.id === "imessage" ? "iMessages" : "Discord messages";
 
   return (
     <>
       {demoMode ? (
         <p className="text-body">
           Practice {service} are simulated. No messages reach your contacts.
-          {isIMessage ? " When you use real iMessage, follow these steps." : ""}
         </p>
       ) : null}
       {!row.developerReady && !demoMode ? (
-        <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>
+        <p className="text-body">{NOT_SET_UP}</p>
       ) : null}
-      {row.developerReady && !demoMode && !isIMessage ? (
-        <p className="text-body">
-          Ready. Add each person’s Discord user ID in Trusted circle.
-        </p>
-      ) : null}
-      {isIMessage ? <IMessageSteps /> : null}
     </>
   );
 };
@@ -546,6 +538,20 @@ const ConnectionDisclosure = ({
   );
 };
 
+/** A closed section under a rule; the title stays at row size. */
+const Fold = ({ children, title }: { children: ReactNode; title: string }) => (
+  <ConnectionDisclosure className="group/fold border-border border-t pt-2">
+    <summary className="text-body flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
+      {title}
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="text-muted-foreground size-5 shrink-0 transition-transform group-open/fold:rotate-180 motion-reduce:transition-none"
+      />
+    </summary>
+    <div className="pt-2 pb-2">{children}</div>
+  </ConnectionDisclosure>
+);
+
 const LIMITS_TITLE = "What LifeLink can’t do yet";
 
 const LimitRows = ({
@@ -553,18 +559,16 @@ const LimitRows = ({
 }: {
   capabilities: readonly Capability[];
 }) => (
-  <ul className="flex flex-col gap-3">
+  <ul className="flex flex-col gap-4">
     {capabilities.map((capability) => (
       <li
         className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
         key={capability.id}
       >
         <span className="flex min-w-0 flex-1 basis-56 flex-col">
-          <span className="text-body">{capability.label}</span>
+          <span className="text-body font-medium">{capability.label}</span>
           {capability.note ? (
-            <span className="text-muted-foreground text-label">
-              {capability.note}
-            </span>
+            <span className="text-body">{capability.note}</span>
           ) : null}
         </span>
         <span className="text-muted-foreground text-label shrink-0">
@@ -595,26 +599,97 @@ const Limits = ({
   if (!collapsed) {
     return (
       <section className="flex flex-col gap-3">
-        <h3 className="text-label font-medium">{LIMITS_TITLE}</h3>
+        <h3 className="text-body font-semibold">{LIMITS_TITLE}</h3>
         <LimitRows capabilities={capabilities} />
       </section>
     );
   }
 
   return (
-    <ConnectionDisclosure className="group/limits border-border border-t pt-2">
-      <summary className="text-label flex min-h-12 list-none items-center justify-between gap-4 font-medium [&::-webkit-details-marker]:hidden">
-        {LIMITS_TITLE} ({capabilities.length})
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="text-muted-foreground size-5 shrink-0 transition-transform group-open/limits:rotate-180 motion-reduce:transition-none"
-        />
-      </summary>
-      <div className="pt-1 pb-2">
-        <LimitRows capabilities={capabilities} />
-      </div>
-    </ConnectionDisclosure>
+    <Fold title={`${LIMITS_TITLE} (${capabilities.length})`}>
+      <LimitRows capabilities={capabilities} />
+    </Fold>
   );
+};
+
+const HELPER_TITLE = "Setting this up for someone?";
+
+const OAuthSteps = ({
+  connectLabel,
+  label,
+}: {
+  connectLabel: string;
+  label: string;
+}) => (
+  <div className="flex flex-col gap-4">
+    <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
+      <li>Press {connectLabel} below.</li>
+      <li>Sign in with their account, not yours.</li>
+      <li>Choose Allow on {label}’s page.</li>
+      <li>You come back here and it says Connected.</li>
+    </ol>
+    <p className="text-body">
+      Tip: they can disconnect {label} from this window at any time.
+    </p>
+  </div>
+);
+
+/** What a helper does next, or null when there is nothing to set up. */
+const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
+  const { definition } = row;
+
+  if (!definition.capabilities.some(isAvailable)) {
+    return null;
+  }
+
+  if (!(row.developerReady || demoMode)) {
+    const integration = findDeveloperIntegration(
+      definition.developerIntegration
+    );
+
+    return (
+      <p className="text-body">
+        For whoever runs LifeLink: run <code>bun run dev:setup</code> and choose{" "}
+        {integration?.label ?? definition.label}.
+      </p>
+    );
+  }
+
+  if (definition.id === "imessage") {
+    return <IMessageSteps />;
+  }
+
+  if (definition.id === "discord") {
+    return (
+      <p className="text-body">
+        Add each person’s Discord user ID in Trusted circle.
+      </p>
+    );
+  }
+
+  if (definition.connectStyle !== "oauth" || demoMode) {
+    // A practice account needs no sign-in, so the real steps would mislead.
+    return null;
+  }
+
+  const { canConnect, connectLabel } = oauthOptionsFor(demoMode, row);
+
+  return canConnect ? (
+    <OAuthSteps connectLabel={connectLabel} label={definition.label} />
+  ) : null;
+};
+
+/** Closed at first: most people set up their own account. */
+const HelperSection = ({
+  demoMode,
+  row,
+}: {
+  demoMode: boolean;
+  row: ProviderRow;
+}) => {
+  const steps = helperStepsFor(demoMode, row);
+
+  return steps === null ? null : <Fold title={HELPER_TITLE}>{steps}</Fold>;
 };
 
 const DialogBody = ({
@@ -639,16 +714,14 @@ const DialogBody = ({
   );
 
   return (
-    <div className="flex flex-col gap-6 overflow-y-auto px-5 pb-6 sm:px-8">
+    <div className="flex flex-col gap-7 overflow-y-auto px-5 pb-6 sm:px-8">
       {isOAuth && practiceBlocked ? (
         <p className="bg-parchment text-body rounded-lg p-5">
           Your real {definition.label} connection is saved. Practice accounts
           cannot replace it. Turn off Practice mode in Settings to manage it.
         </p>
       ) : null}
-      {isOAuth && needsSetup ? (
-        <p className="text-muted-foreground text-label">{NOT_SET_UP}</p>
-      ) : null}
+      {isOAuth && needsSetup ? <p className="text-body">{NOT_SET_UP}</p> : null}
       {definition.connectStyle === "handle" ? (
         <HandleNote demoMode={demoMode} row={row} />
       ) : null}
@@ -656,12 +729,11 @@ const DialogBody = ({
         <p className="text-body break-words">Account: {row.accountLabel}</p>
       ) : null}
       <CanDoSection capabilities={available} />
-      <Limits capabilities={notYet} collapsed={available.length > 0} />
-      <div className="bg-parchment flex flex-col gap-1 rounded-lg px-5 py-4">
-        <p className="text-label font-medium">What you need</p>
+      <div className="bg-parchment flex flex-col gap-2 rounded-lg px-5 py-4">
+        <h3 className="text-body font-semibold">What you need</h3>
         <p className="text-body">{requirementFor(row)}</p>
         {isOAuth && canConnect ? (
-          <p className="text-muted-foreground text-label">
+          <p className="text-body">
             {demoMode
               ? "This practice account never connects to the real service."
               : `You’ll sign in on ${definition.label}’s own page. LifeLink never sees your password.`}
@@ -669,13 +741,15 @@ const DialogBody = ({
         ) : null}
         {definition.connectStyle === "developer_only" &&
         available.length > 0 ? (
-          <p className="text-muted-foreground text-label">
+          <p className="text-body">
             {row.developerReady
               ? "This works through the app's own account, so there's nothing for you to sign in to."
               : NOT_SET_UP}
           </p>
         ) : null}
       </div>
+      <Limits capabilities={notYet} collapsed={available.length > 0} />
+      <HelperSection demoMode={demoMode} row={row} />
     </div>
   );
 };
@@ -726,7 +800,7 @@ const ConnectionDialog = ({
                   <Pill className="self-start" tone={status.tone}>
                     {status.text}
                   </Pill>
-                  <DialogPrimitive.Description className="text-muted-foreground text-body">
+                  <DialogPrimitive.Description className="text-body">
                     {introFor(row)}
                   </DialogPrimitive.Description>
                 </div>
