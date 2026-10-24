@@ -1,0 +1,56 @@
+const family = {
+  appointments: "Appointments",
+  budget: (amount: string) => ` · budget ${amount}`,
+  checked: (kind: string, day: string) => `A ${kind} checked ${day}`,
+  codeHint:
+    "The person who invited you can read it from their Trusted circle page.",
+  connect: "Connect",
+  connected: "You're connected. You'll see only what they chose to share.",
+  empty:
+    "No one is sharing with you yet. When someone invites you, type their code below.",
+  groceries: "Groceries",
+  haveCode: "Have an invitation code?",
+  invitationCode: "Invitation code",
+  kinds: {
+    email: "email",
+    screenshot: "screenshot",
+    text: "text",
+  },
+  likelyScam: "Likely a scam",
+  loadingMessages: "Loading messages",
+  loadingPhoto: "Loading photo…",
+  loadingShared: "Loading shared information",
+  loadingWhatWasShared: "Loading what was shared",
+  messagesWith: (name: string) => `Messages with ${name}`,
+  noMessages: "No messages in LifeLink yet.",
+  noSharedReminders: "No shared reminders.",
+  notSharing: "This person isn’t sharing with you right now.",
+  nothingLeft: "Nothing left to buy.",
+  nothingSoon: "Nothing in the next 30 days.",
+  onlyResult: "Only the result is shared, never the message itself.",
+  photoUnavailable: "This photo isn't available.",
+  photos: "Photos",
+  replyTo: (name: string) => `Reply to ${name}`,
+  ride: {
+    asked: "Ride asked for, not confirmed yet",
+    confirmed: "Ride confirmed",
+    declined: "Ride declined",
+  },
+  scamChecks: "Scam checks",
+  sendReply: "Send reply",
+  sharedPhoto: "A shared photo",
+  sharedReminders: "Shared reminders",
+  shares: (name: string, scopes: string) =>
+    `${name} shares: ${scopes}. You can look, but you can’t send, approve, or spend anything for them.`,
+  subline:
+    "See only what each person chooses to share. You can look, but never send, approve, or spend anything for them.",
+  suspicious: "Suspicious",
+  theyWrote: (name: string) => `${name} wrote: `,
+  title: "Family",
+  updates: "Updates",
+  withPhotos: " · with photos",
+  you: "You",
+  youWrote: "You wrote: ",
+};
+
+export { family };

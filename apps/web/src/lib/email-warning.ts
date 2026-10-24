@@ -1,3 +1,6 @@
+import { currentMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
+
 interface EmailWarningSource {
   scamCheck?: { verdict: string };
   suspicious: boolean | null;
@@ -17,12 +20,16 @@ const emailWarningIntro = (
     return "";
   }
 
+  const t = currentMessages().email.warning;
+
   const reason =
     warningSigns.length > 0
-      ? `Warning signs: ${warningSigns.join("; ")}.`
-      : "This email raised a concern. Check the request before acting.";
+      ? t.signs(
+          warningSigns.map((sign) => translateServerMessage(sign)).join("; ")
+        )
+      : t.concern;
 
-  return `Potential scam. ${reason} If you're unsure, ask someone you trust before you reply, open a link, send money, or share personal details.`;
+  return t.intro(reason);
 };
 
 export { emailWarningIntro, hasEmailWarning };

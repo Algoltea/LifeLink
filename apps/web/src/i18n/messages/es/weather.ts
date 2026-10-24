@@ -1,0 +1,51 @@
+import type { Messages } from "../en";
+
+const weather: Messages["weather"] = {
+  closeWeek: "Cerrar",
+  // Keyed by the shared English wording from @lifelink/contracts/weather.
+  conditions: {
+    Clear: "Despejado",
+    Cloudy: "Nublado",
+    Drizzle: "Llovizna",
+    Fog: "Niebla",
+    "Freezing drizzle": "Llovizna helada",
+    "Freezing rain": "Lluvia helada",
+    "Freezing, watch for ice": "Helada, cuidado con el hielo",
+    "Heavy drizzle": "Llovizna fuerte",
+    "Heavy rain": "Lluvia fuerte",
+    "Heavy showers": "Chubascos fuertes",
+    "Heavy snow": "Nevada fuerte",
+    "Heavy snow showers": "Chubascos de nieve fuertes",
+    "Icy fog": "Niebla helada",
+    "Light drizzle": "Llovizna ligera",
+    "Light rain": "Lluvia ligera",
+    "Light showers": "Chubascos ligeros",
+    "Light snow": "Nevada ligera",
+    "Mixed weather": "Tiempo variable",
+    "Mostly clear": "Mayormente despejado",
+    "Partly cloudy": "Parcialmente nublado",
+    Rain: "Lluvia",
+    "Rain likely, take a coat": "Probable lluvia, lleve un abrigo",
+    Showers: "Chubascos",
+    Snow: "Nieve",
+    "Snow grains": "Granizo fino",
+    "Snow likely, take care outside": "Probable nieve, tenga cuidado afuera",
+    "Snow showers": "Chubascos de nieve",
+    "Storms likely": "Probables tormentas",
+    Thunderstorms: "Tormentas eléctricas",
+    "Thunderstorms with hail": "Tormentas con granizo",
+    "Very hot, drink water": "Mucho calor, tome agua",
+  },
+  dataFrom: "Datos del tiempo de ",
+  high: "Máxima ",
+  highLow: (high, low) => `· Máx. ${high} Mín. ${low}`,
+  low: "mínima ",
+  practiceSample: "Tiempo de ejemplo para practicar. ",
+  showWeek: ". Mostrar el tiempo de la semana",
+  spoken: (temperature, now) => `Ahora hace ${temperature} grados: ${now}.`,
+  spokenRange: (high, low) =>
+    ` Hoy la máxima es de ${high} y la mínima de ${low}.`,
+  weatherIn: (place) => `El tiempo en ${place}`,
+};
+
+export { weather };

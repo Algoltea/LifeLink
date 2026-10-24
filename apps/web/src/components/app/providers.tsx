@@ -5,6 +5,7 @@ import { Toaster } from "@lifelink/ui/components/sonner";
 import { ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
 
+import { LocaleBoundary } from "@/i18n/locale-boundary";
 import { authClient } from "@/lib/auth-client";
 
 import { ENV } from "../../env";
@@ -26,7 +27,9 @@ const Providers = ({
     initialToken={initialToken}
   >
     <PreferencesProvider>
-      <OfflineQueueProvider>{children}</OfflineQueueProvider>
+      <OfflineQueueProvider>
+        <LocaleBoundary>{children}</LocaleBoundary>
+      </OfflineQueueProvider>
     </PreferencesProvider>
     <Toaster />
   </ConvexBetterAuthProvider>

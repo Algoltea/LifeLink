@@ -17,6 +17,7 @@ import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useCallback, useSyncExternalStore } from "react";
 
+import { currentMessages } from "@/i18n/locale";
 import { dayKey, MINUTE } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
 import { useRefreshWhenStale } from "@/lib/refresh";
@@ -42,6 +43,19 @@ const useTemperatureUnit = (): TemperatureUnit =>
     () => unitForRegion(regionOf(navigator.language)),
     () => "celsius"
   );
+
+/** Shared weather wording in the person's language. */
+const translateCondition = (english: string): string =>
+  currentMessages().weather.conditions[english] ?? english;
+
+const weatherLabel = (code: number): string =>
+  translateCondition(describeWeather(code).label);
+
+const adviceFor = (day: WeatherDay): string | null => {
+  const advice = weatherAdvice(day);
+
+  return advice === null ? null : translateCondition(advice);
+};
 
 const degrees = (celsius: number, unit: TemperatureUnit): string =>
   `${toUnit(celsius, unit)}°`;
@@ -101,15 +115,16 @@ const forecastOf = (state: WeatherState | undefined): Forecast | null =>
 
 /** One sentence for "Read my day aloud". */
 const spokenWeather = (forecast: Forecast, unit: TemperatureUnit): string => {
-  const now = describeWeather(forecast.current.code).label.toLowerCase();
+  const words = currentMessages().weather;
+  const now = weatherLabel(forecast.current.code).toLowerCase();
   const [today] = forecast.days;
-  const advice = today ? weatherAdvice(today) : null;
+  const advice = today ? adviceFor(today) : null;
 
   const range = today
-    ? ` Today's high is ${toUnit(today.highC, unit)} and the low is ${toUnit(today.lowC, unit)}.`
+    ? words.spokenRange(toUnit(today.highC, unit), toUnit(today.lowC, unit))
     : "";
 
-  return `It is ${toUnit(forecast.current.temperatureC, unit)} degrees and ${now}.${range}${advice ? ` ${advice}.` : ""}`;
+  return `${words.spoken(toUnit(forecast.current.temperatureC, unit), now)}${range}${advice ? ` ${advice}.` : ""}`;
 };
 
 const dayFor = (
@@ -118,12 +133,14 @@ const dayFor = (
 ): WeatherDay | undefined => forecast?.days.find((day) => day.date === key);
 
 export {
+  adviceFor,
   dayFor,
   degrees,
   forecastOf,
   spokenWeather,
   useTemperatureUnit,
   useWeather,
+  weatherLabel,
 };
 
 export type { WeatherState };

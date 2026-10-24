@@ -1,18 +1,20 @@
-/** Dates and times in the person's own time zone, in words where recency matters. */
+/** Dates and times in the person's own time zone and language, in words where recency matters. */
+
+import { currentIntlLocale, currentMessages } from "@/i18n/locale";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
 const formatTime = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+  new Intl.DateTimeFormat(currentIntlLocale(), {
     hour: "numeric",
     minute: "2-digit",
     timeZone,
   }).format(timestamp);
 
 const formatDay = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+  new Intl.DateTimeFormat(currentIntlLocale(), {
     day: "numeric",
     month: "long",
     timeZone,
@@ -20,7 +22,7 @@ const formatDay = (timestamp: number, timeZone: string): string =>
   }).format(timestamp);
 
 const formatShortDay = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+  new Intl.DateTimeFormat(currentIntlLocale(), {
     day: "numeric",
     month: "short",
     timeZone,
@@ -28,7 +30,10 @@ const formatShortDay = (timestamp: number, timeZone: string): string =>
   }).format(timestamp);
 
 const formatWhen = (timestamp: number, timeZone: string): string =>
-  `${formatDay(timestamp, timeZone)} at ${formatTime(timestamp, timeZone)}`;
+  currentMessages().format.at(
+    formatDay(timestamp, timeZone),
+    formatTime(timestamp, timeZone)
+  );
 
 const dayKey = (timestamp: number, timeZone: string): string =>
   new Intl.DateTimeFormat("en-CA", {
@@ -45,17 +50,18 @@ const relativeDay = (
   now = Date.now()
 ): string => {
   const key = dayKey(timestamp, timeZone);
+  const words = currentMessages().format;
 
   if (key === dayKey(now, timeZone)) {
-    return "Today";
+    return words.today;
   }
 
   if (key === dayKey(now + DAY, timeZone)) {
-    return "Tomorrow";
+    return words.tomorrow;
   }
 
   if (key === dayKey(now - DAY, timeZone)) {
-    return "Yesterday";
+    return words.yesterday;
   }
 
   return formatDay(timestamp, timeZone);
@@ -64,30 +70,31 @@ const relativeDay = (
 /** "Just now", "12 minutes ago", "Yesterday at 4:10 PM". */
 const ago = (timestamp: number, timeZone: string, now = Date.now()): string => {
   const elapsed = now - timestamp;
+  const words = currentMessages().format;
 
   if (elapsed < MINUTE) {
-    return "Just now";
+    return words.justNow;
   }
 
   if (elapsed < HOUR) {
-    const minutes = Math.round(elapsed / MINUTE);
-
-    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+    return words.minutesAgo(Math.round(elapsed / MINUTE));
   }
 
   if (elapsed < 6 * HOUR) {
-    const hours = Math.round(elapsed / HOUR);
-
-    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+    return words.hoursAgo(Math.round(elapsed / HOUR));
   }
 
-  return `${relativeDay(timestamp, timeZone, now)} at ${formatTime(timestamp, timeZone)}`;
+  return words.at(
+    relativeDay(timestamp, timeZone, now),
+    formatTime(timestamp, timeZone)
+  );
 };
 
 const money = (cents: number): string =>
-  new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" }).format(
-    cents / 100
-  );
+  new Intl.NumberFormat(currentIntlLocale(), {
+    currency: "USD",
+    style: "currency",
+  }).format(cents / 100);
 
 /** For <input type="datetime-local">: the wall-clock value in the person's zone. */
 const toLocalInputValue = (timestamp: number, timeZone: string): string => {

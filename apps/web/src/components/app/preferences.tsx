@@ -4,12 +4,14 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { helpStyleOf } from "@lifelink/contracts/help-style";
 import type { ExplanationDetail } from "@lifelink/contracts/help-style";
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import type { NewsKind } from "@lifelink/contracts/news";
 import { useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 import { createContext, use, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 
+import { setLocale } from "@/i18n/locale";
 import { saveDisplay } from "@/lib/display";
 
 interface Preferences {
@@ -66,6 +68,11 @@ const PreferencesProvider = ({ children }: { children: ReactNode }) => {
       textScale: stored.textScale,
     });
     setTheme(stored.theme);
+
+    // Screens follow a language the person chose; without a choice, the browser's language stays.
+    if (stored.supportLanguage !== undefined) {
+      setLocale(interfaceLocaleOf(stored.supportLanguage));
+    }
   }, [stored, setTheme]);
 
   const value = useMemo<PreferencesValue>(

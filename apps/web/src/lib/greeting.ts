@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 
+import { currentMessages, useLocale } from "@/i18n/locale";
 import { MINUTE } from "@/lib/format";
 
 const AFTERNOON_HOUR = 12;
@@ -17,12 +18,13 @@ const hourIn = (timeZone: string): number =>
 
 const greetingIn = (timeZone: string): string => {
   const hour = hourIn(timeZone);
+  const words = currentMessages().greeting;
 
   if (hour < AFTERNOON_HOUR) {
-    return "Good morning";
+    return words.morning;
   }
 
-  return hour < EVENING_HOUR ? "Good afternoon" : "Good evening";
+  return hour < EVENING_HOUR ? words.afternoon : words.evening;
 };
 
 // Today and Ask are often left open all day, so wording follows the clock.
@@ -32,14 +34,18 @@ const subscribeToClock = (onChange: () => void) => {
   return () => globalThis.clearInterval(timer);
 };
 
-const serverGreeting = (): string => "Hello";
+const serverGreeting = (): string => currentMessages().greeting.hello;
 
 /** One greeting for Today and Ask, so the two screens never disagree. */
-const useGreeting = (timeZone: string): string =>
-  useSyncExternalStore(
+const useGreeting = (timeZone: string): string => {
+  // Read so the greeting follows a language change, not only the clock.
+  useLocale();
+
+  return useSyncExternalStore(
     subscribeToClock,
     () => greetingIn(timeZone),
     serverGreeting
   );
+};
 
 export { subscribeToClock, useGreeting };
