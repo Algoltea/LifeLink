@@ -2,10 +2,10 @@
 
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { Pill } from "@lifelink/ui/components/pill";
-import { MessageCircleIcon, PencilIcon } from "lucide-react";
+import { MessageCircleIcon, PencilIcon, ShieldCheckIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { IsoIcon } from "@/components/app/iso-icon";
@@ -55,12 +55,20 @@ const ContactRow = ({
   imessageContext,
   imessageRow,
   onEdit,
+  onPermissions,
+  permissions,
+  permissionsOpen,
+  sharingSummary,
 }: {
   contact: CircleContact;
   editRef: Ref<HTMLButtonElement>;
   imessageContext: IMessageContext | undefined;
   imessageRow: IMessageContact | undefined;
   onEdit: () => void;
+  onPermissions: () => void;
+  permissions: ReactNode;
+  permissionsOpen: boolean;
+  sharingSummary: string;
 }) => {
   const usesIMessage = contact.channels.some(
     (channel) => channel.channel === "imessage"
@@ -71,7 +79,7 @@ const ContactRow = ({
     : null;
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-xl px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+    <li className="border-rule grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b pb-5 last:border-b-0 @4xl/content:grid-cols-[auto_minmax(0,1fr)_auto]">
       <Avatar
         className="self-start sm:self-center"
         hue={contact.hue}
@@ -84,10 +92,12 @@ const ContactRow = ({
             {contact.name}
           </span>
           {contact.trusted ? <TrustedBadge /> : null}
+          {contact.sample ? <Pill>Practice contact</Pill> : null}
         </span>
         <span className="text-muted-foreground text-label">
           {contact.relationship || "Contact"} · {reachLine(contact)}
         </span>
+        <p className="text-label mt-2 wrap-anywhere">{sharingSummary}</p>
         {status ? (
           <span className="flex pt-1.5">
             <Pill className="text-label whitespace-normal" tone={status.tone}>
@@ -96,7 +106,7 @@ const ContactRow = ({
           </span>
         ) : null}
       </div>
-      <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1">
+      <div className="col-span-2 flex flex-wrap items-center gap-2 @4xl/content:col-span-1 @4xl/content:col-start-3 @4xl/content:row-start-1">
         <Link
           className={buttonVariants({ size: "sm", variant: "outline" })}
           // SAFETY: a stored contact id, and /messages/[contactId] is a real route.
@@ -106,11 +116,28 @@ const ContactRow = ({
           Message
           <span className="sr-only"> {contact.name}</span>
         </Link>
+        <Button
+          aria-controls={`permissions-${contact._id}`}
+          aria-expanded={permissionsOpen}
+          onClick={onPermissions}
+          variant="outline"
+        >
+          <ShieldCheckIcon aria-hidden="true" />
+          Permissions
+          <span className="sr-only"> for {contact.name}</span>
+        </Button>
         <Button onClick={onEdit} ref={editRef} size="sm" variant="ghost">
           <PencilIcon aria-hidden="true" />
           Edit
           <span className="sr-only"> {contact.name}</span>
         </Button>
+      </div>
+      <div
+        className="col-span-2 min-w-0 @4xl/content:col-span-3"
+        hidden={!permissionsOpen}
+        id={`permissions-${contact._id}`}
+      >
+        {permissionsOpen ? permissions : null}
       </div>
     </li>
   );

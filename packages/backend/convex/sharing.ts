@@ -72,6 +72,7 @@ export const listGrants = query({
 
         return {
           acceptedAt: grant.acceptedAt,
+          contactId: grant.contactId,
           contactName: contact?.name ?? "Removed contact",
           createdAt: grant.createdAt,
           expiresAt: grant.expiresAt,

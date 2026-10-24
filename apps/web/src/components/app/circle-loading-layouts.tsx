@@ -24,29 +24,24 @@ const CircleLoadingHeader = () => (
 
 const CircleLoadingRows = ({ rows }: { rows: number }) => (
   <div className="flex min-w-0 flex-col gap-4" data-loading-part="circle-rows">
-    <div className="text-label flex items-start gap-2">
-      <Skeleton className="mt-0.5 size-4 shrink-0" />
-      <div className="relative">
-        <p className="invisible">
-          These are sample people, so you can practice safely.
-        </p>
-        <Skeleton className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2" />
-      </div>
-    </div>
     <div className="flex flex-col gap-1">
       {Array.from({ length: rows }, (_unused, index) => (
         <div
-          className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-xl px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+          className="border-rule grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b pb-5 last:border-b-0 @4xl/content:grid-cols-[auto_minmax(0,1fr)_auto]"
           key={index}
         >
           <Skeleton className="size-12 self-start rounded-full sm:self-center" />
           <div className="min-w-0">
             <CircleLine className="w-4/5" />
             <CircleLine className="h-[1.333rem]" />
+            <CircleLine className="mt-2 w-3/4" />
           </div>
-          <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-1">
+          <div className="col-span-2 flex flex-wrap items-center gap-2 @4xl/content:col-span-1 @4xl/content:col-start-3 @4xl/content:row-start-1">
             <LoadingButton className="text-[0.889rem]" icon>
               Message
+            </LoadingButton>
+            <LoadingButton icon variant="outline">
+              Permissions
             </LoadingButton>
             <LoadingButton icon variant="ghost">
               Edit
@@ -67,34 +62,12 @@ const SharingLoadingBody = () => (
 );
 
 const CircleLoadingContent = () => (
-  <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,20.5rem)]">
-    <div className="flex max-w-3xl min-w-0 flex-col gap-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <CircleLine className="h-[1.778rem] w-28" />
-        <CircleLine className="h-[1.333rem] w-20" />
-      </div>
-      <CircleLoadingRows rows={3} />
+  <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex items-baseline justify-between gap-3">
+      <CircleLine className="h-[1.778rem] w-28" />
+      <CircleLine className="h-[1.333rem] w-20" />
     </div>
-    <div className="bg-parchment flex min-w-0 flex-col gap-4 rounded-xl p-5 sm:p-6">
-      <CircleLine className="h-[1.778rem] w-32" />
-      <div className="flex items-start gap-3">
-        <Skeleton className="mt-0.5 size-6 shrink-0" />
-        <div className="relative">
-          <p className="invisible">
-            <strong className="font-semibold">Family can only look.</strong>{" "}
-            They can never send, approve, or spend anything for you.
-          </p>
-          <Skeleton className="absolute inset-x-0 top-1 h-4" />
-          <Skeleton className="absolute inset-x-0 bottom-1 h-4" />
-        </div>
-      </div>
-      <div className="border-rule flex flex-col gap-4 border-t pt-4">
-        <SharingLoadingBody />
-        <LoadingButton className="self-start" icon size="default">
-          Share with someone
-        </LoadingButton>
-      </div>
-    </div>
+    <CircleLoadingRows rows={3} />
   </div>
 );
 

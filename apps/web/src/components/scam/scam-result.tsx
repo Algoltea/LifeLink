@@ -57,6 +57,12 @@ const KIND_WORDS: Record<Doc<"scamReviews">["inputKind"], string> = {
   text: "A message",
 };
 
+const CHECK_TITLES = {
+  email: "Your email check",
+  screenshot: "Your photo check",
+  text: "Your message check",
+} as const;
+
 const checkMethod = (review: Review): string => {
   if (!review.model.startsWith("rules")) {
     return review.cloudAnalysisConsent === true
@@ -101,7 +107,7 @@ const SignalList = ({
   <ul className="flex flex-col gap-5">
     {signals.map((signal, index) => (
       <li className="flex flex-col gap-1" key={`${signal.label}-${index}`}>
-        <h4 className="text-lg font-semibold">{signal.label}</h4>
+        <h3 className="text-lg font-semibold">{signal.label}</h3>
         {signal.quote ? (
           <blockquote className="text-neutral-ink pl-5 text-lg wrap-anywhere">
             “{signal.quote}”
@@ -294,8 +300,10 @@ const ResultBanner = ({
           />
         )}
         <div className="flex min-w-0 flex-col gap-2">
-          <h3 className="text-section font-semibold">{verdict.label}</h3>
-          <p className="text-lg leading-relaxed">{review.explanation}</p>
+          <h2 className="text-section font-semibold">{verdict.label}</h2>
+          <p className="max-w-prose text-lg leading-relaxed">
+            {review.explanation}
+          </p>
         </div>
       </div>
       <ReadAloudButton
@@ -384,6 +392,20 @@ const Evidence = ({
           )}
         </Disclosure>
       ) : null}
+      {!photo && review.inputText ? (
+        <Disclosure
+          icon={<FileTextIcon />}
+          labelId={`original-${review._id}`}
+          note="The wording saved with this check"
+          title={
+            review.inputKind === "email" ? "Original email" : "Original message"
+          }
+        >
+          <p className="text-lg wrap-anywhere whitespace-pre-wrap">
+            {review.inputText}
+          </p>
+        </Disclosure>
+      ) : null}
       <Disclosure
         icon={<ShieldQuestionIcon />}
         labelId={`method-${review._id}`}
@@ -416,11 +438,11 @@ const Recovery = ({
 
   return (
     <div className="flex flex-col items-start gap-4">
-      <h3 className="text-section font-semibold">
+      <h2 className="text-section font-semibold">
         {unreadable
           ? "LifeLink couldn’t read this photo clearly"
           : "The check didn’t finish"}
-      </h3>
+      </h2>
       <p className="text-lg">
         {photo
           ? "Try a clearer photo in good light with all the words in view, or type the words instead. This check can’t tell you whether the message is genuine."
@@ -480,11 +502,11 @@ const ResultContent = ({
   if (review.status === "reviewing") {
     return (
       <div aria-live="polite" className="flex flex-col gap-3">
-        <h3 className="text-section font-semibold">
+        <h2 className="text-section font-semibold">
           {photo
             ? "Reading the words in your photo…"
             : "Checking your message…"}
-        </h3>
+        </h2>
         <p className="text-lg">
           This usually takes a few seconds. Keep this page open. Until then,
           don’t use links or phone numbers in the message, or pay anyone.
@@ -510,32 +532,62 @@ const ResultContent = ({
         {photo ? <PhotoThumbnail url={review.photoUrl} /> : null}
         <ResultBanner review={review} spoken={spoken} />
       </div>
-      <Evidence review={review} timeZone={timeZone} />
-      {review.nextSteps.length > 0 ? (
+      <div className="grid min-w-0 items-start gap-8 @4xl/content:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
+        {review.nextSteps.length > 0 ? (
+          <section
+            aria-labelledby={`next-${review._id}`}
+            className="bg-parchment flex min-w-0 flex-col gap-4 rounded-xl p-5 sm:p-6"
+          >
+            <h2
+              className="text-section font-semibold"
+              id={`next-${review._id}`}
+            >
+              What to do now
+            </h2>
+            {preferences.stepByStep ? (
+              <OneAtATime
+                noun="Step"
+                steps={review.nextSteps.map((step, index) => ({
+                  content: <p className="text-lg">{step}</p>,
+                  key: `${index}-${step}`,
+                }))}
+              />
+            ) : (
+              <ol className="flex list-decimal flex-col gap-3 pl-6 text-lg">
+                {review.nextSteps.map((step, index) => (
+                  <li key={`${index}-${step}`}>{step}</li>
+                ))}
+              </ol>
+            )}
+          </section>
+        ) : (
+          <section className="bg-parchment flex flex-col gap-3 rounded-xl p-5 sm:p-6">
+            <h2 className="text-section font-semibold">What to do now</h2>
+            <p className="text-lg">
+              Before acting on an unexpected request, check with someone you
+              know using their saved contact details.
+            </p>
+          </section>
+        )}
         <section
-          aria-labelledby={`next-${review._id}`}
-          className="flex flex-col gap-3"
+          aria-labelledby={`help-${review._id}`}
+          className="flex min-w-0 flex-col gap-3"
         >
-          <h3 className="text-xl font-semibold" id={`next-${review._id}`}>
-            What to do now
-          </h3>
-          {preferences.stepByStep ? (
-            <OneAtATime
-              noun="Step"
-              steps={review.nextSteps.map((step, index) => ({
-                content: <p className="text-lg">{step}</p>,
-                key: `${index}-${step}`,
-              }))}
-            />
-          ) : (
-            <ol className="flex list-decimal flex-col gap-3 pl-6 text-lg">
-              {review.nextSteps.map((step, index) => (
-                <li key={`${index}-${step}`}>{step}</li>
-              ))}
-            </ol>
-          )}
+          <h2 className="text-section font-semibold" id={`help-${review._id}`}>
+            Ask someone you trust
+          </h2>
+          <TrustedPeople reviewId={review._id} />
         </section>
-      ) : null}
+      </div>
+      <section
+        aria-labelledby={`details-${review._id}`}
+        className="flex min-w-0 flex-col gap-3"
+      >
+        <h2 className="text-section font-semibold" id={`details-${review._id}`}>
+          About this check
+        </h2>
+        <Evidence review={review} timeZone={timeZone} />
+      </section>
     </>
   );
 };
@@ -558,10 +610,9 @@ const ScamResult = ({
   timeZone: string;
 }) => {
   const resultRef = useRef<HTMLElement>(null);
-  const photo = review.inputKind === "screenshot";
   useEffect(() => {
     if (review.status) {
-      resultRef.current?.focus();
+      resultRef.current?.focus({ preventScroll: true });
     }
   }, [review.status]);
 
@@ -574,12 +625,12 @@ const ScamResult = ({
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h2
-            className="text-section font-semibold"
+          <h1
+            className="text-mobile-title sm:text-page-title font-semibold tracking-tight"
             id={`review-${review._id}`}
           >
-            {photo ? "Your photo check" : "Your message check"}
-          </h2>
+            {CHECK_TITLES[review.inputKind]}
+          </h1>
           <div className="flex flex-wrap items-center gap-2">
             <ModePill mode={review.mode} />
             <p className="text-muted-foreground text-lg">
@@ -597,28 +648,30 @@ const ScamResult = ({
           </Button>
         ) : null}
       </header>
-      <div className="grid min-w-0 items-start gap-8 @4xl/content:grid-cols-[minmax(0,1fr)_1px_25rem] @4xl/content:gap-8">
-        <div className="flex min-w-0 flex-col gap-7">
-          <ResultContent
-            onTryPhoto={onTryPhoto}
-            onTypeWords={onTypeWords}
-            review={review}
-            timeZone={timeZone}
-          />
-          {onDeleted ? (
-            <DeleteCheck
-              onDeleted={onDeleted}
-              onDeleting={onDeleting}
-              review={review}
-            />
-          ) : null}
-        </div>
-        <div
-          aria-hidden="true"
-          className="bg-rule h-px @4xl/content:h-auto @4xl/content:w-px @4xl/content:self-stretch"
+      <ResultContent
+        onTryPhoto={onTryPhoto}
+        onTypeWords={onTypeWords}
+        review={review}
+        timeZone={timeZone}
+      />
+      {review.status !== "done" || review.imageReadable === false ? (
+        <section
+          aria-labelledby={`help-${review._id}`}
+          className="flex flex-col gap-3"
+        >
+          <h2 className="text-section font-semibold" id={`help-${review._id}`}>
+            Ask someone you trust
+          </h2>
+          <TrustedPeople reviewId={review._id} />
+        </section>
+      ) : null}
+      {onDeleted ? (
+        <DeleteCheck
+          onDeleted={onDeleted}
+          onDeleting={onDeleting}
+          review={review}
         />
-        <TrustedPeople reviewId={review._id} />
-      </div>
+      ) : null}
     </article>
   );
 };

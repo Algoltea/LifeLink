@@ -55,6 +55,74 @@ describe("family access", () => {
     ).resolves.toBeNull();
   });
 
+  it("keeps permissions tied to the correct contact when names match", async () => {
+    const backend = newBackend();
+    const { owner, contactId } = await ownerWithContact(backend, false);
+
+    const otherContactId = await owner.mutation(api.contacts.create, {
+      channels: [
+        {
+          address: "another-sam@example.com",
+          channel: "email",
+          preferred: true,
+        },
+      ],
+      name: "Sam Alvarez",
+      relationship: "Friend",
+      trusted: true,
+    });
+
+    const first = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const second = await owner.mutation(api.sharing.createInvite, {
+      contactId: otherContactId,
+      expiresInDays: 7,
+      scopes: ["groceries.view"],
+    });
+
+    const grants = await owner.query(api.sharing.listGrants, {});
+
+    expect(grants.find((grant) => grant.id === first.grantId)).toMatchObject({
+      contactId,
+      scopes: ["appointments.view"],
+      state: "invited",
+    });
+    expect(grants.find((grant) => grant.id === second.grantId)).toMatchObject({
+      contactId: otherContactId,
+      scopes: ["groceries.view"],
+      state: "invited",
+    });
+
+    await owner.mutation(api.sharing.updateScopes, {
+      grantId: first.grantId,
+      scopes: ["rides.view"],
+    });
+    await owner.mutation(api.sharing.revoke, { grantId: second.grantId });
+    const updated = await owner.query(api.sharing.listGrants, {});
+
+    expect(
+      updated.find((grant) => grant.contactId === contactId)
+    ).toMatchObject({ scopes: ["rides.view"], state: "invited" });
+    expect(
+      updated.find((grant) => grant.contactId === otherContactId)
+    ).toMatchObject({ scopes: ["groceries.view"], state: "revoked" });
+
+    const { person: stranger } = await signUp(backend, {
+      demo: false,
+      name: "Another Owner",
+      role: "owner",
+      subject: "another-owner",
+    });
+
+    await expect(
+      stranger.query(api.sharing.listGrants, {})
+    ).resolves.toStrictEqual([]);
+  });
+
   it("denies an expired grant", async () => {
     const backend = newBackend();
     const { owner, ownerId } = await ownerWithContact(backend, false);
