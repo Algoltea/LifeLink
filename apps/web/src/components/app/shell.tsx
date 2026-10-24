@@ -224,15 +224,14 @@ const Notices = () => {
       {demo ? (
         <div className="border-border bg-parchment text-muted-foreground text-label flex flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
           <p>
-            <strong className="font-semibold">Practice mode.</strong> Sample
-            people and practice replies. Nothing is sent to real people or
-            ordered.
+            <strong className="font-semibold">Practice mode is on.</strong> No
+            real messages are sent.
           </p>
           <Link
             className="min-h-control inline-flex items-center font-medium underline"
             href="/settings#demo"
           >
-            Turn off
+            Turn off practice mode
           </Link>
         </div>
       ) : null}
@@ -270,11 +269,10 @@ const MobileMenu = ({
               Menu
             </DialogPrimitive.Title>
             <DialogPrimitive.Close
-              render={
-                <Button aria-label="Close menu" size="icon" variant="ghost" />
-              }
+              render={<Button aria-label="Close menu" variant="ghost" />}
             >
-              <XIcon className="size-6" />
+              <XIcon aria-hidden="true" className="size-6" />
+              Close
             </DialogPrimitive.Close>
           </div>
           <NavList groups={groups} onNavigate={() => setOpen(false)} />
