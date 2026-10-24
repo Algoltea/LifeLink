@@ -11,6 +11,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
+import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
@@ -86,18 +87,23 @@ const FileRow = ({
     onClick={onSelect}
     type="button"
   >
-    <span className="flex min-w-0 flex-col gap-1">
-      <span
-        className={cn(
-          "text-lg wrap-anywhere",
-          isSelected && "text-accent-foreground font-semibold"
-        )}
-      >
-        {file.name}
-      </span>
-      <span className="text-muted-foreground text-base">
-        {file.kind}
-        {file.modifiedAt === null ? "" : ` · ${ago(file.modifiedAt, timeZone)}`}
+    <span className="flex min-w-0 items-center gap-3">
+      <IsoIcon kind={fileIconFor(file.kind)} size={48} />
+      <span className="flex min-w-0 flex-col gap-1">
+        <span
+          className={cn(
+            "text-lg wrap-anywhere",
+            isSelected && "text-accent-foreground font-semibold"
+          )}
+        >
+          {file.name}
+        </span>
+        <span className="text-muted-foreground text-base">
+          {file.kind}
+          {file.modifiedAt === null
+            ? ""
+            : ` · ${ago(file.modifiedAt, timeZone)}`}
+        </span>
       </span>
     </span>
     <ChevronRightIcon
