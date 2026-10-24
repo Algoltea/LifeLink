@@ -10,6 +10,8 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import { startCodeOf } from "./integrations/telegram";
+import { audit } from "./lib/audit";
 import { readEnv } from "./lib/env";
 import {
   acceptImessageConversation,
@@ -18,8 +20,9 @@ import {
 import { recordIncoming } from "./lib/incoming";
 
 const MAX_PAYLOAD = 4000;
+const START_COMMAND = /^\/start\b/u;
 
-type Provider = "composio" | "discord" | "photon";
+type Provider = "composio" | "discord" | "photon" | "telegram";
 
 /** Insert the event once. Returns null when the same event was already recorded. */
 const recordEvent = async (
@@ -78,7 +81,7 @@ const settle = async (
  */
 const routeToContact = async (
   ctx: MutationCtx,
-  channel: "discord" | "imessage",
+  channel: "discord" | "imessage" | "telegram",
   address: string
 ): Promise<Doc<"contacts"> | null> => {
   const normalized = address.trim().toLowerCase();
@@ -333,6 +336,161 @@ export const discordMessage = internalMutation({
       ownerId: contact.ownerId,
       photoIds: [],
       providerMessageId: `discord:${args.messageId}`,
+    });
+    await settle(ctx, eventId, "processed", contact.ownerId);
+
+    return "processed";
+  },
+});
+
+// ── Telegram (webhook, secret-token checked by the HTTP route) ────────────
+
+const notifyTelegram = async (
+  ctx: MutationCtx,
+  chatId: string,
+  text: string
+): Promise<void> => {
+  await ctx.scheduler.runAfter(0, internal.telegram.notify, { chatId, text });
+};
+
+/** `/start <code>`: bind this chat to the one contact the code was made for. */
+const linkTelegramChat = async (
+  ctx: MutationCtx,
+  eventId: Id<"incomingEvents">,
+  args: {
+    chatId: string;
+    firstName: string | null;
+    text: string;
+    username: string | null;
+  }
+): Promise<string> => {
+  const code = startCodeOf(args.text);
+
+  const link =
+    code === null
+      ? null
+      : await ctx.db
+          .query("telegramLinks")
+          .withIndex("by_code", (index) => index.eq("code", code))
+          .unique();
+
+  const contact = link === null ? null : await ctx.db.get(link.contactId);
+
+  if (
+    link === null ||
+    contact === null ||
+    link.codeExpiresAt === null ||
+    link.codeExpiresAt < Date.now()
+  ) {
+    await notifyTelegram(
+      ctx,
+      args.chatId,
+      "This link has expired or was already used. Ask the person who uses LifeLink to send you a new one."
+    );
+    await settle(ctx, eventId, "ignored", null, "Unknown or expired link.");
+
+    return "ignored";
+  }
+
+  const owner = await ctx.db.get(link.ownerId);
+  const hasPreferred = contact.channels.some((channel) => channel.preferred);
+
+  // The code is single-use: clearing it means a forwarded link cannot be replayed.
+  await ctx.db.patch(link._id, {
+    chatId: args.chatId,
+    code: null,
+    codeExpiresAt: null,
+    firstName: args.firstName,
+    linkedAt: Date.now(),
+    username: args.username,
+  });
+  await ctx.db.patch(contact._id, {
+    channels: [
+      ...contact.channels.filter((channel) => channel.channel !== "telegram"),
+      { address: args.chatId, channel: "telegram", preferred: !hasPreferred },
+    ],
+  });
+  await audit(ctx, {
+    actor: "provider",
+    detail: `${contact.name} linked their Telegram.`,
+    event: "contact.telegram_linked",
+    ownerId: link.ownerId,
+  });
+  await notifyTelegram(
+    ctx,
+    args.chatId,
+    `You're connected. Messages from ${owner?.preferredName ?? "your family member"} will arrive here, and your replies go back to them.`
+  );
+  await settle(ctx, eventId, "processed", link.ownerId);
+
+  return "processed";
+};
+
+export const telegramUpdate = internalMutation({
+  args: {
+    chatId: v.string(),
+    chatType: v.string(),
+    firstName: v.union(v.string(), v.null()),
+    fromBot: v.boolean(),
+    hasPhoto: v.boolean(),
+    messageId: v.string(),
+    payload: v.string(),
+    text: v.string(),
+    updateId: v.string(),
+    username: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const eventId = await recordEvent(
+      ctx,
+      "telegram",
+      args.updateId,
+      "message",
+      args.payload
+    );
+
+    if (eventId === null) {
+      return "duplicate";
+    }
+
+    // Only one-to-one chats with real people; groups and bots never reach a household.
+    if (args.chatType !== "private" || args.fromBot) {
+      await settle(ctx, eventId, "ignored", null, "Not a private chat.");
+
+      return "ignored";
+    }
+
+    if (START_COMMAND.test(args.text.trim())) {
+      return await linkTelegramChat(ctx, eventId, args);
+    }
+
+    const contact = await routeToContact(ctx, "telegram", args.chatId);
+
+    const body =
+      args.text.trim() ||
+      (args.hasPhoto ? "(Sent a photo. Open Telegram to see it.)" : "");
+
+    if (contact === null || body.length === 0) {
+      await settle(
+        ctx,
+        eventId,
+        "ignored",
+        null,
+        contact === null
+          ? "The chat is not linked to anyone's contact."
+          : "Empty message."
+      );
+
+      return "ignored";
+    }
+
+    await recordIncoming(ctx, {
+      body,
+      channel: "telegram",
+      contactId: contact._id,
+      mode: "live",
+      ownerId: contact.ownerId,
+      photoIds: [],
+      providerMessageId: `telegram:${args.chatId}:${args.messageId}`,
     });
     await settle(ctx, eventId, "processed", contact.ownerId);
 

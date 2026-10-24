@@ -14,6 +14,7 @@ const mode = v.union(v.literal("live"), v.literal("simulated"));
 const messageChannel = v.union(
   v.literal("imessage"),
   v.literal("discord"),
+  v.literal("telegram"),
   v.literal("email"),
   v.literal("in_app")
 );
@@ -942,6 +943,22 @@ export default defineSchema({
 
   // One forecast per saved location (postal code, city, time zone), shared by everyone who saved it.
   // A null forecast with a fetchedAt records that the place was not found, so it is not searched again at once.
+  // One per contact. A one-time code links their Telegram chat to this contact;
+  // only a chat proven through that code may ever be saved as their address.
+  telegramLinks: defineTable({
+    chatId: v.union(v.string(), v.null()),
+    code: v.union(v.string(), v.null()),
+    codeExpiresAt: v.union(v.number(), v.null()),
+    contactId: v.id("contacts"),
+    createdAt: v.number(),
+    firstName: v.union(v.string(), v.null()),
+    linkedAt: v.union(v.number(), v.null()),
+    ownerId: v.id("profiles"),
+    username: v.union(v.string(), v.null()),
+  })
+    .index("by_code", ["code"])
+    .index("by_contact", ["contactId"]),
+
   weatherCache: defineTable({
     fetchedAt: v.number(),
     forecast: v.union(forecast, v.null()),

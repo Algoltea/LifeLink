@@ -25,6 +25,10 @@ import { createDraft, findMail, sendMail } from "./integrations/mail";
 import type { MailAccount, OutgoingMail } from "./integrations/mail";
 import { photonConfig } from "./integrations/photon";
 import type { PhotonResult } from "./integrations/photon";
+import {
+  botToken as telegramToken,
+  sendTelegramMessage,
+} from "./integrations/telegram";
 import { activeMailbox, INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import {
   photonReconciliationValidator,
@@ -71,6 +75,7 @@ const providerFor = (
         email: "composio",
         imessage: "photon",
         in_app: "lifelink",
+        telegram: "telegram",
       }[details.channel];
     }
 
@@ -651,6 +656,53 @@ const sendViaDiscord = async (
   };
 };
 
+const sendViaTelegram = async (
+  ctx: ActionCtx,
+  start: StartedAttempt,
+  details: Extract<ActionDetails, { kind: "send_message" }>
+): Promise<PerformResult> => {
+  const token = telegramToken();
+
+  if (token === null) {
+    return {
+      handleCache: null,
+      result: {
+        error: "Telegram is not set up for this app.",
+        kind: "failed_safe",
+      },
+    };
+  }
+
+  const photos = await loadPhotos(ctx, start.photoStorageIds);
+
+  const sent = await sendTelegramMessage(
+    token,
+    details.address,
+    details.body,
+    photos
+  );
+
+  if (sent.kind === "ok") {
+    return {
+      handleCache: null,
+      result: {
+        kind: "succeeded",
+        reference: sent.id,
+        summary: `Telegram delivered the message to ${details.contactName}'s chat.`,
+        url: null,
+      },
+    };
+  }
+
+  return {
+    handleCache: null,
+    result:
+      sent.kind === "rejected"
+        ? { error: sent.error, kind: "failed_safe" }
+        : { error: sent.error, kind: "unknown" },
+  };
+};
+
 const fromTool = (
   outcome: Awaited<ReturnType<typeof sendMail>>,
   summary: string
@@ -700,6 +752,10 @@ const performLive = async (
 
       if (details.channel === "discord") {
         return await sendViaDiscord(ctx, start, details);
+      }
+
+      if (details.channel === "telegram") {
+        return await sendViaTelegram(ctx, start, details);
       }
 
       if (details.channel === "in_app") {
@@ -1494,6 +1550,12 @@ const reconcileWithProvider = async (
 
   if (details.kind === "send_message" && details.channel === "discord") {
     return await reconcileDiscord(context, details.body);
+  }
+
+  // Telegram offers no idempotency key and bots cannot read chat history, so
+  // only the person can say whether an uncertain message arrived.
+  if (details.kind === "send_message" && details.channel === "telegram") {
+    return CANNOT_TELL;
   }
 
   if (mailbox === null) {

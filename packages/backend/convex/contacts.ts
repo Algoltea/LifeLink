@@ -10,12 +10,14 @@ import {
 } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireOwned, requireOwner, requireProfile } from "./lib/session";
+import { verifiedTelegramChat } from "./lib/telegram";
 
 const channelValidator = v.object({
   address: v.string(),
   channel: v.union(
     v.literal("imessage"),
     v.literal("discord"),
+    v.literal("telegram"),
     v.literal("email"),
     v.literal("in_app")
   ),
@@ -35,12 +37,12 @@ const DISCORD_ID_PATTERN = /^\d{15,21}$/u;
 const cleanChannels = (
   channels: {
     address: string;
-    channel: "discord" | "email" | "imessage" | "in_app";
+    channel: "discord" | "email" | "imessage" | "in_app" | "telegram";
     preferred: boolean;
   }[]
 ): {
   address: string;
-  channel: "discord" | "email" | "imessage" | "in_app";
+  channel: "discord" | "email" | "imessage" | "in_app" | "telegram";
   preferred: boolean;
 }[] => {
   const cleaned = channels.map((channel) => {
@@ -91,6 +93,30 @@ const cleanChannels = (
   }
 
   return cleaned;
+};
+
+/** A Telegram address is only ever the chat this contact proved through their link. */
+const checkTelegramChannels = async (
+  ctx: MutationCtx,
+  contactId: Id<"contacts"> | null,
+  channels: { address: string; channel: string }[]
+): Promise<void> => {
+  const telegram = channels.filter((channel) => channel.channel === "telegram");
+
+  if (telegram.length === 0) {
+    return;
+  }
+
+  const verified =
+    contactId === null ? null : await verifiedTelegramChat(ctx, contactId);
+
+  if (telegram.some((channel) => channel.address !== verified)) {
+    throw new ConvexError({
+      code: "invalid",
+      message:
+        "Telegram can only be added by linking it: save this person, then choose Edit and Link Telegram.",
+    });
+  }
 };
 
 /** WhatsApp numbers are stored for reference only, normalised like iMessage numbers. */
@@ -179,8 +205,12 @@ export const create = mutation({
       });
     }
 
+    const channels = cleanChannels(args.channels);
+
+    await checkTelegramChannels(ctx, null, channels);
+
     const contactId = await ctx.db.insert("contacts", {
-      channels: cleanChannels(args.channels),
+      channels,
       createdAt: Date.now(),
       hue: hueFor(name),
       linkedProfileId: null,
@@ -221,8 +251,12 @@ export const update = mutation({
       "contact"
     );
 
+    const channels = cleanChannels(args.channels);
+
+    await checkTelegramChannels(ctx, contact._id, channels);
+
     await ctx.db.patch(contact._id, {
-      channels: cleanChannels(args.channels),
+      channels,
       name: args.name.trim() || contact.name,
       relationship: args.relationship.trim(),
       trusted: args.trusted,
@@ -271,6 +305,15 @@ export const remove = mutation({
             await ctx.db.patch(grant._id, { revokedAt: now, updatedAt: now })
         )
     );
+
+    const telegramLink = await ctx.db
+      .query("telegramLinks")
+      .withIndex("by_contact", (index) => index.eq("contactId", contact._id))
+      .unique();
+
+    if (telegramLink !== null) {
+      await ctx.db.delete(telegramLink._id);
+    }
 
     await deleteAvatar(ctx, contact.avatarId);
     await ctx.db.delete(contact._id);

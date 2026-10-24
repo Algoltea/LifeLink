@@ -242,6 +242,7 @@ export const receive = internalMutation({
     channel: v.union(
       v.literal("imessage"),
       v.literal("discord"),
+      v.literal("telegram"),
       v.literal("email"),
       v.literal("in_app")
     ),
