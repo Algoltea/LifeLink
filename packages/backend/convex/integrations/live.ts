@@ -73,9 +73,8 @@ const setupFor = (model: string, purpose: LiveTokenPurpose) => ({
         tools: [{ functionDeclarations: [SUBMIT_TOOL] }],
       }
     : {
-        // Proactive audio lets Gemini stay silent; clients must also ignore output.
-        // https://ai.google.dev/gemini-api/docs/live-api/capabilities#proactive-audio
-        proactivity: { proactiveAudio: true },
+        // v1beta rejects `proactivity` (proactive audio is v1alpha-only), so
+        // silence rests on the instruction; clients must also ignore output.
         systemInstruction: {
           parts: [{ text: CALL_SCREENING_INSTRUCTION }],
         },

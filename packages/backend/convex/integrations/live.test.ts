@@ -123,7 +123,6 @@ describe("Gemini Live token", () => {
         generationConfig: { responseModalities: ["AUDIO"] },
         inputAudioTranscription: {},
         model: "models/test-live-model",
-        proactivity: { proactiveAudio: true },
         systemInstruction: {
           parts: [
             {

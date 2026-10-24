@@ -3,7 +3,9 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
 import {
-  detectCallFlags,
+  callFlagsFromSigns,
+  callTranscriptWindow,
+  countCallWords,
   finalizeCallCaptions,
   PRACTICE_CALL_DURATION_MS,
   PRACTICE_CALL_SCRIPT,
@@ -23,6 +25,8 @@ import type { CallAlertAudio } from "./call-alert-audio";
 const MAX_CALL_MS = 30 * 60_000;
 const MAX_CAPTIONS = 120;
 const ALERT_TAIL_MS = 900;
+const CHECK_INTERVAL_MS = 10_000;
+const FINAL_CHECK_TIMEOUT_MS = 12_000;
 
 type CallStatus =
   | "idle"
@@ -37,8 +41,14 @@ type AlertStatus = "ready" | "playing" | "played" | "unavailable";
 interface CallState {
   alertStatus: AlertStatus;
   captions: CallCaption[];
+  /** The last cloud check is running after the call ended. */
+  checking: boolean;
+  /** Some speech was never checked; saved so the summary can't read as clear. */
+  checkIncomplete: boolean;
+  checksUnavailable: boolean;
   durationMs: number;
   flags: CallFlag[];
+  heardWords: number;
   inputPaused: boolean;
   interrupted: boolean;
   muted: boolean;
@@ -55,8 +65,12 @@ interface CallState {
 const emptyCall = (): CallState => ({
   alertStatus: "ready",
   captions: [],
+  checkIncomplete: false,
+  checking: false,
+  checksUnavailable: false,
   durationMs: 0,
   flags: [],
+  heardWords: 0,
   inputPaused: false,
   interrupted: false,
   muted: false,
@@ -70,9 +84,50 @@ const emptyCall = (): CallState => ({
   summaryId: null,
 });
 
+/** One call's cloud checks: the running request and the last transcript checked. */
+interface CheckTracker {
+  active: Promise<boolean> | null;
+  at: number;
+  checkedText: string;
+}
+
+const newTracker = (): CheckTracker => ({
+  active: null,
+  at: 0,
+  checkedText: "",
+});
+
+/** A continued call keeps what it heard so far; a new call starts empty. */
+const startingState = (
+  previous: CallState,
+  practice: boolean,
+  continueCall: boolean
+): CallState => {
+  if (!continueCall) {
+    return {
+      ...emptyCall(),
+      practice,
+      sessionId: crypto.randomUUID(),
+      startedAt: Date.now(),
+      status: "connecting",
+    };
+  }
+
+  return {
+    ...previous,
+    alertStatus:
+      previous.alertStatus === "playing" ? "played" : previous.alertStatus,
+    inputPaused: false,
+    notice: null,
+    practice,
+    status: "connecting",
+  };
+};
+
 /** Owns microphone, timers and alert playback for precisely one mounted screen. */
 const useCallScreening = () => {
   const createSession = useAction(api.voice.createCallScreeningSession);
+  const analyze = useAction(api.callscreening.analyze);
   const save = useMutation(api.callscreening.save);
   const [state, setState] = useState<CallState>(emptyCall);
   const current = useRef(state);
@@ -85,6 +140,10 @@ const useCallScreening = () => {
   const mounted = useRef(true);
   const finishing = useRef(false);
   const clock = useRef<{ started: number; offset: number } | null>(null);
+  // Words per caption; the rolling caption buffer drops old segments.
+  const wordCounts = useRef(new Map<string, number>());
+  // Replaced for each new call, so an old call's late check can't touch it.
+  const checks = useRef<CheckTracker>(newTracker());
 
   const patch = (changes: Partial<CallState>): void => {
     current.current = { ...current.current, ...changes };
@@ -190,31 +249,24 @@ const useCallScreening = () => {
       timeMs: Math.min(MAX_CALL_MS, Math.max(0, incoming.timeMs)),
     };
 
-    const fresh = detectCallFlags(caption).filter(
-      (flag) =>
-        !current.current.flags.some(
-          (existing) => existing.reason === flag.reason
-        )
+    const previous = current.current.captions.find(
+      (existing) => existing.id === caption.id
     );
 
-    const flags = [
-      ...current.current.flags,
-      ...fresh.map((flag) => ({
-        ...flag,
-        quote: redactCallQuote(flag.quote).slice(0, 300),
-      })),
-    ].slice(0, 20);
+    if (!previous?.final || caption.final) {
+      wordCounts.current.set(caption.id, countCallWords(caption.text));
+    }
 
-    const flagged = flags.find((flag) => flag.captionId === caption.id);
+    let heardWords = 0;
+
+    for (const words of wordCounts.current.values()) {
+      heardWords += words;
+    }
 
     const safeCaption: CallCaption = {
       ...caption,
       text: redactCallQuote(caption.text),
     };
-
-    if (flagged) {
-      safeCaption.flagId = flagged.id;
-    }
 
     patch({
       captions: upsertCallCaption(current.current.captions, safeCaption).slice(
@@ -224,13 +276,117 @@ const useCallScreening = () => {
         MAX_CALL_MS,
         Math.max(current.current.durationMs, caption.timeMs)
       ),
-      flags,
+      heardWords,
+    });
+  };
+
+  /** Adds new warning signs to the call, with the spoken alert while listening. */
+  const addFlags = (incoming: readonly CallFlag[]): void => {
+    const fresh = incoming.filter(
+      (flag) =>
+        !current.current.flags.some(
+          (existing) => existing.reason === flag.reason
+        )
+    );
+
+    if (fresh.length === 0) {
+      return;
+    }
+
+    const flags = [
+      ...current.current.flags,
+      ...fresh.map((flag) => ({
+        ...flag,
+        quote: redactCallQuote(flag.quote).slice(0, 300),
+      })),
+    ].slice(0, 20);
+
+    const captions = current.current.captions.map((caption) => {
+      const flag = fresh.find((item) => item.captionId === caption.id);
+
+      return flag === undefined || caption.flagId !== undefined
+        ? caption
+        : { ...caption, flagId: flag.id };
     });
 
-    if (fresh.length > 0) {
+    patch({ captions, flags });
+
+    if (current.current.status === "listening") {
       void playAlert();
     }
   };
+
+  const runCheck = async (
+    tracker: CheckTracker,
+    sessionId: string,
+    transcript: string
+  ): Promise<boolean> => {
+    let result: Awaited<ReturnType<typeof analyze>>;
+
+    try {
+      result = await analyze({ transcript });
+    } catch {
+      // Unchecked words stay unchecked, so the next tick retries them.
+      tracker.active = null;
+
+      return false;
+    }
+
+    tracker.active = null;
+
+    // Late results never reach another call or a summary that already saved.
+    const accepting =
+      checks.current === tracker &&
+      current.current.sessionId === sessionId &&
+      (current.current.status !== "ended" || current.current.checking);
+
+    if (!accepting) {
+      return false;
+    }
+
+    if (result.status === "unavailable") {
+      patch({ checksUnavailable: true });
+    }
+
+    addFlags(
+      callFlagsFromSigns(
+        result.signs,
+        current.current.captions,
+        current.current.flags
+      )
+    );
+
+    if (result.status === "checked") {
+      tracker.checkedText = transcript;
+    }
+
+    return result.status === "checked";
+  };
+
+  /** Checks the newest captions in the cloud, one request at a time per call. */
+  const checkCall = (): Promise<boolean> => {
+    const tracker = checks.current;
+    tracker.at = performance.now();
+    tracker.active = runCheck(
+      tracker,
+      current.current.sessionId,
+      callTranscriptWindow(current.current.captions)
+    );
+
+    return tracker.active;
+  };
+
+  const uncheckedText = (): boolean => {
+    const transcript = callTranscriptWindow(current.current.captions);
+
+    return transcript.length > 0 && transcript !== checks.current.checkedText;
+  };
+
+  const checkDue = (): boolean =>
+    checks.current.active === null &&
+    !current.current.checksUnavailable &&
+    performance.now() - checks.current.at >= CHECK_INTERVAL_MS &&
+    uncheckedText();
 
   const saveSummary = async (): Promise<void> => {
     const snapshot = current.current;
@@ -243,8 +399,10 @@ const useCallScreening = () => {
 
     try {
       const summaryId = await save({
+        checkIncomplete: snapshot.checkIncomplete,
         durationMs: snapshot.durationMs,
         flags: snapshot.flags,
+        heardWords: snapshot.heardWords,
         interrupted: snapshot.interrupted,
         practice: snapshot.practice,
         sessionId: snapshot.sessionId,
@@ -261,6 +419,49 @@ const useCallScreening = () => {
     }
   };
 
+  /** Waits for a running check, then checks any words it didn't cover. */
+  const finalCheck = async (): Promise<void> => {
+    const { active } = checks.current;
+
+    if (active !== null) {
+      await active;
+    }
+
+    if (uncheckedText() && !current.current.checksUnavailable) {
+      await checkCall();
+    }
+  };
+
+  /** The summary saves only after the end of the call is checked or times out. */
+  const checkThenSave = async (): Promise<void> => {
+    const { practice, sessionId } = current.current;
+
+    if (!practice && !current.current.checksUnavailable) {
+      patch({ checking: true });
+      await Promise.race([
+        finalCheck(),
+        // oxlint-disable-next-line promise/avoid-new -- a timer is the only way to stop waiting on a slow check.
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, FINAL_CHECK_TIMEOUT_MS);
+        }),
+      ]);
+
+      if (current.current.sessionId !== sessionId) {
+        return;
+      }
+
+      patch({ checking: false });
+    }
+
+    patch({
+      checkIncomplete:
+        !practice &&
+        current.current.heardWords > 0 &&
+        (current.current.checksUnavailable || uncheckedText()),
+    });
+    await saveSummary();
+  };
+
   const finish = (notice: string | null = null): void => {
     if (finishing.current || current.current.status === "ended") {
       return;
@@ -269,18 +470,7 @@ const useCallScreening = () => {
     finishing.current = true;
     // Finalize the displayed fragment before shutting down; do not play a new alert.
     const snapshot = current.current;
-    const flags = [...snapshot.flags];
-
-    for (const caption of finalizeCallCaptions(snapshot.captions)) {
-      for (const flag of detectCallFlags(caption)) {
-        if (!flags.some((existing) => existing.reason === flag.reason)) {
-          flags.push({
-            ...flag,
-            quote: redactCallQuote(flag.quote).slice(0, 300),
-          });
-        }
-      }
-    }
+    const { flags } = snapshot;
 
     const elapsed =
       clock.current === null
@@ -297,15 +487,16 @@ const useCallScreening = () => {
     );
 
     release();
+    // Captions stay in memory for the summary page and are never saved.
     patch({
-      captions: [],
+      captions: finalizeCallCaptions(snapshot.captions),
       durationMs,
       flags: flags.slice(0, 20),
       inputPaused: false,
       notice,
       status: "ended",
     });
-    void saveSummary();
+    void checkThenSave();
   };
 
   const start = async (
@@ -317,22 +508,15 @@ const useCallScreening = () => {
     finishing.current = false;
     clock.current = null;
 
+    if (!continueCall) {
+      wordCounts.current.clear();
+      checks.current = newTracker();
+    }
+
     const run = generation.current;
     const durationOffset = continueCall ? previous.durationMs : 0;
 
-    const resumedAlertStatus =
-      previous.alertStatus === "playing" ? "played" : previous.alertStatus;
-
-    patch({
-      ...(continueCall ? previous : emptyCall()),
-      alertStatus: continueCall ? resumedAlertStatus : "ready",
-      inputPaused: false,
-      notice: null,
-      practice,
-      sessionId: continueCall ? previous.sessionId : crypto.randomUUID(),
-      startedAt: continueCall ? previous.startedAt : Date.now(),
-      status: "connecting",
-    });
+    patch(startingState(previous, practice, continueCall));
 
     try {
       audio.current = createCallAlertAudio();
@@ -432,7 +616,19 @@ const useCallScreening = () => {
         let caption = PRACTICE_CALL_SCRIPT[scriptIndex];
 
         while (caption && caption.timeMs <= durationMs) {
-          receive(caption);
+          const { warning, ...line } = caption;
+          receive(line);
+
+          if (warning !== undefined) {
+            addFlags(
+              callFlagsFromSigns(
+                [{ kind: warning, quote: line.text }],
+                current.current.captions,
+                current.current.flags
+              )
+            );
+          }
+
           scriptIndex += 1;
           caption = PRACTICE_CALL_SCRIPT[scriptIndex];
         }
@@ -444,6 +640,8 @@ const useCallScreening = () => {
         finish(
           "The check stopped after 30 minutes. Here is the summary so far."
         );
+      } else if (checkDue()) {
+        void checkCall();
       }
     }, 1000);
   };

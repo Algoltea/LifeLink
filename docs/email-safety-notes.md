@@ -45,3 +45,7 @@ Parent then authorized the isolated LifeLink UI Review Practice account in the d
 - No production build was started against the user's active Next dev output. Parent owns isolated final build/verification.
 
 Automatic approval review rejected a read-only child delegation as prohibited external project-data exposure. Review continues directly without delegation.
+
+## AI checks on new email
+
+Each newly arrived email still gets the instant local keyword check. If the owner's **Check new emails with AI** setting is on (the default; stored as `preferences.aiEmailChecks`, where a missing value means on), `upsertMail` also schedules `scam.checkNewEmail` once for that email. Only mail received in the last 48 hours is sent, so a first sync or a re-sync never floods the model; existing mail, backfills, re-synced messages and practice mailboxes are never sent. The check uses the scam-check model (`OPENROUTER_SCAM_MODEL`, default `openai/gpt-6-luna`, medium reasoning) with the same prompt as pasted message checks. Its result replaces the automatic review in place: quotes must match the email word for word, the keyword verdict remains the floor, and the review is marked as cloud-assisted. If the model is unavailable, the keyword result stays.

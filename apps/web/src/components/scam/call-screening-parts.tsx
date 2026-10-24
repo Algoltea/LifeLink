@@ -20,7 +20,7 @@ const callTime = (milliseconds: number): string => {
 };
 
 const CALL_PRIVACY =
-  "LifeLink does not record calls. Sound from your microphone goes to Google’s Gemini to make the captions. When you stop, LifeLink saves a short summary of warning signs, not the captions.";
+  "LifeLink does not record calls. Sound from your microphone goes to Google’s Gemini to make the captions, and the captions go to an AI model that checks them for warning signs. When you stop, LifeLink saves a short summary of warning signs, not the captions.";
 
 const CallPrivacy = ({ practice = false }: { practice?: boolean }) => (
   <p className="text-muted-foreground text-label flex items-start gap-2">
@@ -215,10 +215,10 @@ const CallWarningGuide = () => (
       LifeLink can warn you out loud about:
     </h2>
     <ul className="marker:text-accent-ink list-disc space-y-3 pl-5">
-      <li>requests for a code or password</li>
       <li>requests for money or gift cards</li>
+      <li>requests for a code, password, or personal details</li>
       <li>requests to control your computer or phone</li>
-      <li>pressure to hurry and keep a secret</li>
+      <li>threats, or pressure to hurry and keep a secret</li>
     </ul>
     <p className="border-rule border-t pt-4">
       It can miss warning signs. If a call feels wrong, hang up and call back on

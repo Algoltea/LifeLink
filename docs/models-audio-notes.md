@@ -7,6 +7,7 @@ Verified on **2026-10-24**, using unauthenticated GET requests to OpenRouter's p
 | Purpose | Deployment variable | Exact default ID | Verified capabilities |
 | --- | --- | --- | --- |
 | Fast extraction | `OPENROUTER_FAST_MODEL` | `z-ai/glm-5.3-flash` | Text/image/video input; text output; structured outputs and tools |
+| Scam checks (calls, new email, check form) | `OPENROUTER_SCAM_MODEL` | `openai/gpt-6-luna` | Text/image/file input; structured outputs; no `temperature` (omitted for this tier); low reasoning for calls, medium for email and the form |
 | Main assistant | `OPENROUTER_MODEL` | `google/gemini-4-argon` | Text/image/video/audio/file input; text output; structured outputs and tools |
 | Read-aloud | `OPENROUTER_TTS_MODEL` | `elevenlabs/eleven-v4-turbo` | Text input; speech output |
 | Read-aloud voice | `OPENROUTER_TTS_VOICE` | `sarah` | Listed in the ElevenLabs models' `supported_voices` |

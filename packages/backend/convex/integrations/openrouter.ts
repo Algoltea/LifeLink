@@ -10,7 +10,8 @@ import { decodeJson, describeRejection, request } from "./http";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-type ModelTier = "fast" | "main";
+// Scam checks (calls, new email, the check form) use their own model.
+type ModelTier = "fast" | "main" | "scam";
 
 interface ContentText {
   text: string;
@@ -32,6 +33,20 @@ interface StructuredRequest<Output> {
   schema: z.ZodType<Output>;
   schemaName: string;
   tier: ModelTier;
+  /** Reasoning effort; low unless a check needs more care. */
+  effort?: "low" | "medium";
+}
+
+interface CompletionBody {
+  messages: ChatMessage[];
+  model: string;
+  provider: { require_parameters: boolean };
+  reasoning: { effort: "low" | "medium" };
+  response_format: {
+    json_schema: { name: string; schema: unknown; strict: boolean };
+    type: "json_schema";
+  };
+  temperature?: number;
 }
 
 type StructuredResult<Output> =
@@ -50,10 +65,14 @@ const completionSchema = z.object({
   model: z.string().optional(),
 });
 
+const MODEL_SETTINGS: Record<ModelTier, { env: string; fallback: string }> = {
+  fast: { env: "OPENROUTER_FAST_MODEL", fallback: "z-ai/glm-5.3-flash" },
+  main: { env: "OPENROUTER_MODEL", fallback: "google/gemini-4-argon" },
+  scam: { env: "OPENROUTER_SCAM_MODEL", fallback: "openai/gpt-6-luna" },
+};
+
 const modelFor = (tier: ModelTier): string =>
-  tier === "main"
-    ? readEnvOr("OPENROUTER_MODEL", "google/gemini-4-argon")
-    : readEnvOr("OPENROUTER_FAST_MODEL", "z-ai/glm-5.3-flash");
+  readEnvOr(MODEL_SETTINGS[tier].env, MODEL_SETTINGS[tier].fallback);
 
 const openRouterConfigured = (): boolean =>
   readEnv("OPENROUTER_API_KEY") !== null;
@@ -73,22 +92,28 @@ const structuredCompletion = async <Output>(
   const model = modelFor(input.tier);
   const jsonSchema = z.toJSONSchema(input.schema, { target: "draft-7" });
 
-  const outcome = await request({
-    body: JSON.stringify({
-      messages: input.messages,
-      model,
-      provider: { require_parameters: true },
-      reasoning: { effort: "low" },
-      response_format: {
-        json_schema: {
-          name: input.schemaName,
-          schema: jsonSchema,
-          strict: true,
-        },
-        type: "json_schema",
+  const body: CompletionBody = {
+    messages: input.messages,
+    model,
+    provider: { require_parameters: true },
+    reasoning: { effort: input.effort ?? "low" },
+    response_format: {
+      json_schema: {
+        name: input.schemaName,
+        schema: jsonSchema,
+        strict: true,
       },
-      temperature: 0.2,
-    }),
+      type: "json_schema",
+    },
+  };
+
+  // Luna rejects temperature, and require_parameters would then find no provider.
+  if (input.tier !== "scam") {
+    body.temperature = 0.2;
+  }
+
+  const outcome = await request({
+    body: JSON.stringify(body),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",

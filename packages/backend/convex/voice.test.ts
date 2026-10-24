@@ -172,12 +172,13 @@ describe("voice session authorization", () => {
     expect(JSON.parse(String(options?.body))).toMatchObject({
       bidiGenerateContentSetup: {
         inputAudioTranscription: {},
-        proactivity: { proactiveAudio: true },
         tools: [],
       },
       uses: 1,
     });
     expect(String(options?.body)).not.toContain("submit_request");
+    // v1beta token setup rejects proactivity (v1alpha-only).
+    expect(String(options?.body)).not.toContain("proactivity");
   });
 
   it("surfaces provider refusal instead of returning a screening session", async () => {

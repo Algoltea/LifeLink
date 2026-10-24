@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { CallCaption } from "./call-screening";
 import {
-  detectCallFlags,
+  CALL_WARNING_REASONS,
+  callFlagsFromSigns,
+  callTranscriptWindow,
+  countCallWords,
   finalizeCallCaptions,
   PRACTICE_CALL_DURATION_MS,
   PRACTICE_CALL_SCRIPT,
@@ -77,7 +80,6 @@ describe(upsertCallCaption, () => {
     });
 
     expect(result).toStrictEqual([final]);
-    expect(detectCallFlags(result[0] ?? caption(""))).toStrictEqual([]);
   });
 
   it("accepts corrected final snapshots while preserving existing flag linkage", () => {
@@ -128,140 +130,6 @@ describe(finalizeCallCaptions, () => {
   });
 });
 
-describe(detectCallFlags, () => {
-  it.each([
-    ["Please buy two gift cards.", "money-request"],
-    ["Buy $500 worth of gift cards.", "money-request"],
-    ["Pay with gift cards now.", "money-request"],
-    ["You must make a wire transfer.", "money-request"],
-    ["Can you please transfer the money to this account?", "money-request"],
-    ["Wire $500.00 to this account.", "money-request"],
-    ["Send me 500 dollars immediately.", "money-request"],
-    ["Read me the gift card numbers.", "money-request"],
-    ["Read me the verification code we just sent you.", "credentials-request"],
-    ["Please tell me your password.", "credentials-request"],
-    ["Send your one-time code to me.", "credentials-request"],
-    ["Share your PIN with me.", "credentials-request"],
-    ["Give me the code we just sent.", "credentials-request"],
-    [
-      "I need you to give me remote access to your computer.",
-      "remote-access-request",
-    ],
-    ["Please let me control your computer.", "remote-access-request"],
-    ["Install AnyDesk so I can help.", "remote-access-request"],
-    ["Enable remote access now.", "remote-access-request"],
-    ["Don't tell anyone, this is urgent.", "secrecy-urgency"],
-    ["Keep this between us and act right now.", "secrecy-urgency"],
-    ["Do not tell your family. We must act immediately.", "secrecy-urgency"],
-  ])("flags a direct request with a stable rule key: %s", (text, rule) => {
-    const source = caption(text);
-    const flags = detectCallFlags(source);
-
-    expect(flags).toHaveLength(1);
-    expect(flags[0]).toMatchObject({
-      captionId: source.id,
-      id: `${source.id}:${rule}`,
-      quote: text,
-      timeMs: source.timeMs,
-    });
-    expect(flags[0]?.reason.length).toBeGreaterThan(0);
-    expect(detectCallFlags(source)).toStrictEqual(flags);
-  });
-
-  it("ignores unfinished requests that can still become a refusal", () => {
-    const interim = { ...caption("Send me your password"), final: false };
-
-    expect(detectCallFlags(interim)).toStrictEqual([]);
-    expect(detectCallFlags({ ...interim, final: true })).toHaveLength(1);
-    expect(
-      detectCallFlags(caption("Send me your password? No, never do that."))
-    ).toStrictEqual([]);
-    expect(
-      detectCallFlags(caption("Send me your password — actually, don't."))
-    ).toStrictEqual([]);
-  });
-
-  it("quotes original case, punctuation and whitespace without fabricating evidence", () => {
-    const source = caption(
-      "Hello.  PLEASE send me your verification code!\nThanks."
-    );
-
-    const flags = detectCallFlags(source);
-
-    expect(flags[0]?.quote).toBe("PLEASE send me your verification code!");
-    expect(source.text.includes(flags[0]?.quote ?? "missing")).toBeTruthy();
-  });
-
-  it("deduplicates a rule within a caption while retaining distinct risks", () => {
-    const source = caption(
-      "Send money. Wire money now. Give me your password."
-    );
-
-    const flags = detectCallFlags(source);
-
-    expect(flags.map((flag) => flag.id)).toStrictEqual([
-      "segment-1:money-request",
-      "segment-1:credentials-request",
-    ]);
-    expect(flags[0]?.quote).toBe("Send money.");
-    expect(
-      detectCallFlags({ ...source, text: "Please wire money immediately." })[0]
-        ?.id
-    ).toBe(flags[0]?.id);
-    expect(detectCallFlags({ ...source, id: "segment-2" })[0]?.id).toBe(
-      "segment-2:money-request"
-    );
-  });
-
-  it.each([
-    "",
-    "We sell gift cards at our shop.",
-    "I bought a gift card yesterday.",
-    "Buy a gift card for your daughter's birthday.",
-    "Your verification code is on your phone.",
-    "The transfer is complete.",
-    "I need to reset my password.",
-    "Remote access is disabled.",
-    "This is an urgent reminder about your appointment.",
-    "Keep this private.",
-    "Don't tell anyone about the birthday surprise right now.",
-    "Please do not send money.",
-    "Never share your password.",
-    "You must not install AnyDesk.",
-    "I won't give you remote access.",
-    "I refuse to buy gift cards.",
-    "I will not read the verification code.",
-    "We will never ask you to send money or share a code.",
-    "If someone says send money, hang up.",
-    "A scammer might say: give me your password.",
-    '"Send money now" is an example of a scam request.',
-    "Please send me your password — no, don't do that.",
-    "Give me your password. Never do that.",
-    "Wire money now. Do not do that.",
-    "Send me your verification code. Don't do that.",
-    "Allow remote access. Please don't do that.",
-    "Don't tell anyone, but there is no urgency.",
-    "Keep this private, this is not urgent.",
-    "Don't tell anyone to share their password right now.",
-    "Do not tell your family to send money immediately.",
-    '"Don\'t tell anyone, act right now."',
-    "Please tell me your password requirements.",
-    "Tell me your password is safe.",
-    "Send me the verification code documentation.",
-    "Give me access to your calendar.",
-    "Give me the remote control for the television.",
-    "Please share your ZIP code.",
-    "Give me the code for the recipe.",
-    "Send moneytree seeds.",
-    "Share your passwordless login instructions.",
-    "Install AnyDeskHelper.",
-    "Keep this private; the surgery is unurgent.",
-    "Buy gift cardigans.",
-  ])("abstains on safety advice, refusals and benign mentions: %s", (text) => {
-    expect(detectCallFlags(caption(text))).toStrictEqual([]);
-  });
-});
-
 describe(redactCallQuote, () => {
   it.each([
     ["Your code is 123456.", "Your code is ••••."],
@@ -284,17 +152,6 @@ describe(redactCallQuote, () => {
   ])("redacts long digit sequences: %s", (source, expected) => {
     expect(redactCallQuote(source)).toBe(expected);
     expect(redactCallQuote(redactCallQuote(source))).toBe(expected);
-  });
-
-  it("keeps detection evidence exact until the caller chooses to redact", () => {
-    const source = caption("Send me 12345 dollars.");
-    const flags = detectCallFlags(source);
-
-    expect(flags[0]?.quote).toBe(source.text);
-    expect(redactCallQuote(flags[0]?.quote ?? "")).toBe(
-      "Send me •••• dollars."
-    );
-    expect(flags[0]?.quote).toBe(source.text);
   });
 });
 
@@ -326,18 +183,105 @@ describe("practice call", () => {
     expect(times).toStrictEqual(times.toSorted((a, b) => a - b));
   });
 
-  it("first flags exactly at 10 seconds and exercises at least two rules", () => {
-    const flags = PRACTICE_CALL_SCRIPT.flatMap(detectCallFlags);
+  it("warns from fixed lines at 10, 14 and 18 seconds without any cloud check", () => {
+    const warnings = PRACTICE_CALL_SCRIPT.filter(
+      (line) => line.warning !== undefined
+    );
 
-    expect(flags[0]?.timeMs).toBe(10_000);
+    expect(warnings.map((line) => line.timeMs)).toStrictEqual([
+      10_000, 14_000, 18_000,
+    ]);
+    expect(new Set(warnings.map((line) => line.warning)).size).toBe(3);
+  });
+});
+
+describe(countCallWords, () => {
+  it("counts spoken words, including contractions, but not punctuation or hidden digits", () => {
     expect(
-      PRACTICE_CALL_SCRIPT.flatMap((item) =>
-        item.timeMs < 10_000 ? detectCallFlags(item) : []
+      countCallWords("Hi, it’s Dr. Patel’s office — call me at 555 0100.")
+    ).toBe(10);
+    expect(countCallWords("Read me the code •••• please")).toBe(5);
+    expect(countCallWords("  …  ")).toBe(0);
+  });
+});
+
+const line = (id: string, text: string): CallCaption => ({
+  ...caption(text),
+  id,
+});
+
+describe(callTranscriptWindow, () => {
+  it("keeps the newest lines that fit, oldest first", () => {
+    const captions = [
+      line("a", "First line."),
+      line("b", "  "),
+      line("c", "Second line."),
+      line("d", "Third line."),
+    ];
+
+    expect(callTranscriptWindow(captions)).toBe(
+      "First line.\nSecond line.\nThird line."
+    );
+    expect(callTranscriptWindow(captions, 25)).toBe(
+      "Second line.\nThird line."
+    );
+    expect(callTranscriptWindow([])).toBe("");
+  });
+
+  it("keeps the newest words of one segment longer than the limit", () => {
+    expect(callTranscriptWindow([line("a", "0123456789")], 4)).toBe("6789");
+  });
+});
+
+describe(callFlagsFromSigns, () => {
+  const captions: CallCaption[] = [
+    { ...caption("Hello, this is your bank."), id: "one", timeMs: 1000 },
+    {
+      ...caption("Read me the code we just texted you."),
+      id: "two",
+      timeMs: 9000,
+    },
+  ];
+
+  it("places each sign on the caption holding its quote", () => {
+    expect(
+      callFlagsFromSigns(
+        [{ kind: "codes_or_passwords", quote: "the code we just texted you" }],
+        captions
+      )
+    ).toStrictEqual([
+      {
+        captionId: "two",
+        id: "two:codes_or_passwords",
+        quote: "the code we just texted you",
+        reason: CALL_WARNING_REASONS.codes_or_passwords,
+        timeMs: 9000,
+      },
+    ]);
+  });
+
+  it("drops a quote that no caption holds any more", () => {
+    expect(
+      callFlagsFromSigns([{ kind: "money", quote: "wire the money" }], captions)
+    ).toStrictEqual([]);
+  });
+
+  it("skips kinds already flagged in this call and empty quotes", () => {
+    const [existing] = callFlagsFromSigns(
+      [{ kind: "money", quote: "your bank" }],
+      captions
+    );
+
+    expect(existing?.captionId).toBe("one");
+    expect(
+      callFlagsFromSigns(
+        [
+          { kind: "money", quote: "Read me" },
+          { kind: "threats", quote: "   " },
+        ],
+        captions,
+        existing ? [existing] : []
       )
     ).toStrictEqual([]);
-    expect(
-      new Set(flags.map((flag) => flag.id.split(":").at(-1))).size
-    ).toBeGreaterThanOrEqual(2);
-    expect(PRACTICE_CALL_SCRIPT.flatMap(detectCallFlags)).toStrictEqual(flags);
   });
 });
