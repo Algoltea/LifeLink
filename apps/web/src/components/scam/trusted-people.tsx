@@ -67,6 +67,7 @@ const REACHED_BY = {
   email: "Reached by email",
   imessage: "Reached by message",
   in_app: "Reached in LifeLink",
+  telegram: "Reached by message",
 } as const;
 
 /** Match the backend's preferred-channel and linked-family fallback selection. */

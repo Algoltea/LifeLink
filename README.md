@@ -65,7 +65,7 @@ Progress, without any secrets, is recorded in `.lifelink/setup-state.json`.
 | --- | --- |
 | `--yes` | No questions. Keeps existing values and skips integrations that aren't set up. Also used automatically when there's no terminal (CI) |
 | `--reconfigure` | Asks again about integrations that are already set up, so you can change a key |
-| `--only=<id>` | One integration: `openrouter`, `gemini_live`, `composio`, `photon`, or `discord` |
+| `--only=<id>` | One integration: `openrouter`, `gemini_live`, `composio`, `photon`, `discord`, or `telegram` |
 | `--agent=<name>` | Install the skills for a specific agent, for example `codex` |
 | `--skip-install` | Don't run `bun install` |
 
@@ -122,7 +122,7 @@ Secrets never touch the browser or a committed file. There are three places:
 | **Today** | Greeting and briefing (read aloud on request), appointments, due reminders, what's waiting for approval, and recent family messages |
 | **Ask** | Separate saved conversations, streamed replies, inline reviews of the latest proposal, and a History drawer |
 | **Task** | A journey gauge (asked → sent → replied → confirmed → reminded), the exact message slip, approve, change, or cancel, earlier versions, and outcome handling |
-| **Messages** | Family threads over iMessage, email, Discord, or in-app, with photos, drafts that become tasks, and delivery status in words. **Help me understand** explains a received message (what it asks, dates, what's missing, labelled guesses) and offers up to three replies that only fill your message box. **Recap this conversation** separates what was agreed from what was only offered, shows what LifeLink's records show as done, and proposes next steps for review |
+| **Messages** | Family threads over iMessage, email, Discord, Telegram, or in-app, with photos, drafts that become tasks, and delivery status in words. **Help me understand** explains a received message (what it asks, dates, what's missing, labelled guesses) and offers up to three replies that only fill your message box. **Recap this conversation** separates what was agreed from what was only offered, shows what LifeLink's records show as done, and proposes next steps for review |
 | **Email** | Automatic local concern screening, optional AI analysis of emails you choose, **Help me understand**, and reply drafts that are never sent automatically |
 | **Scam check** | Paste text, pick an email, take a photo of a letter, or choose a screenshot. Check a speakerphone call with live captions and spoken warnings, or try the fixed practice call without a microphone. Results explain the warning signs and offer **Ask someone you trust** through a draft for review. Photo quotes remain unverified. See [Scam check v2](docs/scam-check-v2.md) for privacy and verification limits |
 | **Trusted circle** | People and how to reach them, including **Set up iMessage** for each contact; plus sharing: one-time invitation codes with chosen scopes and an optional end date, scope changes, and immediate revoke |
@@ -289,6 +289,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | **eBay** | Composio | The developer's eBay app credentials. | ◻️ Search listings (not wired yet)<br>✖️ Your listings, orders, or purchases: the connector only covers public search |
 | **iMessage** | Photon Spectrum Stable | Link an existing dashboard registration in **Trusted circle**. Each person texts their assigned number first; no Photon account or dashboard teammate invitation is needed. | ✅ Send a text or photo after you approve it<br>✅ Receive replies<br>◻️ Delivery/read updates (not wired; receipts confirm provider acceptance)<br>✖️ Start a conversation before that contact texts their assigned shared-line number |
 | **Discord** | Discord bot | The family member shares a server with the bot, or has messaged it first. | ✅ Send a direct message after you approve it<br>✅ Receive replies (needs the bridge running with `bun run dev`) |
+| **Telegram** | Telegram bot (Bot API webhook) | In **Trusted circle**, choose **Link Telegram** and send the person their one-time link; they tap **Start** once. | ✅ Send a message, or photos with a caption up to 1,024 characters, after you approve it<br>✅ Receive replies (cloud deployments only)<br>✖️ Start a conversation before that person taps Start<br>✖️ Confirm an interrupted send: bots can't read chat history, so an uncertain send asks you to check with the person |
 
 ✅ implemented in LifeLink · ◻️ the provider supports it but no screen uses it yet · ✖️ the provider doesn't offer it. Live-provider verification is listed under [Project status](#project-status).
 
@@ -301,9 +302,11 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | Composio | `COMPOSIO_API_KEY`, plus `COMPOSIO_AUTH_CONFIGS` and `COMPOSIO_WEBHOOK_SECRET` (provisioned) | `GET /api/v3.1/auth_configs?limit=1` | Sample email in Practice mode only |
 | Photon Spectrum Stable | `SPECTRUM_PROJECT_SECRET`, `SPECTRUM_PROJECT_ID`, plus `SPECTRUM_WEBHOOK_SECRET` (provisioned) | Basic-auth `GET https://spectrum.photon.codes/projects/{projectId}` | No iMessage |
 | Discord | `DISCORD_BOT_TOKEN`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY` | `GET /api/v10/users/@me` | No Discord |
+| Telegram | `TELEGRAM_BOT_TOKEN`, plus `TELEGRAM_BOT_USERNAME` and `TELEGRAM_WEBHOOK_SECRET` (provisioned) | `GET /bot<token>/getMe` | No Telegram |
 
 **Provisioning notes**
 
+- **Telegram:** create a bot with @BotFather and paste its token when setup asks (`bun run dev:setup --only=telegram`). Setup reads the bot's username, generates a webhook secret, and calls `setWebhook` for `<deployment>.convex.site/webhooks/telegram`. Every update must carry that secret in `X-Telegram-Bot-Api-Secret-Token`. A chat is only saved for a contact after it opens that contact's single-use link, and only that chat can be sent to.
 - **Photon Spectrum Stable:** use the UUID project ID and project secret from your existing dashboard. Beta `pho_prj_...` / `pho_sk_...` credentials belong to a different API. Setup uses Basic authentication, keeps existing shared-line users, and configures the Stable webhook. See the [Spectrum API](https://photon.codes/docs/api-reference/introduction).
 - **Read-aloud:** ElevenLabs speech is served by OpenRouter's audio endpoint with the same OpenRouter key. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
 - **Composio:**

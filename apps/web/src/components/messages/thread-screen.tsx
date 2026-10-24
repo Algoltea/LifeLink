@@ -17,7 +17,11 @@ import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
 import { useChatViewport } from "@/components/assistant/use-chat-viewport";
 import { RecapPanel } from "@/components/messages/recap-panel";
-import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
+import {
+  CHANNEL_WORDS,
+  formatAddress,
+  hidesAddress,
+} from "@/components/tasks/details-view";
 
 import {
   MESSAGES_DOCK,
@@ -170,7 +174,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   const subline = preferred ? (
     <>
       {contact.relationship} · {CHANNEL_WORDS[preferred.channel]}
-      {preferred.channel === "in_app" ? null : (
+      {hidesAddress(preferred.channel) ? null : (
         <span className="sr-only sm:not-sr-only">
           {` to ${formatAddress(preferred.address)}`}
         </span>
