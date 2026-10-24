@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640" role="img" aria-label="Child's crayon drawing of a house, sun, dog, Grandma and Emma">
+  <rect width="900" height="640" fill="#fffdf7"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="760" cy="120" r="62" stroke="#f2b705" stroke-width="10" fill="#ffe27a"/>
+    <path d="M760 30v-20M760 230v-20M850 120h20M650 120h20M824 56l14-14M682 198l14-14M824 184l14 14M682 42l14 14" stroke="#f2b705" stroke-width="8"/>
+    <path d="M738 108q4-6 8 0M774 108q4-6 8 0M736 138q24 22 48 0" stroke="#7a4a00" stroke-width="6"/>
+    <path d="M120 120q40-30 80 0q40-30 80 0" stroke="#7fb3d5" stroke-width="8"/>
+    <path d="M330 80q30-24 60 0q30-24 60 0" stroke="#7fb3d5" stroke-width="8"/>
+    <path d="M20 560q220-40 440-6q220 30 420-10" stroke="#3f9b3a" stroke-width="12"/>
+    <path d="M20 600q200-20 430 0q200 18 430-6" stroke="#5bb450" stroke-width="10"/>
+    <rect x="180" y="300" width="250" height="230" stroke="#e0a100" stroke-width="10" fill="#ffe999"/>
+    <path d="M160 310l145-130 145 130z" stroke="#c0392b" stroke-width="10" fill="#f08a7e"/>
+    <rect x="270" y="420" width="70" height="110" stroke="#8b4513" stroke-width="8" fill="#d99a5b"/>
+    <circle cx="326" cy="478" r="6" fill="#8b4513"/>
+    <rect x="205" y="335" width="55" height="55" stroke="#2e86c1" stroke-width="7" fill="#bfe3ff"/>
+    <rect x="350" y="335" width="55" height="55" stroke="#2e86c1" stroke-width="7" fill="#bfe3ff"/>
+    <path d="M232 335v55M205 362h55M377 335v55M350 362h55" stroke="#2e86c1" stroke-width="5"/>
+    <circle cx="540" cy="370" r="30" stroke="#6c3483" stroke-width="7" fill="#f5d6c6"/>
+    <path d="M528 364h2M550 364h2M528 382q12 10 24 0" stroke="#4a2a00" stroke-width="5"/>
+    <path d="M510 352q30-40 60 0" stroke="#bdc3c7" stroke-width="12"/>
+    <path d="M540 400v90M540 420l-40 30M540 420l40 30M540 490l-30 50M540 490l30 50" stroke="#6c3483" stroke-width="8"/>
+    <path d="M510 430h60l12 70h-84z" stroke="#8e44ad" stroke-width="6" fill="#d7bde2"/>
+    <circle cx="650" cy="410" r="24" stroke="#d35400" stroke-width="7" fill="#f8d9c4"/>
+    <path d="M641 405h2M657 405h2M642 420q8 7 16 0" stroke="#4a2a00" stroke-width="4"/>
+    <path d="M628 398q-14 20-6 40M672 398q14 20 6 40" stroke="#8b4513" stroke-width="8"/>
+    <path d="M650 434v70M650 452l-30 22M650 452l30 22M650 504l-22 40M650 504l22 40" stroke="#d35400" stroke-width="7"/>
+    <path d="M590 418l-30 6" stroke="#6c3483" stroke-width="7"/>
+    <ellipse cx="770" cy="500" rx="58" ry="30" stroke="#8b5a2b" stroke-width="7" fill="#d2a679"/>
+    <circle cx="826" cy="472" r="22" stroke="#8b5a2b" stroke-width="7" fill="#d2a679"/>
+    <path d="M836 458q14-8 10 16M816 458q-14-8-10 16" stroke="#5d3a1a" stroke-width="7"/>
+    <path d="M730 524v26M760 528v26M790 528v26M814 520v26M712 494q-24-24-10-40" stroke="#8b5a2b" stroke-width="7"/>
+  </g>
+  <g font-family="Comic Sans MS, Chalkboard SE, Marker Felt, cursive" font-size="34" fill="#c0392b">
+    <text x="480" y="300">GRANDMA</text>
+    <text x="624" y="350" fill="#d35400">EMMA</text>
+    <text x="724" y="440" fill="#8b5a2b" font-size="28">BISCUIT</text>
+    <text x="60" y="80" fill="#8e44ad" font-size="40">I LOVE YOU GRANDMA!!</text>
+  </g>
+</svg>
