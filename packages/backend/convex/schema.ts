@@ -951,13 +951,18 @@ export default defineSchema({
     codeExpiresAt: v.union(v.number(), v.null()),
     contactId: v.id("contacts"),
     createdAt: v.number(),
+    // Lowercased username saved in the contact form, until that person starts the bot.
+    expectedUsername: v.optional(v.union(v.string(), v.null())),
     firstName: v.union(v.string(), v.null()),
     linkedAt: v.union(v.number(), v.null()),
     ownerId: v.id("profiles"),
+    // Make Telegram their preferred way once the chat is linked.
+    preferred: v.optional(v.boolean()),
     username: v.union(v.string(), v.null()),
   })
     .index("by_code", ["code"])
-    .index("by_contact", ["contactId"]),
+    .index("by_contact", ["contactId"])
+    .index("by_expected_username", ["expectedUsername"]),
 
   weatherCache: defineTable({
     fetchedAt: v.number(),

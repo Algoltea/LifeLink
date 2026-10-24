@@ -10,16 +10,36 @@ const CHAT_ID = 555_000_111;
 
 type Backend = ReturnType<typeof newBackend>;
 
+/** The `from` of a Telegram message, as the webhook reads it. */
+interface TelegramSender {
+  first_name: string;
+  id: number;
+  username?: string;
+}
+
 let nextUpdate = 1;
 
-const update = (text: string, chatId = CHAT_ID) => {
+const update = (
+  text: string,
+  chatId = CHAT_ID,
+  username: string | null = "sam_a"
+) => {
   nextUpdate += 1;
+
+  const from: TelegramSender = {
+    first_name: "Sam",
+    id: chatId,
+  };
+
+  if (username !== null) {
+    from.username = username;
+  }
 
   return {
     message: {
       chat: { id: chatId, type: "private" },
       date: 1_700_000_000,
-      from: { first_name: "Sam", id: chatId, username: "sam_a" },
+      from,
       message_id: nextUpdate,
       text,
     },
@@ -141,7 +161,7 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
         relationship: "Son",
         trusted: true,
       })
-    ).rejects.toThrow(/can only be added by linking/u);
+    ).rejects.toThrow(/can only be added by its username or a link/u);
   });
 
   it("records replies from a linked chat and ignores unknown chats", async () => {
@@ -180,6 +200,148 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
 
 const stubFetch = (respond: () => Promise<Response>) =>
   vi.stubGlobal("fetch", vi.fn(respond));
+
+const contactDetails = {
+  name: "Sam Alvarez",
+  relationship: "Son",
+  trusted: true,
+};
+
+const contactChannels = async (backend: Backend) =>
+  await backend.run(async (ctx) => {
+    const [contact] = await ctx.db.query("contacts").collect();
+
+    return contact?.channels ?? [];
+  });
+
+describe("Telegram by username", { timeout: 30_000 }, () => {
+  beforeEach(() => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", TOKEN);
+    vi.stubEnv("TELEGRAM_BOT_USERNAME", "LifeLinkTestBot");
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", SECRET);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => await Promise.resolve(Response.json({ ok: true })))
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("adds a contact by username and links them when they tap Start", async () => {
+    const backend = newBackend();
+    const { contactId, owner } = await ownerWithContact(backend, false);
+
+    await owner.mutation(api.contacts.update, {
+      ...contactDetails,
+      channels: [
+        { address: "+15555550142", channel: "imessage", preferred: false },
+      ],
+      contactId,
+      telegram: { preferred: true, username: "@Sam_A" },
+    });
+
+    // Nothing to send to until Telegram proves who that username is.
+    await expect(contactChannels(backend)).resolves.toStrictEqual([
+      { address: "+15555550142", channel: "imessage", preferred: false },
+    ]);
+    await expect(
+      owner.query(api.telegram.status, { contactId })
+    ).resolves.toMatchObject({ expectedUsername: "sam_a", linked: null });
+
+    await post(backend, update("/start"));
+
+    // Telegram was chosen as preferred, so it takes over once linked.
+    await expect(contactChannels(backend)).resolves.toStrictEqual([
+      { address: "+15555550142", channel: "imessage", preferred: false },
+      { address: String(CHAT_ID), channel: "telegram", preferred: true },
+    ]);
+  });
+
+  it("creates a new contact who only uses Telegram", async () => {
+    const backend = newBackend();
+    const { owner } = await ownerWithContact(backend, false);
+
+    const contactId = await owner.mutation(api.contacts.create, {
+      ...contactDetails,
+      channels: [],
+      name: "Nora Alvarez",
+      telegram: { preferred: true, username: "nora_alv" },
+    });
+
+    await post(backend, update("hello", 444_000_222, "Nora_Alv"));
+
+    const contact = await backend.run(
+      async (ctx) => await ctx.db.get(contactId)
+    );
+
+    expect(contact?.channels).toStrictEqual([
+      { address: "444000222", channel: "telegram", preferred: true },
+    ]);
+  });
+
+  it("drops the linked chat when the username changes", async () => {
+    const backend = newBackend();
+    const { contactId, owner } = await ownerWithContact(backend, false);
+    const choice = { preferred: false, username: "sam_a" };
+
+    await owner.mutation(api.contacts.update, {
+      ...contactDetails,
+      channels: [
+        { address: "+15555550142", channel: "imessage", preferred: true },
+      ],
+      contactId,
+      telegram: choice,
+    });
+    await post(backend, update("/start"));
+    await owner.mutation(api.contacts.update, {
+      ...contactDetails,
+      channels: [
+        { address: "+15555550142", channel: "imessage", preferred: true },
+      ],
+      contactId,
+      telegram: { ...choice, username: "someone_else" },
+    });
+
+    await expect(contactChannels(backend)).resolves.toStrictEqual([
+      { address: "+15555550142", channel: "imessage", preferred: true },
+    ]);
+  });
+
+  it("links nobody when a stranger taps Start", async () => {
+    const backend = newBackend();
+    const { contactId, owner } = await ownerWithContact(backend, false);
+
+    await owner.mutation(api.contacts.update, {
+      ...contactDetails,
+      channels: [
+        { address: "+15555550142", channel: "imessage", preferred: true },
+      ],
+      contactId,
+      telegram: { preferred: false, username: "sam_a" },
+    });
+    await post(backend, update("/start", 999_999, "not_sam"));
+    await post(backend, update("/start", 999_998, null));
+
+    await expect(telegramChannels(backend)).resolves.toStrictEqual([]);
+  });
+
+  it("refuses a username Telegram would not allow", async () => {
+    const backend = newBackend();
+    const { contactId, owner } = await ownerWithContact(backend, false);
+
+    await expect(
+      owner.mutation(api.contacts.update, {
+        ...contactDetails,
+        channels: [],
+        contactId,
+        telegram: { preferred: false, username: "@ab" },
+      })
+    ).rejects.toThrow(/5 to 32 letters/u);
+  });
+});
 
 describe("Telegram send outcomes", () => {
   afterEach(() => vi.unstubAllGlobals());

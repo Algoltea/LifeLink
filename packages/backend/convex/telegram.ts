@@ -80,7 +80,9 @@ export const status = query({
       username !== null;
 
     return {
+      botUrl: username === null ? null : `https://t.me/${username}`,
       configured: linkingReady(),
+      expectedUsername: link?.expectedUsername ?? null,
       linked: linked
         ? {
             firstName: link.firstName,
@@ -129,9 +131,11 @@ export const createLink = mutation({
           codeExpiresAt,
           contactId: contact._id,
           createdAt: Date.now(),
+          expectedUsername: null,
           firstName: null,
           linkedAt: null,
           ownerId: owner._id,
+          preferred: false,
           username: null,
         })
       : ctx.db.patch(existing._id, { code, codeExpiresAt }));

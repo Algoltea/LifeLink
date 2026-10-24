@@ -11,13 +11,13 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { startCodeOf } from "./integrations/telegram";
-import { audit } from "./lib/audit";
 import { readEnv } from "./lib/env";
 import {
   acceptImessageConversation,
   conversationValidator,
 } from "./lib/imessage";
 import { recordIncoming } from "./lib/incoming";
+import { bindTelegramChat } from "./lib/telegram";
 
 const MAX_PAYLOAD = 4000;
 const START_COMMAND = /^\/start\b/u;
@@ -353,77 +353,114 @@ const notifyTelegram = async (
   await ctx.scheduler.runAfter(0, internal.telegram.notify, { chatId, text });
 };
 
-/** `/start <code>`: bind this chat to the one contact the code was made for. */
-const linkTelegramChat = async (
+interface TelegramChat {
+  chatId: string;
+  firstName: string | null;
+  username: string | null;
+}
+
+/** `/start <code>`: the one contact the code was made for, or null when unknown or expired. */
+const linkByCode = async (
   ctx: MutationCtx,
-  eventId: Id<"incomingEvents">,
-  args: {
-    chatId: string;
-    firstName: string | null;
-    text: string;
-    username: string | null;
-  }
-): Promise<string> => {
-  const code = startCodeOf(args.text);
-
-  const link =
-    code === null
-      ? null
-      : await ctx.db
-          .query("telegramLinks")
-          .withIndex("by_code", (index) => index.eq("code", code))
-          .unique();
-
-  const contact = link === null ? null : await ctx.db.get(link.contactId);
+  code: string,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks"> | null> => {
+  const link = await ctx.db
+    .query("telegramLinks")
+    .withIndex("by_code", (index) => index.eq("code", code))
+    .unique();
 
   if (
     link === null ||
-    contact === null ||
     link.codeExpiresAt === null ||
     link.codeExpiresAt < Date.now()
   ) {
-    await notifyTelegram(
-      ctx,
-      args.chatId,
-      "This link has expired or was already used. Ask the person who uses LifeLink to send you a new one."
-    );
-    await settle(ctx, eventId, "ignored", null, "Unknown or expired link.");
-
-    return "ignored";
+    return null;
   }
 
-  const owner = await ctx.db.get(link.ownerId);
-  const hasPreferred = contact.channels.some((channel) => channel.preferred);
+  return (await bindTelegramChat(ctx, link, chat)) === null ? null : link;
+};
 
-  // The code is single-use: clearing it means a forwarded link cannot be replayed.
-  await ctx.db.patch(link._id, {
-    chatId: args.chatId,
-    code: null,
-    codeExpiresAt: null,
-    firstName: args.firstName,
-    linkedAt: Date.now(),
-    username: args.username,
-  });
-  await ctx.db.patch(contact._id, {
-    channels: [
-      ...contact.channels.filter((channel) => channel.channel !== "telegram"),
-      { address: args.chatId, channel: "telegram", preferred: !hasPreferred },
-    ],
-  });
-  await audit(ctx, {
-    actor: "provider",
-    detail: `${contact.name} linked their Telegram.`,
-    event: "contact.telegram_linked",
-    ownerId: link.ownerId,
-  });
-  await notifyTelegram(
-    ctx,
-    args.chatId,
-    `You're connected. Messages from ${owner?.preferredName ?? "your family member"} will arrive here, and your replies go back to them.`
+/** Contacts saved with this chat's Telegram username and not linked yet. Telegram verifies usernames. */
+const linkByUsername = async (
+  ctx: MutationCtx,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks">[]> => {
+  if (chat.username === null) {
+    return [];
+  }
+
+  const waiting = await ctx.db
+    .query("telegramLinks")
+    .withIndex("by_expected_username", (index) =>
+      index.eq("expectedUsername", chat.username?.toLowerCase())
+    )
+    .collect();
+
+  const bound: Doc<"telegramLinks">[] = [];
+
+  for (const link of waiting.filter((item) => item.chatId === null)) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each binding patches its own contact, in order.
+    if ((await bindTelegramChat(ctx, link, chat)) !== null) {
+      bound.push(link);
+    }
+  }
+
+  return bound;
+};
+
+const connectedNotice = async (
+  ctx: MutationCtx,
+  links: Doc<"telegramLinks">[]
+): Promise<string> => {
+  const owners = await Promise.all(
+    links.map(async (link) => await ctx.db.get(link.ownerId))
   );
-  await settle(ctx, eventId, "processed", link.ownerId);
 
-  return "processed";
+  const names = [
+    ...new Set(owners.flatMap((owner) => (owner ? [owner.preferredName] : []))),
+  ];
+
+  return `You're connected. Messages from ${names.join(" and ") || "your family member"} will arrive here, and your replies go back to them.`;
+};
+
+/** A bare `/start` from a chat nobody is waiting for: explain how to get connected. */
+const startHelp = (chat: TelegramChat, alreadyLinked: boolean): string => {
+  if (alreadyLinked) {
+    return "You're already connected. Anything you send here goes to your family member in LifeLink.";
+  }
+
+  const username = chat.username === null ? "" : ` @${chat.username}`;
+
+  return `Hi${chat.firstName ? ` ${chat.firstName}` : ""}! To connect, ask your family member to add your Telegram username${username} in LifeLink, or to send you their LifeLink link. Then tap Start again.`;
+};
+
+/** Link this chat by code and by username. Returns what got linked, or null for a dead code. */
+const linkTelegramChat = async (
+  ctx: MutationCtx,
+  text: string,
+  chat: TelegramChat
+): Promise<Doc<"telegramLinks">[] | null> => {
+  const code = START_COMMAND.test(text.trim()) ? startCodeOf(text) : null;
+  const bound: Doc<"telegramLinks">[] = [];
+
+  if (code !== null) {
+    const link = await linkByCode(ctx, code, chat);
+
+    if (link === null) {
+      return null;
+    }
+
+    bound.push(link);
+  }
+
+  bound.push(...(await linkByUsername(ctx, chat)));
+
+  if (bound.length > 0) {
+    await notifyTelegram(ctx, chat.chatId, await connectedNotice(ctx, bound));
+  }
+
+  return bound;
 };
 
 export const telegramUpdate = internalMutation({
@@ -459,11 +496,46 @@ export const telegramUpdate = internalMutation({
       return "ignored";
     }
 
-    if (START_COMMAND.test(args.text.trim())) {
-      return await linkTelegramChat(ctx, eventId, args);
+    const chat = {
+      chatId: args.chatId,
+      firstName: args.firstName,
+      username: args.username,
+    };
+
+    const bound = await linkTelegramChat(ctx, args.text, chat);
+
+    if (bound === null) {
+      await notifyTelegram(
+        ctx,
+        args.chatId,
+        "This link has expired or was already used. Ask the person who uses LifeLink to send you a new one."
+      );
+      await settle(ctx, eventId, "ignored", null, "Unknown or expired link.");
+
+      return "ignored";
     }
 
     const contact = await routeToContact(ctx, "telegram", args.chatId);
+
+    // `/start` is only ever a way in, never a message to the family.
+    if (START_COMMAND.test(args.text.trim())) {
+      if (bound.length === 0) {
+        await notifyTelegram(
+          ctx,
+          args.chatId,
+          startHelp(chat, contact !== null)
+        );
+      }
+
+      await settle(
+        ctx,
+        eventId,
+        bound.length > 0 ? "processed" : "ignored",
+        bound[0]?.ownerId ?? contact?.ownerId ?? null
+      );
+
+      return bound.length > 0 ? "processed" : "ignored";
+    }
 
     const body =
       args.text.trim() ||

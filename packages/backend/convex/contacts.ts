@@ -10,7 +10,11 @@ import {
 } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireOwned, requireOwner, requireProfile } from "./lib/session";
-import { verifiedTelegramChat } from "./lib/telegram";
+import {
+  applyTelegramChoice,
+  telegramLinkOf,
+  verifiedTelegramChat,
+} from "./lib/telegram";
 
 const channelValidator = v.object({
   address: v.string(),
@@ -23,6 +27,17 @@ const channelValidator = v.object({
   ),
   preferred: v.boolean(),
 });
+
+// A username to wait for (or null to link by one-time link), and whether Telegram is preferred.
+const telegramValidator = v.optional(
+  v.union(
+    v.object({
+      preferred: v.boolean(),
+      username: v.union(v.string(), v.null()),
+    }),
+    v.null()
+  )
+);
 
 const savedHandleValidator = v.object({
   address: v.string(),
@@ -114,7 +129,7 @@ const checkTelegramChannels = async (
     throw new ConvexError({
       code: "invalid",
       message:
-        "Telegram can only be added by linking it: save this person, then choose Edit and Link Telegram.",
+        "Telegram can only be added by its username or a link: choose Telegram and enter their username.",
     });
   }
 };
@@ -176,12 +191,25 @@ export const list = query({
     );
 
     return await Promise.all(
-      sorted.map(async (contact) => ({
-        ...contact,
-        avatarUrl: contact.avatarId
-          ? await ctx.storage.getUrl(contact.avatarId)
-          : null,
-      }))
+      sorted.map(async (contact) => {
+        const link = await telegramLinkOf(ctx, contact._id);
+
+        return {
+          ...contact,
+          avatarUrl: contact.avatarId
+            ? await ctx.storage.getUrl(contact.avatarId)
+            : null,
+          // What the form shows for Telegram: the username, and whether a chat is linked.
+          telegram:
+            link === null
+              ? null
+              : {
+                  linked: link.chatId !== null,
+                  preferred: link.preferred === true,
+                  username: link.username ?? link.expectedUsername ?? null,
+                },
+        };
+      })
     );
   },
 });
@@ -192,6 +220,7 @@ export const create = mutation({
     name: v.string(),
     relationship: v.string(),
     savedHandles: v.optional(v.array(savedHandleValidator)),
+    telegram: telegramValidator,
     trusted: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -222,6 +251,12 @@ export const create = mutation({
       trusted: args.trusted,
     });
 
+    const created = await ctx.db.get(contactId);
+
+    if (created !== null && args.telegram) {
+      await applyTelegramChoice(ctx, created, args.telegram);
+    }
+
     await audit(ctx, {
       actor: "person",
       detail: `Added ${name}.`,
@@ -240,6 +275,7 @@ export const update = mutation({
     name: v.string(),
     relationship: v.string(),
     savedHandles: v.optional(v.array(savedHandleValidator)),
+    telegram: telegramValidator,
     trusted: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -255,12 +291,25 @@ export const update = mutation({
 
     await checkTelegramChannels(ctx, contact._id, channels);
 
+    // Clients that don't manage Telegram keep its linked chat as it was.
+    const keptTelegram =
+      args.telegram === undefined &&
+      !channels.some((channel) => channel.channel === "telegram")
+        ? contact.channels.filter((channel) => channel.channel === "telegram")
+        : [];
+
     await ctx.db.patch(contact._id, {
-      channels,
+      channels: [...channels, ...keptTelegram],
       name: args.name.trim() || contact.name,
       relationship: args.relationship.trim(),
       trusted: args.trusted,
     });
+
+    const updated = await ctx.db.get(contact._id);
+
+    if (updated !== null && args.telegram !== undefined) {
+      await applyTelegramChoice(ctx, updated, args.telegram);
+    }
 
     // Older clients don't send saved numbers; leave them untouched then.
     if (args.savedHandles !== undefined) {
