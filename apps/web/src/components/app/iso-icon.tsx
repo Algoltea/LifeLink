@@ -1,22 +1,29 @@
 import { cn } from "@lifelink/ui/lib/utils";
 
 /**
- * Isometric "typewriter key" icons for what a connection can do. Each object
- * sits on the same round key, drawn at one angle with one ink line. Paints map
- * to theme tokens so the set follows light, dark, and more-contrast themes.
- * Geometry matches the Paper set "Connections cards — Permission icons".
+ * Isometric "typewriter key" icons: what a connection can do, and what kind of
+ * file a document is. Each object sits on the same round key, drawn at one
+ * angle with one ink line. Paints map to theme tokens so the set follows
+ * light, dark, and more-contrast themes. Geometry matches the Paper board
+ * "Connections cards — Permission icons (isometric set)".
  */
-type PermissionIconKind =
+type IsoIconKind =
   | "add"
   | "calendar"
+  | "document"
   | "draft"
+  | "file"
+  | "folder"
   | "message"
   | "money"
   | "notice"
+  | "pdf"
   | "post"
   | "read"
   | "replies"
   | "send"
+  | "slides"
+  | "spreadsheet"
   | "unavailable";
 
 type Paint =
@@ -71,7 +78,7 @@ const KEY_BASE: readonly IconFacet[] = [
   },
 ];
 
-const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
+const FACETS: Record<IsoIconKind, readonly IconFacet[]> = {
   add: [
     {
       d: "M20.1 35.6L39.6 46.9L39.6 28.1L20.1 16.9Z",
@@ -214,6 +221,33 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
       width: 0.6,
     },
   ],
+  document: [
+    {
+      d: "M41.7 44.4L39.6 45.6L39.6 25L41.7 23.8Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M24.4 8.1L36.9 15.3L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M36.9 15.3L41.7 23.8L39.6 25L34.7 16.6Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M22.3 35.6L39.6 45.6L39.6 25L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M34.7 16.6L34.7 22.2L39.6 25Z", fill: "wash", stroke: "ink" },
+    { d: "M25 16.6L32.5 20.9", fill: "none", stroke: "copper", width: 1.8 },
+    { d: "M25 21.6L36.9 28.4", fill: "none", stroke: "ink" },
+    { d: "M25 25.9L36.9 32.8", fill: "none", stroke: "ink" },
+    { d: "M25 30.3L33.6 35.3", fill: "none", stroke: "ink" },
+  ],
   draft: [
     {
       d: "M12.5 41.3L29.8 51.3L29.8 49.8L12.5 39.8Z",
@@ -257,6 +291,95 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
     },
     { d: "M32 46L32 42.3L38.5 46Z", fill: "paper", stroke: "ink" },
     { d: "M35.2 40.4L32 42.3L38.5 46Z", fill: "paper", stroke: "ink" },
+  ],
+  file: [
+    {
+      d: "M41.7 44.4L39.6 45.6L39.6 25L41.7 23.8Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M24.4 8.1L36.9 15.3L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M36.9 15.3L41.7 23.8L39.6 25L34.7 16.6Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M22.3 35.6L39.6 45.6L39.6 25L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M34.7 16.6L34.7 22.2L39.6 25Z", fill: "wash", stroke: "ink" },
+    { d: "M25 21.6L36.9 28.4", fill: "none", stroke: "muted" },
+    { d: "M25 25.9L33.6 30.9", fill: "none", stroke: "muted" },
+  ],
+  folder: [
+    {
+      d: "M22.8 12.2L30.4 16.6L30.4 13.4L22.8 9.1Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    {
+      d: "M31.5 15.9L30.4 16.6L30.4 13.4L31.5 12.8Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M23.9 8.4L31.5 12.8L30.4 13.4L22.8 9.1Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    {
+      d: "M22.8 32.8L44.4 45.3L44.4 24.7L22.8 12.2Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    {
+      d: "M45.5 44.7L44.4 45.3L44.4 24.7L45.5 24.1Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M23.9 11.6L45.5 24.1L44.4 24.7L22.8 12.2Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    {
+      d: "M24.4 35.6L39.6 44.4L39.6 20L24.4 11.3Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M40.7 43.8L39.6 44.4L39.6 20L40.7 19.4Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M25.5 10.6L40.7 19.4L39.6 20L24.4 11.3Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M26.6 15.6L34.2 20", fill: "none", stroke: "ink", width: 1.2 },
+    {
+      d: "M18.5 35.3L40.1 47.8L40.1 30.3L18.5 17.8Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    {
+      d: "M42.3 46.6L40.1 47.8L40.1 30.3L42.3 29.1Z",
+      fill: "brass",
+      stroke: "ink",
+    },
+    {
+      d: "M20.6 16.6L42.3 29.1L40.1 30.3L18.5 17.8Z",
+      fill: "caution",
+      stroke: "ink",
+    },
+    { d: "M26.6 27.5L32 30.6", fill: "none", stroke: "brassInk", width: 1.8 },
   ],
   message: [
     { d: "M19 27.5L40.7 40L40.7 23.8L19 11.3Z", fill: "copper", stroke: "ink" },
@@ -378,6 +501,38 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
       stroke: "ink",
     },
   ],
+  pdf: [
+    {
+      d: "M41.7 44.4L39.6 45.6L39.6 25L41.7 23.8Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M24.4 8.1L36.9 15.3L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M36.9 15.3L41.7 23.8L39.6 25L34.7 16.6Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M22.3 35.6L39.6 45.6L39.6 25L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M34.7 16.6L34.7 22.2L39.6 25Z", fill: "wash", stroke: "ink" },
+    {
+      d: "M24.4 33.8L37.4 41.3L37.4 35L24.4 27.5Z",
+      fill: "copper",
+      stroke: "copper",
+      width: 0.6,
+    },
+    { d: "M25 16.6L32.5 20.9", fill: "none", stroke: "ink" },
+    { d: "M25 21.6L36.9 28.4", fill: "none", stroke: "ink" },
+    { d: "M27.1 32.2L34.7 36.6", fill: "none", stroke: "paper", width: 1.6 },
+  ],
   post: [
     {
       d: "M20.6 35.3L40.1 46.6L40.1 22.8L20.6 11.6Z",
@@ -486,6 +641,86 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
       width: 1,
     },
   ],
+  slides: [
+    {
+      d: "M43.9 45.6L41.7 46.9L41.7 29.4L43.9 28.1Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M22.3 15.6L43.9 28.1L41.7 29.4L20.1 16.9Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M20.1 34.4L41.7 46.9L41.7 29.4L20.1 16.9Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M22.8 22.2L29.8 26.3", fill: "none", stroke: "copper", width: 1.8 },
+    {
+      d: "M23.9 33.4L27.1 35.3L27.1 30.9L23.9 29.1Z",
+      fill: "brass",
+      stroke: "ink",
+      width: 1,
+    },
+    {
+      d: "M29.3 36.6L32.5 38.4L32.5 30.9L29.3 29.1Z",
+      fill: "copper",
+      stroke: "ink",
+      width: 1,
+    },
+    {
+      d: "M34.7 39.7L38 41.6L38 38.4L34.7 36.6Z",
+      fill: "brass",
+      stroke: "ink",
+      width: 1,
+    },
+  ],
+  spreadsheet: [
+    {
+      d: "M41.7 44.4L39.6 45.6L39.6 25L41.7 23.8Z",
+      fill: "border",
+      stroke: "ink",
+    },
+    {
+      d: "M24.4 8.1L36.9 15.3L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M36.9 15.3L41.7 23.8L39.6 25L34.7 16.6Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    {
+      d: "M22.3 35.6L39.6 45.6L39.6 25L34.7 16.6L22.3 9.4Z",
+      fill: "paper",
+      stroke: "ink",
+    },
+    { d: "M34.7 16.6L34.7 22.2L39.6 25Z", fill: "wash", stroke: "ink" },
+    {
+      d: "M24.4 20.6L37.4 28.1L37.4 24.4L24.4 16.9Z",
+      fill: "brass",
+      stroke: "brass",
+      width: 0.6,
+    },
+    { d: "M24.4 33.8L37.4 41.3", fill: "none", stroke: "ink", width: 1 },
+    { d: "M24.4 29.4L37.4 36.9", fill: "none", stroke: "ink", width: 1 },
+    { d: "M24.4 25L37.4 32.5", fill: "none", stroke: "ink", width: 1 },
+    { d: "M24.4 20.6L37.4 28.1", fill: "none", stroke: "ink", width: 1 },
+    { d: "M24.4 16.9L37.4 24.4", fill: "none", stroke: "ink", width: 1 },
+    { d: "M24.4 33.8L24.4 16.9", fill: "none", stroke: "ink", width: 1 },
+    { d: "M28.8 36.3L28.8 19.4", fill: "none", stroke: "ink", width: 1 },
+    { d: "M33.1 38.8L33.1 21.9", fill: "none", stroke: "ink", width: 1 },
+    { d: "M37.4 41.3L37.4 24.4", fill: "none", stroke: "ink", width: 1 },
+    {
+      d: "M33.4 34.2L37.1 36.3L37.1 32.7L33.4 30.6Z",
+      fill: "copper",
+      stroke: "copper",
+      width: 0.6,
+    },
+  ],
   unavailable: [
     {
       d: "M16.8 40L32 48.8L32 32.5L16.8 23.8Z",
@@ -508,7 +743,7 @@ const FACETS: Record<PermissionIconKind, readonly IconFacet[]> = {
   ],
 };
 
-const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
+const KIND_BY_CAPABILITY = new Map<string, IsoIconKind>([
   ["calendar.create", "add"],
   ["calendar.read", "calendar"],
   ["discord.receive", "replies"],
@@ -534,8 +769,21 @@ const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
   ["paypal.send_money", "money"],
 ]);
 
-const permissionIconFor = (capabilityId: string): PermissionIconKind =>
+const permissionIconFor = (capabilityId: string): IsoIconKind =>
   KIND_BY_CAPABILITY.get(capabilityId) ?? "unavailable";
+
+/** Keyed by the file kinds the Drive listing reports. */
+const KIND_BY_FILE_KIND = new Map<string, IsoIconKind>([
+  ["Document", "document"],
+  ["Folder", "folder"],
+  ["PDF", "pdf"],
+  ["Picture", "post"],
+  ["Slides", "slides"],
+  ["Spreadsheet", "spreadsheet"],
+]);
+
+const fileIconFor = (fileKind: string): IsoIconKind =>
+  KIND_BY_FILE_KIND.get(fileKind) ?? "file";
 
 const FacetPath = ({ facet }: { facet: IconFacet }) => (
   <path
@@ -549,14 +797,14 @@ const FacetPath = ({ facet }: { facet: IconFacet }) => (
   />
 );
 
-/** Decorative: always pair it with the capability's words. */
-const PermissionIcon = ({
+/** Decorative: always pair it with words that say the same thing. */
+const IsoIcon = ({
   className,
   kind,
   size = 56,
 }: {
   className?: string;
-  kind: PermissionIconKind;
+  kind: IsoIconKind;
   size?: number;
 }) => (
   <svg
@@ -575,6 +823,6 @@ const PermissionIcon = ({
   </svg>
 );
 
-export { PermissionIcon, permissionIconFor };
+export { IsoIcon, fileIconFor, permissionIconFor };
 
-export type { PermissionIconKind };
+export type { IsoIconKind };

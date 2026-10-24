@@ -17,12 +17,11 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import { toast } from "sonner";
 
+import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
+import type { IsoIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
-
-import { PermissionIcon, permissionIconFor } from "./permission-icon";
-import type { PermissionIconKind } from "./permission-icon";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -168,7 +167,7 @@ const cardCountFor = (demoMode: boolean, row: ProviderRow): string => {
     : `${thingsCount(available)} it can do`;
 };
 
-const cardIconsFor = (row: ProviderRow): PermissionIconKind[] => {
+const cardIconsFor = (row: ProviderRow): IsoIconKind[] => {
   const kinds = row.definition.capabilities
     .filter(isAvailable)
     .map((capability) => permissionIconFor(capability.id));
@@ -215,7 +214,7 @@ const ProviderCard = ({
           )}
         >
           {cardIconsFor(row).map((kind) => (
-            <PermissionIcon
+            <IsoIcon
               className="size-[52px] sm:size-[64px]"
               key={kind}
               kind={kind}
@@ -274,7 +273,7 @@ const CapabilityRow = ({
 
   return (
     <li className="flex items-center gap-4">
-      <PermissionIcon
+      <IsoIcon
         className={available ? undefined : "opacity-55"}
         kind={permissionIconFor(capability.id)}
       />
@@ -764,7 +763,7 @@ const ConnectionsScreen = () => {
       {data !== undefined && additionalRows.length > 0 ? (
         <ConnectionDisclosure className="group/limitations border-border bg-parchment rounded-xl border">
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-4 rounded-xl px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
-            <PermissionIcon kind="unavailable" size={48} />
+            <IsoIcon kind="unavailable" size={48} />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-body font-semibold">
                 Other services and limitations

@@ -7,6 +7,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import Image from "next/image";
 
 import { SimulatedPill } from "@/components/app/bits";
+import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
 import { formatWhen } from "@/lib/format";
 
 type Listing = FunctionReturnType<typeof api.drive.files>;
@@ -138,20 +139,26 @@ const FilePreview = ({
     aria-labelledby="preview-heading"
     className="bg-surface text-foreground flex min-w-0 flex-col gap-4 rounded-xl px-5 py-5 lg:sticky lg:top-6"
   >
-    <header className="flex flex-col gap-1">
-      <p className="text-muted-foreground text-base">Preview</p>
-      <h2 className="text-2xl font-semibold wrap-anywhere" id="preview-heading">
-        {file.name}
-      </h2>
-      <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-base">
-        <span>
-          {file.kind}
-          {file.modifiedAt === null
-            ? ""
-            : ` · Last changed ${formatWhen(file.modifiedAt, timeZone)}`}
-        </span>
-        {isPractice ? <SimulatedPill /> : null}
-      </p>
+    <header className="flex items-start gap-4">
+      <IsoIcon kind={fileIconFor(file.kind)} size={72} />
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="text-muted-foreground text-base">Preview</p>
+        <h2
+          className="text-2xl font-semibold wrap-anywhere"
+          id="preview-heading"
+        >
+          {file.name}
+        </h2>
+        <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-base">
+          <span>
+            {file.kind}
+            {file.modifiedAt === null
+              ? ""
+              : ` · Last changed ${formatWhen(file.modifiedAt, timeZone)}`}
+          </span>
+          {isPractice ? <SimulatedPill /> : null}
+        </p>
+      </div>
     </header>
     <PreviewWindow file={file} />
     <OpenInDrive file={file} isPractice={isPractice} />
