@@ -69,8 +69,13 @@ const ConversationRow = ({
       // SAFETY: a stored contact id, and /messages/[contactId] is a real route.
       href={`/messages/${contact.id}` as Route}
     >
-      <Avatar hue={contact.hue} name={contact.name} src={contact.avatarUrl} />
-      <span className="flex min-w-0 flex-1 flex-col">
+      <Avatar
+        className="size-[2.667rem]"
+        hue={contact.hue}
+        name={contact.name}
+        src={contact.avatarUrl}
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-baseline justify-between gap-3">
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="text-body truncate font-semibold">
@@ -120,7 +125,7 @@ const MessagesScreen = () => {
             Trusted circle
           </Link>
         }
-        subline="Write to the people in your trusted circle. You see every message before it's sent."
+        subline="Write to the people in your trusted circle. You see every message before it’s sent."
         title="Messages"
       />
       {threads === undefined ? (
@@ -128,8 +133,12 @@ const MessagesScreen = () => {
       ) : null}
       {threads !== undefined && threads.length === 0 ? (
         <EmptyNote
+          className="max-w-[42.667rem]"
           action={
-            <Link className="text-lg font-semibold underline" href="/circle">
+            <Link
+              className="min-h-control inline-flex items-center text-lg font-semibold underline"
+              href="/circle"
+            >
               Add someone
             </Link>
           }
@@ -140,7 +149,7 @@ const MessagesScreen = () => {
       {threads !== undefined && threads.length > 0 ? (
         <ul
           aria-label="Conversations"
-          className="flex max-w-3xl flex-col gap-1"
+          className="flex max-w-[42.667rem] flex-col gap-1"
         >
           {threads
             .toSorted(
