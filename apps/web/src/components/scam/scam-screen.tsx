@@ -32,7 +32,6 @@ const canCheck = (
   source: Source,
   text: string,
   file: File | null,
-  allowCloudAnalysis: boolean,
   practice: boolean,
   loading: boolean
 ): boolean => {
@@ -41,38 +40,35 @@ const canCheck = (
   }
 
   if (source === "screenshot") {
-    return file !== null && allowCloudAnalysis && !practice && !loading;
+    return file !== null && !practice && !loading;
   }
 
   return text.trim().length > 0;
 };
 
-const checkButtonLabel = (
-  source: Source,
-  cloud: boolean,
-  practice: boolean
-): string => {
+const checkButtonLabel = (source: Source, practice: boolean): string => {
   if (source === "screenshot") {
-    if (practice) {
-      return "Screenshot checks unavailable in Practice";
-    }
-
-    return "Check screenshot with cloud AI";
+    return practice
+      ? "Screenshot checks unavailable in Practice"
+      : "Check this screenshot";
   }
 
-  return cloud ? "Check with cloud AI" : "Check locally";
+  return source === "email" ? "Check this email" : "Check this message";
 };
 
+/** One plain line under the form: where the message goes, and what to leave out. */
 const checkGuidance = (source: Source, practice: boolean): string => {
-  if (source === "screenshot") {
-    if (practice) {
-      return "Practice mode cannot analyze screenshots and never sends them to an AI provider. Paste or type the words for a local check. ";
-    }
-
-    return "Local rules cannot read images. Choose an image and allow cloud AI above, or paste or type its words for a local check. ";
+  if (practice) {
+    return source === "screenshot"
+      ? "Practice mode can’t check pictures. Paste the words instead."
+      : "Practice checks stay on this device. Nothing is sent.";
   }
 
-  return "The local check looks for common warning signs without sending your message to an AI provider. ";
+  if (source === "email") {
+    return "An AI service reads this email to check it.";
+  }
+
+  return "An AI service reads this to check it. Leave out passwords and card numbers.";
 };
 
 const validScreenshot = (file: File): boolean =>
@@ -141,49 +137,6 @@ const ScreenshotFields = ({
   );
 };
 
-const CloudConsent = ({
-  source,
-  practice,
-  busy,
-  allowed,
-  onChange,
-}: {
-  source: Source;
-  practice: boolean;
-  busy: boolean;
-  allowed: boolean;
-  onChange: (allowed: boolean) => void;
-}) => {
-  const consentId = useId();
-
-  if (source === "screenshot" && practice) {
-    return null;
-  }
-
-  return (
-    <label
-      className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
-      htmlFor={consentId}
-    >
-      <input
-        checked={allowed}
-        className="accent-primary mt-1 size-5 shrink-0"
-        disabled={busy}
-        id={consentId}
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
-      <span>
-        Allow this {source === "screenshot" ? "screenshot and note" : "message"}{" "}
-        to be sent to the cloud AI provider for this check.
-        {source === "screenshot"
-          ? " A screenshot must be sent to cloud AI to read its words."
-          : " Leave unchecked to use local rules."}
-      </span>
-    </label>
-  );
-};
-
 /** Text, a screenshot, or a chosen email goes to the backend; the result appears below as it finishes. */
 const CheckForm = ({
   email,
@@ -205,7 +158,6 @@ const CheckForm = ({
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const textId = useId();
   const sourceName = useId();
@@ -216,20 +168,9 @@ const CheckForm = ({
   const screenshotReady = activeSource === "screenshot" && file !== null;
   const screenshotMode = activeSource === "screenshot";
 
-  const ready = canCheck(
-    activeSource,
-    text,
-    file,
-    allowCloudAnalysis,
-    practice,
-    me === undefined
-  );
+  const ready = canCheck(activeSource, text, file, practice, me === undefined);
 
-  const checkLabel = checkButtonLabel(
-    activeSource,
-    allowCloudAnalysis,
-    practice
-  );
+  const checkLabel = checkButtonLabel(activeSource, practice);
 
   const uploadScreenshot = async (
     screenshot: File
@@ -244,7 +185,7 @@ const CheckForm = ({
 
     if (!response.ok) {
       throw new Error(
-        "The screenshot could not be uploaded. Try again, or paste its words for a local check."
+        "The screenshot could not be uploaded. Try again, or paste its words instead."
       );
     }
 
@@ -257,7 +198,7 @@ const CheckForm = ({
   const start = async (): Promise<Id<"scamReviews">> => {
     if (activeSource === "email" && email !== null) {
       return await submit({
-        allowCloudAnalysis,
+        allowCloudAnalysis: true,
         emailId: email.id,
         screenshotId: null,
         text: null,
@@ -268,7 +209,7 @@ const CheckForm = ({
       const screenshotId = await uploadScreenshot(file);
 
       return await submit({
-        allowCloudAnalysis,
+        allowCloudAnalysis: true,
         emailId: null,
         screenshotId,
         text: text.trim() || null,
@@ -276,7 +217,7 @@ const CheckForm = ({
     }
 
     return await submit({
-      allowCloudAnalysis,
+      allowCloudAnalysis: true,
       emailId: null,
       screenshotId: null,
       text,
@@ -306,7 +247,6 @@ const CheckForm = ({
           onStarted(await start());
           setText("");
           setFile(null);
-          setAllowCloudAnalysis(false);
         } catch (error) {
           setFormError(errorText(error));
         }
@@ -335,7 +275,6 @@ const CheckForm = ({
                 name={sourceName}
                 onChange={() => {
                   setSource(option.value);
-                  setAllowCloudAnalysis(false);
                   setFormError(null);
                 }}
                 type="radio"
@@ -382,17 +321,8 @@ const CheckForm = ({
         />
       ) : null}
 
-      <CloudConsent
-        source={activeSource}
-        practice={practice}
-        busy={busy}
-        allowed={allowCloudAnalysis}
-        onChange={setAllowCloudAnalysis}
-      />
-      <p className="text-muted-foreground max-w-prose text-base">
+      <p className="text-muted-foreground text-body max-w-prose">
         {checkGuidance(activeSource, practice)}
-        LifeLink does not open links or contact the sender. No check can prove a
-        message is genuine.
       </p>
       {screenshotMode ? (
         <Button
@@ -400,7 +330,6 @@ const CheckForm = ({
           disabled={busy}
           onClick={() => {
             setSource("text");
-            setAllowCloudAnalysis(false);
             setFormError(null);
             requestAnimationFrame(() => textRef.current?.focus());
           }}
