@@ -182,8 +182,11 @@ const DetailsView = ({
               : `Your estimate: ${money(details.estimatedCents)}.`}
             {details.budgetCents === null
               ? ""
-              : ` Budget: ${money(details.budgetCents)}.`}{" "}
-            You’ll see real prices and pay on Instacart.
+              : ` Budget: ${money(details.budgetCents)}.`}
+          </p>
+          <p className="text-muted-foreground text-base">
+            This is a record of an earlier shopping request. Shopping through
+            LifeLink is no longer available.
           </p>
         </div>
       );

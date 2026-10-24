@@ -47,7 +47,7 @@ const APPROVE_WORDS: Record<ActionDetails["kind"], string> = {
   create_reminder: "Save the reminder",
   email_draft: "Approve and save the draft",
   family_update: "Share the update",
-  grocery_handoff: "Open it on Instacart",
+  grocery_handoff: "Approve request",
   send_message: "Approve and send",
 };
 
@@ -164,6 +164,31 @@ const OutcomeConfirmation = ({
   );
 };
 
+const ShoppingHistory = ({ view }: { view: ActionView }) => {
+  const receipt = view.receipts.at(-1);
+  const lastAttempt = view.attempts.at(-1);
+  const { status } = view.action;
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      {receipt ? (
+        <div className="bg-surface flex flex-col gap-2 rounded-xl px-5 py-4">
+          <p className="flex flex-wrap items-center gap-3 text-xl font-semibold">
+            Recorded outcome <ModePill mode={receipt.mode} />
+          </p>
+          <p className="text-lg">{receipt.summary}</p>
+        </div>
+      ) : null}
+      {lastAttempt?.error ? (
+        <p className="text-muted-foreground text-lg">{lastAttempt.error}</p>
+      ) : null}
+      {status === "approved" || status === "failed" ? (
+        <CancelActionButton view={view} />
+      ) : null}
+    </div>
+  );
+};
+
 const Outcome = ({ view }: { view: ActionView }) => {
   const retry = useMutation(api.actions.retry);
   const checkOutcome = useAction(api.actions.checkOutcome);
@@ -188,6 +213,10 @@ const Outcome = ({ view }: { view: ActionView }) => {
 
     setConfirming(false);
   };
+
+  if (view.action.kind === "grocery_handoff") {
+    return <ShoppingHistory view={view} />;
+  }
 
   if (status === "executing" || status === "approved") {
     return (
@@ -220,7 +249,7 @@ const Outcome = ({ view }: { view: ActionView }) => {
             rel="noopener noreferrer"
             target="_blank"
           >
-            Open the shopping page
+            Open the receipt
           </a>
         ) : null}
       </output>
@@ -549,6 +578,7 @@ const ApprovalBar = ({
   const [pending, setPending] = useState<"approve" | "cancel" | null>(null);
   const busy = pending !== null;
   const { kind } = current.details;
+  const retired = kind === "grocery_handoff";
 
   const onApprove = async (
     event: MouseEvent<HTMLButtonElement>
@@ -600,7 +630,7 @@ const ApprovalBar = ({
       <div className="flex flex-wrap items-center gap-3">
         <Button
           aria-busy={busy}
-          disabled={busy || questionOpen}
+          disabled={busy || questionOpen || retired}
           onClick={onApprove}
           size="lg"
         >
@@ -633,11 +663,17 @@ const ApprovalBar = ({
           {pending === "cancel" ? "Cancelling…" : "Cancel this request"}
         </Button>
       </div>
-      <p className="text-muted-foreground text-base">
-        {questionOpen
-          ? "Answer the question above first."
-          : "If anything changes after you approve, like the time or who it goes to, LifeLink will ask you again."}
-      </p>
+      {retired ? (
+        <p className="text-muted-foreground text-base">
+          Shopping requests can no longer be approved.
+        </p>
+      ) : (
+        <p className="text-muted-foreground text-base">
+          {questionOpen
+            ? "Answer the question above first."
+            : "If anything changes after you approve, like the time or who it goes to, LifeLink will ask you again."}
+        </p>
+      )}
     </div>
   );
 };
@@ -689,12 +725,14 @@ const ReviewVersion = ({
   }
 
   const { details } = current;
+  const retired = details.kind === "grocery_handoff";
 
   const open = current.ambiguities.find(
     (ambiguity) => ambiguity.resolvedValue === null
   );
 
   const awaiting = view.action.status === "awaiting_approval";
+  const canApprove = awaiting && !retired;
 
   const body =
     details.kind === "send_message" || details.kind === "email_draft"
@@ -702,7 +740,7 @@ const ReviewVersion = ({
       : null;
 
   const reapproval =
-    awaiting &&
+    canApprove &&
     view.invalidatedApprovals.some((item) => item.version < current.version);
 
   return (
@@ -733,7 +771,7 @@ const ReviewVersion = ({
           approve again.
         </output>
       ) : null}
-      {view.action.mode === "simulated" ? (
+      {view.action.mode === "simulated" && !retired ? (
         <p className="text-simulated flex flex-wrap items-center gap-3 text-base">
           <ModePill mode="simulated" /> Practice mode: approving shows what
           would happen; nothing real is sent.
@@ -763,7 +801,7 @@ const ReviewVersion = ({
         />
       ) : null}
 
-      {open && awaiting ? (
+      {open && canApprove ? (
         <Question
           ambiguity={open}
           onAnswer={async (value) => {

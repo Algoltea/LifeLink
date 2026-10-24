@@ -469,9 +469,9 @@ const SettingsScreen = () => {
                 <li>
                   <Link
                     className="inline-flex min-h-12 items-center underline underline-offset-4"
-                    href="/groceries#spending"
+                    href="/groceries#budget"
                   >
-                    Spending limit for groceries
+                    Grocery lists and budgets
                   </Link>
                 </li>
                 <li>

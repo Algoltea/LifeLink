@@ -376,7 +376,7 @@ const ListEditor = ({ list }: { list: Doc<"groceryLists"> }) => {
       )}
       <p className="text-muted-foreground text-lg leading-7">
         Tick an item when you already have it; ticked items are left out when
-        you shop.
+        you copy or print the list.
       </p>
     </div>
   );

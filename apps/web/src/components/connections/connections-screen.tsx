@@ -359,7 +359,6 @@ const GROUPS = [
   { ids: ["imessage", "discord"], title: "Message family and friends" },
   { ids: ["gmail", "outlook"], title: "Read and write email" },
   { ids: ["google_calendar"], title: "Manage appointments" },
-  { ids: ["instacart"], title: "Shop from your grocery list" },
 ] as const;
 
 const ADDITIONAL_IDS = new Set(["paypal", "facebook", "instagram", "ebay"]);
