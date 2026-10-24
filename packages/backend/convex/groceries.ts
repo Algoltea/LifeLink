@@ -1,20 +1,35 @@
-/**
- * Saved grocery lists, preferences, and budgets. Retired shopping endpoints
- * remain callable so older clients get a clear explanation without creating work.
- */
 import {
   groceryEstimateError,
   groceryQuantityError,
   groceryUnit,
 } from "@lifelink/contracts/groceries";
+/**
+ * Saved grocery lists, preferences, and budgets. Retired shopping endpoints
+ * remain callable so older clients get a clear explanation without creating work.
+ */
+import {
+  aisleSortRequest,
+  aisleSortSchema,
+  aislesFromSort,
+  arrangeByAisle,
+  isGroceryAisle,
+  moveItem as moveListItem,
+} from "@lifelink/contracts/grocery-aisles";
+import type { AisleSort } from "@lifelink/contracts/grocery-aisles";
 import { ConvexError, v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import {
+  openRouterConfigured,
+  structuredCompletion,
+} from "./integrations/openrouter";
 import { audit } from "./lib/audit";
 import { INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import { requireOwned, requireOwner } from "./lib/session";
+import { reserveCloudUse } from "./lib/usage";
 
 const MAX_ITEMS = 100;
 
@@ -33,6 +48,30 @@ const datedName = (name: string, now: number, timeZone: string): string => {
 };
 
 const FULL_LIST = "This list is full. Start a new list for more items.";
+
+/** Long enough for any real product name; keeps the assistant request small. */
+const MAX_NAME_IN_PROMPT = 80;
+
+type GroceryItem = Doc<"groceryLists">["items"][number];
+
+/** Stored items never carry `aisle: undefined`; an unsorted item has no key. */
+const withAisle = (
+  item: GroceryItem,
+  aisle: string | undefined
+): GroceryItem => {
+  const { aisle: _previous, ...rest } = item;
+
+  return aisle === undefined ? rest : { ...rest, aisle };
+};
+
+const checkAisle = (aisle: string | null | undefined): void => {
+  if (aisle !== null && aisle !== undefined && !isGroceryAisle(aisle)) {
+    throw new ConvexError({
+      code: "invalid",
+      message: "Choose a store section from the list.",
+    });
+  }
+};
 
 /** The same checks for a new item and for one put back by Undo. */
 const itemError = (item: {
@@ -270,6 +309,7 @@ export const restoreItem = mutation({
   args: {
     index: v.number(),
     item: v.object({
+      aisle: v.optional(v.string()),
       checked: v.boolean(),
       estimatedCents: v.union(v.number(), v.null()),
       id: v.string(),
@@ -287,6 +327,7 @@ export const restoreItem = mutation({
     }
 
     const item = { ...args.item, name: args.item.name.trim() };
+    checkAisle(item.aisle);
     const validationError = itemError(item);
 
     if (validationError !== null) {
@@ -304,6 +345,183 @@ export const restoreItem = mutation({
 
     await ctx.db.patch(list._id, {
       items: [...list.items.slice(0, index), item, ...list.items.slice(index)],
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/** Moves one item up or down the list; at a section's edge it joins the next section. */
+export const moveItem = mutation({
+  args: {
+    direction: v.union(v.literal("up"), v.literal("down")),
+    itemId: v.string(),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+    const moved = moveListItem(list.items, args.itemId, args.direction);
+
+    if (moved === null) {
+      return;
+    }
+
+    await ctx.db.patch(list._id, {
+      items: moved.map((item) => withAisle(item, item.aisle)),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+const arrangementEntry = v.object({
+  aisle: v.union(v.string(), v.null()),
+  itemId: v.string(),
+});
+
+const arrangementOf = (items: GroceryItem[]) =>
+  items.map((item) => ({ aisle: item.aisle ?? null, itemId: item.id }));
+
+type LocalReason = "failed" | "limit" | "unavailable";
+
+/**
+ * Reads the items no section has been chosen for yet, and reserves one
+ * assistant request when there is something to sort. Items the person has
+ * already sorted, or moved by hand, keep their section.
+ */
+export const beginAisleSort = internalMutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+    const unsorted = list.items.filter((item) => item.aisle === undefined);
+    // With nothing to ask about, finishing still puts the list in walking order.
+    let localReason: LocalReason | null = null;
+
+    if (unsorted.length > 0 && !openRouterConfigured()) {
+      localReason = "unavailable";
+    } else if (
+      unsorted.length > 0 &&
+      !(await reserveCloudUse(ctx, owner._id, "aisles"))
+    ) {
+      localReason = "limit";
+    }
+
+    return {
+      itemIds: unsorted.map((item) => item.id),
+      localReason,
+      names: unsorted.map((item) => item.name.slice(0, MAX_NAME_IN_PROMPT)),
+      previous: arrangementOf(list.items),
+    };
+  },
+});
+
+/** Gives each still-unsorted item its section, then puts the list in walking order. */
+export const finishAisleSort = internalMutation({
+  args: {
+    assigned: v.array(v.object({ aisle: v.string(), itemId: v.string() })),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+    const chosen = new Map(args.assigned.map((entry) => [entry.itemId, entry]));
+
+    const items = list.items.map((item) => {
+      const aisle = chosen.get(item.id)?.aisle;
+
+      return item.aisle === undefined && isGroceryAisle(aisle)
+        ? withAisle(item, aisle)
+        : item;
+    });
+
+    await ctx.db.patch(list._id, {
+      items: arrangeByAisle(items),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Sorts the list by store section so one walk through the store picks up
+ * everything. The assistant chooses sections when it is set up; otherwise,
+ * or if it fails, a built-in guess from the item names is used instead.
+ * Returns the order before sorting, so the person can undo it.
+ */
+export const sortByAisle = action({
+  args: { listId: v.id("groceryLists") },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    localReason: LocalReason | null;
+    previous: { aisle: string | null; itemId: string }[];
+    sorted: number;
+  }> => {
+    const plan = await ctx.runMutation(internal.groceries.beginAisleSort, args);
+    let localReason: LocalReason | null = plan.localReason;
+    let sort: AisleSort | null = null;
+
+    if (plan.names.length > 0 && localReason === null) {
+      const result = await structuredCompletion({
+        messages: aisleSortRequest(plan.names),
+        schema: aisleSortSchema,
+        schemaName: "grocery_aisles",
+        tier: "fast",
+      });
+
+      if (result.ok) {
+        sort = result.value;
+      } else {
+        localReason = "failed";
+      }
+    }
+
+    const aisles = aislesFromSort(plan.names, sort);
+
+    await ctx.runMutation(internal.groceries.finishAisleSort, {
+      assigned: plan.itemIds.map((itemId, index) => ({
+        aisle: aisles[index] ?? "other",
+        itemId,
+      })),
+      listId: args.listId,
+    });
+
+    return {
+      localReason,
+      previous: plan.previous,
+      sorted: plan.names.length,
+    };
+  },
+});
+
+/**
+ * Undo for sorting: puts items back in the given order with the given
+ * sections. Items added since then stay, after the rest.
+ */
+export const restoreArrangement = mutation({
+  args: {
+    arrangement: v.array(arrangementEntry),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    for (const entry of args.arrangement) {
+      checkAisle(entry.aisle);
+    }
+
+    const byId = new Map(list.items.map((item) => [item.id, item]));
+    const placed = new Set<string>();
+    const items: GroceryItem[] = [];
+
+    for (const entry of args.arrangement) {
+      const item = byId.get(entry.itemId);
+
+      if (item !== undefined && !placed.has(item.id)) {
+        placed.add(item.id);
+        items.push(withAisle(item, entry.aisle ?? undefined));
+      }
+    }
+
+    await ctx.db.patch(list._id, {
+      items: [...items, ...list.items.filter((item) => !placed.has(item.id))],
       updatedAt: Date.now(),
     });
   },

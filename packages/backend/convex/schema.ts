@@ -1,3 +1,4 @@
+import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -273,7 +274,11 @@ export default defineSchema({
   assistantUsage: defineTable({
     dayRequests: v.number(),
     dayStartedAt: v.number(),
-    kind: v.union(v.literal("explanation"), v.literal("recap")),
+    kind: v.union(
+      v.literal("aisles"),
+      v.literal("explanation"),
+      v.literal("recap")
+    ),
     minuteRequests: v.number(),
     minuteStartedAt: v.number(),
     profileId: v.id("profiles"),
@@ -520,6 +525,8 @@ export default defineSchema({
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(
       v.object({
+        // Store section from `@lifelink/contracts/grocery-aisles`; unset until sorted.
+        aisle: v.optional(v.string()),
         checked: v.boolean(),
         estimatedCents: v.union(v.number(), v.null()),
         id: v.string(),
@@ -704,6 +711,10 @@ export default defineSchema({
     reducedMotion: v.boolean(),
     showNews: v.optional(v.boolean()),
     speechRate: v.number(),
+    // Missing or null uses the deployment's default read-aloud voice.
+    speechVoice: v.optional(
+      v.union(v.null(), ...SPEECH_VOICES.map(({ value }) => v.literal(value)))
+    ),
     stepByStep: v.optional(v.boolean()),
     // One of the offered support languages; checked when saved.
     supportLanguage: v.optional(v.string()),

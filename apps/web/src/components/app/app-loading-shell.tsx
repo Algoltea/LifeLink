@@ -11,7 +11,7 @@ import {
   CircleLoadingHeader,
 } from "./circle-loading-layouts";
 import { EmailLoadingHeader } from "./email-loading-layouts";
-import { MessagesLoadingHeader } from "./messages-loading-layouts";
+import { MessagesLoadingFrame } from "./messages-loading-layouts";
 import { PageHeader } from "./page-header";
 import { ShellFrame } from "./shell";
 import { LoadingRows } from "./states";
@@ -79,7 +79,7 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
   }
 
   if (pathname.startsWith("/messages/")) {
-    return <LoadingRows label="Loading conversation" layout="thread" />;
+    return <MessagesLoadingFrame open />;
   }
 
   switch (pathname) {
@@ -97,12 +97,7 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
     }
 
     case "/messages": {
-      return (
-        <>
-          <MessagesLoadingHeader />
-          <LoadingRows label="Loading conversations" layout="messages" />
-        </>
-      );
+      return <MessagesLoadingFrame open={false} />;
     }
 
     case "/email": {
