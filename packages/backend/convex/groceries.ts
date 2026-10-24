@@ -295,6 +295,31 @@ export const restoreItem = mutation({
   },
 });
 
+/**
+ * Starts a new list from an old one: same items, budget, and preferences,
+ * with nothing marked as in the cart. The old list stays as it was.
+ */
+export const copyList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args): Promise<Id<"groceryLists">> => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+
+    return await ctx.db.insert("groceryLists", {
+      budgetCents: list.budgetCents,
+      items: list.items.map((item) => ({
+        ...item,
+        checked: false,
+        id: crypto.randomUUID(),
+      })),
+      lastHandoff: null,
+      name: `${list.name} (copy)`,
+      ownerId: owner._id,
+      preferences: list.preferences,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const setDetails = mutation({
   args: {
     budgetCents: v.union(v.number(), v.null()),

@@ -332,7 +332,7 @@ const addThree = async (
   }
 };
 
-describe("undoing item removals", () => {
+describe("undoing removals and reusing lists", () => {
   it("puts a removed item back in its place, once", async () => {
     const { backend, listId, person } = await setupList();
     await addThree(person, listId);
@@ -390,5 +390,51 @@ describe("undoing item removals", () => {
         listId,
       })
     ).rejects.toThrow("That list could not be found.");
+  });
+
+  it("starts a new list from an old one without changing the old one", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+    await person.mutation(api.groceries.setDetails, {
+      budgetCents: 5000,
+      listId,
+      name: "Weekly",
+      preferences: ["Low sodium"],
+    });
+
+    const original = await backend.run(async (ctx) => await ctx.db.get(listId));
+    const first = original?.items[0];
+
+    if (!first) {
+      throw new Error("Missing item");
+    }
+
+    await person.mutation(api.groceries.updateItem, {
+      checked: true,
+      itemId: first.id,
+      listId,
+    });
+
+    const copyId = await person.mutation(api.groceries.copyList, { listId });
+    const copy = await backend.run(async (ctx) => await ctx.db.get(copyId));
+
+    expect(copy).toMatchObject({
+      budgetCents: 5000,
+      name: "Weekly (copy)",
+      preferences: ["Low sodium"],
+    });
+    expect(copy?.items.map((item) => [item.name, item.checked])).toStrictEqual([
+      ["Milk", false],
+      ["Bread", false],
+      ["Eggs", false],
+    ]);
+    expect(
+      copy?.items.some((item) =>
+        original?.items.some((old) => old.id === item.id)
+      )
+    ).toBeFalsy();
+    await expect(
+      backend.run(async (ctx) => await ctx.db.get(listId))
+    ).resolves.toMatchObject({ items: [{ checked: true }, {}, {}] });
   });
 });

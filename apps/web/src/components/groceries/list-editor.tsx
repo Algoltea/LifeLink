@@ -12,7 +12,13 @@ import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
-import { PlusIcon, RotateCcwIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  CopyPlusIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -384,10 +390,12 @@ const DetailsForm = ({
 /** One list: items to tick off, its details, and its preferences. */
 const ListEditor = ({
   list,
+  onCopy,
   onDelete,
   summary,
 }: {
   list: Doc<"groceryLists">;
+  onCopy: () => void;
   onDelete: () => void;
   summary: ReactNode;
 }) => {
@@ -410,6 +418,16 @@ const ListEditor = ({
             {inCart > 0 ? ` · ${inCart} in your cart` : null}
           </p>
         </div>
+        {list.items.length > 0 ? (
+          <Button
+            className="whitespace-normal"
+            onClick={onCopy}
+            variant="outline"
+          >
+            <CopyPlusIcon />
+            Start a new list from this one
+          </Button>
+        ) : null}
       </div>
       {summary}
       <details>

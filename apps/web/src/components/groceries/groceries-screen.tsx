@@ -101,9 +101,11 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
 
 const GroceryWorkspace = ({
   list,
+  onCopy,
   onDelete,
 }: {
   list: Doc<"groceryLists">;
+  onCopy: () => void;
   onDelete: () => void;
 }) => {
   const receipt = useRef<HTMLElement>(null);
@@ -132,6 +134,7 @@ const GroceryWorkspace = ({
         <ListEditor
           key={list._id}
           list={list}
+          onCopy={onCopy}
           onDelete={onDelete}
           summary={
             <>
@@ -157,6 +160,7 @@ const GroceriesScreen = () => {
   const data = useQuery(api.groceries.lists);
   const createList = useMutation(api.groceries.createList);
   const deleteList = useMutation(api.groceries.deleteList);
+  const copyList = useMutation(api.groceries.copyList);
   const newListButton = useRef<HTMLButtonElement>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Doc<"groceryLists"> | null>(
@@ -185,6 +189,17 @@ const GroceriesScreen = () => {
             ? `List ${data.lists.length + 1}`
             : "Groceries",
         })
+      );
+    } catch (error) {
+      toast.error(errorText(error));
+    }
+  };
+
+  const copyOf = async (source: Doc<"groceryLists">): Promise<void> => {
+    try {
+      setChosen(await copyList({ listId: source._id }));
+      toast.success(
+        `Started a new list from “${source.name}”. The original is unchanged.`
       );
     } catch (error) {
       toast.error(errorText(error));
@@ -318,7 +333,11 @@ const GroceriesScreen = () => {
           </nav>
         ) : null}
         {list === null ? null : (
-          <GroceryWorkspace list={list} onDelete={() => requestDelete(list)} />
+          <GroceryWorkspace
+            list={list}
+            onCopy={() => copyOf(list)}
+            onDelete={() => requestDelete(list)}
+          />
         )}
       </section>
     </>
