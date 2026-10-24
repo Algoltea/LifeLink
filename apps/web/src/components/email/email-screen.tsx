@@ -98,9 +98,7 @@ const MailboxStatus = () => {
         {active.length === 0 ? (
           <Link
             className={buttonVariants({
-              className: "bg-raised hover:bg-raised font-semibold",
-              size: "sm",
-              variant: "outline",
+              size: "default",
             })}
             href="/connections"
           >
@@ -304,7 +302,7 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
             variant="ghost"
           >
             <ShieldCheckIcon aria-hidden="true" />
-            How checks work
+            About scam checks
           </Button>
         }
         className="items-center"

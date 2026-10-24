@@ -14,6 +14,7 @@ const mode = v.union(v.literal("live"), v.literal("simulated"));
 const messageChannel = v.union(
   v.literal("imessage"),
   v.literal("discord"),
+  v.literal("telegram"),
   v.literal("email"),
   v.literal("in_app")
 );
@@ -455,6 +456,13 @@ export default defineSchema({
     fingerprint: v.string(),
     finishedAt: v.union(v.number(), v.null()),
     idempotencyKey: v.string(),
+    // The one-time introduction this attempt put above the message, and the conversation it introduces.
+    imessageIntroduction: v.optional(
+      v.object({
+        enrollmentId: v.id("imessageEnrollments"),
+        text: v.string(),
+      })
+    ),
     mode,
     outcome: v.union(
       v.literal("running"),
@@ -537,6 +545,8 @@ export default defineSchema({
     error: v.union(v.string(), v.null()),
     generation: v.number(),
     handle: v.string(),
+    // When the first message, with LifeLink's introduction, was confirmed sent.
+    introducedAt: v.optional(v.union(v.number(), v.null())),
     lastIncomingAt: v.union(v.number(), v.null()),
     lastIncomingId: v.union(v.string(), v.null()),
     ownerId: v.id("profiles"),
@@ -946,6 +956,27 @@ export default defineSchema({
 
   // One forecast per saved location (postal code, city, time zone), shared by everyone who saved it.
   // A null forecast with a fetchedAt records that the place was not found, so it is not searched again at once.
+  // One per contact. A one-time code links their Telegram chat to this contact;
+  // only a chat proven through that code may ever be saved as their address.
+  telegramLinks: defineTable({
+    chatId: v.union(v.string(), v.null()),
+    code: v.union(v.string(), v.null()),
+    codeExpiresAt: v.union(v.number(), v.null()),
+    contactId: v.id("contacts"),
+    createdAt: v.number(),
+    // Lowercased username saved in the contact form, until that person starts the bot.
+    expectedUsername: v.optional(v.union(v.string(), v.null())),
+    firstName: v.union(v.string(), v.null()),
+    linkedAt: v.union(v.number(), v.null()),
+    ownerId: v.id("profiles"),
+    // Make Telegram their preferred way once the chat is linked.
+    preferred: v.optional(v.boolean()),
+    username: v.union(v.string(), v.null()),
+  })
+    .index("by_code", ["code"])
+    .index("by_contact", ["contactId"])
+    .index("by_expected_username", ["expectedUsername"]),
+
   weatherCache: defineTable({
     fetchedAt: v.number(),
     forecast: v.union(forecast, v.null()),

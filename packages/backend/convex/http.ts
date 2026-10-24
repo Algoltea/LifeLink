@@ -16,6 +16,10 @@ import {
   photonEventSchema,
   verifyPhotonWebhook,
 } from "./integrations/photon";
+import {
+  telegramUpdateSchema,
+  webhookSecret as telegramWebhookSecret,
+} from "./integrations/telegram";
 import { constantTimeEqual, hmacSha256Base64 } from "./lib/crypto";
 import { readEnv, readEnvOr } from "./lib/env";
 
@@ -291,6 +295,60 @@ http.route({
   }),
   method: "POST",
   path: "/bridge/discord",
+});
+
+// ── Telegram Bot API webhook ──────────────────────────────────────────────
+
+http.route({
+  handler: httpAction(async (ctx, request) => {
+    const secret = telegramWebhookSecret();
+
+    if (secret === null) {
+      return new Response("Telegram webhook not configured", { status: 503 });
+    }
+
+    // Telegram echoes the secret set with setWebhook; anything else is not Telegram.
+    const presented =
+      request.headers.get("x-telegram-bot-api-secret-token") ?? "";
+
+    if (!constantTimeEqual(presented, secret)) {
+      return new Response("Invalid secret", { status: 401 });
+    }
+
+    if (tooLarge(request)) {
+      return new Response("Payload too large", { status: 413 });
+    }
+
+    const update = decodeJson(telegramUpdateSchema, await request.text());
+    const message = update?.message;
+
+    // Answer 200 for updates LifeLink doesn't read, or Telegram retries them forever.
+    if (update === null || message === undefined) {
+      return Response.json({ result: "ignored" });
+    }
+
+    const result = await ctx.runMutation(internal.webhooks.telegramUpdate, {
+      chatId: String(message.chat.id),
+      chatType: message.chat.type,
+      firstName: message.from?.first_name ?? null,
+      fromBot: message.from?.is_bot === true,
+      hasPhoto: (message.photo?.length ?? 0) > 0,
+      messageId: String(message.message_id),
+      // Only routing facts are stored; message text lives in the message row.
+      payload: JSON.stringify({
+        chatType: message.chat.type,
+        date: message.date,
+        hasPhoto: (message.photo?.length ?? 0) > 0,
+      }),
+      text: message.text ?? message.caption ?? "",
+      updateId: String(update.update_id),
+      username: message.from?.username ?? null,
+    });
+
+    return Response.json({ result });
+  }),
+  method: "POST",
+  path: "/webhooks/telegram",
 });
 
 // ── Permission-checked photo delivery ─────────────────────────────────────

@@ -484,13 +484,9 @@ const ContactRows = ({ rows }: { rows: number }) => (
   </div>
 );
 
-/** Needs you, Your week and Messages, News, then Ask, as Today shows them. */
+/** Your week and Messages, News, then Ask, as Today shows them. */
 const TodayLayout = () => (
   <div className="flex flex-col gap-10">
-    <div className="flex flex-col gap-4">
-      <Heading />
-      <TaskPanelLayout />
-    </div>
     <TodayLoadingPanels />
     <TodayLoadingNews />
     <ComposerLayout />

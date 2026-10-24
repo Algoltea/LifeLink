@@ -5,11 +5,16 @@ import { api, internal } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { photonTransport } from "../convex/integrations/photonruntime";
 import type { PhotonClient } from "../convex/integrations/photonruntime";
+import { imessageIntroduction, withIntroduction } from "../convex/lib/imessage";
 import type { PhotonRoute } from "../convex/lib/imessage";
 import { newBackend, onlyAction, ownerWithContact } from "./harness";
 import type { Backend, Person } from "./harness";
 
 const PROJECT_ID = "10000000-0000-4000-8000-000000000001";
+const BODY = "Hello from the shared line";
+
+// The first message in each new conversation carries LifeLink's introduction.
+const FIRST_TEXT = withIntroduction(imessageIntroduction("Ruth Alvarez"), BODY);
 const fetchMock = vi.fn<typeof fetch>();
 
 const sdk = {
@@ -73,7 +78,7 @@ const approveMessage = async (
   photoIds: Id<"photos">[] = []
 ): Promise<Id<"actions">> => {
   const taskId = await owner.mutation(api.messages.draft, {
-    body: "Hello from the shared line",
+    body: BODY,
     contactId,
     photoIds,
   });
@@ -271,14 +276,10 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
       { clientMessageId: `${firstActionId}:v1:photo:0` }
     );
     expect(sdk.sendText.mock.calls).toStrictEqual([
-      [
-        ROUTE.spaceId,
-        "Hello from the shared line",
-        { clientMessageId: `${firstActionId}:v1` },
-      ],
+      [ROUTE.spaceId, FIRST_TEXT, { clientMessageId: `${firstActionId}:v1` }],
       [
         secondRoute.spaceId,
-        "Hello from the shared line",
+        FIRST_TEXT,
         { clientMessageId: `${secondActionId}:v1` },
       ],
     ]);
@@ -331,6 +332,42 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     }
   );
 
+  it("introduces LifeLink once per conversation, only to the recipient", async () => {
+    const backend = newBackend();
+
+    const { contactId, owner, ownerId } = await ownerWithContact(
+      backend,
+      false
+    );
+
+    await enroll(backend, ownerId, contactId, ROUTE);
+    sdk.sendText.mockResolvedValue({ guid: "test-message", sendErrorCode: 0 });
+
+    const firstActionId = await approveMessage(owner, contactId);
+
+    await backend.action(internal.execution.run, { actionId: firstActionId });
+
+    const secondActionId = await approveMessage(owner, contactId);
+
+    await backend.action(internal.execution.run, { actionId: secondActionId });
+
+    expect(sdk.sendText.mock.calls.map((call) => call[1])).toStrictEqual([
+      FIRST_TEXT,
+      BODY,
+    ]);
+
+    // LifeLink's own thread keeps the approved words alone.
+    const outgoing = await backend.run(
+      async (ctx) =>
+        await ctx.db
+          .query("messages")
+          .filter((query) => query.eq(query.field("direction"), "outgoing"))
+          .collect()
+    );
+
+    expect(outgoing.map((message) => message.body)).toStrictEqual([BODY, BODY]);
+  });
+
   it("reconciles with the captured sender, space and original idempotency key", async () => {
     const { actionId, backend, start } = await unknownAttempt();
 
@@ -345,9 +382,10 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     await expect(
       backend.action(internal.execution.reconcile, { actionId })
     ).resolves.toBe("went_through");
+    // The replay repeats the attempt's exact text, introduction included.
     expect(sdk.sendText).toHaveBeenCalledExactlyOnceWith(
       ROUTE.spaceId,
-      "Hello from the shared line",
+      FIRST_TEXT,
       { clientMessageId: start.idempotencyKey }
     );
 

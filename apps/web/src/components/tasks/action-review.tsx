@@ -15,6 +15,7 @@ import {
   LoaderIcon,
   SendIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { toast } from "sonner";
@@ -388,8 +389,8 @@ const WordsEditor = ({
     <div className="flex flex-col gap-3">
       {canSave ? null : (
         <output className="text-muted-foreground text-base">
-          This request can no longer be edited. Your unsaved words are kept
-          below so you can copy them.
+          This request can no longer be edited. Your unsaved words are kept here
+          so you can copy them.
         </output>
       )}
       {outdated && canSave ? (
@@ -398,9 +399,17 @@ const WordsEditor = ({
           aria-live="polite"
         >
           <p>
-            The details changed while you were editing. Your words are kept
-            below. Compare them with the latest version above before saving.
+            The details changed while you were editing. Your edits are kept
+            here. Compare them with the latest wording before saving.
           </p>
+          <details>
+            <summary className="min-h-control cursor-pointer content-center font-semibold">
+              See the latest wording
+            </summary>
+            <p className="text-body wrap-anywhere whitespace-pre-wrap">
+              {initialBody}
+            </p>
+          </details>
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => setEditingVersion(version)}
@@ -420,9 +429,9 @@ const WordsEditor = ({
           </div>
         </div>
       ) : null}
-      <Label htmlFor={editId}>Change the words</Label>
+      <Label htmlFor={editId}>Message text</Label>
       <Textarea
-        className="text-xl"
+        className="text-body min-h-40 leading-relaxed"
         disabled={saving}
         id={editId}
         onChange={(event) => setDraft(event.target.value)}
@@ -452,7 +461,7 @@ const WordsEditor = ({
                 );
               } else {
                 toast.success(
-                  "Your changes are saved. Review the updated details below."
+                  "Changes saved. Review the updated message before approving."
                 );
               }
             } catch (error) {
@@ -462,7 +471,7 @@ const WordsEditor = ({
             setSaving(false);
           }}
         >
-          {saving ? "Saving…" : "Save these words"}
+          {saving ? "Saving…" : "Save changes"}
         </Button>
         <Button disabled={saving} onClick={onDone} variant="ghost">
           Cancel editing
@@ -577,9 +586,13 @@ const ApprovalBar = ({
   const cancel = useMutation(api.actions.cancel);
   const { online, queueApproval } = useOffline();
   const [pending, setPending] = useState<"approve" | "cancel" | null>(null);
+  const blockedId = useId();
   const busy = pending !== null;
   const { kind } = current.details;
   const retired = kind === "grocery_handoff";
+  // Older servers and cached offline data predate `blockers`.
+  const blockers: readonly string[] = view.blockers ?? [];
+  const blocked = !retired && blockers.length > 0;
 
   const onApprove = async (
     event: MouseEvent<HTMLButtonElement>
@@ -631,7 +644,8 @@ const ApprovalBar = ({
       <div className="flex flex-wrap items-center gap-3">
         <Button
           aria-busy={busy}
-          disabled={busy || questionOpen || retired}
+          aria-describedby={blocked ? blockedId : undefined}
+          disabled={busy || questionOpen || retired || blocked}
           onClick={onApprove}
           size="lg"
         >
@@ -664,6 +678,22 @@ const ApprovalBar = ({
           {pending === "cancel" ? "Cancelling…" : "Cancel this request"}
         </Button>
       </div>
+      {blocked ? (
+        <div
+          className="border-warning-edge bg-warning-wash flex flex-col gap-2 rounded-xl border px-5 py-4"
+          id={blockedId}
+        >
+          <p className="text-lg leading-7">{blockers.join(" ")}</p>
+          {blockers.some((blocker) => blocker.includes("Trusted circle")) ? (
+            <Link
+              className="text-foreground min-h-control inline-flex items-center self-start underline underline-offset-4"
+              href="/circle"
+            >
+              Go to Trusted circle
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
       {retired ? (
         <p className="text-muted-foreground text-base">
           Shopping requests can no longer be approved.
@@ -780,20 +810,22 @@ const ReviewVersion = ({
       ) : null}
 
       <DetailsView
+        bodyEditor={
+          editing && body !== null ? (
+            <WordsEditor
+              actionId={view.action._id}
+              canSave={awaiting}
+              initialBody={body}
+              onDone={() => setEditing(false)}
+              version={current.version}
+            />
+          ) : undefined
+        }
         details={details}
         granteeNames={view.granteeNames}
         hue={hue}
         timeZone={timeZone}
       />
-      {editing && body !== null ? (
-        <WordsEditor
-          actionId={view.action._id}
-          canSave={awaiting}
-          initialBody={body}
-          onDone={() => setEditing(false)}
-          version={current.version}
-        />
-      ) : null}
 
       {details.kind === "create_reminder" && awaiting ? (
         <ReminderSharing

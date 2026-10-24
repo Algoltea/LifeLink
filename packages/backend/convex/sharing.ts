@@ -64,7 +64,11 @@ export const listGrants = query({
 
         if (grant.revokedAt !== null) {
           state = "revoked";
-        } else if (grant.expiresAt !== null && grant.expiresAt <= now) {
+        } else if (
+          (grant.expiresAt !== null && grant.expiresAt <= now) ||
+          (grant.acceptedAt === null &&
+            grant.createdAt + INVITE_VALID_DAYS * DAY <= now)
+        ) {
           state = "expired";
         } else if (grant.acceptedAt === null) {
           state = "invited";
@@ -72,6 +76,7 @@ export const listGrants = query({
 
         return {
           acceptedAt: grant.acceptedAt,
+          contactId: grant.contactId,
           contactName: contact?.name ?? "Removed contact",
           createdAt: grant.createdAt,
           expiresAt: grant.expiresAt,

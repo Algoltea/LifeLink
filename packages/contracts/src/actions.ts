@@ -7,7 +7,13 @@
 import type { CanonicalValue } from "./fingerprint";
 import type { SharingScope } from "./sharing";
 
-const messageChannels = ["imessage", "discord", "email", "in_app"] as const;
+const messageChannels = [
+  "imessage",
+  "discord",
+  "telegram",
+  "email",
+  "in_app",
+] as const;
 
 type MessageChannel = (typeof messageChannels)[number];
 
