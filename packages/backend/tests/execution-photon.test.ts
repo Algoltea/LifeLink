@@ -368,6 +368,124 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     expect(outgoing.map((message) => message.body)).toStrictEqual([BODY, BODY]);
   });
 
+  it("writes the introduction in the contact's language, else the owner's", async () => {
+    const backend = newBackend();
+
+    const { contactId, owner, ownerId } = await ownerWithContact(
+      backend,
+      false
+    );
+
+    await enroll(backend, ownerId, contactId, ROUTE);
+    sdk.sendText.mockResolvedValue({ guid: "test-message", sendErrorCode: 0 });
+    await owner.mutation(api.profiles.updatePreferences, {
+      supportLanguage: "es",
+    });
+
+    const actionId = await approveMessage(owner, contactId);
+
+    await backend.action(internal.execution.run, { actionId });
+
+    expect(sdk.sendText.mock.calls.map((call) => call[1])).toStrictEqual([
+      withIntroduction(imessageIntroduction("Ruth Alvarez", "es"), BODY),
+    ]);
+    expect(sdk.sendText.mock.calls[0]?.[1]).toContain(
+      "Esta conversación está conectada a la cuenta de LifeLink de Ruth Alvarez."
+    );
+  });
+
+  it("keeps a contact's own language over the owner's", async () => {
+    const backend = newBackend();
+
+    const { contactId, owner, ownerId } = await ownerWithContact(
+      backend,
+      false
+    );
+
+    await enroll(backend, ownerId, contactId, ROUTE);
+    sdk.sendText.mockResolvedValue({ guid: "test-message", sendErrorCode: 0 });
+    await owner.mutation(api.profiles.updatePreferences, {
+      supportLanguage: "es",
+    });
+    await backend.run(async (ctx) => {
+      await ctx.db.patch(contactId, { language: "en" });
+    });
+
+    const actionId = await approveMessage(owner, contactId);
+
+    await backend.action(internal.execution.run, { actionId });
+
+    expect(sdk.sendText.mock.calls.map((call) => call[1])).toStrictEqual([
+      FIRST_TEXT,
+    ]);
+  });
+
+  it("replays the captured Spanish introduction without changing approved words or fingerprints", async () => {
+    const backend = newBackend();
+
+    const { contactId, owner, ownerId } = await ownerWithContact(
+      backend,
+      false
+    );
+
+    await enroll(backend, ownerId, contactId, ROUTE);
+    await owner.mutation(api.profiles.updatePreferences, {
+      supportLanguage: "es",
+    });
+    const actionId = await approveMessage(owner, contactId);
+
+    const approved = await backend.run(async (ctx) => ({
+      approvals: await ctx.db.query("approvals").collect(),
+      versions: await ctx.db.query("actionVersions").collect(),
+    }));
+
+    const start = await backend.mutation(internal.execution.begin, {
+      actionId,
+    });
+
+    if (!start.ok) {
+      throw new Error(start.reason);
+    }
+
+    expect(start.imessageIntroduction).toBe(
+      imessageIntroduction("Ruth Alvarez", "es")
+    );
+    await backend.mutation(internal.execution.complete, {
+      attemptId: start.attemptId,
+      handleCache: null,
+      result: { error: "Provider response timed out.", kind: "unknown" },
+    });
+    await owner.mutation(api.profiles.updatePreferences, {
+      supportLanguage: "en",
+    });
+    sdk.sendText.mockResolvedValue({
+      guid: "spanish-replay",
+      sendErrorCode: 0,
+    });
+
+    await expect(
+      backend.action(internal.execution.reconcile, { actionId })
+    ).resolves.toBe("went_through");
+    expect(sdk.sendText).toHaveBeenCalledExactlyOnceWith(
+      ROUTE.spaceId,
+      withIntroduction(imessageIntroduction("Ruth Alvarez", "es"), BODY),
+      { clientMessageId: start.idempotencyKey }
+    );
+
+    const after = await backend.run(async (ctx) => ({
+      approvals: await ctx.db.query("approvals").collect(),
+      versions: await ctx.db.query("actionVersions").collect(),
+    }));
+
+    expect(after).toStrictEqual(approved);
+
+    const outgoing = await backend.run(
+      async (ctx) => await ctx.db.query("messages").collect()
+    );
+
+    expect(outgoing).toMatchObject([{ body: BODY, direction: "outgoing" }]);
+  });
+
   it("reconciles with the captured sender, space and original idempotency key", async () => {
     const { actionId, backend, start } = await unknownAttempt();
 

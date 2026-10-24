@@ -12,6 +12,15 @@ import { isValidTimeZone } from "./lib/time";
 
 const DEFAULT_SPEECH_RATE = 0.9;
 
+const validateSupportLanguage = (language: string | undefined): void => {
+  if (language !== undefined && !isSupportLanguage(language)) {
+    throw new ConvexError({
+      code: "invalid",
+      message: "Please choose one of the languages offered.",
+    });
+  }
+};
+
 const defaultPreferences = (
   profile: Doc<"profiles">
 ): Omit<Doc<"preferences">, "_creationTime" | "_id"> => ({
@@ -97,6 +106,7 @@ export const completeOnboarding = mutation({
     role: v.union(v.literal("owner"), v.literal("family")),
     signOffName: v.union(v.string(), v.null()),
     startInDemoMode: v.boolean(),
+    supportLanguage: v.optional(v.string()),
     timeZone: v.string(),
   },
   handler: async (ctx, args) => {
@@ -114,6 +124,8 @@ export const completeOnboarding = mutation({
     if (existing !== null) {
       return existing._id;
     }
+
+    validateSupportLanguage(args.supportLanguage);
 
     const displayName = args.displayName.trim();
 
@@ -154,7 +166,13 @@ export const completeOnboarding = mutation({
     const profile = await ctx.db.get(profileId);
 
     if (profile !== null) {
-      await preferencesOf(ctx, profile);
+      const preferences = await preferencesOf(ctx, profile);
+
+      if (args.supportLanguage !== undefined) {
+        await ctx.db.patch(preferences._id, {
+          supportLanguage: args.supportLanguage,
+        });
+      }
     }
 
     await audit(ctx, {
@@ -249,13 +267,7 @@ export const updatePreferences = mutation({
     }
 
     if (args.supportLanguage !== undefined) {
-      if (!isSupportLanguage(args.supportLanguage)) {
-        throw new ConvexError({
-          code: "invalid",
-          message: "Please choose one of the languages offered.",
-        });
-      }
-
+      validateSupportLanguage(args.supportLanguage);
       patch.supportLanguage = args.supportLanguage;
     }
 

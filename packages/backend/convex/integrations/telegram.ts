@@ -183,6 +183,7 @@ const telegramUpdateSchema = z
             first_name: z.string().optional(),
             id: z.number(),
             is_bot: z.boolean().optional(),
+            language_code: z.string().optional(),
             username: z.string().optional(),
           })
           .loose()

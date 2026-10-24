@@ -327,18 +327,21 @@ http.route({
       return Response.json({ result: "ignored" });
     }
 
+    const hasPhoto = (message.photo?.length ?? 0) > 0;
+
     const result = await ctx.runMutation(internal.webhooks.telegramUpdate, {
       chatId: String(message.chat.id),
       chatType: message.chat.type,
       firstName: message.from?.first_name ?? null,
       fromBot: message.from?.is_bot === true,
-      hasPhoto: (message.photo?.length ?? 0) > 0,
+      hasPhoto,
+      languageCode: message.from?.language_code ?? null,
       messageId: String(message.message_id),
       // Only routing facts are stored; message text lives in the message row.
       payload: JSON.stringify({
         chatType: message.chat.type,
         date: message.date,
-        hasPhoto: (message.photo?.length ?? 0) > 0,
+        hasPhoto,
       }),
       text: message.text ?? message.caption ?? "",
       updateId: String(update.update_id),

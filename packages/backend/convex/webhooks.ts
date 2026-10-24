@@ -4,6 +4,8 @@
  * delivery returns early. Incoming content is data: it can add a message or
  * an email, never approve, confirm, spend, or change permissions.
  */
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -17,6 +19,8 @@ import {
   conversationValidator,
 } from "./lib/imessage";
 import { recordIncoming } from "./lib/incoming";
+import { contactLocale, ownerLocale } from "./lib/locale";
+import { noticesFor } from "./lib/notices";
 import { bindTelegramChat } from "./lib/telegram";
 
 const MAX_PAYLOAD = 4000;
@@ -356,6 +360,7 @@ const notifyTelegram = async (
 interface TelegramChat {
   chatId: string;
   firstName: string | null;
+  languageCode: string | null;
   username: string | null;
 }
 
@@ -409,8 +414,24 @@ const linkByUsername = async (
   return bound;
 };
 
+/** The language for a Telegram notice: the linked contact's, else the one Telegram reports for the person. */
+const telegramLocale = async (
+  ctx: MutationCtx,
+  chat: TelegramChat,
+  link: Doc<"telegramLinks"> | Doc<"contacts"> | null
+): Promise<InterfaceLocale> => {
+  if (link === null) {
+    return interfaceLocaleOf(chat.languageCode);
+  }
+
+  const contact = "contactId" in link ? await ctx.db.get(link.contactId) : link;
+
+  return await contactLocale(ctx, link.ownerId, contact);
+};
+
 const connectedNotice = async (
   ctx: MutationCtx,
+  chat: TelegramChat,
   links: Doc<"telegramLinks">[]
 ): Promise<string> => {
   const owners = await Promise.all(
@@ -421,18 +442,22 @@ const connectedNotice = async (
     ...new Set(owners.flatMap((owner) => (owner ? [owner.preferredName] : []))),
   ];
 
-  return `You're connected. Messages from ${names.join(" and ") || "your family member"} will arrive here, and your replies go back to them.`;
+  const locale = await telegramLocale(ctx, chat, links[0] ?? null);
+
+  return noticesFor(locale).telegramConnected(names);
 };
 
 /** A bare `/start` from a chat nobody is waiting for: explain how to get connected. */
-const startHelp = (chat: TelegramChat, alreadyLinked: boolean): string => {
-  if (alreadyLinked) {
-    return "You're already connected. Anything you send here goes to your family member in LifeLink.";
-  }
+const startHelp = async (
+  ctx: MutationCtx,
+  chat: TelegramChat,
+  contact: Doc<"contacts"> | null
+): Promise<string> => {
+  const notices = noticesFor(await telegramLocale(ctx, chat, contact));
 
-  const username = chat.username === null ? "" : ` @${chat.username}`;
-
-  return `Hi${chat.firstName ? ` ${chat.firstName}` : ""}! To connect, ask your family member to add your Telegram username${username} in LifeLink, or to send you their LifeLink link. Then tap Start again.`;
+  return contact === null
+    ? notices.telegramStartHelp(chat.firstName, chat.username)
+    : notices.telegramAlreadyConnected;
 };
 
 /** Link this chat by code and by username. Returns what got linked, or null for a dead code. */
@@ -457,7 +482,11 @@ const linkTelegramChat = async (
   bound.push(...(await linkByUsername(ctx, chat)));
 
   if (bound.length > 0) {
-    await notifyTelegram(ctx, chat.chatId, await connectedNotice(ctx, bound));
+    await notifyTelegram(
+      ctx,
+      chat.chatId,
+      await connectedNotice(ctx, chat, bound)
+    );
   }
 
   return bound;
@@ -470,6 +499,8 @@ export const telegramUpdate = internalMutation({
     firstName: v.union(v.string(), v.null()),
     fromBot: v.boolean(),
     hasPhoto: v.boolean(),
+    // The language the person set in Telegram, for notices before their chat is linked.
+    languageCode: v.optional(v.union(v.string(), v.null())),
     messageId: v.string(),
     payload: v.string(),
     text: v.string(),
@@ -499,23 +530,23 @@ export const telegramUpdate = internalMutation({
     const chat = {
       chatId: args.chatId,
       firstName: args.firstName,
+      languageCode: args.languageCode ?? null,
       username: args.username,
     };
 
     const bound = await linkTelegramChat(ctx, args.text, chat);
+    const contact = await routeToContact(ctx, "telegram", args.chatId);
 
     if (bound === null) {
       await notifyTelegram(
         ctx,
         args.chatId,
-        "This link has expired or was already used. Ask the person who uses LifeLink to send you a new one."
+        noticesFor(await telegramLocale(ctx, chat, contact)).telegramExpired
       );
       await settle(ctx, eventId, "ignored", null, "Unknown or expired link.");
 
       return "ignored";
     }
-
-    const contact = await routeToContact(ctx, "telegram", args.chatId);
 
     // `/start` is only ever a way in, never a message to the family.
     if (START_COMMAND.test(args.text.trim())) {
@@ -523,7 +554,7 @@ export const telegramUpdate = internalMutation({
         await notifyTelegram(
           ctx,
           args.chatId,
-          startHelp(chat, contact !== null)
+          await startHelp(ctx, chat, contact)
         );
       }
 
@@ -539,7 +570,9 @@ export const telegramUpdate = internalMutation({
 
     const body =
       args.text.trim() ||
-      (args.hasPhoto ? "(Sent a photo. Open Telegram to see it.)" : "");
+      (args.hasPhoto && contact !== null
+        ? noticesFor(await ownerLocale(ctx, contact.ownerId)).photoOnly
+        : "");
 
     if (contact === null || body.length === 0) {
       await settle(
