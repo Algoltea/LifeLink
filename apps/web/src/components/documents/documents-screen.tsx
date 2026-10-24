@@ -65,7 +65,7 @@ const searchTermOf = (input: string): string | null => {
   return trimmed.length === 0 ? null : trimmed;
 };
 
-/** The selected row matches the sidebar's current page, plus a copper edge so it never reads as hover. */
+/** Hover and selection match the sidebar menu. */
 const FileRow = ({
   file,
   isSelected,
@@ -80,9 +80,8 @@ const FileRow = ({
   <button
     aria-current={isSelected ? "true" : undefined}
     className={cn(
-      "bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 items-center justify-between gap-3 rounded-md px-3 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
-      isSelected &&
-        "bg-neutral-wash hover:bg-neutral-wash shadow-[inset_4px_0_0_var(--primary)]"
+      "bg-background text-foreground hover:bg-neutral-wash hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 items-center justify-between gap-3 rounded-md px-3 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+      isSelected && "bg-neutral-wash"
     )}
     onClick={onSelect}
     type="button"
@@ -90,8 +89,8 @@ const FileRow = ({
     <span className="flex min-w-0 flex-col gap-1">
       <span
         className={cn(
-          "text-lg font-bold wrap-anywhere",
-          isSelected && "text-accent-foreground"
+          "text-lg wrap-anywhere",
+          isSelected && "text-accent-foreground font-semibold"
         )}
       >
         {file.name}
@@ -105,7 +104,7 @@ const FileRow = ({
       aria-hidden="true"
       className={cn(
         "size-5 shrink-0",
-        isSelected ? "text-primary" : "text-muted-foreground"
+        isSelected ? "text-accent-foreground" : "text-muted-foreground"
       )}
     />
   </button>
