@@ -1,0 +1,39 @@
+{
+  "name": "@lifelink/backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LifeLink Convex backend: data, approvals, execution, integrations, and webhooks.",
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "dev:setup": "convex dev --configure --once",
+    "codegen": "convex codegen",
+    "check-types": "tsc --noEmit -p convex",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "4.0.3",
+    "@ai-sdk/provider-utils": "5.0.10",
+    "@convex-dev/agent": "^0.7.8",
+    "@convex-dev/better-auth": "catalog:",
+    "@grpc/grpc-js": "1.14.6",
+    "@lifelink/contracts": "workspace:*",
+    "@openrouter/ai-sdk-provider": "^3.1.0",
+    "@photon-ai/advanced-imessage": "2.3.0",
+    "ai": "7.0.28",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "convex-helpers": "^0.1.128",
+    "nice-grpc": "2.1.17",
+    "nice-grpc-common": "2.0.4",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "catalog:",
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "convex-test": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

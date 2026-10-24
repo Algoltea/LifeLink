@@ -1,0 +1,22 @@
+{
+  "name": "@lifelink/discord-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Keeps a Discord Gateway connection and forwards direct messages to LifeLink's backend, signed with BRIDGE_SHARED_SECRET.",
+  "type": "module",
+  "scripts": {
+    "dev": "bun ./src/main.ts",
+    "start": "bun ./src/main.ts",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

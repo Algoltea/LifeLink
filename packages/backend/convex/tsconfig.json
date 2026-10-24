@@ -1,0 +1,23 @@
+{
+  /* Convex function runtime. Settings below the line are required by Convex. */
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"],
+
+    /* Required by Convex */
+    "target": "ESNext",
+    "lib": ["ESNext", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["./**/*"],
+  "exclude": ["./_generated"]
+}

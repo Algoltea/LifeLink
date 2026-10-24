@@ -1,0 +1,23 @@
+{
+  "name": "@lifelink/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared, dependency-light contracts for LifeLink: integration catalog, sharing scopes, action proposals, and fingerprints.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

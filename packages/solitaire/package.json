@@ -1,0 +1,20 @@
+{
+  "name": "@lifelink/solitaire",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Klondike solitaire rules engine: seeded deals, legal moves, undo, and save/resume serialization.",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@lifelink/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
