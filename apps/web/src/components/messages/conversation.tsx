@@ -72,7 +72,7 @@ const Outgoing = ({
 
   return (
     <div className="flex flex-col items-end gap-1.5 pl-10 sm:pl-24">
-      <div className="bg-neutral-wash max-w-full rounded-3xl px-5 py-3.5 text-lg">
+      <div className="bg-neutral-wash max-w-full rounded-[1.222rem] px-4 py-3 text-lg sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
         <span className="sr-only">
           You, {formatWhen(message.createdAt, timeZone)}:{" "}
         </span>
@@ -132,6 +132,7 @@ const Incoming = ({
       <span className="hidden w-9 shrink-0 sm:block">
         {item.groupStart ? (
           <Avatar
+            className="size-[2rem]"
             hue={contact.hue}
             name={contact.name}
             size="sm"
@@ -141,7 +142,7 @@ const Incoming = ({
       </span>
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         {/* The gap on the far side lives on the bubble, so the actions below can use the full width. */}
-        <div className="border-border bg-raised contrast:border-control max-w-[calc(100%-2.5rem)] rounded-3xl border px-5 py-3.5 text-lg sm:max-w-[calc(100%-6rem)]">
+        <div className="border-border bg-raised contrast:border-control max-w-[calc(100%-2rem)] rounded-[1.222rem] border px-4 py-3 text-lg sm:max-w-[calc(100%-6rem)] sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
           <span className="sr-only">
             {firstName}, {formatWhen(message.createdAt, timeZone)}:{" "}
           </span>
@@ -156,13 +157,17 @@ const Incoming = ({
         {hasText && (item.showReadAloud || item.showExplain) ? (
           <div className="-ml-1 flex flex-wrap items-center gap-1">
             {item.showReadAloud ? (
-              <ReadAloudButton text={message.body} variant="ghost" />
+              <ReadAloudButton
+                className="px-2 text-[0.889rem] sm:px-3"
+                text={message.body}
+                variant="ghost"
+              />
             ) : null}
             {item.showExplain ? (
               <Button
                 aria-controls="explanation-panel"
                 aria-expanded={explaining}
-                className="whitespace-normal"
+                className="px-2 text-[0.889rem] whitespace-normal sm:px-3"
                 onClick={(event) => onExplain(event.currentTarget)}
                 size="sm"
                 variant="ghost"
