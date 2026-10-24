@@ -145,7 +145,7 @@ Secrets never touch the browser or a committed file. There are three places:
 
 The **Drafting Room** direction follows the Victorian inventor and brass-machinery theme, informed by the user's SBU Hacks references: parchment, copper, dark ink, and functional brass details. The shared design contract is [apps/web/DESIGN.md](apps/web/DESIGN.md); the route inventory and Paper links are in [docs/ui-route-audit.md](docs/ui-route-audit.md).
 
-**Palette.** Writing paper `#FFFDF8`, parchment `#FAF4E8`, ink `#2D2118`, secondary ink `#6C5C4C`, copper `#8F3F25`, and restrained brass `#AC741C`. The Reach mark (two clasped hooks, ink for the person and copper for LifeLink) replaces the earlier pin-link mark and interlocking monogram.
+**Palette.** Writing paper `#FFFDF8`, parchment `#FAF4E8`, ink `#2D2118`, secondary ink `#6C5C4C`, copper `#8F3F25`, and restrained brass `#AC741C`. The Reach mark (two clasped hooks, ink for the person and orange `#CB6527` for LifeLink) replaces the earlier pin-link mark and interlocking monogram.
 
 **Type.** IBM Plex Sans throughout: 18px body, 24px section titles, and 32px page titles. User text-size, contrast, color-theme, and reduced-motion preferences remain available.
 
