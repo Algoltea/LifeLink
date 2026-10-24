@@ -417,6 +417,13 @@ const DemoSettings = ({
         Anything prepared in one mode has to be reviewed again before it runs in
         the other.
       </p>
+      <p className="text-lg leading-7">
+        To rehearse a phone call or a conversation with made-up people, try{" "}
+        <Link className="font-semibold underline" href="/practice">
+          Conversation practice
+        </Link>
+        . It works in either mode, and nothing in it is sent or saved.
+      </p>
     </section>
   );
 };

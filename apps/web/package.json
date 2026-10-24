@@ -16,6 +16,7 @@
     "@google/genai": "2.30.0",
     "@lifelink/backend": "workspace:*",
     "@lifelink/contracts": "workspace:*",
+    "@lifelink/rehearsals": "workspace:*",
     "@lifelink/solitaire": "workspace:*",
     "@lifelink/ui": "workspace:*",
     "@swc/helpers": "^0.5.23",
