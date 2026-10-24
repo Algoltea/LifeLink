@@ -8,6 +8,7 @@ import {
 } from "@lifelink/contracts/groceries";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
+import { Dialog } from "@lifelink/ui/components/dialog";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Textarea } from "@lifelink/ui/components/textarea";
@@ -413,6 +414,65 @@ const SectionHeading = ({ children }: { children: ReactNode }) => (
   <h3 className="text-xl leading-7 font-semibold">{children}</h3>
 );
 
+/** Unticking everything can't be undone item by item, so it asks first. */
+const UnmarkDialog = ({
+  finalFocus,
+  list,
+  onClose,
+  onUnmarked,
+  open,
+}: {
+  finalFocus: () => HTMLElement | null;
+  list: Doc<"groceryLists">;
+  onClose: () => void;
+  onUnmarked: () => void;
+  open: boolean;
+}) => {
+  const unmarkAll = useMutation(api.groceries.unmarkAll);
+  const [resetting, setResetting] = useState(false);
+  const inCart = list.items.filter((item) => item.checked).length;
+
+  return (
+    <Dialog
+      description={`This unticks ${inCart === 1 ? "the 1 item" : `all ${inCart} items`} in your cart, so the list is ready for another trip.`}
+      finalFocus={finalFocus}
+      onOpenChange={(next) => {
+        if (!next && !resetting) {
+          onClose();
+        }
+      }}
+      open={open}
+      title="Unmark every item?"
+    >
+      <div className="flex flex-wrap gap-3">
+        <Button disabled={resetting} onClick={onClose} variant="outline">
+          Keep them ticked
+        </Button>
+        <Button
+          aria-busy={resetting}
+          disabled={resetting}
+          onClick={async () => {
+            setResetting(true);
+
+            try {
+              await unmarkAll({ listId: list._id });
+              onUnmarked();
+              onClose();
+            } catch (error) {
+              toast.error(errorText(error));
+            }
+
+            setResetting(false);
+          }}
+        >
+          <RotateCcwIcon />
+          {resetting ? "Unmarking…" : "Unmark all"}
+        </Button>
+      </div>
+    </Dialog>
+  );
+};
+
 /** Finishing, unmarking, and reusing, kept below the list so the top stays calm. */
 const TripActions = ({
   actions,
@@ -424,14 +484,28 @@ const TripActions = ({
   tools: ReactNode;
 }) => {
   const { onCopy, onFinish, onToggleUsual } = actions;
-  const [resetting, setResetting] = useState(false);
-  const unmarkAll = useMutation(api.groceries.unmarkAll);
+  const [confirmingUnmark, setConfirmingUnmark] = useState(false);
+  const unmarkButton = useRef<HTMLButtonElement>(null);
+  const finishButton = useRef<HTMLButtonElement>(null);
+  // Unmarking disables its own button, so focus lands on Finish instead.
+  const unmarked = useRef(false);
   const hasMarkedItems = list.items.some((item) => item.checked);
   const allInCart = hasMarkedItems && list.items.every((item) => item.checked);
   const archived = list.archivedAt !== undefined;
 
   return (
     <>
+      <UnmarkDialog
+        finalFocus={() =>
+          unmarked.current ? finishButton.current : unmarkButton.current
+        }
+        list={list}
+        onClose={() => setConfirmingUnmark(false)}
+        onUnmarked={() => {
+          unmarked.current = true;
+        }}
+        open={confirmingUnmark}
+      />
       {archived ? null : (
         <section
           aria-label="Done shopping?"
@@ -444,29 +518,23 @@ const TripActions = ({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               onClick={onFinish}
+              ref={finishButton}
               variant={allInCart ? "default" : "outline"}
             >
               <CheckCheckIcon />
               Finish this trip
             </Button>
             <Button
-              aria-busy={resetting}
-              disabled={!hasMarkedItems || resetting}
-              onClick={async () => {
-                setResetting(true);
-
-                try {
-                  await unmarkAll({ listId: list._id });
-                } catch (error) {
-                  toast.error(errorText(error));
-                }
-
-                setResetting(false);
+              disabled={!hasMarkedItems}
+              onClick={() => {
+                unmarked.current = false;
+                setConfirmingUnmark(true);
               }}
+              ref={unmarkButton}
               variant="outline"
             >
               <RotateCcwIcon />
-              {resetting ? "Unmarking…" : "Unmark all"}
+              Unmark all
             </Button>
           </div>
           <p className="text-muted-foreground text-base">
