@@ -89,6 +89,8 @@ const ComposerSession = ({
   const [speaking, setSpeaking] = useState(false);
   const canDictate = useBrowserCapability(dictationAvailable);
   const live = useRef<LiveHandle | null>(null);
+  // The microphone while a live session is still connecting; Stop and unmount release it.
+  const pendingRig = useRef<AudioRig | null>(null);
   const dictation = useRef<{ stop: () => void } | null>(null);
   const captionId = useRef(0);
   const inputId = useId();
@@ -108,6 +110,7 @@ const ComposerSession = ({
     return () => {
       mounted.current = false;
       voiceRun.current += 1;
+      pendingRig.current?.release();
       live.current?.stop();
       dictation.current?.stop();
     };
@@ -181,6 +184,8 @@ const ComposerSession = ({
 
   const stopVoice = (): void => {
     voiceRun.current += 1;
+    pendingRig.current?.release();
+    pendingRig.current = null;
     live.current?.stop();
     live.current = null;
     dictation.current?.stop();
@@ -198,14 +203,26 @@ const ComposerSession = ({
       setVoice("connecting");
       setCaptions([]);
 
+      // Stop, a newer attempt, or leaving the page ends this one.
+      const cancelled = (): boolean =>
+        !mounted.current || voiceRun.current !== run;
+
       let rig: AudioRig | null = null;
 
       try {
         // The microphone comes first, while the press still counts as a gesture.
         rig = await prepareAudio();
+
+        if (cancelled()) {
+          rig.release();
+
+          return;
+        }
+
+        pendingRig.current = rig;
         const session = await createLive({});
 
-        if (!mounted.current || voiceRun.current !== run) {
+        if (cancelled()) {
           rig.release();
 
           return;
@@ -232,7 +249,12 @@ const ComposerSession = ({
           }
         );
 
-        if (!mounted.current || voiceRun.current !== run) {
+        // The session owns the microphone from here.
+        if (pendingRig.current === rig) {
+          pendingRig.current = null;
+        }
+
+        if (cancelled()) {
           handle.stop();
 
           return;
@@ -243,6 +265,16 @@ const ComposerSession = ({
       } catch (error) {
         // Releasing twice is harmless; this covers a failed token call.
         rig?.release();
+
+        if (pendingRig.current === rig) {
+          pendingRig.current = null;
+        }
+
+        // A late failure from an attempt already ended must not touch a newer one.
+        if (cancelled()) {
+          return;
+        }
+
         stopVoice();
         setVoiceError(
           error instanceof MicrophoneError
