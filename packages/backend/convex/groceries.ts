@@ -18,6 +18,28 @@ import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_ITEMS = 100;
 
+const FULL_LIST = "This list is full. Start a new list for more items.";
+
+/** The same checks for a new item and for one put back by Undo. */
+const itemError = (item: {
+  estimatedCents: number | null;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+}): string | null => {
+  if (item.name.length === 0) {
+    return "What would you like to add?";
+  }
+
+  return (
+    (groceryUnit(item.unit) === undefined
+      ? "Choose a unit from the list."
+      : null) ??
+    groceryQuantityError(item.quantity, item.unit) ??
+    groceryEstimateError(item.estimatedCents)
+  );
+};
+
 export const lists = query({
   args: {},
   handler: async (ctx) => {
@@ -132,32 +154,21 @@ export const addItem = mutation({
   handler: async (ctx, args) => {
     const { list } = await ownedList(ctx, args.listId);
     const name = args.name.trim();
-
-    if (name.length === 0) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "What would you like to add?",
-      });
-    }
-
-    if (list.items.length >= MAX_ITEMS) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "This list is full. Start a new list for more items.",
-      });
-    }
-
     const unit = args.unit?.trim() || null;
 
-    const validationError =
-      (groceryUnit(unit) === undefined
-        ? "Choose a unit from the list."
-        : null) ??
-      groceryQuantityError(args.quantity, unit) ??
-      groceryEstimateError(args.estimatedCents);
+    const validationError = itemError({
+      estimatedCents: args.estimatedCents,
+      name,
+      quantity: args.quantity,
+      unit,
+    });
 
     if (validationError !== null) {
       throw new ConvexError({ code: "invalid", message: validationError });
+    }
+
+    if (list.items.length >= MAX_ITEMS) {
+      throw new ConvexError({ code: "invalid", message: FULL_LIST });
     }
 
     await ctx.db.patch(list._id, {
@@ -220,13 +231,65 @@ export const updateItem = mutation({
   },
 });
 
+/** Returns what was removed and where, so the person can undo a stray tap. */
 export const removeItem = mutation({
   args: { itemId: v.string(), listId: v.id("groceryLists") },
   handler: async (ctx, args) => {
     const { list } = await ownedList(ctx, args.listId);
+    const index = list.items.findIndex((item) => item.id === args.itemId);
+
+    if (index === -1) {
+      return null;
+    }
 
     await ctx.db.patch(list._id, {
       items: list.items.filter((item) => item.id !== args.itemId),
+      updatedAt: Date.now(),
+    });
+
+    return { index, item: list.items[index] };
+  },
+});
+
+/** Puts a removed item back where it was. Undoing twice changes nothing. */
+export const restoreItem = mutation({
+  args: {
+    index: v.number(),
+    item: v.object({
+      checked: v.boolean(),
+      estimatedCents: v.union(v.number(), v.null()),
+      id: v.string(),
+      name: v.string(),
+      quantity: v.union(v.number(), v.null()),
+      unit: v.union(v.string(), v.null()),
+    }),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    if (list.items.some((item) => item.id === args.item.id)) {
+      return;
+    }
+
+    const item = { ...args.item, name: args.item.name.trim() };
+    const validationError = itemError(item);
+
+    if (validationError !== null) {
+      throw new ConvexError({ code: "invalid", message: validationError });
+    }
+
+    if (list.items.length >= MAX_ITEMS) {
+      throw new ConvexError({ code: "invalid", message: FULL_LIST });
+    }
+
+    const index = Math.min(
+      Math.max(0, Math.trunc(args.index)),
+      list.items.length
+    );
+
+    await ctx.db.patch(list._id, {
+      items: [...list.items.slice(0, index), item, ...list.items.slice(index)],
       updatedAt: Date.now(),
     });
   },

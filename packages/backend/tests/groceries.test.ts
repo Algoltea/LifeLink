@@ -315,3 +315,80 @@ describe("grocery item validation", () => {
     ).resolves.toMatchObject({ checked: true, estimatedCents: 0, quantity: 3 });
   });
 });
+
+const addThree = async (
+  person: Awaited<ReturnType<typeof setupList>>["person"],
+  listId: Awaited<ReturnType<typeof setupList>>["listId"]
+) => {
+  for (const name of ["Milk", "Bread", "Eggs"]) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- items keep their order.
+    await person.mutation(api.groceries.addItem, {
+      estimatedCents: 300,
+      listId,
+      name,
+      quantity: 1,
+      unit: null,
+    });
+  }
+};
+
+describe("undoing item removals", () => {
+  it("puts a removed item back in its place, once", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+
+    const before = await backend.run(async (ctx) => await ctx.db.get(listId));
+    const bread = before?.items[1];
+
+    if (!bread) {
+      throw new Error("Missing item");
+    }
+
+    const removed = await person.mutation(api.groceries.removeItem, {
+      itemId: bread.id,
+      listId,
+    });
+
+    expect(removed).toStrictEqual({ index: 1, item: bread });
+
+    if (removed === null) {
+      throw new Error("Nothing removed");
+    }
+
+    await person.mutation(api.groceries.restoreItem, { ...removed, listId });
+    await person.mutation(api.groceries.restoreItem, { ...removed, listId });
+
+    const after = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(after?.items).toStrictEqual(before?.items);
+    await expect(
+      person.mutation(api.groceries.removeItem, { itemId: "gone", listId })
+    ).resolves.toBeNull();
+  });
+
+  it("keeps another person from restoring into a list they do not own", async () => {
+    const { backend, listId, person } = await setupList();
+    await addThree(person, listId);
+
+    const { person: stranger } = await signUp(backend, {
+      demo: false,
+      name: "Stranger",
+      role: "owner",
+      subject: "grocery-stranger",
+    });
+
+    await expect(
+      stranger.mutation(api.groceries.restoreItem, {
+        index: 0,
+        item: {
+          checked: false,
+          estimatedCents: null,
+          id: "planted",
+          name: "Planted",
+          quantity: null,
+          unit: null,
+        },
+        listId,
+      })
+    ).rejects.toThrow("That list could not be found.");
+  });
+});

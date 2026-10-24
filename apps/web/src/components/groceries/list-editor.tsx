@@ -29,6 +29,9 @@ const errorText = (cause: unknown): string =>
 
 type GroceryItem = Doc<"groceryLists">["items"][number];
 
+/** Long enough to notice a stray tap and reach Undo without hurrying. */
+const UNDO_WINDOW_MS = 10_000;
+
 const quantityWords = (item: GroceryItem): string => {
   if (item.quantity === null) {
     return "";
@@ -63,7 +66,35 @@ const ItemRow = ({
 }) => {
   const updateItem = useMutation(api.groceries.updateItem);
   const removeItem = useMutation(api.groceries.removeItem);
+  const restoreItem = useMutation(api.groceries.restoreItem);
   const checkboxId = useId();
+
+  const remove = async (): Promise<void> => {
+    try {
+      const removed = await removeItem({ itemId: item.id, listId });
+
+      if (removed === null) {
+        return;
+      }
+
+      // The X is easy to hit by mistake, so every removal can be undone.
+      toast(`Removed ${removed.item.name}.`, {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await restoreItem({ ...removed, listId });
+            } catch (error) {
+              toast.error(errorText(error));
+            }
+          },
+        },
+        duration: UNDO_WINDOW_MS,
+      });
+    } catch (error) {
+      toast.error(errorText(error));
+    }
+  };
 
   return (
     <li className="border-rule flex items-center gap-4 border-t py-3">
@@ -103,13 +134,7 @@ const ItemRow = ({
       </div>
       <Button
         aria-label={`Remove ${item.name}`}
-        onClick={async () => {
-          try {
-            await removeItem({ itemId: item.id, listId });
-          } catch (error) {
-            toast.error(errorText(error));
-          }
-        }}
+        onClick={remove}
         size="icon"
         variant="ghost"
       >
