@@ -61,8 +61,10 @@ const TodayLoadingPanels = () => (
     </div>
     <div className={PANEL}>
       <PanelHeading />
-      <PartHeading />
-      <MessagesLoadingRows rows={1} />
+      <div>
+        <PartHeading />
+        <MessagesLoadingRows rows={1} />
+      </div>
       <div className="border-rule mt-2 border-t pt-2">
         <PartHeading />
         <div className="px-3 py-3.5">
@@ -78,14 +80,15 @@ const TodayLoadingPanels = () => (
 const TodayLoadingNews = () => (
   <div className="flex flex-col gap-2" data-loading-part="today-news">
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-      <TodayLine className="h-[1.778rem] w-24" />
-      <Skeleton className="h-control w-60 max-w-full rounded-full" />
+      <TodayLine className="h-[1.778rem] w-16" />
+      {/* The switch: a control-high option row inside a 1-unit inset and a hairline border. */}
+      <Skeleton className="h-control box-content w-[12.5rem] max-w-full rounded-lg border border-transparent p-1" />
     </div>
     <div>
       {[0, 1, 2].map((key) => (
         <div className="border-rule border-t py-1 first:border-t-0" key={key}>
           <div className="flex min-h-14 items-center px-3 py-3">
-            <TodayLine />
+            <TodayLine className="flex-1" />
           </div>
         </div>
       ))}

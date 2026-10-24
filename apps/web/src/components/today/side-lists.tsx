@@ -301,6 +301,6 @@ const FamilyList = ({
   );
 };
 
-export { FamilyList, PANEL_ROW, PanelPart, SideEmpty, TodayPanel, WeekList };
+export { FamilyList, PANEL_ROW, PanelPart, TodayPanel, WeekList };
 
 export type { WeekRow };
