@@ -28,8 +28,8 @@ const CHANNEL_WORDS: Record<
 
 /**
  * The exact, consequential details of an action, shown the way they will
- * happen. A message is a slip with its recipient and route over a double
- * brass rule; the words are set large and exactly as they will be sent.
+ * happen. A message is a slip with its recipient and route above a rule;
+ * the words are set large and exactly as they will be sent.
  */
 const MessageSlip = ({
   details,
@@ -39,7 +39,7 @@ const MessageSlip = ({
   hue: number;
 }) => (
   <div className="border-border bg-raised overflow-hidden rounded-xl border">
-    <div className="border-brass flex items-center gap-4 border-b-[3px] border-double px-6 py-5">
+    <div className="border-border flex items-center gap-4 border-b px-6 py-5">
       <Avatar hue={hue} name={details.contactName} />
       <div className="flex flex-col">
         <span className="text-xl font-bold">To {details.contactName}</span>
