@@ -78,6 +78,54 @@ const Fact = ({
   </div>
 );
 
+/** What a card says, as one passage for Read aloud: the words exactly as they will go out. */
+const spokenDetails = (details: ActionDetails, timeZone: string): string => {
+  switch (details.kind) {
+    case "send_message": {
+      const route =
+        details.channel === "in_app"
+          ? ""
+          : ` to ${formatAddress(details.address)}`;
+
+      return `To ${details.contactName}, by ${CHANNEL_WORDS[details.channel]}${route}. The message says: ${details.body}`;
+    }
+
+    case "confirm_arrangement": {
+      return `You're confirming: ${details.summary}`;
+    }
+
+    case "create_reminder": {
+      return `Reminder: ${details.title}. ${formatWhen(details.remindAt, timeZone)}. ${details.shareWithCircle ? "Shared with your trusted circle." : "Just for you."}`;
+    }
+
+    case "family_update": {
+      return `The update says: ${details.text}`;
+    }
+
+    case "grocery_handoff": {
+      const items = details.items.map((item) =>
+        item.quantity === null
+          ? item.name
+          : `${item.quantity}${item.unit ? ` ${item.unit}` : ""} ${item.name}`
+      );
+
+      return `${details.listName}: ${items.join(", ")}.`;
+    }
+
+    case "email_draft": {
+      return `Email to ${details.to}. Subject: ${details.subject}. It says: ${details.body}`;
+    }
+
+    case "calendar_event": {
+      return `${details.title}. ${formatWhen(details.startsAt, timeZone)}${details.location ? `, at ${details.location}` : ""}.`;
+    }
+
+    default: {
+      return details satisfies never;
+    }
+  }
+};
+
 const DetailsView = ({
   className,
   details,
@@ -242,4 +290,4 @@ const DetailsView = ({
   }
 };
 
-export { CHANNEL_WORDS, DetailsView, formatAddress };
+export { CHANNEL_WORDS, DetailsView, formatAddress, spokenDetails };

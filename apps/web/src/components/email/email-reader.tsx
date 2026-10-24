@@ -302,9 +302,16 @@ const EmailReader = ({
         {email.bodyText.trim().length === 0 ? (
           <EmptyNote>This email has no text.</EmptyNote>
         ) : (
-          <p className="max-w-prose text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
-            {email.bodyText}
-          </p>
+          <>
+            <p className="max-w-prose text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
+              {email.bodyText}
+            </p>
+            <ReadAloudButton
+              className="self-start"
+              label="Read the email aloud"
+              text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
+            />
+          </>
         )}
         <p className="text-muted-foreground text-base">
           Links in emails aren’t opened by LifeLink. If it asks for money or

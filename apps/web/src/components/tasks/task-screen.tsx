@@ -16,6 +16,7 @@ import { ago, formatDay, formatTime } from "@/lib/format";
 
 import { ActionReview } from "./action-review";
 import type { ActionView, TaskDetail } from "./action-review";
+import { spokenDetails } from "./details-view";
 import { JourneyGauge } from "./journey-gauge";
 
 const LINK_PATTERN = /\b(?:https?:\/\/|www\.)/iu;
@@ -280,7 +281,14 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
       </nav>
       <PageHeader
         actions={
-          <ReadAloudButton text={`${heading.title}. ${heading.subline}`} />
+          <ReadAloudButton
+            text={[
+              `${heading.title}. ${heading.subline}`,
+              focus?.current
+                ? spokenDetails(focus.current.details, detail.timeZone)
+                : "",
+            ].join(" ")}
+          />
         }
         subline={heading.subline}
         title={heading.title}
