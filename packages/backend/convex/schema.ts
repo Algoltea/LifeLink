@@ -1,3 +1,4 @@
+import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -693,6 +694,10 @@ export default defineSchema({
     reducedMotion: v.boolean(),
     showNews: v.optional(v.boolean()),
     speechRate: v.number(),
+    // Missing or null uses the deployment's default read-aloud voice.
+    speechVoice: v.optional(
+      v.union(v.null(), ...SPEECH_VOICES.map(({ value }) => v.literal(value)))
+    ),
     stepByStep: v.optional(v.boolean()),
     // One of the offered support languages; checked when saved.
     supportLanguage: v.optional(v.string()),

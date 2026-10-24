@@ -130,7 +130,7 @@ Secrets never touch the browser or a committed file. There are three places:
 | **Groceries** | Saved lists, preferences, estimated costs, list budgets, and copy or print for shopping yourself |
 | **Solitaire** | Klondike with keyboard play, tap-to-move, undo, hints, and local save and resume. Works offline |
 | **Connections** | Each person's own accounts, with a plain capability list: works, not wired yet, or not offered |
-| **Settings** | Text size, contrast, light or dark, less movement, read-aloud, speaking speed, captions, profile, Practice mode, and **How I like help**: short or detailed, one step at a time, a help language, and private notes |
+| **Settings** | Text size, contrast, light or dark, less movement, read-aloud voice, speaking speed, captions, profile, Practice mode, and **How I like help**: short or detailed, one step at a time, a help language, and private notes |
 
 **Principles.**
 
@@ -308,7 +308,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 
 - **Telegram:** create a bot with @BotFather and paste its token when setup asks (`bun run dev:setup --only=telegram`). Setup reads the bot's username, generates a webhook secret, and calls `setWebhook` for `<deployment>.convex.site/webhooks/telegram`. Every update must carry that secret in `X-Telegram-Bot-Api-Secret-Token`. A chat is only saved for a contact after it opens that contact's single-use link, and only that chat can be sent to.
 - **Photon Spectrum Stable:** use the UUID project ID and project secret from your existing dashboard. Beta `pho_prj_...` / `pho_sk_...` credentials belong to a different API. Setup uses Basic authentication, keeps existing shared-line users, and configures the Stable webhook. See the [Spectrum API](https://photon.codes/docs/api-reference/introduction).
-- **Read-aloud:** ElevenLabs speech is served by OpenRouter's audio endpoint with the same OpenRouter key. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
+- **Read-aloud:** ElevenLabs v4 turbo speech is served by OpenRouter's audio endpoint with the same OpenRouter key. Choose from 21 voices in **Settings**; the choice is saved to your account. Leaving the voice at the app default uses `OPENROUTER_TTS_VOICE`, or Sarah when unset. No separate ElevenLabs key or browser speech fallback is used. Requests have authenticated per-account limits, bounded text chunks, timeouts, and response-size limits.
 - **Composio:**
   - Setup reuses or creates a Composio-managed auth config for Gmail, Outlook, Google Calendar, Google Drive, Facebook, and Instagram.
   - It points the project webhook at `<deployment>.convex.site/webhooks/composio`. It rotates the signing secret only if it doesn't already hold one, because rotating breaks other listeners.
