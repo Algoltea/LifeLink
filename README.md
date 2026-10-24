@@ -360,6 +360,7 @@ tools/oxlint/anti-slop/  Vendored anti-slop plugin (MIT, provenance in UPSTREAM.
 
 **Focused tests:**
 
+- **Web:** scam-warning narration uses saved reasons, offers trusted-person guidance, and stays quiet for unflagged emails.
 - **Backend:**
   - `permissions` covers family scopes, revocation, and file delivery.
   - `approvals` covers version changes voiding approval, and spending and recurring bounds.

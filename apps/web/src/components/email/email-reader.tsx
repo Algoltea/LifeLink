@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
+import { emailWarningIntro, hasEmailWarning } from "@/lib/email-warning";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay, formatTime, formatWhen } from "@/lib/format";
 
@@ -43,13 +44,15 @@ const RIDE_WORDS = {
 const REPLY_FORM_ID = "email-reply";
 
 const scanSummaryFor = (email: Doc<"emails">): string => {
+  if (hasEmailWarning(email)) {
+    return "Warning signs found";
+  }
+
   if (email.scamCheck === undefined) {
     return "This email has not been checked yet.";
   }
 
-  return email.suspicious
-    ? "Warning signs found"
-    : "No warning signs found. Sender not confirmed.";
+  return "No warning signs found. Sender not confirmed.";
 };
 
 const checkLinkClass = buttonVariants({
@@ -69,7 +72,7 @@ const ScanBanner = ({
   const scanSummary = scanSummaryFor(email);
   const checkHref = { pathname: "/scam", query: { email: email._id } };
 
-  if (email.scamCheck !== undefined && !email.suspicious) {
+  if (email.scamCheck !== undefined && !hasEmailWarning(email)) {
     return (
       <p className="text-muted-foreground text-label flex items-start gap-2.5">
         <ShieldCheckIcon
@@ -81,7 +84,7 @@ const ScanBanner = ({
     );
   }
 
-  const pending = email.scamCheck === undefined && !email.suspicious;
+  const pending = email.scamCheck === undefined && !hasEmailWarning(email);
 
   return (
     <div
@@ -134,7 +137,13 @@ const ScanBanner = ({
   );
 };
 
-const SummaryBody = ({ email }: { email: Doc<"emails"> }) => {
+const SummaryBody = ({
+  email,
+  warningSigns,
+}: {
+  email: Doc<"emails">;
+  warningSigns: string[];
+}) => {
   const summarize = useMutation(api.emails.summarize);
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const consentId = useId();
@@ -147,7 +156,7 @@ const SummaryBody = ({ email }: { email: Doc<"emails"> }) => {
         {email.actionNeeded ? (
           <p className="font-semibold">{email.actionNeeded}</p>
         ) : null}
-        {email.suspicious ? (
+        {hasEmailWarning(email) ? (
           <p className="text-negative">
             This has signs of a scam. Please check it before you do anything it
             asks.
@@ -157,10 +166,13 @@ const SummaryBody = ({ email }: { email: Doc<"emails"> }) => {
           className="self-start"
           label="Read the summary aloud"
           text={[
+            emailWarningIntro(email, warningSigns),
+            "Email summary.",
             email.summary,
             email.actionNeeded ?? "",
-            email.suspicious ? "This has signs of a scam." : "",
-          ].join(" ")}
+          ]
+            .filter(Boolean)
+            .join(" ")}
         />
       </div>
     );
@@ -409,7 +421,7 @@ const EmailReader = ({
           onClick={openReply}
           ref={replyTriggerRef}
           size="sm"
-          variant={email.suspicious ? "outline" : "default"}
+          variant={hasEmailWarning(email) ? "outline" : "default"}
         >
           <ReplyIcon aria-hidden="true" />
           Reply
@@ -418,7 +430,13 @@ const EmailReader = ({
           <>
             <ReadAloudButton
               label="Read aloud"
-              text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
+              text={[
+                emailWarningIntro(email, warningSigns),
+                "Now, the email.",
+                `${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`,
+              ]
+                .filter(Boolean)
+                .join(" ")}
             />
             <Button
               aria-controls="explanation-panel"
@@ -491,7 +509,7 @@ const EmailReader = ({
           note={summaryNote(email)}
           title="Summary"
         >
-          <SummaryBody email={email} />
+          <SummaryBody email={email} warningSigns={warningSigns} />
         </Disclosure>
         <CheckDisclosure email={email} labelId={checkId} timeZone={timeZone} />
       </div>

@@ -349,20 +349,7 @@ const CheckForm = ({
         inFlight.current = false;
       }}
     >
-      <div className="flex flex-col gap-1">
-        <h2
-          className="text-section font-semibold"
-          id="message-check-heading"
-          tabIndex={-1}
-        >
-          Check a message
-        </h2>
-        <p className="text-muted-foreground text-label">
-          A letter, a text, a screenshot or an email. Choose the easiest way to
-          show it.
-        </p>
-      </div>
-      <fieldset className="min-w-0" disabled={busy}>
+      <fieldset className="min-w-0" disabled={busy} id="message-check-sources">
         <legend className="sr-only">
           How would you like to show the message?
         </legend>
@@ -609,7 +596,9 @@ const useReviewSelection = (emailId: string | null) => {
     setInitialSource(source);
     setFormVersion((version) => version + 1);
     requestAnimationFrame(() =>
-      document.querySelector<HTMLElement>("#message-check-heading")?.focus()
+      document
+        .querySelector<HTMLInputElement>("#message-check-sources input:checked")
+        ?.focus()
     );
   };
 

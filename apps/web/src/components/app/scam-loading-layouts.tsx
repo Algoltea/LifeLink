@@ -14,16 +14,9 @@ const ScamLine = ({ className }: { className?: string }) => (
   </div>
 );
 
-/** The message column stays unboxed; only the photo drop target has an outline. */
+/** The form starts with source choices, then two compact photo controls. */
 const ScamMessageLoading = () => (
   <div className="flex min-w-0 flex-col gap-5" data-loading-part="scam-message">
-    <div className="flex flex-col gap-1">
-      <h2 className="text-section font-semibold">Check a message</h2>
-      <p className="text-muted-foreground text-label">
-        A letter, a text, a screenshot or an email. Choose the easiest way to
-        show it.
-      </p>
-    </div>
     <div className="flex flex-wrap gap-2" data-loading-part="scam-sources">
       {["Text", "Photo", "Email"].map((label) => (
         <LoadingButton
@@ -36,15 +29,18 @@ const ScamMessageLoading = () => (
       ))}
     </div>
     <div
-      className="border-control bg-parchment flex min-h-44 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-5"
-      data-loading-part="scam-photo-drop"
+      className="flex flex-wrap gap-3"
+      data-loading-part="scam-photo-actions"
     >
-      <Skeleton className="size-7" />
-      <ScamLine className="w-5/6" />
-      <ScamLine className="w-2/5" />
-      <LoadingButton className="text-label" icon>
-        Choose a photo
-      </LoadingButton>
+      {["Choose a photo", "Take a photo"].map((label) => (
+        <LoadingButton
+          className="text-label flex-1 basis-36 px-3"
+          icon
+          key={label}
+        >
+          {label}
+        </LoadingButton>
+      ))}
     </div>
     <div className="min-w-0">
       <ScamLine />

@@ -123,6 +123,58 @@ describe("family access", () => {
     ).resolves.toStrictEqual([]);
   });
 
+  it("expires unused invitation codes without ending accepted sharing", async () => {
+    const backend = newBackend();
+    const { owner, contactId } = await ownerWithContact(backend, false);
+
+    const invitation = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const { grantId: acceptedId } = await connectFamily(backend, owner, [
+      "rides.view",
+    ]);
+
+    await backend.run(async (ctx) => {
+      const createdAt = Date.now() - 15 * DAY;
+      await ctx.db.patch(invitation.grantId, { createdAt });
+      await ctx.db.patch(acceptedId, { createdAt });
+    });
+
+    const grants = await owner.query(api.sharing.listGrants, {});
+    expect(
+      grants.find((grant) => grant.id === invitation.grantId)
+    ).toMatchObject({
+      contactId,
+      state: "expired",
+    });
+    expect(grants.find((grant) => grant.id === acceptedId)).toMatchObject({
+      state: "active",
+    });
+
+    const replacement = await owner.mutation(api.sharing.createInvite, {
+      contactId,
+      expiresInDays: null,
+      scopes: ["appointments.view"],
+    });
+
+    const { person: family } = await signUp(backend, {
+      demo: false,
+      name: "New Family Member",
+      role: "family",
+      subject: "replacement-family",
+    });
+
+    await expect(
+      family.mutation(api.sharing.acceptInvite, { code: invitation.code })
+    ).rejects.toThrow(/invalid_code/u);
+    await expect(
+      family.mutation(api.sharing.acceptInvite, { code: replacement.code })
+    ).resolves.toBeDefined();
+  });
+
   it("denies an expired grant", async () => {
     const backend = newBackend();
     const { owner, ownerId } = await ownerWithContact(backend, false);
