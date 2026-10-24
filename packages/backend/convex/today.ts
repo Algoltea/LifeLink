@@ -72,6 +72,17 @@ export const summary = query({
       .order("desc")
       .first();
 
+    // First-run steps: each is done once the owner has used that part of LifeLink.
+    const connections = await ctx.db
+      .query("connections")
+      .withIndex("by_owner", (index) => index.eq("ownerId", owner._id))
+      .take(20);
+
+    const firstContact = await ctx.db
+      .query("contacts")
+      .withIndex("by_owner", (index) => index.eq("ownerId", owner._id))
+      .first();
+
     const drivers = await Promise.all(
       appointments.map(async (appointment) =>
         appointment.rideWithContactId === null
@@ -92,6 +103,13 @@ export const summary = query({
       dueReminders: reminders.filter(
         (reminder) => reminder.firedAt !== null && reminder.dismissedAt === null
       ),
+      gettingStarted: {
+        asked: tasks.length > 0,
+        connected: connections.some(
+          (connection) => connection.status === "active"
+        ),
+        trusted: firstContact !== null,
+      },
       messages: recentMessages.map((message, index) => ({
         body: message.body,
         channel: message.channel,

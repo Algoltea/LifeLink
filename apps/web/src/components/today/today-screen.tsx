@@ -12,6 +12,11 @@ import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { TaskPanel } from "@/components/tasks/task-panel";
+import {
+  GettingStarted,
+  showsGettingStarted,
+  useStepsHidden,
+} from "@/components/today/getting-started";
 import { Composer } from "@/components/voice/composer";
 import { ago, formatShortDay, formatTime, relativeDay } from "@/lib/format";
 
@@ -26,6 +31,7 @@ const TodayScreen = () => {
   const summary = useQuery(api.today.summary);
   const ensureBriefing = useMutation(api.briefings.ensureToday);
   const dismiss = useMutation(api.reminders.dismiss);
+  const stepsHidden = useStepsHidden();
 
   useEffect(() => {
     void ensureBriefing({});
@@ -44,6 +50,14 @@ const TodayScreen = () => {
   const { briefing } = summary;
   const fact = briefing?.greetingFact ?? "";
   const tasks = [...summary.waitingOnYou, ...summary.progressing].slice(0, 3);
+
+  // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
+  const welcome =
+    !summary.demoMode &&
+    showsGettingStarted(summary.gettingStarted, stepsHidden);
+
+  // With nothing to review, the welcome steps already point to Ask.
+  const showReview = !welcome || tasks.length > 0;
 
   const week: WeekRow[] = [
     ...summary.appointments.map((appointment) => ({
@@ -120,10 +134,15 @@ const TodayScreen = () => {
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <h2 className="text-2xl leading-8 font-semibold">
-            Needs your review
-          </h2>
-          {tasks.length === 0 ? (
+          {welcome ? (
+            <GettingStarted progress={summary.gettingStarted} />
+          ) : null}
+          {showReview ? (
+            <h2 className="text-2xl leading-8 font-semibold">
+              Needs your review
+            </h2>
+          ) : null}
+          {showReview && tasks.length === 0 ? (
             <EmptyNote
               action={
                 <Link className="text-lg font-semibold underline" href="/ask">
@@ -134,9 +153,10 @@ const TodayScreen = () => {
               Nothing is waiting for you. When you ask for something, it will
               appear here for you to check.
             </EmptyNote>
-          ) : (
-            tasks.map((task) => <TaskPanel key={task._id} taskId={task._id} />)
-          )}
+          ) : null}
+          {tasks.map((task) => (
+            <TaskPanel key={task._id} taskId={task._id} />
+          ))}
           <Composer />
         </div>
         <aside className="flex flex-col gap-8">
