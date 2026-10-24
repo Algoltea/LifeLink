@@ -25,9 +25,10 @@ import {
   CallWarningGuide,
   callTime,
 } from "./call-screening-parts";
-import { CallSummary } from "./call-summary";
+import { CallSummary, OUTCOME_LABELS, outcomeOf } from "./call-summary";
 import { TrustedPeople } from "./trusted-people";
 import { useCallScreening } from "./use-call-screening";
+import type { CallState } from "./use-call-screening";
 
 const CallLanding = ({
   start,
@@ -55,8 +56,8 @@ const CallLanding = ({
           Listen to a call
         </h2>
         <p className="text-muted-foreground text-label mt-2">
-          LifeLink shows the call’s words on screen and warns you out loud if it
-          picks up a common scam sign.
+          LifeLink shows the call’s words on screen, has AI check them for scam
+          warning signs, and warns you out loud if it finds one.
         </p>
       </div>
       <ol className="text-body marker:text-accent-ink list-decimal space-y-3 pl-6 marker:font-semibold">
@@ -82,8 +83,8 @@ const CallLanding = ({
             type="checkbox"
           />
           <span>
-            I understand the call’s sound will be sent to the cloud assistant
-            while this check is on.
+            I understand the call’s sound and words will be sent to cloud AI
+            services while this check is on.
           </span>
         </label>
       ) : null}
@@ -156,6 +157,35 @@ const callErrorText = (permissionDenied: boolean, empty: boolean): string => {
   return "The listening connection stopped. Your captions are still here. Press Start again to keep listening, or Finish to save a summary.";
 };
 
+const CallEnded = ({
+  onBack,
+  onRetry,
+  state,
+}: {
+  onBack: () => void;
+  onRetry: () => Promise<void>;
+  state: CallState;
+}) => (
+  <div className="space-y-5">
+    {state.checking ? (
+      <output className="text-body">
+        Checking the last part of the call for warning signs…
+      </output>
+    ) : null}
+    {state.notice ? (
+      <output className="text-body">{state.notice}</output>
+    ) : null}
+    <CallSummary
+      onBack={onBack}
+      onRetry={onRetry}
+      saveError={state.saveError}
+      saving={state.saving || state.checking}
+      summary={state}
+      summaryId={state.summaryId}
+    />
+  </div>
+);
+
 const CallScreening = ({
   onActiveChange,
 }: {
@@ -174,21 +204,7 @@ const CallScreening = ({
   }
 
   if (state.status === "ended") {
-    return (
-      <div className="space-y-5">
-        {state.notice ? (
-          <output className="text-body">{state.notice}</output>
-        ) : null}
-        <CallSummary
-          onBack={reset}
-          onRetry={retrySave}
-          saveError={state.saveError}
-          saving={state.saving}
-          summary={state}
-          summaryId={state.summaryId}
-        />
-      </div>
-    );
+    return <CallEnded onBack={reset} onRetry={retrySave} state={state} />;
   }
 
   const lastFlag = state.flags.at(-1);
@@ -272,6 +288,12 @@ const CallScreening = ({
           warning.
         </output>
       ) : null}
+      {state.checksUnavailable ? (
+        <output className="text-body">
+          Warning-sign checks aren’t available right now. The call’s words still
+          appear below.
+        </output>
+      ) : null}
       {state.alertStatus === "unavailable" && !lastFlag ? (
         <output className="text-body">
           Sound is unavailable. Warning signs will still appear on screen.
@@ -326,6 +348,7 @@ const CallHistory = () => {
     <div className="flex flex-col gap-6">
       {current ? (
         <CallSummary
+          backLabel="Close"
           onBack={() => setSelected(null)}
           summary={{ ...current, practice: current.mode === "simulated" }}
           summaryId={current._id}
@@ -351,9 +374,14 @@ const CallHistory = () => {
                   · {callTime(summary.durationMs)}
                 </span>
                 <span className="text-muted-foreground text-body">
-                  {summary.flags.length > 0
-                    ? "Warning signs picked up"
-                    : "No warning signs picked up"}{" "}
+                  {
+                    OUTCOME_LABELS[
+                      outcomeOf({
+                        ...summary,
+                        practice: summary.mode === "simulated",
+                      })
+                    ]
+                  }{" "}
                   ·{" "}
                   {ago(
                     summary.createdAt,

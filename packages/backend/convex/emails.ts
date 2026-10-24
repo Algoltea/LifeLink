@@ -38,7 +38,11 @@ import { createAction } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
 import { isoWithOffset, parseAbsoluteIso } from "./lib/time";
 import { SUGGESTION_RATIONALE } from "./messages";
-import { ensureEmailCheck, LOCAL_SCAN_VERSION } from "./scam";
+import {
+  ensureEmailCheck,
+  LOCAL_SCAN_VERSION,
+  NEW_EMAIL_WINDOW_MS,
+} from "./scam";
 
 const LIST_LIMIT = INBOX_PAGE_SIZE;
 
@@ -342,6 +346,11 @@ const upsertMail = async (
 
   if (email !== null) {
     await ensureEmailCheck(ctx, email);
+  }
+
+  // Only newly arrived mail gets the AI check, once; re-syncs and old mail never do.
+  if (mail.receivedAt >= Date.now() - NEW_EMAIL_WINDOW_MS) {
+    await ctx.scheduler.runAfter(0, internal.scam.checkNewEmail, { emailId });
   }
 
   return emailId;

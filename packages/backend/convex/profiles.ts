@@ -210,6 +210,7 @@ export const updateProfile = mutation({
 
 export const updatePreferences = mutation({
   args: {
+    aiEmailChecks: v.optional(v.boolean()),
     captions: v.optional(v.boolean()),
     communicationNotes: v.optional(v.union(v.string(), v.null())),
     contrast: v.optional(v.union(v.literal("standard"), v.literal("more"))),
@@ -234,6 +235,10 @@ export const updatePreferences = mutation({
     const profile = await requireProfile(ctx);
     const preferences = await preferencesOf(ctx, profile);
     const patch: Partial<Doc<"preferences">> = { updatedAt: Date.now() };
+
+    if (args.aiEmailChecks !== undefined) {
+      patch.aiEmailChecks = args.aiEmailChecks;
+    }
 
     if (args.captions !== undefined) {
       patch.captions = args.captions;

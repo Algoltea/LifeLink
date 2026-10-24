@@ -485,6 +485,12 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           label="One step at a time"
           onChange={(stepByStep) => save({ stepByStep })}
         />
+        <Toggle
+          checked={value.aiEmailChecks ?? true}
+          description="When a new email arrives, a cloud AI service checks it for scam warning signs. Older emails and practice emails are never sent."
+          label="Check new emails with AI"
+          onChange={(aiEmailChecks) => save({ aiEmailChecks })}
+        />
         <Row
           description="LifeLink’s cloud explanations and scam checks are written in this language. Quotes stay in the message’s own words, local readings stay in English, and suggested replies follow the message’s language. Read-aloud and voice typing stay in English for now."
           label="Language for help"

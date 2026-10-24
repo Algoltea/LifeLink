@@ -707,7 +707,7 @@ const startCallScreeningSession = async (
         onmessage: receive,
       },
       // Keep automatic VAD enabled: audioStreamEnd requires it. The token owns
-      // system instructions/proactivity/tools; never request output captions.
+      // system instructions/tools; never request output captions.
       config: {
         inputAudioTranscription: {},
         responseModalities: [Modality.AUDIO],

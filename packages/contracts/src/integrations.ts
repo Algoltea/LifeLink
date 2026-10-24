@@ -116,6 +116,15 @@ const developerIntegrations: readonly DeveloperIntegration[] = [
         target: "convex",
       },
       {
+        defaultValue: "openai/gpt-6-luna",
+        hint: "Model for scam checks on calls, new email, and the check form.",
+        label: "Scam check model on OpenRouter",
+        name: "OPENROUTER_SCAM_MODEL",
+        required: false,
+        secret: false,
+        target: "convex",
+      },
+      {
         defaultValue: "elevenlabs/eleven-v4-turbo",
         hint: "ElevenLabs speech model served through the same OpenRouter key.",
         label: "Read-aloud model on OpenRouter",
