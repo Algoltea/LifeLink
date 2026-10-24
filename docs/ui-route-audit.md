@@ -40,6 +40,33 @@ Implementation verification passed `bun run check`, `bun run check-types`, and `
 
 Final desktop 1440px and phone 390px captures were visually inspected, including the corrected account-link colors. Local evidence is in `.taste-skill/solitaire-guest/desktop.png`, `mobile.png`, and `verification.json`; these ignored artifacts are not part of a fresh checkout. Independent review found no material issues in the guest sidebar/header, authentication-mode routing, or game continuity. Existing card-table styling remains outside this change. DESIGN.md records the guest exception; `.impeccable/design.json` is unchanged because no tokens changed.
 
+## Full-page review and hover pass — 2026-10-24
+
+All 26 artboards, including `5WS-0`, were screenshot-reviewed against DESIGN.md and current source. The pass added one artboard, **Desktop — Create account** (`621-0`), for the `/sign-in?mode=sign-up` entry used by the guest Solitaire rail, for **27 artboards: 23 desktop and 4 phone views**. Tokens are unchanged.
+
+| Artboard | Change |
+| --- | --- |
+| Desktop — Solitaire with navigation · `5KA-0` | **1 card** now shows the selected state, matching the status line, `5WS-0`, and the radio implementation. |
+| Desktop — Ask conversation and History · `3Z8-0` | Composer gains the **Ask** submit action required by DESIGN.md; placeholder text is muted. The redundant **Close** in the History drawer was removed; **Hide history** remains the single toggle. |
+| Desktop — Task detail · `439-0` | **Current** aligns with its event title. |
+| Desktop — Messages · `46W-0` | Inactive filter tabs share one ink color. |
+| Desktop — App error recovery · `5HG-0` | Active navigation moved from Today to Messages so the **Go to Today** recovery action is not contradicted. |
+| Desktop — Sign in · `599-0` | Selected mode tab uses the selected-neutral fill so it no longer duplicates the filled **Sign in** submit. Intro copy and the Solitaire escape link now match `sign-in-form.tsx`. |
+| Desktop — Create account · `621-0` | New: create-account mode with name field, password-length hint, and **Create account** submit. |
+
+The user chose Paper as the source of truth for signed-in Solitaire: the header now uses an outlined **New game** and the subtitle "A quiet game. Available offline." in code. The shared `Segmented` component still fills the selected option with copper; the Sign in artboard records the intended neutral-selected treatment for a later code change.
+
+Hover audit: a scan of every link, button, label, and disclosure in `apps/web/src` found about 28 elements with no hover response. Base styles now thicken link underlines and color `<summary>` toggles on hover. The `link` button variant now changes color instead of removing its underline. Checkbox and Switch, the earlier-version toggle, the voice button, the brand links, and the consent checkbox labels gained explicit hover states. Task detail's not-found **Back to Today** link was unstyled and now matches other empty-state links. `bun run check`, `bun run check-types`, and `bun run test` pass. Hover states were not checked in a live browser.
+
+## First-run flow — 2026-10-24
+
+Create account → setup → first screen was reviewed in Paper and source. Create account now asks for the full name once. Setup reads it from the session, and the time zone is a dropdown (shared `time-zone-select.tsx`), both landed by a parallel thread. Setup stays a single page, as the user chose.
+
+- **Setup** (`onboarding.tsx`, **Desktop — Onboarding** `5AD-0`): removed **Town or city**, which was stored but never read. **How you sign your messages** is marked optional, with a persistent hint explaining the fallback to the preferred name. The family role reads **A family member invited me**, and its helper line says the code is entered on the next screen. The Trusted circle invitation instructions use the same label. Practice mode now starts checked. Paper shows the dropdown, the "About you" heading, current copy, and a fit-width **Continue**.
+- **First screen** (`getting-started.tsx`, `today-screen.tsx`, `today.ts`, new **Desktop — Today first run** `679-0`): real (non-practice) owners see **Getting started** with three steps: connect email, add someone trusted, and ask. Each step is marked done from real data (an active connection, any contact, any task). The panel disappears when all three are done, or it can be hidden on this device. With nothing to review, it replaces the empty **Needs your review** note.
+
+`bun run check`, `bun run check-types`, and `bun run test` (154 tests) pass. The first-run panel has not been checked in a live browser.
+
 ## Evidence actually inspected
 
 - Route inventory under `apps/web/src/app`, the existing shell and feature components, authentication and onboarding fields, Solitaire controls, `public/offline.html`, and `src/components/app/brand.tsx`.
@@ -55,6 +82,7 @@ Every row below is **created and screenshot-reviewed**. Named states are represe
 | Route / state | Exact artboard name | Artboard ID | Main question |
 | --- | --- | --- | --- |
 | `/` | Desktop — Today | `3RQ-0` | What needs my attention next? |
+| `/` · first run | Desktop — Today first run | `679-0` | What should I do first? |
 | `/ask` · empty | Desktop — Ask empty | `3VY-0` | What can I ask for? |
 | `/ask` · conversation | Desktop — Ask conversation and History | `3Z8-0` | What exactly will approval do? |
 | `/tasks/[taskId]` | Desktop — Task detail | `439-0` | What is waiting for my decision? |
@@ -69,6 +97,7 @@ Every row below is **created and screenshot-reviewed**. Named states are represe
 | `/groceries/practice` · legacy recovery | Desktop — Shopping unavailable | `4Z4-0` | How do I return to my grocery list? |
 | `/settings` | Desktop — Settings | `52K-0` | How do I make LifeLink comfortable? |
 | `/sign-in` | Desktop — Sign in | `599-0` | How do I enter my account? |
+| `/sign-in?mode=sign-up` | Desktop — Create account | `621-0` | How do I start a new account? |
 | `onboarding` | Desktop — Onboarding | `5AD-0` | How do I start with the right details? |
 | `not-found` | Desktop — Page not found | `5CM-0` | How do I return somewhere useful? |
 | `/connections/callback` | Desktop — Connection callback error | `5F0-0` | How do I recover from incomplete setup? |
