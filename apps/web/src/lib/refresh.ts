@@ -35,12 +35,21 @@ const useRefreshWhenStale = ({
     const retryIn = attempts > 0 ? RETRY_MS : 0;
     const wait = expiresIn > 0 ? expiresIn : retryIn;
 
+    // A refresh that finishes after this cycle ended (say, for the other news kind) must not count.
+    let current = true;
+
     const timer = globalThis.setTimeout(async () => {
       await refresh();
-      setAttempts((count) => count + 1);
+
+      if (current) {
+        setAttempts((count) => count + 1);
+      }
     }, wait);
 
-    return () => globalThis.clearTimeout(timer);
+    return () => {
+      current = false;
+      globalThis.clearTimeout(timer);
+    };
   }, [attempts, enabled, fetchedAt, maxAgeMs, refresh]);
 
   // A new copy starts a fresh cycle.

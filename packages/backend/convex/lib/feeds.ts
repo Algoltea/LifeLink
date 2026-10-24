@@ -17,6 +17,7 @@ const MAX_ITEMS = 100;
 const MAX_ITEM_CHARS = 50_000;
 const MAX_TITLE_CHARS = 300;
 const MAX_URL_CHARS = 2000;
+const MAX_RAW_FIELD_CHARS = 4000;
 const MAX_CODE_POINT = 0x10_ff_ff;
 const SURROGATES = { first: 0xd8_00, last: 0xdf_ff } as const;
 
@@ -85,7 +86,10 @@ const tagValues = (item: string, tag: string): string[] =>
     ...item.matchAll(
       new RegExp(`<${tag}\\b[^>]*>(?<value>[\\s\\S]*?)</${tag}>`, "gu")
     ),
-  ].map((match) => cleanText(match.groups?.value ?? ""));
+  ].map((match) =>
+    // Raw fields are capped before cleaning so tag stripping stays cheap.
+    cleanText((match.groups?.value ?? "").slice(0, MAX_RAW_FIELD_CHARS))
+  );
 
 /** Headlines from one feed, newest first, without items the source asks to skip. */
 const parseFeed = (xml: string, source: NewsSource): Headline[] => {
