@@ -25,7 +25,7 @@ const buttonVariants = cva(
           "border-negative/40 bg-negative-wash text-negative hover:border-negative",
         ghost:
           "text-foreground hover:bg-neutral-wash hover:text-foreground active:bg-rule",
-        link: "text-accent-foreground min-h-control px-1 underline hover:no-underline",
+        link: "text-accent-foreground hover:text-foreground min-h-control px-1 underline",
         outline:
           "border-control bg-raised text-foreground hover:border-foreground hover:bg-parchment active:bg-neutral-wash",
         secondary: "bg-neutral-wash text-foreground hover:bg-rule",

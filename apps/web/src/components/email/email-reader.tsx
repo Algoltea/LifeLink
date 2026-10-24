@@ -59,7 +59,7 @@ const SummaryPanel = ({ emailId }: { emailId: Id<"emails"> }) => {
           </p>
           {working ? null : (
             <label
-              className="flex min-h-12 items-start gap-3 text-base leading-relaxed"
+              className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
               htmlFor={consentId}
             >
               <input

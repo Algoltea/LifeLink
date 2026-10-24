@@ -324,7 +324,7 @@ const ShellFrame = ({
         ) : (
           <>
             <Link
-              className="min-h-control rounded-md px-4 py-1"
+              className="min-h-control hover:bg-neutral-wash rounded-md px-4 py-1 transition-colors"
               href={groups === FAMILY_NAV ? "/family" : "/"}
             >
               <BrandName />
@@ -346,7 +346,7 @@ const ShellFrame = ({
           ) : (
             <>
               <Link
-                className="min-h-control inline-flex items-center rounded-md"
+                className="min-h-control hover:bg-neutral-wash -mx-2 inline-flex items-center rounded-md px-2 transition-colors"
                 href={groups === FAMILY_NAV ? "/family" : "/"}
               >
                 <BrandName compact />

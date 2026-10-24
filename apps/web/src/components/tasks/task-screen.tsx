@@ -249,7 +249,13 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
 
   if (detail === null) {
     return (
-      <EmptyNote action={<Link href="/">Back to Today</Link>}>
+      <EmptyNote
+        action={
+          <Link className="text-lg font-semibold underline" href="/">
+            Back to Today
+          </Link>
+        }
+      >
         This could not be found.
       </EmptyNote>
     );

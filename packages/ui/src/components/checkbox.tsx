@@ -7,7 +7,7 @@ import { CheckIcon } from "lucide-react";
 const Checkbox = ({ className, ...props }: CheckboxPrimitive.Root.Props) => (
   <CheckboxPrimitive.Root
     className={cn(
-      "border-control bg-raised data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground disabled:border-control disabled:bg-neutral-wash disabled:text-muted-foreground relative flex size-7 shrink-0 items-center justify-center rounded-sm border-2 transition-colors after:absolute after:-inset-2.5 disabled:cursor-not-allowed",
+      "border-control bg-raised hover:border-foreground data-checked:border-primary data-checked:bg-primary data-checked:hover:border-primary-hover data-checked:hover:bg-primary-hover data-checked:text-primary-foreground disabled:border-control disabled:bg-neutral-wash disabled:text-muted-foreground relative flex size-7 shrink-0 items-center justify-center rounded-sm border-2 transition-colors after:absolute after:-inset-2.5 disabled:cursor-not-allowed",
       className
     )}
     data-slot="checkbox"

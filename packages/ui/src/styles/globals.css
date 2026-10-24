@@ -241,6 +241,19 @@
     text-decoration-thickness: 0.08em;
   }
 
+  /* Every link and disclosure answers the pointer, even when it has no utility hover. */
+  a:hover {
+    text-decoration-thickness: 0.16em;
+  }
+
+  summary {
+    transition: color 150ms;
+  }
+
+  summary:hover {
+    color: var(--accent-foreground);
+  }
+
   input,
   textarea {
     caret-color: var(--accent-ink);

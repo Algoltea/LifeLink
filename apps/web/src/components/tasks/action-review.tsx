@@ -535,7 +535,7 @@ const PreviousVersion = ({
     >
       <button
         aria-expanded={showPrevious}
-        className="flex min-h-14 w-full items-center gap-3 px-5 text-left text-lg font-semibold"
+        className="hover:bg-neutral-wash flex min-h-14 w-full items-center gap-3 rounded-xl px-5 text-left text-lg font-semibold transition-colors"
         onClick={() => setShowPrevious(!showPrevious)}
         type="button"
       >

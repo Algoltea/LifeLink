@@ -7,7 +7,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 const Switch = ({ className, ...props }: SwitchPrimitive.Root.Props) => (
   <SwitchPrimitive.Root
     className={cn(
-      "border-control bg-neutral-wash data-checked:border-primary data-checked:bg-primary disabled:bg-neutral-wash relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 p-0.5 transition-colors after:absolute after:-inset-2 disabled:cursor-not-allowed",
+      "border-control bg-neutral-wash hover:border-foreground data-checked:border-primary data-checked:bg-primary data-checked:hover:border-primary-hover data-checked:hover:bg-primary-hover disabled:bg-neutral-wash relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 p-0.5 transition-colors after:absolute after:-inset-2 disabled:cursor-not-allowed",
       className
     )}
     data-slot="switch"

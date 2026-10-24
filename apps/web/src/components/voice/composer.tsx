@@ -257,8 +257,8 @@ const ComposerSession = ({
           aria-label={listening ? "Stop listening" : "Speak to LifeLink"}
           aria-pressed={listening}
           className={cn(
-            "border-brass bg-primary text-primary-foreground flex size-12 shrink-0 items-center justify-center rounded-full border-2 transition-transform active:scale-95 disabled:opacity-50 sm:size-16",
-            listening && "bg-foreground"
+            "border-brass bg-primary text-primary-foreground hover:bg-primary-hover disabled:hover:bg-primary flex size-12 shrink-0 items-center justify-center rounded-full border-2 transition-[background-color,transform] active:scale-95 disabled:opacity-50 sm:size-16",
+            listening && "bg-foreground hover:bg-foreground/85"
           )}
           disabled={!voiceAvailable}
           onClick={() => {
