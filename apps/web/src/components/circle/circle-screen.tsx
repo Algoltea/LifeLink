@@ -354,6 +354,14 @@ const ContactRow = ({
           {channel.preferred ? " (first choice)" : ""}
         </span>
       ))}
+      {(contact.savedHandles ?? []).map((handle) => (
+        <span className="text-base break-words" key={handle.service}>
+          WhatsApp: {formatAddress(handle.address)}{" "}
+          <span className="text-muted-foreground">
+            (saved only; LifeLink can’t send here yet)
+          </span>
+        </span>
+      ))}
     </div>
     <div className="col-start-2 flex flex-wrap gap-2 sm:col-start-3 sm:row-start-1 sm:self-center">
       <Button onClick={onEdit} size="sm" variant="outline">

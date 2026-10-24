@@ -29,6 +29,8 @@ const playHints = (state: GameState, steps: number): GameState => {
   return current;
 };
 
+const isHeartsAce = (code: string) => code.startsWith("H01");
+
 const freshSave = () => JSON.parse(serializeGame(newGame({ seed: 9 })));
 
 const reasonFor = (text: string): string => {
@@ -106,6 +108,36 @@ describe("save and resume", () => {
     expect(reasonFor(JSON.stringify(save))).toBe(
       "The saved game does not hold exactly one full deck."
     );
+  });
+
+  it("moves foundations saved in any spot to their suit's spot", () => {
+    const save = JSON.parse(serializeGame(newGame({ seed: 9 })));
+
+    // Take the ace of hearts off the table, turning up whatever it uncovers.
+    save.game.stock = save.game.stock.filter(
+      (code: string) => !isHeartsAce(code)
+    );
+    save.game.tableau = save.game.tableau.map((column: string[]) => {
+      const kept = column.filter((code) => !isHeartsAce(code));
+      const top = kept.at(-1);
+
+      return kept.length < column.length && top
+        ? [...kept.slice(0, -1), top.replace(/D$/u, "U")]
+        : kept;
+    });
+    // Older saves could hold it in the first spot, which now belongs to spades.
+    save.game.foundations[0] = ["H01U"];
+
+    const result = parseSavedGame(JSON.stringify(save));
+
+    if (!result.ok) {
+      throw new Error(result.reason);
+    }
+
+    expect(result.state.foundations.map((pile) => pile.length)).toStrictEqual([
+      0, 1, 0, 0,
+    ]);
+    expect(result.state.foundations[1]?.[0]?.id).toBe("hearts-1");
   });
 
   it("rejects damaged fields", () => {
