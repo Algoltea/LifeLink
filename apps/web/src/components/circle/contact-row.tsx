@@ -36,6 +36,10 @@ const reachLine = (contact: CircleContact): string => {
     return REACHED_BY[preferred.channel];
   }
 
+  if (contact.telegram && !contact.telegram.linked) {
+    return "Telegram: waiting for them to tap Start";
+  }
+
   return (contact.savedHandles ?? []).length > 0
     ? "WhatsApp saved. Can’t message yet"
     : "No way to reach them yet";

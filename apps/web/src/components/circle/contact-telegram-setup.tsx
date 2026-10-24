@@ -63,6 +63,53 @@ const PendingLink = ({
   );
 };
 
+/** A username is saved: they only need to start the bot, from that account. */
+const WaitingForStart = ({
+  botUrl,
+  contactName,
+  username,
+}: {
+  botUrl: string;
+  contactName: string;
+  username: string;
+}) => {
+  const [copied, setCopied] = useState(false);
+  const invite = `Hi ${contactName}! Open ${botUrl} in Telegram and tap Start, so we can message each other through LifeLink.`;
+
+  return (
+    <div className="bg-surface flex flex-col gap-3 rounded-lg px-4 py-4">
+      <p aria-live="polite" className="text-lg leading-7">
+        Waiting for @{username}. Ask {contactName} to open{" "}
+        <span className="font-semibold break-all">{botUrl}</span> in Telegram
+        and tap Start. LifeLink links them as soon as they do.
+      </p>
+      <Button
+        className="max-w-full self-start whitespace-normal"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(invite);
+            setCopied(true);
+          } catch {
+            toast.error(
+              "Couldn’t copy the invitation. Copy the address above."
+            );
+          }
+        }}
+        size="sm"
+        variant="outline"
+      >
+        <CopyIcon aria-hidden="true" />
+        Copy invitation
+      </Button>
+      <output aria-live="polite" className="text-base">
+        {copied
+          ? `Invitation copied. Send it to ${contactName} yourself.`
+          : null}
+      </output>
+    </div>
+  );
+};
+
 type TelegramStatus = NonNullable<
   FunctionReturnType<typeof api.telegram.status>
 >;
@@ -130,6 +177,13 @@ const TelegramLinking = ({
           Linked to {linkedName(linked)}. Messages you approve for {contactName}{" "}
           can go by Telegram, and their replies arrive in Messages.
         </p>
+      ) : null}
+      {!linked && status.expectedUsername && status.botUrl ? (
+        <WaitingForStart
+          botUrl={status.botUrl}
+          contactName={contactName}
+          username={status.expectedUsername}
+        />
       ) : null}
       {status.pending ? (
         <PendingLink
