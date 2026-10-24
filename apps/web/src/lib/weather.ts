@@ -15,9 +15,9 @@ import type {
 } from "@lifelink/contracts/weather";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
-import { dayKey } from "@/lib/format";
+import { dayKey, MINUTE } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
 import { useRefreshWhenStale } from "@/lib/refresh";
 
@@ -49,34 +49,31 @@ const degrees = (celsius: number, unit: TemperatureUnit): string =>
 /**
  * The forecast for the person's saved place. It asks the server to fetch
  * again when the cached copy is missing or older than 30 minutes; the server
- * decides whether a fetch is really needed.
+ * decides whether a fetch is really needed. Only fresh weather reaches the
+ * screen, appointment rows, and read-aloud.
  */
-interface WeatherView {
-  state: WeatherState | undefined;
-  /** The last refresh found nothing to show. */
-  unavailable: boolean;
-}
-
-const useWeather = (timeZone: string): WeatherView => {
-  const today = useSyncExternalStore(
+const useWeather = (timeZone: string): WeatherState | undefined => {
+  const minute = useSyncExternalStore<number | null>(
     subscribeToClock,
-    () => dayKey(Date.now(), timeZone),
-    () => dayKey(Date.now(), timeZone)
+    () => Math.floor(Date.now() / MINUTE),
+    () => null
   );
 
-  const state = useQuery(api.weather.forecast, { today });
+  const now = minute === null ? null : minute * MINUTE;
+
+  const state = useQuery(
+    api.weather.forecast,
+    now === null ? "skip" : { today: dayKey(now, timeZone) }
+  );
+
   const refreshAction = useAction(api.weather.refresh);
-  const [unavailable, setUnavailable] = useState(false);
   const status = state?.status;
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      const { available } = await refreshAction({});
-
-      setUnavailable(!available);
+      await refreshAction({});
     } catch {
-      // The last forecast, if any, stays on screen.
-      setUnavailable(true);
+      // Weather stays hidden until a later retry supplies a fresh forecast.
     }
   }, [refreshAction]);
 
@@ -91,7 +88,10 @@ const useWeather = (timeZone: string): WeatherView => {
     refresh,
   });
 
-  return { state, unavailable };
+  return state?.status === "ready" &&
+    (now === null || now - state.fetchedAt >= WEATHER_REFRESH_MS)
+    ? undefined
+    : state;
 };
 
 const forecastOf = (state: WeatherState | undefined): Forecast | null =>

@@ -167,7 +167,7 @@ const TodayContent = ({
   summary: TodaySummary;
 }) => {
   const { timeZone } = summary;
-  const { state: weather, unavailable } = useWeather(timeZone);
+  const weather = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
   // The same query as Latest email, so the spoken warning matches the rows.
@@ -221,9 +221,7 @@ const TodayContent = ({
           spokenEmail(emails),
         ]}
         timeZone={timeZone}
-        weather={
-          <WeatherChip state={weather} unavailable={unavailable} unit={unit} />
-        }
+        weather={<WeatherChip state={weather} unit={unit} />}
       />
 
       {summary.dueReminders.map((reminder) => (

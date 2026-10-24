@@ -22,15 +22,19 @@ const KINDS = [
 const useHeadlines = (kind: NewsKind, enabled: boolean) => {
   const news = useQuery(api.news.headlines, enabled ? { kind } : "skip");
   const refreshAction = useAction(api.news.refresh);
-  const [failed, setFailed] = useState<NewsKind | null>(null);
+
+  const [failed, setFailed] = useState<Record<NewsKind, boolean>>({
+    good: false,
+    top: false,
+  });
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const { available } = await refreshAction({ kind });
 
-      setFailed(available ? null : kind);
+      setFailed((previous) => ({ ...previous, [kind]: !available }));
     } catch {
-      setFailed(kind);
+      setFailed((previous) => ({ ...previous, [kind]: true }));
     }
   }, [kind, refreshAction]);
 
@@ -41,7 +45,7 @@ const useHeadlines = (kind: NewsKind, enabled: boolean) => {
     refresh,
   });
 
-  return { failed: failed === kind, news };
+  return { failed: failed[kind], news };
 };
 
 /** Three headlines; the person picks gentle or ordinary news, saved to their profile. */
@@ -83,13 +87,7 @@ const NewsCard = () => {
       </div>
       {/* Three rows tall, so switching kinds does not shrink the page and scroll it. */}
       <div className="min-h-48">
-        {headlines.length === 0 ? (
-          <output className="text-muted-foreground text-body block py-1">
-            {news === undefined || (news.fetchedAt === null && !failed)
-              ? "Loading news…"
-              : "News is not available right now. Please try again later."}
-          </output>
-        ) : (
+        {headlines.length > 0 ? (
           <ul className="motion-enter flex flex-col" key={kind}>
             {headlines.map((headline) => (
               <li
@@ -116,7 +114,12 @@ const NewsCard = () => {
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
+        {headlines.length === 0 && failed ? (
+          <output className="text-muted-foreground text-body block py-1">
+            News is not available right now. Please try again later.
+          </output>
+        ) : null}
       </div>
       {single && headlines.length > 0 ? (
         <a
