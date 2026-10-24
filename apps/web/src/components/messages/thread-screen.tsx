@@ -10,19 +10,22 @@ import { ChevronLeftIcon, ClockIcon, ListChecksIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { Avatar, SimulatedPill } from "@/components/app/bits";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
-import {
-  CHAT_READING_COLUMN,
-  CHAT_WORKSPACE,
-} from "@/components/assistant/chat-layout";
 import { useChatViewport } from "@/components/assistant/use-chat-viewport";
 import { RecapPanel } from "@/components/messages/recap-panel";
 import { CHANNEL_WORDS, formatAddress } from "@/components/tasks/details-view";
 
+import {
+  MESSAGES_DOCK,
+  MESSAGES_HEADER,
+  MESSAGES_READING_COLUMN,
+  MESSAGES_TRANSCRIPT,
+  MESSAGES_WORKSPACE,
+} from "./chat-layout";
 import { ConversationList } from "./conversation";
 import { EMPTY_DRAFT, MessageComposer } from "./message-composer";
 import type { MessageDraft } from "./message-composer";
@@ -80,7 +83,7 @@ const ConversationHeader = ({
   onRecap: (() => void) | null;
   recapOpen: boolean;
   recapTriggerRef: RefObject<HTMLButtonElement | null>;
-  subline: string;
+  subline: ReactNode;
 }) => {
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -89,11 +92,11 @@ const ConversationHeader = ({
   }, []);
 
   return (
-    <header className="border-rule flex shrink-0 items-center gap-2 border-b pb-3 sm:gap-3 sm:pb-4">
+    <header className={MESSAGES_HEADER}>
       <Link
         className={buttonVariants({
           className:
-            "text-muted-foreground hover:text-foreground -ml-3 px-3 sm:pr-4 sm:pl-2",
+            "text-muted-foreground hover:text-foreground min-w-control px-2 text-[0.889rem] sm:pr-4",
           variant: "ghost",
         })}
         href="/messages"
@@ -104,7 +107,7 @@ const ConversationHeader = ({
         </span>
       </Link>
       <Avatar
-        className="size-10 text-base sm:size-12 sm:text-lg"
+        className="size-[2.222rem] text-base sm:size-[2.667rem] sm:text-lg"
         hue={contact.hue}
         name={contact.name}
         src={contact.avatarUrl}
@@ -128,7 +131,7 @@ const ConversationHeader = ({
           <Button
             aria-controls="recap-panel"
             aria-expanded={recapOpen}
-            className="px-3.5 sm:px-4"
+            className="px-3 text-[0.889rem] sm:px-4"
             onClick={onRecap}
             ref={recapTriggerRef}
             size="sm"
@@ -146,7 +149,7 @@ const ConversationHeader = ({
 
 const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   const { me } = usePreferences();
-  const workspace = useChatViewport();
+  const workspace = useChatViewport(undefined, true);
   const [draft, setDraft] = useState<MessageDraft>(EMPTY_DRAFT);
   const [explaining, setExplaining] = useState<Id<"messages"> | null>(null);
   const [recapOpen, setRecapOpen] = useState(false);
@@ -164,9 +167,18 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
     contact.channels.find((channel) => channel.preferred) ??
     contact.channels[0];
 
-  const subline = preferred
-    ? `${contact.relationship} · ${CHANNEL_WORDS[preferred.channel]}${preferred.channel === "in_app" ? "" : ` to ${formatAddress(preferred.address)}`}`
-    : `${contact.relationship} · No way to reach ${firstName} yet`;
+  const subline = preferred ? (
+    <>
+      {contact.relationship} · {CHANNEL_WORDS[preferred.channel]}
+      {preferred.channel === "in_app" ? null : (
+        <span className="sr-only sm:not-sr-only">
+          {` to ${formatAddress(preferred.address)}`}
+        </span>
+      )}
+    </>
+  ) : (
+    `${contact.relationship} · No way to reach ${firstName} yet`
+  );
 
   const allPractice =
     messages.length > 0 &&
@@ -200,7 +212,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   const [pendingTask] = pendingTaskIds;
 
   return (
-    <div className={CHAT_WORKSPACE} ref={workspace}>
+    <div className={MESSAGES_WORKSPACE} ref={workspace}>
       <ConversationHeader
         allPractice={allPractice}
         contact={contact}
@@ -219,7 +231,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Scrolling by hand decides whether the view keeps following new messages. */}
       <section
         aria-labelledby="history-heading"
-        className="min-h-48 flex-1 overflow-y-auto overscroll-contain px-1"
+        className={MESSAGES_TRANSCRIPT}
         data-chat-transcript=""
         onKeyDown={(event) => {
           if (SCROLL_KEYS.has(event.key)) {
@@ -239,8 +251,8 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
       >
         <div
           className={cn(
-            CHAT_READING_COLUMN,
-            "flex min-h-full flex-col gap-6 pt-2 pb-4"
+            MESSAGES_READING_COLUMN,
+            "flex min-h-full flex-col gap-6 pb-4"
           )}
         >
           <h2 className="sr-only" id="history-heading">
@@ -281,36 +293,38 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
           )}
         </div>
       </section>
-      <div className={cn(CHAT_READING_COLUMN, "flex shrink-0 flex-col gap-3")}>
-        {pendingTask ? (
-          <p className="bg-parchment text-label flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1 pr-2 pl-4">
-            <ClockIcon
-              aria-hidden="true"
-              className="text-muted-foreground size-5 shrink-0"
-            />
-            <span className="min-w-0 flex-1">
-              {pendingTaskIds.length === 1
-                ? `A message to ${firstName} is waiting for your approval.`
-                : `${pendingTaskIds.length} messages to ${firstName} are waiting for your approval.`}
-            </span>
-            <Link
-              className="min-h-control inline-flex items-center px-2 font-semibold underline underline-offset-4"
-              // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
-              href={`/tasks/${pendingTask}` as Route}
-            >
-              Review it
-            </Link>
-          </p>
-        ) : null}
-        <MessageComposer
-          canReach={Boolean(preferred)}
-          contactId={contact._id}
-          draft={draft}
-          firstName={firstName}
-          inputRef={bodyRef}
-          onDraftChange={setDraft}
-          practice={Boolean(me?.profile?.demoMode)}
-        />
+      <div className={MESSAGES_DOCK} data-chat-dock="">
+        <div className={cn(MESSAGES_READING_COLUMN, "flex flex-col gap-2")}>
+          {pendingTask ? (
+            <p className="bg-parchment text-label flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1 pr-2 pl-4">
+              <ClockIcon
+                aria-hidden="true"
+                className="text-muted-foreground size-5 shrink-0"
+              />
+              <span className="min-w-0 flex-1">
+                {pendingTaskIds.length === 1
+                  ? `A message to ${firstName} is waiting for your approval.`
+                  : `${pendingTaskIds.length} messages to ${firstName} are waiting for your approval.`}
+              </span>
+              <Link
+                className="min-h-control inline-flex items-center px-2 font-semibold underline underline-offset-4"
+                // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
+                href={`/tasks/${pendingTask}` as Route}
+              >
+                Review it
+              </Link>
+            </p>
+          ) : null}
+          <MessageComposer
+            canReach={Boolean(preferred)}
+            contactId={contact._id}
+            draft={draft}
+            firstName={firstName}
+            inputRef={bodyRef}
+            onDraftChange={setDraft}
+            practice={Boolean(me?.profile?.demoMode)}
+          />
+        </div>
       </div>
     </div>
   );

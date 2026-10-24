@@ -14,6 +14,7 @@ import type * as assistant from "../assistant.js";
 import type * as auth from "../auth.js";
 import type * as avatars from "../avatars.js";
 import type * as briefings from "../briefings.js";
+import type * as callscreening from "../callscreening.js";
 import type * as connections from "../connections.js";
 import type * as contacts from "../contacts.js";
 import type * as crons from "../crons.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   avatars: typeof avatars;
   briefings: typeof briefings;
+  callscreening: typeof callscreening;
   connections: typeof connections;
   contacts: typeof contacts;
   crons: typeof crons;

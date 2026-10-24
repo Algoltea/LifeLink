@@ -21,6 +21,11 @@ import {
   RecapLoadingBody,
 } from "./messages-loading-layouts";
 import {
+  ScamChecksLoading,
+  ScamMessageLoading,
+  ScamPageLoading,
+} from "./scam-loading-layouts";
+import {
   TodayLoadingHeader,
   TodayLoadingNews,
   TodayLoadingPanels,
@@ -58,6 +63,7 @@ type LoadingLayout =
   | "groceries"
   | "checks"
   | "check-form"
+  | "scam-page"
   | "note"
   | "panel"
   | "sharing-body"
@@ -645,33 +651,15 @@ const OtherLayout = ({
     }
 
     case "checks": {
-      return (
-        <div>
-          {Array.from({ length: rows }, (_unused, index) => (
-            <div
-              className="border-rule flex flex-col gap-3 border-t px-3 py-4"
-              key={index}
-            >
-              <Lines rows={2} />
-              <Line className="w-1/2" />
-              <Line className="h-6 w-32" />
-            </div>
-          ))}
-        </div>
-      );
+      return <ScamChecksLoading rows={rows} />;
     }
 
     case "check-form": {
-      return (
-        <div className="bg-surface flex flex-col gap-4 rounded-xl p-5 sm:p-7">
-          <Heading />
-          <Lines rows={2} />
-          <Skeleton className="h-28 w-full" />
-          <Controls />
-          <Lines rows={3} />
-          <Controls />
-        </div>
-      );
+      return <ScamMessageLoading />;
+    }
+
+    case "scam-page": {
+      return <ScamPageLoading />;
     }
 
     case "note": {

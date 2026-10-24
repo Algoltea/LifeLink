@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 import { ChatLoadingWorkspace } from "@/components/assistant/chat-loading-workspace";
 
@@ -64,14 +65,15 @@ const LoadingAccount = () => (
   </div>
 );
 
+const EmailLoadingRows = () => (
+  <LoadingRows
+    label="Loading emails"
+    layout={useSearchParams().get("id") ? "email-selected" : "email"}
+  />
+);
+
 /** Public route names only. No account facts are available during bootstrap. */
-const LoadingPage = ({
-  pathname,
-  emailSelected,
-}: {
-  pathname: string;
-  emailSelected: boolean;
-}) => {
+const LoadingPage = ({ pathname }: { pathname: string }) => {
   if (pathname.startsWith("/tasks/")) {
     return <LoadingRows label="Loading task details" layout="task" />;
   }
@@ -107,10 +109,12 @@ const LoadingPage = ({
       return (
         <>
           <EmailLoadingHeader />
-          <LoadingRows
-            label="Loading emails"
-            layout={emailSelected ? "email-selected" : "email"}
-          />
+          {/* Reading the query string needs a boundary: the shared layout can render ahead of time. */}
+          <Suspense
+            fallback={<LoadingRows label="Loading emails" layout="email" />}
+          >
+            <EmailLoadingRows />
+          </Suspense>
         </>
       );
     }
@@ -132,7 +136,7 @@ const LoadingPage = ({
       return (
         <>
           <PageHeader
-            subline="Connect the services you already use. Open one to see what LifeLink can do with it."
+            subline="Choose what you want help with. Open a card to see everything it can do before you connect."
             title="Connections"
           />
           <LoadingRows label="Loading connections" layout="connections" />
@@ -182,10 +186,10 @@ const LoadingPage = ({
       return (
         <>
           <PageHeader
-            subline="Email is checked automatically with local rules. Use this page to review a result or check another message before you act."
+            subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
             title="Scam check"
           />
-          <LoadingRows label="Loading your checks" layout="check-form" />
+          <LoadingRows label="Loading your checks" layout="scam-page" />
         </>
       );
     }
@@ -216,23 +220,19 @@ const LoadingPage = ({
 /** Keep the real shell's breakpoints, gutters, and content width on hard refresh.
  * All apparent controls are inert until authentication and the profile resolve.
  */
-const AppLoadingShell = ({ pathname }: { pathname: string }) => {
-  const emailSelected = Boolean(useSearchParams().get("id"));
-
-  return (
-    <div aria-busy="true" aria-label="Loading LifeLink" data-loading-shell="">
-      <output className="sr-only">Loading LifeLink</output>
-      <div aria-hidden="true" inert>
-        <ShellFrame
-          account={<LoadingAccount />}
-          groups={[]}
-          navigation={<LoadingNavigation />}
-        >
-          <LoadingPage emailSelected={emailSelected} pathname={pathname} />
-        </ShellFrame>
-      </div>
+const AppLoadingShell = ({ pathname }: { pathname: string }) => (
+  <div aria-busy="true" aria-label="Loading LifeLink" data-loading-shell="">
+    <output className="sr-only">Loading LifeLink</output>
+    <div aria-hidden="true" inert>
+      <ShellFrame
+        account={<LoadingAccount />}
+        groups={[]}
+        navigation={<LoadingNavigation />}
+      >
+        <LoadingPage pathname={pathname} />
+      </ShellFrame>
     </div>
-  );
-};
+  </div>
+);
 
 export { AppLoadingShell };

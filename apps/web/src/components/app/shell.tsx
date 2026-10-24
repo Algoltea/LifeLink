@@ -30,9 +30,8 @@ import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
-import { z } from "zod";
 
 import { authClient } from "@/lib/auth-client";
 
@@ -99,17 +98,6 @@ const ownerNavigation = (waiting = 0): NavGroup[] => [
   },
   SETTINGS_GROUP,
 ];
-
-const useOwnerNav = (): NavGroup[] => {
-  const tasks = useQuery(api.tasks.list, { include: "active" });
-  const waiting = tasks?.filter((task) => WAITING.has(task.status)).length ?? 0;
-
-  return ownerNavigation(waiting);
-};
-
-const playRoleSchema = z.object({
-  role: z.enum(["family", "owner"]).nullable(),
-});
 
 const PLAY_NAV: NavGroup[] = [
   {
@@ -492,88 +480,51 @@ const ShellFrame = ({
   </div>
 );
 
-const OwnerShell = ({ children }: { children: ReactNode }) => {
-  const groups = useOwnerNav();
-
-  return (
-    <ShellFrame account={<Account />} groups={groups} notices={<Notices />}>
-      {children}
-    </ShellFrame>
-  );
-};
-
-const FamilyShell = ({ children }: { children: ReactNode }) => (
-  <ShellFrame account={<Account />} groups={FAMILY_NAV} notices={<Notices />}>
-    {children}
-  </ShellFrame>
+const PLAY_ACCOUNT = (
+  <p className="text-muted-foreground text-label px-4">
+    Solitaire is saved on this device and works offline.
+  </p>
 );
 
-// The cached HTML is always public. Session discovery only changes the chrome;
-// it never blocks or remounts the locally saved game, including while offline.
-const PlayShell = ({ children }: { children: ReactNode }) => {
+/**
+ * One frame for every signed-in screen and public Solitaire, so navigating
+ * between them only swaps the page. The cached Solitaire HTML is always public:
+ * session discovery only changes the chrome and never blocks or remounts the
+ * locally saved game, including while offline.
+ */
+const AppShell = ({ children }: { children: ReactNode }) => {
+  const { me } = usePreferences();
   const { data: session } = authClient.useSession();
-  const sessionId = session?.session.id ?? null;
+  const profile = me?.profile ?? null;
+  const isOwner = profile?.role === "owner";
 
-  const [resolvedRole, setResolvedRole] = useState<{
-    sessionId: string;
-    role: "family" | "owner";
-  } | null>(null);
+  // The task count is owner-only; guests and family members never query it.
+  const tasks = useQuery(
+    api.tasks.list,
+    isOwner ? { include: "active" } : "skip"
+  );
 
-  useEffect(() => {
-    if (!sessionId) {
-      return;
-    }
+  const waiting = tasks?.filter((task) => WAITING.has(task.status)).length ?? 0;
 
-    const controller = new AbortController();
-
-    const loadRole = async (): Promise<void> => {
-      try {
-        const response = await fetch("/api/play-role", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const parsed = playRoleSchema.safeParse(await response.json());
-
-        if (parsed.success && parsed.data.role && !controller.signal.aborted) {
-          setResolvedRole({ role: parsed.data.role, sessionId });
-        }
-      } catch {
-        // Offline play stays available with the minimal navigation while the role is unknown.
-      }
-    };
-
-    void loadRole();
-
-    return () => controller.abort();
-  }, [sessionId]);
-
-  const role = resolvedRole?.sessionId === sessionId ? resolvedRole.role : null;
+  // Signed in but the profile is still loading or offline: keep the minimal navigation.
   let groups = PLAY_NAV;
 
-  if (role === "family") {
+  if (profile?.role === "family") {
     groups = FAMILY_NAV;
-  } else if (role === "owner") {
-    groups = ownerNavigation();
+  } else if (isOwner) {
+    groups = ownerNavigation(waiting);
   }
 
   return (
     <ShellFrame
-      account={
-        <p className="text-muted-foreground text-label px-4">
-          Solitaire is saved on this device and works offline.
-        </p>
-      }
+      account={profile ? <Account /> : PLAY_ACCOUNT}
       groups={groups}
-      guest={!session}
+      guest={!(profile || session)}
+      notices={profile ? <Notices /> : null}
     >
       {children}
     </ShellFrame>
   );
 };
 
-export { FamilyShell, OwnerShell, PlayShell, ShellFrame };
+export { AppShell, ShellFrame };

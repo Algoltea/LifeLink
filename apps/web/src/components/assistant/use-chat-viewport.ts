@@ -7,9 +7,12 @@ const cssPixels = (value: string): number =>
   // oxlint-disable-next-line unicorn/prefer-number-coercion -- Computed CSS lengths include px units.
   Number.parseFloat(value) || 0;
 
-/** Use the same viewport fit while loading and after the conversation opens. */
+/** Use the same viewport fit while loading and after the conversation opens.
+ * An edge-to-edge workspace supplies its own bottom padding inside the dock.
+ */
 const useChatViewport = (
-  threadId?: string | null
+  threadId?: string | null,
+  edgeToEdge = false
 ): RefObject<HTMLDivElement | null> => {
   const workspace = useRef<HTMLDivElement>(null);
 
@@ -27,13 +30,18 @@ const useChatViewport = (
         : 'section[aria-label="Conversation with LifeLink"]'
     );
 
-    const composer = element.querySelector("fieldset, [data-chat-composer]");
+    const composer = element.querySelector(
+      "[data-chat-dock], fieldset, [data-chat-composer]"
+    );
+
     const header = element.querySelector("header");
 
     const fitViewport = (): void => {
       const top = element.getBoundingClientRect().top + globalThis.scrollY;
 
-      const bottomPadding = cssPixels(getComputedStyle(parent).paddingBottom);
+      const bottomPadding = edgeToEdge
+        ? 0
+        : cssPixels(getComputedStyle(parent).paddingBottom);
 
       const viewportHeight =
         globalThis.visualViewport?.height ?? globalThis.innerHeight;
@@ -79,7 +87,7 @@ const useChatViewport = (
       globalThis.removeEventListener("resize", fitViewport);
       globalThis.visualViewport?.removeEventListener("resize", fitViewport);
     };
-  }, [threadId]);
+  }, [edgeToEdge, threadId]);
 
   return workspace;
 };

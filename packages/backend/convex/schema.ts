@@ -744,6 +744,27 @@ export default defineSchema({
     .index("by_owner_time", ["ownerId", "remindAt"])
     .index("by_source_action", ["sourceActionId"]),
 
+  scamCallSummaries: defineTable({
+    createdAt: v.number(),
+    durationMs: v.number(),
+    flags: v.array(
+      v.object({
+        captionId: v.string(),
+        id: v.string(),
+        quote: v.string(),
+        reason: v.string(),
+        timeMs: v.number(),
+      })
+    ),
+    interrupted: v.boolean(),
+    mode,
+    ownerId: v.id("profiles"),
+    sessionId: v.string(),
+    startedAt: v.number(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_and_session", ["ownerId", "sessionId"]),
+
   scamReviews: defineTable({
     askTrustedContact: v.boolean(),
     automatic: v.optional(v.boolean()),
@@ -756,6 +777,9 @@ export default defineSchema({
     createdAt: v.number(),
     emailId: v.union(v.id("emails"), v.null()),
     explanation: v.string(),
+    // Image transcription remains unverified; null/absent means no words could be read.
+    extractedText: v.optional(v.union(v.string(), v.null())),
+    imageReadable: v.optional(v.boolean()),
     inputKind: v.union(
       v.literal("text"),
       v.literal("email"),
@@ -767,6 +791,8 @@ export default defineSchema({
     nextSteps: v.array(v.string()),
     ownerId: v.id("profiles"),
     screenshotId: v.union(v.id("_storage"), v.null()),
+    // Set only for server-stored scam photos with proven ownership, never raw client IDs.
+    screenshotOwned: v.optional(v.boolean()),
     signals: v.array(
       v.object({
         detail: v.string(),
@@ -801,6 +827,7 @@ export default defineSchema({
     verificationTaskId: v.union(v.id("tasks"), v.null()),
   })
     .index("by_owner_created", ["ownerId", "createdAt"])
+    .index("by_screenshotId", ["screenshotId"])
     .index("by_email", ["emailId"]),
 
   sharingGrants: defineTable({
