@@ -513,3 +513,28 @@ describe("weather and news for the assistant", () => {
     expect([first, second]).toStrictEqual([true, false]);
   });
 });
+
+describe("confirming a postal code during setup", () => {
+  afterEach(resetFetch);
+
+  it("names the town before a profile exists, and nothing for a blank code", async () => {
+    useFetch(weatherServer);
+    const person = newBackend().withIdentity({ subject: "new-person" });
+
+    const found = await person.action(api.weather.lookupPlace, {
+      postalCode: " 01101 ",
+      timeZone: "America/New_York",
+    });
+
+    const blank = await person.action(api.weather.lookupPlace, {
+      postalCode: "  ",
+      timeZone: "America/New_York",
+    });
+
+    expect(found).toStrictEqual({
+      city: "Springfield",
+      place: "Springfield, Massachusetts",
+    });
+    expect(blank).toBeNull();
+  });
+});

@@ -27,6 +27,12 @@ import {
 import type { SavedLocation } from "./lib/weather";
 import schema from "./schema";
 
+/** Postal codes are short everywhere; longer input is cut before searching. */
+const MAX_POSTAL_CHARS = 16;
+
+/** Typing and correcting a code needs a few lookups; this stops scripted ones. */
+const LOOKUPS_PER_MINUTE = 10;
+
 /** A place that was not found is searched again after this long. */
 const NOT_FOUND_RETRY_MS = 6 * 60 * 60_000;
 
@@ -213,6 +219,60 @@ const ensureForecast = async (
     return existing?.forecast ?? null;
   }
 };
+
+export const claimLookup = internalMutation({
+  args: { subject: v.string() },
+  handler: async (ctx, args): Promise<boolean> =>
+    await reserveFetch(ctx, [
+      {
+        key: `lookup:${args.subject}`,
+        max: LOOKUPS_PER_MINUTE,
+        windowMs: 60_000,
+      },
+    ]),
+});
+
+/**
+ * Onboarding confirms a postal code before the profile exists, so this needs
+ * only a signed-in account. It saves nothing; the caller keeps the answer.
+ */
+export const lookupPlace = action({
+  args: { postalCode: v.string(), timeZone: v.string() },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ city: string; place: string } | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    const postalCode = args.postalCode.trim().slice(0, MAX_POSTAL_CHARS);
+
+    if (identity === null || postalCode === "") {
+      return null;
+    }
+
+    const allowed: boolean = await ctx.runMutation(
+      internal.weather.claimLookup,
+      {
+        subject: identity.subject,
+      }
+    );
+
+    if (!allowed) {
+      return null;
+    }
+
+    try {
+      const place = await findPlace({
+        city: null,
+        postalCode,
+        timeZone: args.timeZone,
+      });
+
+      return place === null ? null : { city: place.city, place: place.name };
+    } catch {
+      return null;
+    }
+  },
+});
 
 /** Called by Today when its forecast is missing or old. */
 export const refresh = action({

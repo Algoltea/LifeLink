@@ -6,7 +6,8 @@ import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Segmented } from "@lifelink/ui/components/segmented";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
+import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
@@ -18,6 +19,17 @@ import { TimeZoneSelect } from "./time-zone-select";
 
 type Role = "family" | "owner";
 
+type Lookup =
+  | { code: string; kind: "found"; city: string; place: string }
+  | { code: string; kind: "checking" | "missing" }
+  | { kind: "idle" };
+
+const LOOKUP_WORDS: Record<Exclude<Lookup["kind"], "found">, string> = {
+  checking: "Looking up your town…",
+  idle: "For the weather on Today. You can leave it blank.",
+  missing: "We could not find that code. Check it, or leave it blank.",
+};
+
 const ROLES = [
   { label: "It's for me", value: "owner" },
   { label: "A family member invited me", value: "family" },
@@ -25,6 +37,8 @@ const ROLES = [
 
 const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   const complete = useMutation(api.profiles.completeOnboarding);
+  const lookupPlace = useAction(api.weather.lookupPlace);
+  const [lookup, setLookup] = useState<Lookup>({ kind: "idle" });
   const { data: session, isPending: sessionPending } = authClient.useSession();
   // The name given when creating the account; setup doesn't ask for it twice.
   const accountName = session?.user.name.trim() ?? "";
@@ -43,10 +57,37 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   const ids = {
     demo: useId(),
     name: useId(),
+    postal: useId(),
+    postalHint: useId(),
     preferred: useId(),
     signOff: useId(),
     signOffHint: useId(),
     timeZone: useId(),
+  };
+
+  /** Confirm the code by showing its town, so a typo is caught now. */
+  const check = async (value: string): Promise<void> => {
+    const code = value.trim();
+
+    if (code === "") {
+      setLookup({ kind: "idle" });
+
+      return;
+    }
+
+    setLookup({ code, kind: "checking" });
+
+    try {
+      const found = await lookupPlace({ postalCode: code, timeZone });
+
+      setLookup(
+        found === null
+          ? { code, kind: "missing" }
+          : { city: found.city, code, kind: "found", place: found.place }
+      );
+    } catch {
+      setLookup({ code, kind: "missing" });
+    }
   };
 
   const submit = async (form: FormData): Promise<void> => {
@@ -54,12 +95,19 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
     setProblem(null);
 
     const text = (key: string): string => String(form.get(key) ?? "").trim();
+    const postalCode = role === "owner" ? text("postal") : "";
+
+    // The town comes from the confirmed code, so nobody types it twice.
+    const city =
+      lookup.kind === "found" && lookup.code === postalCode
+        ? lookup.city
+        : null;
 
     try {
       await complete({
-        city: null,
+        city,
         displayName: accountName || text("name"),
-        postalCode: null,
+        postalCode: postalCode || null,
         preferredName: text("preferred"),
         role,
         signOffName: text("signOff") || null,
@@ -152,6 +200,39 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
               >
                 For example, Mom or Grandma Ruth. If you leave it blank,
                 messages end with the name above.
+              </p>
+            </div>
+          ) : null}
+          {role === "owner" ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.postal}>Postal code (optional)</Label>
+              <Input
+                aria-describedby={ids.postalHint}
+                autoComplete="postal-code"
+                id={ids.postal}
+                maxLength={16}
+                name="postal"
+                onBlur={async (event) => await check(event.currentTarget.value)}
+                onChange={() => setLookup({ kind: "idle" })}
+              />
+              <p
+                aria-live="polite"
+                className="text-muted-foreground text-label flex items-center gap-1.5"
+                id={ids.postalHint}
+              >
+                {lookup.kind === "found" ? (
+                  <>
+                    <CheckIcon
+                      aria-hidden="true"
+                      className="text-foreground size-4"
+                    />
+                    <span className="text-foreground font-medium">
+                      {lookup.place}
+                    </span>
+                  </>
+                ) : (
+                  LOOKUP_WORDS[lookup.kind]
+                )}
               </p>
             </div>
           ) : null}

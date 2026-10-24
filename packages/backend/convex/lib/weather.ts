@@ -15,8 +15,11 @@ const CANDIDATES = 10;
 const TIMEOUT_MS = 10_000;
 
 interface Place {
+  /** The town alone, as saved to a profile. */
+  city: string;
   latitude: number;
   longitude: number;
+  /** The town with its region, as shown to people. */
   name: string;
 }
 
@@ -120,6 +123,7 @@ const findPlace = async (location: SavedLocation): Promise<Place | null> => {
 
     if (local) {
       return {
+        city: local.name,
         latitude: local.latitude,
         longitude: local.longitude,
         name: placeName(local.name, local.admin1),
@@ -133,6 +137,7 @@ const findPlace = async (location: SavedLocation): Promise<Place | null> => {
 
   return fallback
     ? {
+        city: fallback.name,
         latitude: fallback.latitude,
         longitude: fallback.longitude,
         name: placeName(fallback.name, fallback.admin1),
