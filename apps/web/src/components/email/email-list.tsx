@@ -26,6 +26,22 @@ const RowStatus = ({ email }: { email: EmailRow }) => {
   }
 
   if (!email.suspicious) {
+    if (email.priority === "reply") {
+      return (
+        <span className="text-accent-foreground text-label pt-1 font-medium">
+          May need a reply
+        </span>
+      );
+    }
+
+    if (email.priority === "low_priority") {
+      return (
+        <span className="text-muted-foreground text-label pt-1">
+          Lower priority
+        </span>
+      );
+    }
+
     return null;
   }
 
