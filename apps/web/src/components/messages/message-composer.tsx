@@ -160,13 +160,13 @@ const MessageComposer = ({
         setBusy(false);
       }}
     >
-      <div className="border-border bg-raised focus-within:outline-ring contrast:border-control flex flex-col gap-2 rounded-3xl border py-3 pr-3 pl-5 shadow-[0_1px_2px_rgb(45_33_24/0.04),0_8px_24px_rgb(45_33_24/0.06)] focus-within:outline-3 focus-within:outline-offset-3">
+      <div className="border-border bg-raised focus-within:outline-ring contrast:border-control flex flex-col gap-1.5 rounded-[1.333rem] border py-2.5 pr-2.5 pl-4 shadow-[0_1px_2px_rgb(45_33_24/0.04),0_8px_24px_rgb(45_33_24/0.06)] focus-within:outline-3 focus-within:outline-offset-3 sm:gap-2 sm:py-3 sm:pr-3 sm:pl-5">
         <label className="sr-only" htmlFor={inputId}>
           Message to {firstName}
         </label>
         <textarea
           aria-describedby={hintId}
-          className="placeholder:text-muted-foreground field-sizing-content max-h-48 min-h-12 w-full resize-none overflow-y-auto bg-transparent pt-1 text-lg leading-relaxed outline-none"
+          className="placeholder:text-muted-foreground field-sizing-content max-h-32 min-h-[1.778rem] w-full resize-none overflow-y-auto bg-transparent pt-0.5 text-lg leading-relaxed outline-none sm:max-h-48"
           id={inputId}
           onChange={(event) =>
             onDraftChange({
@@ -245,7 +245,7 @@ const MessageComposer = ({
             aria-label={
               busy ? "Preparing your message" : "Review before sending"
             }
-            className="ml-auto rounded-full py-1 pr-1.5 pl-5 disabled:border-transparent"
+            className="ml-auto rounded-full py-1 pr-1.5 pl-4 text-[0.889rem] disabled:border-transparent sm:pl-5"
             disabled={busy || uploading || empty || !canReach}
             type="submit"
           >
@@ -282,7 +282,7 @@ const MessageComposer = ({
       >
         <p>
           {practice
-            ? `Practice: nothing really goes to ${firstName}. You’ll still review it first.`
+            ? `Practice: nothing will be sent to ${firstName}.`
             : `Nothing is sent until you review it and approve it.`}
         </p>
         {canReach ? null : (
