@@ -107,8 +107,8 @@ const InviteForm = ({
       <div className="flex flex-col gap-4">
         <p className="text-lg">
           Give {person?.name.split(" ")[0] ?? "them"} this code. They create a
-          LifeLink account, choose “I’m joining a family member”, and type it
-          in. It works once, for 14 days.
+          LifeLink account, choose “A family member invited me”, and type it in.
+          It works once, for 14 days.
         </p>
         <p
           className="num border-border bg-raised rounded-xl border px-4 py-5 text-center text-2xl leading-8 font-semibold tracking-wider break-all"

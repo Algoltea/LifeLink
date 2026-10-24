@@ -17,6 +17,7 @@ import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
+import { TimeZoneSelect } from "@/components/app/time-zone-select";
 import { saveDisplay } from "@/lib/display";
 import { messageOf } from "@/lib/errors";
 
@@ -315,7 +316,8 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
         ) : null}
         <div className="flex flex-col gap-2">
           <Label htmlFor={ids.timeZone}>Time zone</Label>
-          <Input
+          <TimeZoneSelect
+            current={profile.timeZone}
             defaultValue={profile.timeZone}
             id={ids.timeZone}
             name="timeZone"

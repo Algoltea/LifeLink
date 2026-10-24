@@ -10,22 +10,28 @@ import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
 
 import { BrandName } from "./brand";
+import { TimeZoneSelect } from "./time-zone-select";
 
 type Role = "family" | "owner";
 
 const ROLES = [
   { label: "It's for me", value: "owner" },
-  { label: "I'm joining a family member", value: "family" },
+  { label: "A family member invited me", value: "family" },
 ] as const;
 
 const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   const complete = useMutation(api.profiles.completeOnboarding);
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  // The name given when creating the account; setup doesn't ask for it twice.
+  const accountName = session?.user.name.trim() ?? "";
   const router = useRouter();
   const [role, setRole] = useState<Role>("owner");
-  const [demo, setDemo] = useState(false);
+  // Practice is on by default so a first approval never reaches a real person.
+  const [demo, setDemo] = useState(true);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,11 +41,11 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   );
 
   const ids = {
-    city: useId(),
     demo: useId(),
     name: useId(),
     preferred: useId(),
     signOff: useId(),
+    signOffHint: useId(),
     timeZone: useId(),
   };
 
@@ -51,8 +57,8 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
 
     try {
       await complete({
-        city: text("city") || null,
-        displayName: text("name"),
+        city: null,
+        displayName: accountName || text("name"),
         postalCode: null,
         preferredName: text("preferred"),
         role,
@@ -104,21 +110,27 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
           <p className="text-muted-foreground text-base">
             {role === "owner"
               ? "You'll use LifeLink every day. Family members see only what you choose to share."
-              : "You'll see only what your family member shares with you. You'll need the invitation code they give you."}
+              : "You'll see only what your family member shares with you. You'll enter the invitation code they give you on the next screen."}
           </p>
         </fieldset>
-        <fieldset className="border-border grid gap-5 border-t pt-6 sm:grid-cols-2">
+        <fieldset
+          className="border-border grid gap-5 border-t pt-6 sm:grid-cols-2"
+          key={accountName}
+        >
           <legend className="text-section pr-3 font-semibold">About you</legend>
-          <div className="flex flex-col gap-2 sm:col-span-2">
-            <Label htmlFor={ids.name}>Your full name</Label>
-            <Input autoComplete="name" id={ids.name} name="name" required />
-          </div>
+          {accountName || sessionPending ? null : (
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label htmlFor={ids.name}>Your full name</Label>
+              <Input autoComplete="name" id={ids.name} name="name" required />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor={ids.preferred}>
               What should LifeLink call you?
             </Label>
             <Input
               autoComplete="given-name"
+              defaultValue={accountName.split(" ")[0]}
               id={ids.preferred}
               name="preferred"
               required
@@ -126,17 +138,27 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
           </div>
           {role === "owner" ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.signOff}>How you sign your messages</Label>
+              <Label htmlFor={ids.signOff}>
+                How you sign your messages (optional)
+              </Label>
               <Input
+                aria-describedby={ids.signOffHint}
                 id={ids.signOff}
                 name="signOff"
-                placeholder="For example: Mom, or Grandma Ruth"
               />
+              <p
+                className="text-muted-foreground text-label"
+                id={ids.signOffHint}
+              >
+                For example, Mom or Grandma Ruth. If you leave it blank,
+                messages end with the name above.
+              </p>
             </div>
           ) : null}
           <div className="flex flex-col gap-2">
             <Label htmlFor={ids.timeZone}>Time zone</Label>
-            <Input
+            <TimeZoneSelect
+              current={timeZone}
               id={ids.timeZone}
               name="timeZone"
               onChange={(event) => setTimeZone(event.target.value)}
@@ -144,12 +166,6 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
               value={timeZone}
             />
           </div>
-          {role === "owner" ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.city}>Town or city (optional)</Label>
-              <Input autoComplete="address-level2" id={ids.city} name="city" />
-            </div>
-          ) : null}
         </fieldset>
         {role === "owner" && demoModeAllowed ? (
           <section className="border-border bg-parchment rounded-lg border p-5">

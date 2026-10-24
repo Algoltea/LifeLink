@@ -122,7 +122,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
       >
         {mode === "sign-up" ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor={nameId}>Your name</Label>
+            <Label htmlFor={nameId}>Your full name</Label>
             <Input autoComplete="name" id={nameId} name="name" required />
           </div>
         ) : null}
