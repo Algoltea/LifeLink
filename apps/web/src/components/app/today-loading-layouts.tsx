@@ -35,16 +35,14 @@ const PANEL = "flex min-w-0 flex-col gap-2";
 
 const PanelHeading = () => <TodayLine className="h-[1.778rem] w-2/5" />;
 
-const PartHeading = () => (
-  <TodayLine className="min-h-control mx-3 h-auto w-1/3" />
-);
+const PartHeading = () => <TodayLine className="min-h-control h-auto w-1/3" />;
 
 /** Your week and Messages, stacked like the real groups. */
 const TodayLoadingPanels = () => (
   <div className="flex flex-col gap-10" data-loading-part="today-panels">
     <div className={PANEL}>
       <PanelHeading />
-      <div className="flex items-center gap-3.5 px-3 py-3.5">
+      <div className="flex items-center gap-3.5 py-3.5">
         <div className="w-20 shrink-0">
           <TodayLine className="h-[1.333rem] w-3/4" />
           <TodayLine />
@@ -63,7 +61,7 @@ const TodayLoadingPanels = () => (
       </div>
       <div className="border-rule mt-2 border-t pt-2">
         <PartHeading />
-        <div className="px-3 py-3.5">
+        <div className="py-3.5">
           <TodayLine className="w-3/5" />
           <TodayLine className="h-[1.333rem]" />
         </div>
@@ -83,7 +81,7 @@ const TodayLoadingNews = () => (
     <div>
       {[0, 1, 2].map((key) => (
         <div className="border-rule border-t py-1 first:border-t-0" key={key}>
-          <div className="flex min-h-14 items-center px-3 py-3">
+          <div className="flex min-h-14 items-center py-3">
             <TodayLine className="flex-1" />
           </div>
         </div>

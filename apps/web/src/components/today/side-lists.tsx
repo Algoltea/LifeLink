@@ -40,7 +40,7 @@ interface WeekRow {
 
 /** Rows in a Today group, inset so their text lines up with the part headings. */
 const PANEL_ROW =
-  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 rounded-lg px-3 py-3.5 transition-colors";
+  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 -mx-3 rounded-lg px-3 py-3.5 transition-colors";
 
 /** One Today group: a heading and its rows, flat like News. */
 const TodayPanel = ({
@@ -78,7 +78,7 @@ const PanelPart = ({
     aria-labelledby={headingId}
     className={cn("flex min-w-0 flex-col", className)}
   >
-    <div className="min-h-control flex items-center justify-between gap-4 px-3">
+    <div className="min-h-control flex items-center justify-between gap-4">
       <h3
         className="text-muted-foreground text-label font-semibold"
         id={headingId}
@@ -92,7 +92,7 @@ const PanelPart = ({
 );
 
 const SideEmpty = ({ children }: { children: ReactNode }) => (
-  <p className="text-muted-foreground text-body px-3 py-1">{children}</p>
+  <p className="text-muted-foreground text-body py-1">{children}</p>
 );
 
 /**
@@ -160,7 +160,7 @@ const WeekList = ({
     ) : (
       <ul className="flex flex-col gap-1">
         {rows.map((row) => (
-          <li className="flex items-center gap-3.5 px-3 py-3.5" key={row.id}>
+          <li className="flex items-center gap-3.5 py-3.5" key={row.id}>
             <time
               className="flex w-20 shrink-0 flex-col"
               dateTime={new Date(row.at).toISOString()}

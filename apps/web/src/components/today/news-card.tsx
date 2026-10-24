@@ -82,7 +82,7 @@ const NewsCard = () => {
         />
       </div>
       {headlines.length === 0 ? (
-        <output className="text-muted-foreground text-body block px-3 py-1">
+        <output className="text-muted-foreground text-body block py-1">
           {news === undefined || (news.fetchedAt === null && !failed)
             ? "Loading news…"
             : "News is not available right now. Please try again later."}
@@ -95,7 +95,7 @@ const NewsCard = () => {
               key={headline.url}
             >
               <a
-                className="text-foreground hover:bg-parchment flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors"
+                className="text-foreground hover:bg-parchment -mx-3 flex min-h-14 min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 transition-colors"
                 href={headline.url}
                 rel="noopener noreferrer"
                 target="_blank"
@@ -117,7 +117,7 @@ const NewsCard = () => {
       )}
       {single && headlines.length > 0 ? (
         <a
-          className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1.5 self-end px-3 font-medium"
+          className="text-accent-foreground text-label min-h-control -mr-3 inline-flex items-center gap-1.5 self-end px-3 font-medium"
           href={single.homeUrl}
           rel="noopener noreferrer"
           target="_blank"

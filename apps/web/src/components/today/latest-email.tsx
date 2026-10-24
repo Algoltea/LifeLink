@@ -74,7 +74,7 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
       title="Latest email"
     >
       {newest.length === 0 ? (
-        <p className="text-muted-foreground text-body flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-1">
+        <p className="text-muted-foreground text-body flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1">
           {connected || connections.demoMode ? (
             "No new email."
           ) : (
