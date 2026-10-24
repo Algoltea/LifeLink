@@ -3,11 +3,11 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { Pill } from "@lifelink/ui/components/pill";
-import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { useQuery } from "convex/react";
 import type { Route } from "next";
 import Link from "next/link";
 
+import { LoadingRows } from "@/components/app/states";
 import { formatDay, formatTime } from "@/lib/format";
 
 import { ActionReview } from "./action-review";
@@ -28,7 +28,7 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
   const detail = useQuery(api.tasks.detail, { taskId });
 
   if (detail === undefined) {
-    return <Skeleton className="h-80 w-full rounded-xl" />;
+    return <LoadingRows label="Loading request details" layout="task-panel" />;
   }
 
   if (detail === null) {
@@ -75,7 +75,6 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
           {STATUS_PILL[task.status] ?? "In progress"}
         </Pill>
       </div>
-      {showGauge ? <JourneyGauge steps={detail.steps} /> : null}
       {focus ? (
         <ActionReview
           hue={detail.contact?.hue ?? 30}
@@ -96,6 +95,16 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
           </Link>
         </p>
       )}
+      {showGauge ? (
+        <details className="border-rule border-t pt-2" open={!focus}>
+          <summary className="min-h-control cursor-pointer content-center text-base font-semibold">
+            Progress and next steps
+          </summary>
+          <div className="pt-4">
+            <JourneyGauge steps={detail.steps} />
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 };

@@ -412,7 +412,7 @@ const ShellFrame = ({
         </div>
         {notices}
         <main
-          className="mx-auto flex w-full max-w-[72rem] flex-col gap-7 px-[1.111rem] py-6 min-[1101px]:py-8 sm:px-[2.222rem]"
+          className="@container/content mx-auto flex w-full max-w-[72rem] flex-col gap-7 px-[1.111rem] py-6 min-[1101px]:py-8 sm:px-[2.222rem]"
           id="main"
           tabIndex={-1}
         >

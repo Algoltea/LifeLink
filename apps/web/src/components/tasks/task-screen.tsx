@@ -245,7 +245,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
   const detail = useQuery(api.tasks.detail, { taskId: taskId as Id<"tasks"> });
 
   if (detail === undefined) {
-    return <LoadingRows label="Loading" rows={4} />;
+    return <LoadingRows layout="task" label="Loading task details" rows={4} />;
   }
 
   if (detail === null) {
@@ -293,7 +293,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
         subline={heading.subline}
         title={heading.title}
       />
-      <div className="grid items-start gap-9 lg:grid-cols-[minmax(0,1fr)_22.5rem]">
+      <div className="grid items-start gap-9 @min-[56rem]/content:grid-cols-[minmax(0,1fr)_22.5rem]">
         <div className="flex min-w-0 flex-col gap-8">
           {focus === null ? (
             <EmptyNote>Nothing to approve here.</EmptyNote>
