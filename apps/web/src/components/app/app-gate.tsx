@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
+import { AppLoadingShell } from "./app-loading-shell";
 import { Onboarding } from "./onboarding";
 import { usePreferences } from "./preferences";
 import { FamilyShell, OwnerShell } from "./shell";
@@ -31,11 +32,7 @@ const AppGate = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isLoading, isFamily, familyAllowed, router]);
 
   if (isLoading || !isAuthenticated || me === undefined || me === null) {
-    return (
-      <main className="mx-auto w-full max-w-3xl px-5 py-16" id="main">
-        <LoadingRows label="Loading LifeLink" rows={4} />
-      </main>
-    );
+    return <AppLoadingShell pathname={pathname} />;
   }
 
   if (me.needsOnboarding || me.profile === null) {
@@ -48,7 +45,7 @@ const AppGate = ({ children }: { children: ReactNode }) => {
         {familyAllowed ? (
           children
         ) : (
-          <LoadingRows label="Opening your family view" />
+          <LoadingRows layout="note" label="Opening your family view" />
         )}
       </FamilyShell>
     );

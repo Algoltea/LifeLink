@@ -444,7 +444,9 @@ const HistoryList = ({
   timeZone: string;
 }) => {
   if (reviews === undefined) {
-    return <LoadingRows label="Loading earlier checks" rows={3} />;
+    return (
+      <LoadingRows layout="checks" label="Loading earlier checks" rows={3} />
+    );
   }
 
   if (reviews.length === 0) {
@@ -533,7 +535,7 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
         </ErrorNote>
       ) : null}
       {waitingForEmail ? (
-        <LoadingRows label="Loading the email" rows={2} />
+        <LoadingRows layout="check-form" label="Loading the email" rows={2} />
       ) : (
         <CheckForm
           email={email}

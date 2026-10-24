@@ -428,7 +428,7 @@ const ExplanationPanel = ({
     me?.profile?.demoMode === true || explanation?.mode === "simulated";
 
   let body: ReactNode = (
-    <LoadingRows label="Loading the explanation" rows={2} />
+    <LoadingRows layout="panel" label="Loading the explanation" rows={2} />
   );
 
   if (explanation === null) {

@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 const Skeleton = ({ className, ...props }: ComponentProps<"div">) => (
   <div
     aria-hidden="true"
-    className={cn("bg-rule rounded-md", className)}
+    className={cn("bg-rule max-w-full rounded-md", className)}
     data-slot="skeleton"
     {...props}
   />

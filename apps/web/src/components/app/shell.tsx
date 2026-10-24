@@ -346,12 +346,14 @@ const ShellFrame = ({
   groups,
   guest = false,
   notices,
+  navigation,
 }: {
   account: ReactNode;
   children: ReactNode;
   groups: NavGroup[];
   guest?: boolean;
   notices?: ReactNode;
+  navigation?: ReactNode;
 }) => (
   <div className="bg-background min-h-svh">
     <a
@@ -382,7 +384,7 @@ const ShellFrame = ({
             >
               <BrandName />
             </Link>
-            <NavList groups={groups} />
+            {navigation ?? <NavList groups={groups} />}
             <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
               {account}
             </div>
@@ -512,4 +514,4 @@ const PlayShell = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export { FamilyShell, OwnerShell, PlayShell };
+export { FamilyShell, OwnerShell, PlayShell, ShellFrame };

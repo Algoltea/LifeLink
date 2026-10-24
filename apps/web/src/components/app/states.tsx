@@ -1,8 +1,11 @@
 import { Button } from "@lifelink/ui/components/button";
-import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { cn } from "@lifelink/ui/lib/utils";
 import { AlertCircleIcon } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { LoadingLayoutBody } from "./loading-layouts";
+import type { LoadingLayout } from "./loading-layouts";
+import { MessagesLoadingWorkspace } from "./messages-loading-layouts";
 
 /** An empty section keeps its frame and says, in one sentence, what will appear here. */
 const EmptyNote = ({
@@ -49,20 +52,69 @@ const ErrorNote = ({
   </div>
 );
 
-/** Loading keeps the final layout: flat bars at the real size, no shimmer. */
-const LoadingRows = ({ label, rows = 3 }: { label: string; rows?: number }) => (
-  <div
-    aria-busy="true"
-    aria-label={label}
-    className="flex flex-col gap-3"
-    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- it holds block skeletons, and <output> allows only phrasing content.
-    role="status"
-  >
-    {Array.from({ length: rows }, (_unused, index) => (
-      <Skeleton className="h-16 w-full" key={index} />
-    ))}
-    <span className="sr-only">{label}</span>
-  </div>
-);
+// These existing feature callers still share generic variants during the redesign sync.
+const loadingRegionLayout = (
+  layout: LoadingLayout,
+  label: string
+): LoadingLayout => {
+  if (layout === "note" && label === "Checking your Google Drive connection") {
+    return "documents-notice";
+  }
+
+  if (layout === "panel" && label === "Loading the recap") {
+    return "recap-body";
+  }
+
+  if (layout === "note" && label === "Loading sharing") {
+    return "sharing-body";
+  }
+
+  return layout;
+};
+
+/** Loading reserves the measured frame; only the status label is announced. */
+const LoadingRows = ({
+  label,
+  rows = 3,
+  layout = "text",
+  className,
+}: {
+  label: string;
+  rows?: number;
+  layout?: LoadingLayout;
+  className?: string;
+}) => {
+  if (layout === "thread") {
+    return <MessagesLoadingWorkspace className={className} label={label} />;
+  }
+
+  return (
+    <div
+      aria-busy="true"
+      aria-label={label}
+      className={cn(
+        "min-w-0",
+        layout === "ask" && "flex min-h-0 flex-1 flex-col",
+        className
+      )}
+      data-loading-layout={layout}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- it holds block skeletons, and <output> allows only phrasing content.
+      role="status"
+    >
+      <div
+        aria-hidden="true"
+        className={
+          layout === "ask" ? "flex min-h-0 flex-1 flex-col" : undefined
+        }
+      >
+        <LoadingLayoutBody
+          layout={loadingRegionLayout(layout, label)}
+          rows={rows}
+        />
+      </div>
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+};
 
 export { EmptyNote, ErrorNote, LoadingRows };

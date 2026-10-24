@@ -239,7 +239,7 @@ const GroceriesScreen = () => {
         id="budget"
       >
         {data === undefined ? (
-          <LoadingRows label="Loading your lists" rows={4} />
+          <LoadingRows layout="groceries" label="Loading your lists" rows={4} />
         ) : null}
         {data !== undefined && list === null ? (
           <EmptyNote

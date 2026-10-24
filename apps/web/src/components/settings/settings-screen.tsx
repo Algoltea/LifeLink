@@ -706,8 +706,11 @@ const SettingsScreen = () => {
   if (!me?.profile || !me.preferences) {
     return (
       <>
-        <PageHeader title="Settings" />
-        <LoadingRows label="Loading settings" rows={4} />
+        <PageHeader
+          subline="Make LifeLink comfortable to read and listen to."
+          title="Settings"
+        />
+        <LoadingRows layout="settings" label="Loading settings" rows={4} />
       </>
     );
   }

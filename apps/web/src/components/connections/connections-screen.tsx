@@ -728,7 +728,11 @@ const ConnectionsScreen = () => {
         title="Connections"
       />
       {data === undefined ? (
-        <LoadingRows label="Loading connections" rows={5} />
+        <LoadingRows
+          layout="connections"
+          label="Loading connections"
+          rows={5}
+        />
       ) : null}
       {data !== undefined && data.providers.length === 0 ? (
         <EmptyNote>No services are listed.</EmptyNote>
