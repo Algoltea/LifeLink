@@ -1,15 +1,19 @@
 /**
  * Gemini Live in the browser with a one-use ephemeral token minted by the
  * backend. The long-lived key never reaches the browser. Microphone audio is
- * sent as 16 kHz 16-bit PCM; replies arrive as 24 kHz PCM and are played in
- * order. Captions come from the input and output transcriptions. When Gemini
- * calls submit_request, the request goes through the same backend mutation
- * as a typed one; nothing is executed from here.
+ * sent as 16-bit PCM at the device's own rate (Gemini resamples it); replies
+ * arrive as 24 kHz PCM and are played in order. Captions come from the input
+ * and output transcriptions. When Gemini calls submit_request, the request
+ * goes through the same backend mutation as a typed one; nothing is executed
+ * from here.
+ *
+ * The microphone and audio output are prepared first, while the Speak press
+ * still counts as a user gesture; browsers such as Safari keep audio paused
+ * when it starts later, after network calls.
  */
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { LiveServerMessage, Session } from "@google/genai";
 
-const INPUT_RATE = 16_000;
 const OUTPUT_RATE = 24_000;
 
 /** AudioWorklet that converts float samples to 16-bit PCM chunks at the context's rate. */
@@ -63,19 +67,119 @@ interface LiveHandle {
   stop: () => void;
 }
 
+/** The microphone and speakers, ready before any network call. */
+interface AudioRig {
+  capture: AudioContext;
+  playback: AudioContext;
+  release: () => void;
+  stream: MediaStream;
+}
+
+/** The microphone could not start; the message is already in plain words. */
+class MicrophoneError extends Error {
+  override name = "MicrophoneError";
+}
+
+/** Plain words for the reasons a microphone can't start. */
+/** `name` is the DOMException name getUserMedia rejected with, or "" for anything else. */
+const microphoneProblem = (name: string): string => {
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return "LifeLink isn't allowed to use the microphone. Allow it in your browser's settings for this site, or type instead.";
+  }
+
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "No microphone was found. Check that one is connected, or type instead.";
+  }
+
+  if (name === "NotReadableError") {
+    return "Another app is using the microphone. Close it and try again, or type instead.";
+  }
+
+  return "The microphone didn't start. Please try again, or type instead.";
+};
+
+const closeQuietly = async (context: AudioContext): Promise<void> => {
+  try {
+    await context.close();
+  } catch {
+    // Already closing; nothing else holds the device.
+  }
+};
+
+/**
+ * Ask for the microphone and wake both audio contexts. Call it straight from
+ * the Speak press. Throws a MicrophoneError with a plain message when it can't start.
+ */
+const prepareAudio = async (): Promise<AudioRig> => {
+  // Created before any await, so the press still counts as a user gesture.
+  const capture = new AudioContext();
+  const playback = new AudioContext({ sampleRate: OUTPUT_RATE });
+
+  const closeContexts = (): void => {
+    for (const context of [capture, playback]) {
+      if (context.state !== "closed") {
+        void closeQuietly(context);
+      }
+    }
+  };
+
+  let stream: MediaStream;
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
+    await Promise.all([capture.resume(), playback.resume()]);
+  } catch (error) {
+    closeContexts();
+    throw new MicrophoneError(
+      microphoneProblem(error instanceof DOMException ? error.name : ""),
+      { cause: error }
+    );
+  }
+
+  let released = false;
+
+  return {
+    capture,
+    playback,
+    release: () => {
+      if (released) {
+        return;
+      }
+
+      released = true;
+
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+
+      closeContexts();
+    },
+    stream,
+  };
+};
+
 const startLiveSession = async (
+  rig: AudioRig,
   token: string,
   model: string,
   callbacks: LiveCallbacks
 ): Promise<LiveHandle> => {
+  const { capture, playback, stream } = rig;
+
   const ai = new GoogleGenAI({
     apiKey: token,
     httpOptions: { apiVersion: "v1beta" },
   });
 
-  const playback = new AudioContext({ sampleRate: OUTPUT_RATE });
   let playhead = playback.currentTime;
   let session: Session | null = null;
+  let stopped = false;
 
   const play = (data: string): void => {
     const pcm = fromBase64(data);
@@ -139,68 +243,79 @@ const startLiveSession = async (
     }
   };
 
-  session = await ai.live.connect({
-    callbacks: {
-      onclose: (event) => callbacks.onClosed(event.reason || null),
-      onerror: () => callbacks.onClosed("The voice connection had a problem."),
-      onmessage: (message) => {
-        void handle(message);
-      },
-    },
-    config: {
-      inputAudioTranscription: {},
-      outputAudioTranscription: {},
-      responseModalities: [Modality.AUDIO],
-    },
-    model,
-  });
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-  });
-
-  const capture = new AudioContext({ sampleRate: INPUT_RATE });
-
-  const moduleUrl = URL.createObjectURL(
-    new Blob([WORKLET_SOURCE], { type: "text/javascript" })
-  );
-
-  await capture.audioWorklet.addModule(moduleUrl);
-  URL.revokeObjectURL(moduleUrl);
-
   const source = capture.createMediaStreamSource(stream);
-  const worklet = new AudioWorkletNode(capture, "pcm-capture");
+  let worklet: AudioWorkletNode | null = null;
+
+  // Stopping can come from the person, the server closing, or an error; it runs once.
+  const stop = (): void => {
+    if (stopped) {
+      return;
+    }
+
+    stopped = true;
+    worklet?.disconnect();
+    source.disconnect();
+    rig.release();
+    session?.close();
+    session = null;
+  };
+
+  try {
+    session = await ai.live.connect({
+      callbacks: {
+        onclose: (event) => {
+          if (!stopped) {
+            stop();
+            callbacks.onClosed(event.reason || null);
+          }
+        },
+        onerror: () => {
+          if (!stopped) {
+            stop();
+            callbacks.onClosed("The voice connection had a problem.");
+          }
+        },
+        onmessage: (message) => {
+          void handle(message);
+        },
+      },
+      config: {
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        responseModalities: [Modality.AUDIO],
+      },
+      model,
+    });
+
+    const moduleUrl = URL.createObjectURL(
+      new Blob([WORKLET_SOURCE], { type: "text/javascript" })
+    );
+
+    await capture.audioWorklet.addModule(moduleUrl);
+    URL.revokeObjectURL(moduleUrl);
+  } catch (error) {
+    stop();
+    throw error;
+  }
+
+  worklet = new AudioWorkletNode(capture, "pcm-capture");
+
+  const mimeType = `audio/pcm;rate=${capture.sampleRate}`;
 
   worklet.port.addEventListener(
     "message",
     (event: MessageEvent<ArrayBuffer>) => {
       session?.sendRealtimeInput({
-        audio: {
-          data: toBase64(event.data),
-          mimeType: `audio/pcm;rate=${INPUT_RATE}`,
-        },
+        audio: { data: toBase64(event.data), mimeType },
       });
     }
   );
   worklet.port.start();
   source.connect(worklet);
 
-  return {
-    stop: () => {
-      for (const track of stream.getTracks()) {
-        track.stop();
-      }
-
-      worklet.disconnect();
-      source.disconnect();
-      void capture.close();
-      void playback.close();
-      session?.close();
-      session = null;
-    },
-  };
+  return { stop };
 };
 
-export { startLiveSession };
+export { MicrophoneError, prepareAudio, startLiveSession };
 
-export type { LiveHandle };
+export type { AudioRig, LiveHandle };

@@ -20,8 +20,12 @@ import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
 import { dictationAvailable, startDictation } from "./dictation";
-import { startLiveSession } from "./live-session";
-import type { LiveHandle } from "./live-session";
+import {
+  MicrophoneError,
+  prepareAudio,
+  startLiveSession,
+} from "./live-session";
+import type { AudioRig, LiveHandle } from "./live-session";
 
 interface Caption {
   id: number;
@@ -194,28 +198,39 @@ const ComposerSession = ({
       setVoice("connecting");
       setCaptions([]);
 
+      let rig: AudioRig | null = null;
+
       try {
+        // The microphone comes first, while the press still counts as a gesture.
+        rig = await prepareAudio();
         const session = await createLive({});
 
         if (!mounted.current || voiceRun.current !== run) {
+          rig.release();
+
           return;
         }
 
-        const handle = await startLiveSession(session.token, session.model, {
-          onCaption: addCaption,
-          onClosed: (reason) => {
-            if (reason) {
-              toast(reason);
-            }
+        const handle = await startLiveSession(
+          rig,
+          session.token,
+          session.model,
+          {
+            onCaption: addCaption,
+            onClosed: (reason) => {
+              if (reason) {
+                toast(reason);
+              }
 
-            stopVoice();
-          },
-          onRequest: async (request) =>
-            (await send(request, "voice"))
-              ? "Prepared. It is on the screen now; nothing happens until it is approved there."
-              : "That could not be prepared. Please ask them to try again or type it.",
-          onSpeaking: setSpeaking,
-        });
+              stopVoice();
+            },
+            onRequest: async (request) =>
+              (await send(request, "voice"))
+                ? "Prepared. It is on the screen now; nothing happens until it is approved there."
+                : "That could not be prepared. Please ask them to try again or type it.",
+            onSpeaking: setSpeaking,
+          }
+        );
 
         if (!mounted.current || voiceRun.current !== run) {
           handle.stop();
@@ -226,9 +241,13 @@ const ComposerSession = ({
         live.current = handle;
         setVoice("live");
       } catch (error) {
+        // Releasing twice is harmless; this covers a failed token call.
+        rig?.release();
         stopVoice();
         setVoiceError(
-          `Voice didn't start: ${errorText(error)} You can type instead.`
+          error instanceof MicrophoneError
+            ? error.message
+            : `Voice didn't start: ${errorText(error)} You can type instead.`
         );
       }
 
@@ -238,9 +257,13 @@ const ComposerSession = ({
     if (canDictate) {
       dictation.current = startDictation(
         (heard) => setText(heard),
-        () => {
+        (problem) => {
           dictation.current = null;
           setVoice("idle");
+
+          if (problem) {
+            setVoiceError(problem);
+          }
         }
       );
       setVoice(dictation.current === null ? "idle" : "dictating");
