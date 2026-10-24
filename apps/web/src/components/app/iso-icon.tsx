@@ -788,7 +788,24 @@ const FACETS: Record<IsoIconKind, readonly IconFacet[]> = {
   ],
 };
 
-const KIND_BY_CAPABILITY = new Map<string, IsoIconKind>([
+/** The short word under each capability icon on a Connections card. */
+const PERMISSION_LABELS = {
+  add: "Add",
+  calendar: "Find dates",
+  draft: "Draft",
+  message: "Message",
+  money: "Money",
+  notice: "Alerts",
+  post: "Post",
+  read: "Read",
+  replies: "Replies",
+  send: "Send",
+  unavailable: "Nothing yet",
+} as const satisfies Partial<Record<IsoIconKind, string>>;
+
+type PermissionIconKind = keyof typeof PERMISSION_LABELS;
+
+const KIND_BY_CAPABILITY = new Map<string, PermissionIconKind>([
   ["calendar.create", "add"],
   ["calendar.read", "calendar"],
   ["discord.receive", "replies"],
@@ -814,8 +831,11 @@ const KIND_BY_CAPABILITY = new Map<string, IsoIconKind>([
   ["paypal.send_money", "money"],
 ]);
 
-const permissionIconFor = (capabilityId: string): IsoIconKind =>
+const permissionIconFor = (capabilityId: string): PermissionIconKind =>
   KIND_BY_CAPABILITY.get(capabilityId) ?? "unavailable";
+
+const permissionLabelFor = (kind: PermissionIconKind): string =>
+  PERMISSION_LABELS[kind];
 
 /** Keyed by the file kinds the Drive listing reports. */
 const KIND_BY_FILE_KIND = new Map<string, IsoIconKind>([
@@ -868,6 +888,6 @@ const IsoIcon = ({
   </svg>
 );
 
-export { IsoIcon, fileIconFor, permissionIconFor };
+export { IsoIcon, fileIconFor, permissionIconFor, permissionLabelFor };
 
-export type { IsoIconKind };
+export type { IsoIconKind, PermissionIconKind };

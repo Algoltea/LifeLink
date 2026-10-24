@@ -18,8 +18,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import { toast } from "sonner";
 
-import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
-import type { IsoIconKind } from "@/components/app/iso-icon";
+import {
+  IsoIcon,
+  permissionIconFor,
+  permissionLabelFor,
+} from "@/components/app/iso-icon";
+import type { PermissionIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
@@ -137,21 +141,6 @@ const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
   };
 };
 
-const cardCountFor = (demoMode: boolean, row: ProviderRow): string => {
-  const available = row.definition.capabilities.filter(isAvailable).length;
-  const things = available === 1 ? "1 thing" : `${available} things`;
-
-  if (available === 0) {
-    return "Coming later";
-  }
-
-  if (!row.developerReady && !demoMode) {
-    return `Can do ${things} once turned on`;
-  }
-
-  return `Can do ${things}`;
-};
-
 /** The card's call to action names only what the window lets the person do. */
 const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
   if (row.definition.connectStyle === "oauth") {
@@ -172,7 +161,7 @@ const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
     : "Details";
 };
 
-const cardIconsFor = (row: ProviderRow): IsoIconKind[] => {
+const cardIconsFor = (row: ProviderRow): PermissionIconKind[] => {
   const kinds = row.definition.capabilities
     .filter(isAvailable)
     .map((capability) => permissionIconFor(capability.id));
@@ -191,14 +180,17 @@ const ProviderCard = ({
 }) => {
   const { definition } = row;
   const status = statusFor(demoMode, row);
+  const icons = cardIconsFor(row);
 
   const waitingForSetup =
     !row.developerReady && !demoMode && row.status !== "active";
 
+  const canDo = icons.map((kind) => permissionLabelFor(kind)).join(", ");
+
   return (
     <li className="flex">
       <button
-        aria-label={`${definition.label}. ${status.text}. ${cardActionFor(demoMode, row)}.`}
+        aria-label={`${definition.label}. ${status.text}. ${canDo}. ${cardActionFor(demoMode, row)}.`}
         className="border-border bg-surface hover:border-control hover:bg-parchment flex w-full cursor-pointer flex-col gap-5 rounded-xl border p-5 text-left transition-colors duration-150 motion-reduce:transition-none sm:p-6"
         onClick={() => onOpen(definition.id)}
         type="button"
@@ -212,25 +204,29 @@ const ProviderCard = ({
           </span>
           <Pill tone={status.tone}>{status.text}</Pill>
         </span>
-        <span
-          className={cn(
-            "flex flex-wrap gap-1",
-            waitingForSetup ? "opacity-55" : null
-          )}
-        >
-          {cardIconsFor(row).map((kind) => (
-            <IsoIcon
-              className="size-[52px] sm:size-[64px]"
+        {/* Visible words, not tooltips: touch has no hover, and the button holds the focus. */}
+        <span className="flex flex-wrap gap-x-2 gap-y-3">
+          {icons.map((kind) => (
+            <span
+              className="flex w-[4.5rem] flex-col items-center gap-1 sm:w-20"
               key={kind}
-              kind={kind}
-              size={64}
-            />
+            >
+              <IsoIcon
+                className={cn(
+                  "size-[52px] sm:size-[64px]",
+                  // Only the drawing dims; the word keeps full contrast.
+                  waitingForSetup ? "opacity-55" : null
+                )}
+                kind={kind}
+                size={64}
+              />
+              <span className="text-label text-center font-medium">
+                {permissionLabelFor(kind)}
+              </span>
+            </span>
           ))}
         </span>
-        <span className="border-border mt-auto flex w-full flex-wrap items-center justify-between gap-3 border-t pt-4">
-          <span className="text-muted-foreground text-label">
-            {cardCountFor(demoMode, row)}
-          </span>
+        <span className="border-border mt-auto flex w-full items-center justify-end gap-3 border-t pt-4">
           <span className="text-accent-foreground text-label flex items-center gap-1 font-medium">
             {cardActionFor(demoMode, row)}
             <ChevronRightIcon aria-hidden="true" className="size-5" />
