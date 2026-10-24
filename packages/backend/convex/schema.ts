@@ -299,6 +299,8 @@ export default defineSchema({
     .index("by_external_account", ["externalAccountId"]),
 
   contacts: defineTable({
+    // A small square picture, compressed and stripped of metadata in the browser before upload.
+    avatarId: v.optional(v.union(v.id("_storage"), v.null())),
     channels: v.array(
       v.object({
         address: v.string(),

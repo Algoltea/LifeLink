@@ -1,22 +1,34 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
-import { useMutation } from "convex/react";
-import { useId, useState } from "react";
+import { useAction, useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { ImagePlusIcon } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Avatar } from "@/components/app/bits";
 import {
   PhoneNumberField,
   defaultRegion,
   joinPhone,
   splitPhone,
 } from "@/components/app/phone-number-field";
+import { prepareAvatar } from "@/lib/avatar-image";
 import { messageOf } from "@/lib/errors";
+
+type CircleContact = FunctionReturnType<typeof api.contacts.list>[number];
+
+/** What saving does to the picture: keep it, replace it with a prepared one, or clear it. */
+type PictureChange =
+  | { kind: "keep" }
+  | { blob: Blob; kind: "replace"; previewUrl: string }
+  | { kind: "remove" };
 
 type Channel = "discord" | "email" | "imessage";
 
@@ -111,7 +123,7 @@ const rowFor = (way: Way | "", address: string, region: string): Row => {
 };
 
 /** Preferred way first, then the other sendable ways, then numbers kept on file. */
-const initialRows = (contact: Doc<"contacts"> | null): Row[] => {
+const initialRows = (contact: CircleContact | null): Row[] => {
   const region = defaultRegion();
 
   if (contact === null) {
@@ -249,16 +261,123 @@ const WayRow = ({
   );
 };
 
+/** Release a picture preview once it is replaced or the form closes. */
+const useRevokeOnChange = (url: string | null): void => {
+  useEffect(
+    () => () => {
+      if (url !== null) {
+        URL.revokeObjectURL(url);
+      }
+    },
+    [url]
+  );
+};
+
+const PicturePicker = ({
+  change,
+  contact,
+  hue,
+  name,
+  onChange,
+}: {
+  change: PictureChange;
+  contact: CircleContact | null;
+  hue: number;
+  name: string;
+  onChange: (next: PictureChange) => void;
+}) => {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [preparing, setPreparing] = useState(false);
+  const helpId = useId();
+  const preview = change.kind === "replace" ? change.previewUrl : null;
+
+  useRevokeOnChange(preview);
+  const current = change.kind === "keep" ? (contact?.avatarUrl ?? null) : null;
+  const shown = preview ?? current;
+
+  return (
+    <fieldset className="flex flex-col gap-3">
+      <legend className="pb-2 text-lg font-semibold">Picture</legend>
+      <div className="flex flex-wrap items-center gap-4">
+        <Avatar hue={hue} name={name || "?"} size="lg" src={shown} />
+        <input
+          accept="image/*"
+          aria-describedby={helpId}
+          className="sr-only"
+          onChange={async (event) => {
+            const [file] = event.target.files ?? [];
+
+            event.target.value = "";
+
+            if (file === undefined) {
+              return;
+            }
+
+            setPreparing(true);
+
+            try {
+              const blob = await prepareAvatar(file);
+
+              onChange({
+                blob,
+                kind: "replace",
+                previewUrl: URL.createObjectURL(blob),
+              });
+            } catch (error) {
+              toast.error(messageOf(error instanceof Error ? error : null));
+            }
+
+            setPreparing(false);
+          }}
+          ref={fileInput}
+          tabIndex={-1}
+          type="file"
+        />
+        <Button
+          aria-busy={preparing}
+          disabled={preparing}
+          onClick={() => fileInput.current?.click()}
+          type="button"
+          variant="outline"
+        >
+          <ImagePlusIcon />
+          {shown ? "Choose a different picture" : "Choose a picture"}
+        </Button>
+        {shown ? (
+          <Button
+            onClick={() =>
+              onChange(
+                contact?.avatarUrl ? { kind: "remove" } : { kind: "keep" }
+              )
+            }
+            type="button"
+            variant="ghost"
+          >
+            Remove picture
+          </Button>
+        ) : null}
+      </div>
+      <p className="text-muted-foreground text-base" id={helpId}>
+        Optional. The photo is made small and square on this device, and
+        location and camera details are removed before it is saved.
+      </p>
+    </fieldset>
+  );
+};
+
 /** Add or edit a person. Each way to reach them is exact, and one is preferred. */
 const ContactForm = ({
   contact,
   onDone,
 }: {
-  contact: Doc<"contacts"> | null;
+  contact: CircleContact | null;
   onDone: () => void;
 }) => {
   const create = useMutation(api.contacts.create);
   const update = useMutation(api.contacts.update);
+  const saveAvatar = useAction(api.avatars.save);
+  const removeAvatar = useMutation(api.contacts.removeAvatar);
+  const [picture, setPicture] = useState<PictureChange>({ kind: "keep" });
   const [name, setName] = useState(contact?.name ?? "");
   const [relationship, setRelationship] = useState(contact?.relationship ?? "");
   const [trusted, setTrusted] = useState(contact?.trusted ?? true);
@@ -284,6 +403,29 @@ const ContactForm = ({
 
   const replaceRow = (next: Row) =>
     setRows(rows.map((row) => (row.key === next.key ? next : row)));
+
+  const savePicture = async (contactId: Id<"contacts">): Promise<void> => {
+    if (picture.kind === "remove") {
+      await removeAvatar({ contactId });
+
+      return;
+    }
+
+    if (picture.kind === "keep") {
+      return;
+    }
+
+    const { saved } = await saveAvatar({
+      contactId,
+      image: await picture.blob.arrayBuffer(),
+    });
+
+    if (!saved) {
+      throw new Error(
+        "That picture couldn’t be used. Please try another photo."
+      );
+    }
+  };
 
   return (
     <form
@@ -323,27 +465,47 @@ const ContactForm = ({
             : [];
         });
 
+        let added = false;
+
         try {
-          await (contact === null
-            ? create({
-                channels: [...channels, ...inApp],
-                name,
-                relationship,
-                savedHandles,
-                trusted,
-              })
-            : update({
-                channels: [...channels, ...inApp],
-                contactId: contact._id,
-                name,
-                relationship,
-                savedHandles,
-                trusted,
-              }));
-          toast.success(contact === null ? `${name} was added.` : "Saved.");
+          let savedId: Id<"contacts">;
+
+          if (contact === null) {
+            savedId = await create({
+              channels: [...channels, ...inApp],
+              name,
+              relationship,
+              savedHandles,
+              trusted,
+            });
+            added = true;
+          } else {
+            await update({
+              channels: [...channels, ...inApp],
+              contactId: contact._id,
+              name,
+              relationship,
+              savedHandles,
+              trusted,
+            });
+            savedId = contact._id;
+          }
+
+          await savePicture(savedId);
+          toast.success(added ? `${name} was added.` : "Saved.");
           onDone();
         } catch (error) {
-          toast.error(messageOf(error instanceof Error ? error : null));
+          const message = messageOf(error instanceof Error ? error : null);
+
+          // The person is saved even if their picture wasn't; don't make them retype everything.
+          if (added) {
+            toast.error(
+              `${name} was added, but the picture wasn’t saved. ${message}`
+            );
+            onDone();
+          } else {
+            toast.error(message);
+          }
         }
 
         setBusy(false);
@@ -369,6 +531,13 @@ const ContactForm = ({
           />
         </div>
       </div>
+      <PicturePicker
+        change={picture}
+        contact={contact}
+        hue={contact?.hue ?? 30}
+        name={name}
+        onChange={setPicture}
+      />
       <fieldset className="flex flex-col gap-4">
         <legend className="pb-2 text-lg font-semibold">
           How to reach them
@@ -425,5 +594,7 @@ const ContactForm = ({
     </form>
   );
 };
+
+export type { CircleContact };
 
 export { ContactForm };

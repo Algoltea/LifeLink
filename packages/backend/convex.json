@@ -5,7 +5,8 @@
       "@photon-ai/advanced-imessage",
       "@grpc/grpc-js",
       "nice-grpc",
-      "nice-grpc-common"
+      "nice-grpc-common",
+      "sharp"
     ]
   }
 }

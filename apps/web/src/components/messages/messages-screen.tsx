@@ -63,7 +63,11 @@ const MessagesScreen = () => {
                   // SAFETY: a stored contact id, and /messages/[contactId] is a real route.
                   href={`/messages/${thread.contact.id}` as Route}
                 >
-                  <Avatar hue={thread.contact.hue} name={thread.contact.name} />
+                  <Avatar
+                    hue={thread.contact.hue}
+                    name={thread.contact.name}
+                    src={thread.contact.avatarUrl}
+                  />
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="text-lg leading-7 font-semibold">

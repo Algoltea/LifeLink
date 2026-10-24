@@ -46,6 +46,9 @@ export const threads = query({
         return {
           channel: channelFor(contact)?.channel ?? null,
           contact: {
+            avatarUrl: contact.avatarId
+              ? await ctx.storage.getUrl(contact.avatarId)
+              : null,
             hue: contact.hue,
             id: contact._id,
             name: contact.name,
@@ -86,7 +89,12 @@ export const thread = query({
       .collect();
 
     return {
-      contact,
+      contact: {
+        ...contact,
+        avatarUrl: contact.avatarId
+          ? await ctx.storage.getUrl(contact.avatarId)
+          : null,
+      },
       messages: messages.toReversed(),
       pendingTaskIds: pending
         .filter((task) => task.ownerId === owner._id)

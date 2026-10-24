@@ -1,6 +1,13 @@
 import { ConvexError, v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { audit } from "./lib/audit";
 import { requireOwned, requireOwner, requireProfile } from "./lib/session";
 
@@ -106,6 +113,16 @@ const cleanSavedHandles = (
     };
   });
 
+/** Files can outlive their row if a delete raced; a missing file is already gone. */
+const deleteAvatar = async (
+  ctx: MutationCtx,
+  avatarId: Id<"_storage"> | null | undefined
+): Promise<void> => {
+  if (avatarId && (await ctx.db.system.get("_storage", avatarId)) !== null) {
+    await ctx.storage.delete(avatarId);
+  }
+};
+
 const hueFor = (name: string): number => {
   let hash = 0;
 
@@ -126,10 +143,19 @@ export const list = query({
       .withIndex("by_owner", (index) => index.eq("ownerId", profile._id))
       .collect();
 
-    return contacts.toSorted(
+    const sorted = contacts.toSorted(
       (left, right) =>
         Number(right.trusted) - Number(left.trusted) ||
         left.name.localeCompare(right.name)
+    );
+
+    return await Promise.all(
+      sorted.map(async (contact) => ({
+        ...contact,
+        avatarUrl: contact.avatarId
+          ? await ctx.storage.getUrl(contact.avatarId)
+          : null,
+      }))
     );
   },
 });
@@ -246,11 +272,69 @@ export const remove = mutation({
         )
     );
 
+    await deleteAvatar(ctx, contact.avatarId);
     await ctx.db.delete(contact._id);
     await audit(ctx, {
       actor: "person",
       detail: `Removed ${contact.name} and ended their sharing.`,
       event: "contact.removed",
+      ownerId: owner._id,
+    });
+  },
+});
+
+/** The contact a picture is being saved for, checked against the signed-in owner. */
+export const avatarTarget = internalQuery({
+  args: { contactId: v.id("contacts") },
+  handler: async (ctx, args): Promise<null> => {
+    const owner = await requireOwner(ctx);
+
+    requireOwned(await ctx.db.get(args.contactId), owner, "contact");
+
+    return null;
+  },
+});
+
+/** Attach a picture the server itself re-encoded; see avatars.save. */
+export const attachAvatar = internalMutation({
+  args: { contactId: v.id("contacts"), storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    const contact = requireOwned(
+      await ctx.db.get(args.contactId),
+      owner,
+      "contact"
+    );
+
+    await deleteAvatar(ctx, contact.avatarId);
+    await ctx.db.patch(contact._id, { avatarId: args.storageId });
+    await audit(ctx, {
+      actor: "person",
+      detail: `Added a picture for ${contact.name}.`,
+      event: "contact.updated",
+      ownerId: owner._id,
+    });
+  },
+});
+
+export const removeAvatar = mutation({
+  args: { contactId: v.id("contacts") },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+
+    const contact = requireOwned(
+      await ctx.db.get(args.contactId),
+      owner,
+      "contact"
+    );
+
+    await deleteAvatar(ctx, contact.avatarId);
+    await ctx.db.patch(contact._id, { avatarId: null });
+    await audit(ctx, {
+      actor: "person",
+      detail: `Removed the picture for ${contact.name}.`,
+      event: "contact.updated",
       ownerId: owner._id,
     });
   },

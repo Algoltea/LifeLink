@@ -91,6 +91,7 @@
         "convex-helpers": "^0.1.128",
         "nice-grpc": "2.1.17",
         "nice-grpc-common": "2.0.4",
+        "sharp": "0.35.5",
         "zod": "catalog:",
       },
       "devDependencies": {

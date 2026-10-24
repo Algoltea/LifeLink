@@ -254,6 +254,11 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
                             : (me?.profile?.preferredName ?? "Me")
                         }
                         size="sm"
+                        src={
+                          message.direction === "incoming"
+                            ? contact.avatarUrl
+                            : null
+                        }
                       />
                       {message.direction === "incoming" ? firstName : "You"} ·{" "}
                       {ago(message.createdAt, timeZone)}

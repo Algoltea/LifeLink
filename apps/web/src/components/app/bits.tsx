@@ -4,7 +4,8 @@ import { Button } from "@lifelink/ui/components/button";
 import { Pill } from "@lifelink/ui/components/pill";
 import { cn } from "@lifelink/ui/lib/utils";
 import { Volume2Icon, VolumeXIcon } from "lucide-react";
-import { useEffect, useId } from "react";
+import Image from "next/image";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
 import { useSpeech } from "@/lib/speech";
@@ -25,35 +26,56 @@ const SimulatedPill = ({ className }: { className?: string }) => (
 const ModePill = ({ mode }: { mode: "live" | "simulated" }) =>
   mode === "simulated" ? <SimulatedPill /> : null;
 
-/** A stable initial on a pale tint of the person's own hue: identity, not data. */
+const AVATAR_PIXELS = { lg: 64, md: 48, sm: 36 } as const;
+
+/** The person's picture, or a stable initial on a pale tint of their own hue: identity, not data. */
 const Avatar = ({
   className,
   hue,
   name,
   size = "md",
+  src,
 }: {
   className?: string;
   hue: number;
   name: string;
   size?: "lg" | "md" | "sm";
-}) => (
-  <span
-    aria-hidden="true"
-    className={cn(
-      "text-foreground inline-flex shrink-0 items-center justify-center rounded-full font-semibold",
-      size === "sm" && "size-9 text-sm",
-      size === "md" && "size-12 text-lg",
-      size === "lg" && "size-16 text-2xl",
-      className
-    )}
-    style={{
-      backgroundColor: `hsl(${hue} 55% 88%)`,
-      color: `hsl(${hue} 45% 22%)`,
-    }}
-  >
-    {name.trim().charAt(0).toUpperCase()}
-  </span>
-);
+  src?: string | null;
+}) => {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showPicture = Boolean(src) && src !== failedSrc;
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "text-foreground inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold",
+        size === "sm" && "size-9 text-sm",
+        size === "md" && "size-12 text-lg",
+        size === "lg" && "size-16 text-2xl",
+        className
+      )}
+      style={{
+        backgroundColor: `hsl(${hue} 55% 88%)`,
+        color: `hsl(${hue} 45% 22%)`,
+      }}
+    >
+      {showPicture && src ? (
+        <Image
+          alt=""
+          className="size-full object-cover"
+          height={AVATAR_PIXELS[size]}
+          onError={() => setFailedSrc(src)}
+          src={src}
+          unoptimized
+          width={AVATAR_PIXELS[size]}
+        />
+      ) : (
+        name.trim().charAt(0).toUpperCase()
+      )}
+    </span>
+  );
+};
 
 /** Read text aloud at the person's chosen speed; press again to stop. */
 const ReadAloudButton = ({

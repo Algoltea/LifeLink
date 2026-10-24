@@ -24,6 +24,7 @@ import { messageOf } from "@/lib/errors";
 import { formatDay } from "@/lib/format";
 
 import { ContactForm } from "./contact-form";
+import type { CircleContact } from "./contact-form";
 import { ContactIMessageSetup } from "./contact-imessage-setup";
 import type {
   IMessageContact,
@@ -331,14 +332,14 @@ const ContactRow = ({
   onRemove,
 }: {
   canManage: boolean;
-  contact: Doc<"contacts">;
+  contact: CircleContact;
   imessageContext: IMessageContext | undefined;
   imessageRow: IMessageContact | undefined;
   onEdit: () => void;
   onRemove: () => void;
 }) => (
   <li className="border-rule grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 border-t py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
-    <Avatar hue={contact.hue} name={contact.name} />
+    <Avatar hue={contact.hue} name={contact.name} src={contact.avatarUrl} />
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <span className="flex flex-wrap items-center gap-2 text-xl font-semibold">
         {contact.name}
@@ -449,8 +450,8 @@ const CircleScreen = () => {
   const grants = useQuery(api.sharing.listGrants);
   const remove = useMutation(api.contacts.remove);
   const { me } = usePreferences();
-  const [editing, setEditing] = useState<Doc<"contacts"> | "new" | null>(null);
-  const [removing, setRemoving] = useState<Doc<"contacts"> | null>(null);
+  const [editing, setEditing] = useState<CircleContact | "new" | null>(null);
+  const [removing, setRemoving] = useState<CircleContact | null>(null);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
   return (
