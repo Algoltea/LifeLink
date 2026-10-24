@@ -28,6 +28,11 @@ import { TimeZoneSelect } from "@/components/app/time-zone-select";
 import { saveDisplay } from "@/lib/display";
 import { messageOf } from "@/lib/errors";
 
+/** "LS1 4AP" and "ls1  4ap" are the same code, so the saved town still fits. */
+const samePostalCode = (left: string | null, right: string | null): boolean =>
+  (left ?? "").replaceAll(/\s+/gu, "").toUpperCase() ===
+  (right ?? "").replaceAll(/\s+/gu, "").toUpperCase();
+
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
@@ -528,7 +533,9 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
           try {
             await update({
               // Onboarding saves the town that matches the code; a new code makes it stale.
-              city: postalCode === profile.postalCode ? profile.city : null,
+              city: samePostalCode(postalCode, profile.postalCode)
+                ? profile.city
+                : null,
               displayName: text("name"),
               postalCode,
               preferredName: text("preferred"),

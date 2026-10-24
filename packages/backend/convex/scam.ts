@@ -563,7 +563,7 @@ export const submit = mutation({
         throw new ConvexError({
           code: "invalid",
           message:
-            "Reading a screenshot needs your permission and an available cloud assistant outside Practice mode. Paste its words for a local check instead.",
+            "Screenshot checks are not available right now. Choose Text and type the words from the screenshot.",
         });
       }
 

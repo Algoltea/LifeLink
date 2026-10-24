@@ -61,7 +61,7 @@ const checkGuidance = (source: Source, practice: boolean): string => {
   if (practice) {
     return source === "screenshot"
       ? "Practice mode can’t check screenshots. Choose Text instead."
-      : "Practice checks stay on this device. Nothing is sent.";
+      : "Practice checks never go to an AI service.";
   }
 
   if (source === "email") {
