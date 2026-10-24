@@ -21,6 +21,31 @@ const explained = (
 });
 
 describe("checking a model's explanation", () => {
+  it("preserves summaries longer than 300 characters, including their final warning", () => {
+    const summary = `${"This message describes a limited offer from a shop. ".repeat(7)}Check with someone you trust before sharing private details.`;
+
+    const checked = checkExplanation(
+      explained({ plainSummary: summary }),
+      MESSAGE
+    );
+
+    expect(summary.length).toBeGreaterThan(300);
+    expect(checked.plainSummary).toBe(summary);
+    expect(checked.plainSummary).toMatch(/before sharing private details\.$/u);
+  });
+
+  it("checks quotations at the end of a long summary", () => {
+    const summary = `${"This message describes an invitation. ".repeat(9)}She says "send your password".`;
+
+    const checked = checkExplanation(
+      explained({ plainSummary: summary }),
+      MESSAGE
+    );
+
+    expect(checked.plainSummary).not.toContain("send your password");
+    expect(checked.droppedCount).toBe(1);
+  });
+
   it("keeps a request it can quote, cut from the message", () => {
     const checked = checkExplanation(
       explained({
