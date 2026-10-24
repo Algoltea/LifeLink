@@ -95,12 +95,13 @@ const ConversationHeader = ({
     heading.current?.focus({ preventScroll: true });
   }, []);
 
+  // The Messages page owns the h1; this names the open conversation under it.
   return (
     <header className={MESSAGES_HEADER}>
       <Link
         className={buttonVariants({
           className:
-            "text-muted-foreground hover:text-foreground min-w-control px-2 text-[0.889rem] sm:pr-4",
+            "text-muted-foreground hover:text-foreground min-w-control px-2 text-[0.889rem] sm:pr-4 @3xl/content:hidden",
           variant: "ghost",
         })}
         href="/messages"
@@ -117,14 +118,14 @@ const ConversationHeader = ({
         src={contact.avatarUrl}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <h1
+        <h2
           className="text-body sm:text-section truncate font-semibold tracking-tight outline-none"
           ref={heading}
           tabIndex={-1}
         >
           <span className="sr-only">Conversation with </span>
           {contact.name}
-        </h1>
+        </h2>
         <p className="text-muted-foreground text-label truncate">{subline}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
@@ -143,7 +144,7 @@ const ConversationHeader = ({
           >
             <ListChecksIcon aria-hidden="true" />
             Recap
-            <span className="sr-only lg:not-sr-only"> this conversation</span>
+            <span className="sr-only"> this conversation</span>
           </Button>
         ) : null}
       </div>
@@ -259,9 +260,9 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
             "flex min-h-full flex-col gap-6 pb-4"
           )}
         >
-          <h2 className="sr-only" id="history-heading">
-            Conversation with {contact.name}
-          </h2>
+          <h3 className="sr-only" id="history-heading">
+            Messages with {contact.name}
+          </h3>
           {recapOpen ? (
             <RecapPanel
               contactId={contact._id}
