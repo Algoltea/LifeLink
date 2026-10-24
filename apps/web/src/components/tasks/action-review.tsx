@@ -45,6 +45,7 @@ const APPROVE_WORDS: Record<ActionDetails["kind"], string> = {
   calendar_event: "Approve and add it",
   confirm_arrangement: "Confirm the ride",
   create_reminder: "Save the reminder",
+  drive_note: "Approve and save it",
   email_draft: "Approve and save the draft",
   family_update: "Share the update",
   grocery_handoff: "Approve request",

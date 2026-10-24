@@ -190,14 +190,15 @@ const executionProblems = async (
     }
 
     case "email_draft":
-    case "calendar_event": {
+    case "calendar_event":
+    case "drive_note": {
       if (mode === "simulated") {
         return [];
       }
 
       if (!developerConfigured("composio")) {
         return [
-          "Email and calendar connections are not set up for this app yet.",
+          "Email, calendar, and Drive connections are not set up for this app yet.",
         ];
       }
 
