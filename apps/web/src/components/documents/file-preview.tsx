@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
+import { useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 type Listing = FunctionReturnType<typeof api.drive.files>;
@@ -33,12 +34,13 @@ const InfoLine = ({ children, id }: { children: ReactNode; id?: string }) => (
 
 const PreviewWindow = ({ file }: { file: DriveFile }) => {
   const { preview } = file;
+  const t = useMessages().documents;
 
   switch (preview.type) {
     case "text": {
       return (
         <section
-          aria-label={`What ${file.name} says`}
+          aria-label={t.whatItSays(file.name)}
           className="border-border bg-raised max-h-[32rem] max-w-prose overflow-y-auto rounded-xl border px-6 py-5 leading-relaxed wrap-anywhere whitespace-pre-wrap"
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll a long document inside its window.
           tabIndex={0}
@@ -77,13 +79,9 @@ const PreviewWindow = ({ file }: { file: DriveFile }) => {
             // oxlint-disable-next-line react/iframe-missing-sandbox -- Google's viewer needs scripts and its own cookies; the frame is cross-origin, so it still cannot reach LifeLink.
             sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
             src={preview.src}
-            title={`Preview of ${file.name} from Google Drive`}
+            title={t.previewOf(file.name)}
           />
-          <InfoLine>
-            Google shows this preview directly. If it asks you to sign in, use
-            the same Google account you connected, or open the file in Google
-            Drive.
-          </InfoLine>
+          <InfoLine>{t.embedHint}</InfoLine>
         </div>
       );
     }
@@ -91,8 +89,7 @@ const PreviewWindow = ({ file }: { file: DriveFile }) => {
     case "none": {
       return (
         <p className="bg-parchment max-w-prose rounded-xl px-5 py-4">
-          Folders cannot be previewed here. Open it in Google Drive to see what
-          is inside.
+          {t.folderNoPreview}
         </p>
       );
     }
@@ -105,6 +102,8 @@ const PreviewWindow = ({ file }: { file: DriveFile }) => {
 
 /** Opens the file in Drive, or explains why it can't, without leaving a dead end. */
 const OpenInDrive = ({ file, noteId }: { file: DriveFile; noteId: string }) => {
+  const t = useMessages().documents;
+
   if (file.url !== null) {
     return (
       <a
@@ -113,16 +112,16 @@ const OpenInDrive = ({ file, noteId }: { file: DriveFile; noteId: string }) => {
         rel="noopener noreferrer"
         target="_blank"
       >
-        Open in Google Drive
+        {t.openInDrive}
         <ExternalLinkIcon aria-hidden="true" />
-        <span className="sr-only">(opens in a new tab)</span>
+        <span className="sr-only">{t.opensNewTab}</span>
       </a>
     );
   }
 
   return (
     <Button aria-describedby={noteId} disabled size="sm" variant="outline">
-      Open in Google Drive
+      {t.openInDrive}
       <ExternalLinkIcon aria-hidden="true" />
     </Button>
   );
@@ -145,6 +144,8 @@ const FilePreview = ({
   const noteId = useId();
   const { preview } = file;
   const hasLink = file.url !== null;
+  const messages = useMessages();
+  const t = messages.documents;
 
   // When the preview replaces the list, land on the file's name, so keyboard
   // and screen reader users start here.
@@ -169,7 +170,7 @@ const FilePreview = ({
   const readAloud =
     preview.type === "text" ? (
       <ReadAloudButton
-        label="Read aloud"
+        label={messages.common.readAloud}
         text={`${file.name}. ${preview.text}`}
       />
     ) : null;
@@ -194,15 +195,15 @@ const FilePreview = ({
             ref={headingRef}
             tabIndex={-1}
           >
-            <span className="sr-only">Preview: </span>
+            <span className="sr-only">{t.previewPrefix}</span>
             {file.name}
           </h2>
           <p className="text-muted-foreground text-label flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <span>
-              {file.kind}
+              {t.kinds[file.kind] ?? file.kind}
               {file.modifiedAt === null
                 ? ""
-                : ` · Changed ${formatWhen(file.modifiedAt, timeZone)}`}
+                : t.changedSuffix(formatWhen(file.modifiedAt, timeZone))}
             </span>
             {isPractice ? <SimulatedPill /> : null}
           </p>
@@ -216,9 +217,7 @@ const FilePreview = ({
         </div>
         {hasLink ? null : (
           <InfoLine id={noteId}>
-            {isPractice
-              ? "Practice files live only in LifeLink, so they can’t be opened in Google Drive. With your real Drive connected, this button opens the file there."
-              : "Google Drive did not share a link for this file. Open Google Drive and search for it by name."}
+            {isPractice ? t.practiceNoLink : t.noLink}
           </InfoLine>
         )}
       </div>

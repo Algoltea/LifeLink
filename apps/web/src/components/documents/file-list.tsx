@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
+import { useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import type { DriveFile, Listing } from "./file-preview";
@@ -70,43 +71,47 @@ const FileRow = ({
   isSelected: boolean;
   onSelect: () => void;
   timeZone: string;
-}) => (
-  <button
-    aria-current={isSelected ? "true" : undefined}
-    className={cn(
-      "text-foreground hover:bg-parchment flex w-full min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 text-left transition-colors",
-      isSelected && "bg-neutral-wash hover:bg-neutral-wash"
-    )}
-    data-file-id={file.id}
-    onClick={onSelect}
-    type="button"
-  >
-    <IsoIcon
-      className="shrink-0"
-      kind={fileIconFor(file.kind)}
-      size={FILE_ICON_SIZE}
-    />
-    <span className="flex min-w-0 flex-1 flex-col">
-      <span className="flex items-baseline justify-between gap-3">
-        <span className="text-body truncate font-semibold">{file.name}</span>
-        {file.modifiedAt === null ? null : (
-          <time
-            className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
-            dateTime={new Date(file.modifiedAt).toISOString()}
-            title={`Changed ${formatWhen(file.modifiedAt, timeZone)}`}
-          >
-            <span className="sr-only">, changed </span>
-            {listTime(file.modifiedAt, timeZone)}
-          </time>
-        )}
+}) => {
+  const t = useMessages().documents;
+
+  return (
+    <button
+      aria-current={isSelected ? "true" : undefined}
+      className={cn(
+        "text-foreground hover:bg-parchment flex w-full min-w-0 items-center gap-3.5 rounded-lg px-3 py-3 text-left transition-colors",
+        isSelected && "bg-neutral-wash hover:bg-neutral-wash"
+      )}
+      data-file-id={file.id}
+      onClick={onSelect}
+      type="button"
+    >
+      <IsoIcon
+        className="shrink-0"
+        kind={fileIconFor(file.kind)}
+        size={FILE_ICON_SIZE}
+      />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="text-body truncate font-semibold">{file.name}</span>
+          {file.modifiedAt === null ? null : (
+            <time
+              className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
+              dateTime={new Date(file.modifiedAt).toISOString()}
+              title={t.changedAt(formatWhen(file.modifiedAt, timeZone))}
+            >
+              <span className="sr-only">{t.changedSr}</span>
+              {listTime(file.modifiedAt, timeZone)}
+            </time>
+          )}
+        </span>
+        <span className="text-muted-foreground text-label truncate">
+          <span className="sr-only">, </span>
+          {t.kinds[file.kind] ?? file.kind}
+        </span>
       </span>
-      <span className="text-muted-foreground text-label truncate">
-        <span className="sr-only">, </span>
-        {file.kind}
-      </span>
-    </span>
-  </button>
-);
+    </button>
+  );
+};
 
 /** The end of the list: loading, a retry after a failure, or the final count. */
 const ListEnd = ({
@@ -116,24 +121,20 @@ const ListEnd = ({
   browse: ReadyBrowse;
   onLoadMore: () => void;
 }) => {
+  const t = useMessages().documents;
+
   if (browse.more === "error") {
-    return (
-      <ErrorNote onRetry={onLoadMore}>
-        The next files could not be loaded.
-      </ErrorNote>
-    );
+    return <ErrorNote onRetry={onLoadMore}>{t.moreFailed}</ErrorNote>;
   }
 
   if (browse.more === "loading") {
-    return <LoadingRows layout="files" label="Loading more files" rows={2} />;
+    return <LoadingRows layout="files" label={t.loadingMore} rows={2} />;
   }
 
   if (browse.nextCursor === null) {
     return (
       <p className="text-muted-foreground text-label px-3 pt-3">
-        {browse.files.length === 1
-          ? "That’s the only file."
-          : `That’s all ${browse.files.length} files.`}
+        {t.fileCountAll(browse.files.length)}
       </p>
     );
   }
@@ -163,6 +164,7 @@ const VirtualFileList = ({
 
   const list = useRef<HTMLUListElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
+  const t = useMessages().documents;
   const { files } = browse;
 
   // The list scrolls with the page, so the virtualizer needs to know how far
@@ -206,7 +208,7 @@ const VirtualFileList = ({
 
   return (
     <ul
-      aria-label="Your Drive files"
+      aria-label={t.yourDriveFiles}
       className="relative"
       ref={list}
       style={{ height: virtualizer.getTotalSize() }}

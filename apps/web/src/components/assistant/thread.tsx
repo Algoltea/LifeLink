@@ -16,6 +16,7 @@ import {
   InlineActionReview,
   InlineTaskReview,
 } from "@/components/tasks/inline-action-review";
+import { currentMessages, useMessages } from "@/i18n/locale";
 
 import { EmailSummaryCard } from "./email-summary-card";
 
@@ -53,19 +54,24 @@ const AssistantText = ({ message }: { message: UIMessage }) => {
   );
 };
 
-const Thinking = () => (
-  <p className="text-muted-foreground flex min-h-9 items-center gap-3 text-lg">
-    <span aria-hidden="true" className="flex gap-1.5">
-      <span className="bg-primary size-2 rounded-full motion-safe:animate-pulse" />
-      <span className="bg-primary/60 size-2 rounded-full [animation-delay:150ms] motion-safe:animate-pulse" />
-      <span className="bg-primary/30 size-2 rounded-full [animation-delay:300ms] motion-safe:animate-pulse" />
-    </span>
-    Thinking…
-  </p>
-);
+const Thinking = () => {
+  const t = useMessages().ask;
+
+  return (
+    <p className="text-muted-foreground flex min-h-9 items-center gap-3 text-lg">
+      <span aria-hidden="true" className="flex gap-1.5">
+        <span className="bg-primary size-2 rounded-full motion-safe:animate-pulse" />
+        <span className="bg-primary/60 size-2 rounded-full [animation-delay:150ms] motion-safe:animate-pulse" />
+        <span className="bg-primary/30 size-2 rounded-full [animation-delay:300ms] motion-safe:animate-pulse" />
+      </span>
+      {t.thinking}
+    </p>
+  );
+};
 
 const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
+  const t = useMessages().ask;
 
   useEffect(() => {
     if (!copied) {
@@ -84,9 +90,7 @@ const CopyButton = ({ text }: { text: string }) => {
           await navigator.clipboard.writeText(text);
           setCopied(true);
         } catch {
-          toast(
-            "Copying isn't available here. You can select the text instead."
-          );
+          toast(t.copyUnavailable);
         }
       }}
       size="sm"
@@ -97,17 +101,19 @@ const CopyButton = ({ text }: { text: string }) => {
       ) : (
         <CopyIcon aria-hidden="true" />
       )}
-      <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+      <span aria-live="polite">{copied ? t.copied : t.copy}</span>
     </Button>
   );
 };
 
 const Bubble = ({ message }: { message: UIMessage }) => {
+  const t = currentMessages().ask;
+
   if (message.role === "user") {
     return (
       <li className="flex justify-end pl-10 sm:pl-16">
         <p className="bg-neutral-wash rounded-3xl px-5 py-3.5 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
-          <span className="sr-only">You said: </span>
+          <span className="sr-only">{t.youSaid}</span>
           {message.text}
         </p>
       </li>
@@ -127,7 +133,7 @@ const Bubble = ({ message }: { message: UIMessage }) => {
         <BrandMark size={14} />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-4 sm:pt-0.5">
-        <span className="sr-only">LifeLink said: </span>
+        <span className="sr-only">{t.lifeLinkSaid}</span>
         {emailSummary.success ? (
           <EmailSummaryCard summary={emailSummary.data.inboxSummary} />
         ) : null}
@@ -135,11 +141,7 @@ const Bubble = ({ message }: { message: UIMessage }) => {
           <AssistantText message={message} />
         ) : null}
         {message.status === "pending" && !message.text ? <Thinking /> : null}
-        {failed ? (
-          <p className="text-negative text-lg">
-            That reply didn’t finish. Please ask again.
-          </p>
-        ) : null}
+        {failed ? <p className="text-negative text-lg">{t.failed}</p> : null}
         {prepared.map((tool) => {
           if (tool.actionId) {
             return (
@@ -182,6 +184,7 @@ const AssistantThread = ({
   );
 
   useAutoReadAloud(latest?.text ?? null);
+  const t = useMessages().ask;
 
   return (
     <div className={cn("flex flex-col gap-5", className)}>
@@ -193,15 +196,10 @@ const AssistantThread = ({
           onClick={() => loadMore(20)}
           variant="ghost"
         >
-          {status === "LoadingMore"
-            ? "Loading earlier messages…"
-            : "Show earlier messages"}
+          {status === "LoadingMore" ? t.loadingEarlier : t.loadEarlier}
         </Button>
       ) : null}
-      <ol
-        aria-label="Conversation with LifeLink"
-        className="flex flex-col gap-8"
-      >
+      <ol aria-label={t.conversationLabel} className="flex flex-col gap-8">
         {messages.map((message) => (
           <Bubble key={message.key} message={message} />
         ))}

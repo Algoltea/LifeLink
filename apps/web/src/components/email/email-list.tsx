@@ -9,6 +9,7 @@ import type { RefObject } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
+import { useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import { InboxSkeleton, hueFor, listTime } from "./email-bits";
@@ -17,10 +18,12 @@ type EmailRow = NonNullable<FunctionReturnType<typeof api.emails.list>>[number];
 
 /** At most one status per row; a clean check needs no mark of its own. */
 const RowStatus = ({ email }: { email: EmailRow }) => {
+  const t = useMessages().email;
+
   if (email.scamCheck === undefined) {
     return (
       <span className="text-muted-foreground text-label pt-1">
-        Not checked yet
+        {t.notChecked}
       </span>
     );
   }
@@ -29,7 +32,7 @@ const RowStatus = ({ email }: { email: EmailRow }) => {
     if (email.priority === "reply") {
       return (
         <span className="text-accent-foreground text-label pt-1 font-medium">
-          May need a reply
+          {t.mayNeedReply}
         </span>
       );
     }
@@ -37,7 +40,7 @@ const RowStatus = ({ email }: { email: EmailRow }) => {
     if (email.priority === "low_priority") {
       return (
         <span className="text-muted-foreground text-label pt-1">
-          Lower priority
+          {t.lowerPriority}
         </span>
       );
     }
@@ -49,7 +52,7 @@ const RowStatus = ({ email }: { email: EmailRow }) => {
     <span className="flex pt-1.5">
       <Pill className="text-label font-semibold" tone="warning">
         <TriangleAlertIcon aria-hidden="true" className="size-4" />
-        Warning signs
+        {t.warningSigns}
       </Pill>
     </span>
   );
@@ -69,17 +72,14 @@ const EmailList = ({
   selectedId: string | null;
   timeZone: string;
 }) => {
+  const t = useMessages().email;
+
   if (emails === undefined) {
-    return <InboxSkeleton label="Loading emails" rows={4} />;
+    return <InboxSkeleton label={t.loadingEmails} rows={4} />;
   }
 
   if (emails.length === 0) {
-    return (
-      <EmptyNote>
-        No emails here yet. Connect a mailbox, then choose “Check for new email”
-        to import recent messages.
-      </EmptyNote>
-    );
+    return <EmptyNote>{t.empty}</EmptyNote>;
   }
 
   return (
@@ -126,7 +126,7 @@ const EmailList = ({
                   </time>
                 </span>
                 <span className="text-label truncate">
-                  {email.subject || "(No subject)"}
+                  {email.subject || t.noSubject}
                 </span>
                 <span className="text-muted-foreground text-label truncate">
                   {email.summary ?? email.preview}

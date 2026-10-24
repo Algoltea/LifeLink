@@ -2,7 +2,6 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { sharingScopes } from "@lifelink/contracts/sharing";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -16,6 +15,8 @@ import { SimulatedPill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { ENV } from "@/env";
+import { useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
 import { ago, formatDay, formatWhen, money } from "@/lib/format";
@@ -23,22 +24,13 @@ import { ago, formatDay, formatWhen, money } from "@/lib/format";
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const RIDE_WORDS: Record<
-  "asked" | "confirmed" | "declined" | "none",
-  string | null
-> = {
-  asked: "Ride asked for, not confirmed yet",
-  confirmed: "Ride confirmed",
-  declined: "Ride declined",
-  none: null,
-};
-
 const JoinForm = () => {
   const accept = useMutation(api.sharing.acceptInvite);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const inputId = useId();
   const hintId = useId();
+  const t = useMessages().family;
 
   return (
     <form
@@ -50,9 +42,7 @@ const JoinForm = () => {
         try {
           await accept({ code });
           setCode("");
-          toast.success(
-            "You're connected. You'll see only what they chose to share."
-          );
+          toast.success(t.connected);
         } catch (error) {
           toast.error(errorText(error));
         }
@@ -60,11 +50,9 @@ const JoinForm = () => {
         setBusy(false);
       }}
     >
-      <h2 className="text-2xl leading-8 font-semibold">
-        Have an invitation code?
-      </h2>
+      <h2 className="text-2xl leading-8 font-semibold">{t.haveCode}</h2>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={inputId}>Invitation code</Label>
+        <Label htmlFor={inputId}>{t.invitationCode}</Label>
         <Input
           aria-describedby={hintId}
           autoCapitalize="characters"
@@ -75,7 +63,7 @@ const JoinForm = () => {
           value={code}
         />
         <p className="text-muted-foreground text-lg leading-7" id={hintId}>
-          The person who invited you can read it from their Trusted circle page.
+          {t.codeHint}
         </p>
       </div>
       <Button
@@ -84,7 +72,7 @@ const JoinForm = () => {
         disabled={busy || code.trim().length < 4}
         type="submit"
       >
-        Connect
+        {t.connect}
       </Button>
     </form>
   );
@@ -100,6 +88,7 @@ const SharedPhoto = ({
 }) => {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const t = useMessages().family;
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -163,12 +152,12 @@ const SharedPhoto = ({
       <div className="bg-surface aspect-square overflow-hidden rounded-lg">
         {url === null ? (
           <p className="text-muted-foreground flex size-full items-center justify-center p-3 text-center text-lg leading-7">
-            {failed ? "This photo isn't available." : "Loading photo…"}
+            {failed ? t.photoUnavailable : t.loadingPhoto}
           </p>
         ) : (
           // oxlint-disable-next-line nextjs/no-img-element -- a private blob URL; next/image can't optimise it.
           <img
-            alt={caption ?? "A shared photo"}
+            alt={caption ?? t.sharedPhoto}
             className="size-full object-cover"
             src={url}
           />
@@ -194,6 +183,7 @@ const Conversation = ({
   const reply = useMutation(api.messages.replyInApp);
   const [body, setBody] = useState("");
   const inputId = useId();
+  const t = useMessages().family;
 
   if (thread === null) {
     return null;
@@ -205,13 +195,13 @@ const Conversation = ({
       className="flex flex-col gap-4"
     >
       <h3 className="text-xl font-semibold" id={`${inputId}-heading`}>
-        Messages with {ownerName}
+        {t.messagesWith(ownerName)}
       </h3>
       {thread === undefined ? (
-        <LoadingRows layout="conversation" label="Loading messages" rows={2} />
+        <LoadingRows layout="conversation" label={t.loadingMessages} rows={2} />
       ) : null}
       {thread !== undefined && thread.length === 0 ? (
-        <EmptyNote>No messages in LifeLink yet.</EmptyNote>
+        <EmptyNote>{t.noMessages}</EmptyNote>
       ) : null}
       {thread !== undefined && thread.length > 0 ? (
         <ol className="flex flex-col gap-3">
@@ -225,15 +215,15 @@ const Conversation = ({
               key={message.id}
             >
               <span className="sr-only">
-                {message.fromMe ? "You wrote: " : `${ownerName} wrote: `}
+                {message.fromMe ? t.youWrote : t.theyWrote(ownerName)}
               </span>
               <p className="text-lg leading-7 break-words whitespace-pre-wrap">
                 {message.body}
               </p>
               <span className="text-muted-foreground text-sm">
-                {message.fromMe ? "You" : ownerName} ·{" "}
+                {message.fromMe ? t.you : ownerName} ·{" "}
                 {ago(message.createdAt, timeZone)}
-                {message.hasPhotos ? " · with photos" : ""}
+                {message.hasPhotos ? t.withPhotos : ""}
               </span>
             </li>
           ))}
@@ -252,7 +242,7 @@ const Conversation = ({
           }
         }}
       >
-        <Label htmlFor={inputId}>Reply to {ownerName}</Label>
+        <Label htmlFor={inputId}>{t.replyTo(ownerName)}</Label>
         <Textarea
           id={inputId}
           onChange={(event) => setBody(event.target.value)}
@@ -264,7 +254,7 @@ const Conversation = ({
           disabled={body.trim().length === 0}
           type="submit"
         >
-          Send reply
+          {t.sendReply}
         </Button>
       </form>
     </section>
@@ -273,15 +263,17 @@ const Conversation = ({
 
 const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
   const overview = useQuery(api.family.overview, { ownerId });
+  const messages = useMessages();
+  const t = messages.family;
 
   if (overview === undefined) {
     return (
-      <LoadingRows layout="family" label="Loading what was shared" rows={4} />
+      <LoadingRows layout="family" label={t.loadingWhatWasShared} rows={4} />
     );
   }
 
   if (overview === null) {
-    return <EmptyNote>This person isn’t sharing with you right now.</EmptyNote>;
+    return <EmptyNote>{t.notSharing}</EmptyNote>;
   }
 
   const { ownerName, timeZone } = overview;
@@ -302,27 +294,24 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
           {overview.demoMode ? <SimulatedPill /> : null}
         </div>
         <p className="text-muted-foreground text-lg leading-7">
-          {ownerName} shares:{" "}
-          {overview.scopes
-            .map(
-              (scope) =>
-                sharingScopes
-                  .find((item) => item.id === scope)
-                  ?.label.toLowerCase() ?? scope
-            )
-            .join(", ")}
-          . You can look, but you can’t send, approve, or spend anything for
-          them.
+          {t.shares(
+            ownerName,
+            overview.scopes
+              .map((scope) =>
+                messages.sharing.scopes[scope].label.toLowerCase()
+              )
+              .join(", ")
+          )}
         </p>
       </header>
 
       {overview.updates.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Updates</h3>
+          <h3 className="text-xl font-semibold">{t.updates}</h3>
           <ul className="flex flex-col gap-3">
             {overview.updates.map((update) => (
               <li className="border-rule border-t pt-4" key={update.id}>
-                <p className="text-lg">{update.text}</p>
+                <p className="text-lg">{translateServerMessage(update.text)}</p>
                 <span className="text-muted-foreground text-base">
                   {ago(update.createdAt, timeZone)}
                 </span>
@@ -334,16 +323,17 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
 
       {overview.appointments === null ? null : (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Appointments</h3>
+          <h3 className="text-xl font-semibold">{t.appointments}</h3>
           {overview.appointments.length === 0 ? (
-            <EmptyNote>Nothing in the next 30 days.</EmptyNote>
+            <EmptyNote>{t.nothingSoon}</EmptyNote>
           ) : (
             <ul>
               {overview.appointments.map((appointment) => {
                 const ride =
-                  appointment.rideStatus === null
+                  appointment.rideStatus === null ||
+                  appointment.rideStatus === "none"
                     ? null
-                    : RIDE_WORDS[appointment.rideStatus];
+                    : t.ride[appointment.rideStatus];
 
                 return (
                   <li
@@ -372,9 +362,9 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
 
       {overview.reminders === null ? null : (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Shared reminders</h3>
+          <h3 className="text-xl font-semibold">{t.sharedReminders}</h3>
           {overview.reminders.length === 0 ? (
-            <EmptyNote>No shared reminders.</EmptyNote>
+            <EmptyNote>{t.noSharedReminders}</EmptyNote>
           ) : (
             <ul>
               {overview.reminders.map((reminder) => (
@@ -396,9 +386,9 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
       {overview.scamAlerts === null ||
       overview.scamAlerts.length === 0 ? null : (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Scam checks</h3>
+          <h3 className="text-xl font-semibold">{t.scamChecks}</h3>
           <p className="text-muted-foreground text-lg leading-7">
-            Only the result is shared, never the message itself.
+            {t.onlyResult}
           </p>
           <ul>
             {overview.scamAlerts.map((alert) => (
@@ -412,12 +402,14 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                   }
                 >
                   {alert.verdict === "likely_scam"
-                    ? "Likely a scam"
-                    : "Suspicious"}
+                    ? t.likelyScam
+                    : t.suspicious}
                 </Pill>
                 <span className="text-lg">
-                  A {alert.kind === "screenshot" ? "screenshot" : alert.kind}{" "}
-                  checked {formatDay(alert.createdAt, timeZone)}
+                  {t.checked(
+                    t.kinds[alert.kind] ?? alert.kind,
+                    formatDay(alert.createdAt, timeZone)
+                  )}
                 </span>
               </li>
             ))}
@@ -427,7 +419,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
 
       {overview.groceries === null || overview.groceries.length === 0 ? null : (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Groceries</h3>
+          <h3 className="text-xl font-semibold">{t.groceries}</h3>
           {overview.groceries.map((list) => (
             <div
               className="border-rule flex flex-col gap-1 border-t py-3"
@@ -437,12 +429,10 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
                 {list.name}
                 {list.budgetCents === null
                   ? ""
-                  : ` · budget ${money(list.budgetCents)}`}
+                  : t.budget(money(list.budgetCents))}
               </span>
               <span className="text-base">
-                {list.items.length > 0
-                  ? list.items.join(", ")
-                  : "Nothing left to buy."}
+                {list.items.length > 0 ? list.items.join(", ") : t.nothingLeft}
               </span>
             </div>
           ))}
@@ -451,7 +441,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
 
       {overview.photos === null || overview.photos.length === 0 ? null : (
         <section className="flex flex-col gap-3">
-          <h3 className="text-xl font-semibold">Photos</h3>
+          <h3 className="text-xl font-semibold">{t.photos}</h3>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {overview.photos.map((photo) => (
               <SharedPhoto
@@ -475,6 +465,7 @@ const OwnerView = ({ ownerId }: { ownerId: Id<"profiles"> }) => {
 
 const FamilyScreen = () => {
   const shared = useQuery(api.sharing.sharedWithMe);
+  const t = useMessages().family;
 
   const owners =
     shared === undefined
@@ -483,22 +474,12 @@ const FamilyScreen = () => {
 
   return (
     <>
-      <PageHeader
-        subline="See only what each person chooses to share. You can look, but never send, approve, or spend anything for them."
-        title="Family"
-      />
+      <PageHeader subline={t.subline} title={t.title} />
       {shared === undefined ? (
-        <LoadingRows
-          layout="note"
-          label="Loading shared information"
-          rows={3}
-        />
+        <LoadingRows layout="note" label={t.loadingShared} rows={3} />
       ) : null}
       {shared !== undefined && owners.length === 0 ? (
-        <EmptyNote>
-          No one is sharing with you yet. When someone invites you, type their
-          code below.
-        </EmptyNote>
+        <EmptyNote>{t.empty}</EmptyNote>
       ) : null}
       <div className="flex flex-col gap-8">
         {owners.map((grant) => (

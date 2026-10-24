@@ -2,7 +2,6 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { describeWeather, weatherAdvice } from "@lifelink/contracts/weather";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -28,15 +27,18 @@ import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
 import { WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
+import { currentIntlLocale, currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { dayKey, formatTime, relativeDay } from "@/lib/format";
 import {
+  adviceFor,
   dayFor,
   degrees,
   forecastOf,
   spokenWeather,
   useTemperatureUnit,
   useWeather,
+  weatherLabel,
 } from "@/lib/weather";
 
 type TodaySummary = FunctionReturnType<typeof api.today.summary>;
@@ -44,26 +46,33 @@ type TodaySummary = FunctionReturnType<typeof api.today.summary>;
 /** Appointments and reminders form the short overview on Today. */
 const currentBriefing = (summary: TodaySummary): string[] => {
   const lines: string[] = [];
+  const { format, today } = currentMessages();
 
   const [next] = summary.appointments;
 
   if (next) {
     const day = relativeDay(next.startsAt, summary.timeZone);
+    let when = today.onDay(day);
 
-    const when =
-      day === "Today" || day === "Tomorrow" ? day.toLowerCase() : `on ${day}`;
+    if (day === format.today) {
+      when = today.todayLower;
+    } else if (day === format.tomorrow) {
+      when = today.tomorrowLower;
+    }
 
     lines.push(
-      `Your next appointment is ${next.title} ${when} at ${formatTime(next.startsAt, summary.timeZone)}.`
+      today.nextAppointment(
+        next.title,
+        when,
+        formatTime(next.startsAt, summary.timeZone)
+      )
     );
   } else {
-    lines.push("You have no appointments scheduled this week.");
+    lines.push(today.noAppointments);
   }
 
   if (summary.dueReminders.length > 0) {
-    lines.push(
-      `${summary.dueReminders.length} ${summary.dueReminders.length === 1 ? "reminder is" : "reminders are"} due.`
-    );
+    lines.push(today.remindersDue(summary.dueReminders.length));
   }
 
   return lines;
@@ -79,7 +88,11 @@ const spokenMessages = (messages: TodaySummary["messages"]): string => {
 
   return names.length === 0
     ? ""
-    : `You have messages from ${new Intl.ListFormat("en-US", { type: "conjunction" }).format(names)} in the last two days.`;
+    : currentMessages().today.messagesFrom(
+        new Intl.ListFormat(currentIntlLocale(), {
+          type: "conjunction",
+        }).format(names)
+      );
 };
 
 const DueReminder = ({
@@ -88,6 +101,7 @@ const DueReminder = ({
   reminder: { _id: Id<"reminders">; title: string };
 }) => {
   const dismiss = useMutation(api.reminders.dismiss);
+  const t = useMessages();
   const [busy, setBusy] = useState(false);
   const [dismissError, setDismissError] = useState<string | null>(null);
 
@@ -119,12 +133,12 @@ const DueReminder = ({
             }}
             variant="outline"
           >
-            {busy ? "Saving…" : "Done"}
+            {busy ? t.common.saving : t.common.done}
           </Button>
         </div>
       </div>
       {dismissError ? (
-        <ErrorNote>{dismissError} Press Done to try again.</ErrorNote>
+        <ErrorNote>{t.today.dismissFailed(dismissError)}</ErrorNote>
       ) : null}
     </div>
   );
@@ -141,6 +155,7 @@ const TodayContent = ({
   const weather = useWeather(timeZone);
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
+  const t = useMessages();
   const lines = currentBriefing(summary);
 
   // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
@@ -157,15 +172,17 @@ const TodayContent = ({
         id: appointment._id,
         sub:
           appointment.rideStatus === "confirmed" && appointment.driverName
-            ? `Ride with ${appointment.driverName.split(" ")[0] ?? appointment.driverName}, confirmed`
-            : (appointment.location ?? "Appointment"),
+            ? t.today.rideConfirmed(
+                appointment.driverName.split(" ")[0] ?? appointment.driverName
+              )
+            : (appointment.location ?? t.today.appointment),
         title: appointment.title,
         weather: day
           ? {
-              advice: weatherAdvice(day),
+              advice: adviceFor(day),
               code: day.code,
               high: degrees(day.highC, unit),
-              label: describeWeather(day.code).label,
+              label: weatherLabel(day.code),
             }
           : undefined,
       };
@@ -173,7 +190,7 @@ const TodayContent = ({
     ...summary.upcomingReminders.map((reminder) => ({
       at: reminder.remindAt,
       id: reminder._id,
-      sub: "Reminder",
+      sub: t.today.reminder,
       title: reminder.title,
     })),
   ].toSorted((left, right) => left.at - right.at);
@@ -201,7 +218,7 @@ const TodayContent = ({
         {/* Side by side on a wide screen; the wide gap stands in for panel edges. */}
         <div className="grid items-start gap-x-12 gap-y-10 @min-[56rem]/content:grid-cols-2">
           <WeekList rows={week} timeZone={timeZone} weather={weather} />
-          <TodayPanel headingId="messages-heading" title="Messages">
+          <TodayPanel headingId="messages-heading" title={t.today.messages}>
             <FamilyList messages={summary.messages} timeZone={timeZone} />
             <LatestEmail timeZone={timeZone} />
           </TodayPanel>
@@ -216,6 +233,7 @@ const TodayContent = ({
 const TodayScreen = () => {
   const summary = useQuery(api.today.summary);
   const stepsHidden = useStepsHidden();
+  const t = useMessages();
 
   if (summary === undefined) {
     return (
@@ -224,14 +242,14 @@ const TodayScreen = () => {
           className="[&>div]:w-full"
           subline={
             <LoadingRows
-              label="Loading your briefing"
+              label={t.today.loadingBriefing}
               layout="briefing"
               className="w-full"
             />
           }
-          title="Today"
+          title={t.today.title}
         />
-        <LoadingRows layout="today" label="Loading today" rows={5} />
+        <LoadingRows layout="today" label={t.today.loadingToday} rows={5} />
       </>
     );
   }

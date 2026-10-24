@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -9,6 +10,8 @@ import { CopyIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
+import { currentIntlLocale, messagesFor, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const errorText = (cause: unknown): string =>
@@ -24,20 +27,24 @@ const PendingLink = ({
   url: string;
 }) => {
   const [copied, setCopied] = useState(false);
+  const t = useMessages().telegramSetup;
 
   const expires =
     expiresAt === null
       ? ""
-      : ` It works once and stops working on ${new Intl.DateTimeFormat(
-          "en-US",
-          { day: "numeric", month: "long", weekday: "long" }
-        ).format(expiresAt)}.`;
+      : t.expires(
+          new Intl.DateTimeFormat(currentIntlLocale(), {
+            day: "numeric",
+            month: "long",
+            weekday: "long",
+          }).format(expiresAt)
+        );
 
   return (
     <div className="bg-surface flex flex-col gap-3 rounded-lg px-4 py-4">
       <p className="text-lg leading-7">
-        Send this link to {contactName}. When they open it and tap Start,
-        Telegram is linked here automatically.{expires}
+        {t.sendLink(contactName)}
+        {expires}
       </p>
       <p className="num text-lg font-semibold break-all">{url}</p>
       <Button
@@ -47,17 +54,17 @@ const PendingLink = ({
             await navigator.clipboard.writeText(url);
             setCopied(true);
           } catch {
-            toast.error("Couldn’t copy the link. Select and copy it above.");
+            toast.error(t.copyLinkFailed);
           }
         }}
         size="sm"
         variant="outline"
       >
         <CopyIcon aria-hidden="true" />
-        Copy link
+        {t.copyLink}
       </Button>
       <output aria-live="polite" className="text-base">
-        {copied ? `Link copied. Send it to ${contactName} yourself.` : null}
+        {copied ? t.copiedLink(contactName) : null}
       </output>
     </div>
   );
@@ -66,22 +73,31 @@ const PendingLink = ({
 /** A username is saved: they only need to start the bot, from that account. */
 const WaitingForStart = ({
   botUrl,
+  contactLocale,
   contactName,
   username,
 }: {
   botUrl: string;
+  contactLocale: InterfaceLocale;
   contactName: string;
   username: string;
 }) => {
   const [copied, setCopied] = useState(false);
-  const invite = `Hi ${contactName}! Open ${botUrl} in Telegram and tap Start, so we can message each other through LifeLink.`;
+  const t = useMessages().telegramSetup;
+
+  // Sent by the owner to the contact, so in the contact's language.
+  const invite = messagesFor(contactLocale).telegramSetup.invite(
+    contactName,
+    botUrl
+  );
 
   return (
     <div className="bg-surface flex flex-col gap-3 rounded-lg px-4 py-4">
       <p aria-live="polite" className="text-lg leading-7">
-        Waiting for @{username}. Ask {contactName} to open{" "}
-        <span className="font-semibold break-all">{botUrl}</span> in Telegram
-        and tap Start. LifeLink links them as soon as they do.
+        {t.waitingFor(username)}
+        {t.waitingAsk(contactName)}
+        <span className="font-semibold break-all">{botUrl}</span>
+        {t.waitingRest}
       </p>
       <Button
         className="max-w-full self-start whitespace-normal"
@@ -90,21 +106,17 @@ const WaitingForStart = ({
             await navigator.clipboard.writeText(invite);
             setCopied(true);
           } catch {
-            toast.error(
-              "Couldn’t copy the invitation. Copy the address above."
-            );
+            toast.error(t.copyInvitationFailed);
           }
         }}
         size="sm"
         variant="outline"
       >
         <CopyIcon aria-hidden="true" />
-        Copy invitation
+        {t.copyInvitation}
       </Button>
       <output aria-live="polite" className="text-base">
-        {copied
-          ? `Invitation copied. Send it to ${contactName} yourself.`
-          : null}
+        {copied ? t.copiedInvitation(contactName) : null}
       </output>
     </div>
   );
@@ -114,41 +126,48 @@ type TelegramStatus = NonNullable<
   FunctionReturnType<typeof api.telegram.status>
 >;
 
-const linkedName = (linked: NonNullable<TelegramStatus["linked"]>): string => {
+type Words = Messages["telegramSetup"];
+
+const linkedName = (
+  linked: NonNullable<TelegramStatus["linked"]>,
+  t: Words
+): string => {
   if (linked.username) {
     return `@${linked.username}`;
   }
 
-  return linked.firstName ?? "their Telegram account";
+  return linked.firstName ?? t.theirAccount;
 };
 
 const unavailableReason = (
   canManage: boolean,
-  status: TelegramStatus | undefined
+  status: TelegramStatus | undefined,
+  t: Words
 ): string | null => {
   if (!canManage) {
-    return "Only the account owner can link Telegram for their contacts.";
+    return t.ownerOnly;
   }
 
   if (status === undefined) {
-    return "Loading Telegram setup…";
+    return t.loading;
   }
 
-  return status.configured
-    ? null
-    : "App setup needed. Whoever runs LifeLink must connect Telegram before you can link it for this contact.";
+  return status.configured ? null : t.notConfigured;
 };
 
 /** What a ready setup shows: the linked account, any open link, and the actions. */
 const TelegramLinking = ({
   contactId,
+  contactLocale,
   contactName,
   status,
 }: {
   contactId: Id<"contacts">;
+  contactLocale: InterfaceLocale;
   contactName: string;
   status: TelegramStatus;
 }) => {
+  const t = useMessages().telegramSetup;
   const createLink = useMutation(api.telegram.createLink);
   const unlink = useMutation(api.telegram.unlink);
   const [pending, setPending] = useState<"link" | "unlink" | null>(null);
@@ -174,13 +193,13 @@ const TelegramLinking = ({
     <>
       {linked ? (
         <p aria-live="polite" className="text-lg leading-7">
-          Linked to {linkedName(linked)}. Messages you approve for {contactName}{" "}
-          can go by Telegram, and their replies arrive in Messages.
+          {t.linked(linkedName(linked, t), contactName)}
         </p>
       ) : null}
       {!linked && status.expectedUsername && status.botUrl ? (
         <WaitingForStart
           botUrl={status.botUrl}
+          contactLocale={contactLocale}
           contactName={contactName}
           username={status.expectedUsername}
         />
@@ -202,7 +221,7 @@ const TelegramLinking = ({
           size="sm"
           variant="outline"
         >
-          {linked || status.pending ? "Make a new link" : "Link Telegram"}
+          {linked || status.pending ? t.newLink : t.link}
         </Button>
         {linked ? (
           <Button
@@ -214,7 +233,7 @@ const TelegramLinking = ({
             size="sm"
             variant="ghost"
           >
-            Unlink Telegram
+            {t.unlink}
           </Button>
         ) : null}
       </div>
@@ -226,20 +245,23 @@ const TelegramLinking = ({
 const ContactTelegramSetup = ({
   canManage,
   contactId,
+  contactLocale,
   contactName,
 }: {
   canManage: boolean;
   contactId: Id<"contacts">;
+  contactLocale: InterfaceLocale;
   contactName: string;
 }) => {
   const headingId = useId();
+  const t = useMessages().telegramSetup;
 
   const status = useQuery(
     api.telegram.status,
     canManage ? { contactId } : "skip"
   );
 
-  const unavailable = unavailableReason(canManage, status);
+  const unavailable = unavailableReason(canManage, status, t);
 
   return (
     <section
@@ -247,11 +269,12 @@ const ContactTelegramSetup = ({
       className="border-rule flex min-w-0 flex-col gap-3 border-t pt-5"
     >
       <h3 className="text-lg leading-7 font-semibold" id={headingId}>
-        Telegram
+        {t.heading}
       </h3>
       {unavailable === null && status !== undefined ? (
         <TelegramLinking
           contactId={contactId}
+          contactLocale={contactLocale}
           contactName={contactName}
           status={status}
         />

@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
-import { CHANNEL_WORDS } from "@/components/tasks/details-view";
+import { useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
 import { previewOf } from "./message-bits";
@@ -24,6 +24,7 @@ type ThreadRow = FunctionReturnType<typeof api.messages.threads>[number];
 /** At most one status per row: a message that may not have gone out, or no way to reach them. */
 const RowStatus = ({ thread }: { thread: ThreadRow }) => {
   const { last } = thread;
+  const t = useMessages().threads;
 
   if (
     last?.direction === "outgoing" &&
@@ -33,7 +34,7 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
       <span className="flex pt-1.5">
         <Pill className="text-label font-semibold" tone="negative">
           <CircleAlertIcon aria-hidden="true" className="size-4" />
-          {last.status === "failed" ? "Not sent" : "Not sure it was sent"}
+          {last.status === "failed" ? t.notSent : t.notSureSent}
         </Pill>
       </span>
     );
@@ -44,7 +45,7 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
       <span className="flex pt-1.5">
         <Pill className="text-label font-semibold" tone="warning">
           <TriangleAlertIcon aria-hidden="true" className="size-4" />
-          No way to reach them yet
+          {t.noWayToReach}
         </Pill>
       </span>
     );
@@ -62,6 +63,7 @@ const ConversationRow = ({
   timeZone: string;
 }) => {
   const { contact, last } = thread;
+  const t = useMessages().threads;
 
   return (
     <Link
@@ -101,7 +103,7 @@ const ConversationRow = ({
           <span className="sr-only">, </span>
           {last
             ? previewOf(last)
-            : `Start a conversation${thread.channel ? ` · ${CHANNEL_WORDS[thread.channel]}` : ""}`}
+            : `${t.startConversation}${thread.channel ? ` · ${t.channels[thread.channel]}` : ""}`}
         </span>
         <RowStatus thread={thread} />
       </span>
@@ -113,6 +115,7 @@ const MessagesScreen = () => {
   const threads = useQuery(api.messages.threads);
   const { me } = usePreferences();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
+  const t = useMessages().threads;
 
   return (
     <>
@@ -123,14 +126,18 @@ const MessagesScreen = () => {
             href={{ pathname: "/circle", query: { add: "1" } }}
           >
             <UserPlusIcon aria-hidden="true" />
-            Add a person
+            {t.addPerson}
           </Link>
         }
-        subline="Write to the people in your trusted circle. You see every message before it’s sent."
-        title="Messages"
+        subline={t.subline}
+        title={t.title}
       />
       {threads === undefined ? (
-        <LoadingRows layout="messages" label="Loading conversations" rows={3} />
+        <LoadingRows
+          layout="messages"
+          label={t.loadingConversations}
+          rows={3}
+        />
       ) : null}
       {threads !== undefined && threads.length === 0 ? (
         <EmptyNote
@@ -140,16 +147,16 @@ const MessagesScreen = () => {
               className="min-h-control inline-flex items-center text-lg font-semibold underline"
               href={{ pathname: "/circle", query: { add: "1" } }}
             >
-              Add a person
+              {t.addPerson}
             </Link>
           }
         >
-          Add family or friends to your trusted circle to start writing to them.
+          {t.empty}
         </EmptyNote>
       ) : null}
       {threads !== undefined && threads.length > 0 ? (
         <ul
-          aria-label="Conversations"
+          aria-label={t.conversations}
           className="flex max-w-[42.667rem] flex-col gap-1"
         >
           {threads

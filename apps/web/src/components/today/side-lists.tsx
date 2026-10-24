@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { Avatar } from "@/components/app/bits";
 import { listTime } from "@/components/email/email-bits";
 import { WeatherIcon } from "@/components/today/weather";
+import { currentMessages, useMessages } from "@/i18n/locale";
 import {
   formatShortDay,
   formatTime,
@@ -116,6 +117,7 @@ const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
   }
 
   const missing = state.status === "no_location";
+  const t = currentMessages().today;
 
   return (
     <Link className={PANEL_ROW} href="/settings#profile">
@@ -125,20 +127,18 @@ const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
       />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-body font-semibold">
-          {missing
-            ? "See the weather for your appointments"
-            : "We could not find your town"}
+          {missing ? t.seeWeather : t.couldNotFindTown}
         </span>
         <span className="text-muted-foreground text-label">
           <span className="sr-only">. </span>
-          {missing ? "Add your postal code" : "Check your postal code"}
+          {missing ? t.addPostalCode : t.checkPostalCode}
         </span>
       </span>
       <span
         aria-hidden="true"
         className="text-accent-foreground text-label inline-flex shrink-0 items-center gap-0.5 font-medium"
       >
-        {missing ? "Add" : "Check"}
+        {missing ? t.steps.locationAction : t.check}
         <ChevronRightIcon className="size-4" />
       </span>
     </Link>
@@ -148,8 +148,9 @@ const LocationPrompt = ({ state }: { state: WeatherState | undefined }) => {
 /** "Today", "Tomorrow", then the short weekday. */
 const dayLabel = (timestamp: number, timeZone: string): string => {
   const day = relativeDay(timestamp, timeZone);
+  const words = currentMessages().format;
 
-  return day === "Today" || day === "Tomorrow"
+  return day === words.today || day === words.tomorrow
     ? day
     : (formatShortDay(timestamp, timeZone).split(",")[0] ?? day);
 };
@@ -163,63 +164,69 @@ const WeekList = ({
   rows: WeekRow[];
   timeZone: string;
   weather: WeatherState | undefined;
-}) => (
-  <TodayPanel headingId="week-heading" title="Your week">
-    <LocationPrompt state={weather} />
-    {rows.length === 0 ? (
-      <SideEmpty>Nothing booked this week.</SideEmpty>
-    ) : (
-      <ul className="flex flex-col gap-1">
-        {rows.map((row) => (
-          <li className="flex items-center gap-3.5 py-3.5" key={row.id}>
-            <time
-              className="flex w-20 shrink-0 flex-col"
-              dateTime={new Date(row.at).toISOString()}
-              title={formatWhen(row.at, timeZone)}
-            >
-              <span className="text-muted-foreground text-label">
-                {dayLabel(row.at, timeZone)}
-              </span>
-              <span className="num text-body font-semibold">
-                <span className="sr-only">, </span>
-                {formatTime(row.at, timeZone)}
-              </span>
-            </time>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold">
-                <span className="sr-only">, </span>
-                {row.title}
-              </span>
-              <span className="text-muted-foreground text-label truncate">
-                <span className="sr-only">, </span>
-                {row.sub}
-              </span>
-              {row.weather ? (
-                <span
-                  className={cn(
-                    "text-label flex items-center gap-1.5",
-                    row.weather.advice
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  <span className="sr-only">
-                    , weather: {row.weather.label}, high{" "}
-                  </span>
-                  <WeatherIcon className="size-4" code={row.weather.code} />
-                  <span className="num">{row.weather.high}</span>
-                  {row.weather.advice ? (
-                    <span className="truncate">· {row.weather.advice}</span>
-                  ) : null}
+}) => {
+  const t = useMessages();
+
+  return (
+    <TodayPanel headingId="week-heading" title={t.today.yourWeek}>
+      <LocationPrompt state={weather} />
+      {rows.length === 0 ? (
+        <SideEmpty>{t.today.nothingBooked}</SideEmpty>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {rows.map((row) => (
+            <li className="flex items-center gap-3.5 py-3.5" key={row.id}>
+              <time
+                className="flex w-20 shrink-0 flex-col"
+                dateTime={new Date(row.at).toISOString()}
+                title={formatWhen(row.at, timeZone)}
+              >
+                <span className="text-muted-foreground text-label">
+                  {dayLabel(row.at, timeZone)}
                 </span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-    )}
-  </TodayPanel>
-);
+                <span className="num text-body font-semibold">
+                  <span className="sr-only">, </span>
+                  {formatTime(row.at, timeZone)}
+                </span>
+              </time>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-body font-semibold">
+                  <span className="sr-only">, </span>
+                  {row.title}
+                </span>
+                <span className="text-muted-foreground text-label truncate">
+                  <span className="sr-only">, </span>
+                  {row.sub}
+                </span>
+                {row.weather ? (
+                  <span
+                    className={cn(
+                      "text-label flex items-center gap-1.5",
+                      row.weather.advice
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <span className="sr-only">
+                      {t.today.weatherPrefix}
+                      {row.weather.label}
+                      {t.today.weatherHigh}
+                    </span>
+                    <WeatherIcon className="size-4" code={row.weather.code} />
+                    <span className="num">{row.weather.high}</span>
+                    {row.weather.advice ? (
+                      <span className="truncate">· {row.weather.advice}</span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </TodayPanel>
+  );
+};
 
 /** One row per person, newest first, the way the Messages list shows conversations. */
 const latestPerPerson = (messages: FamilyMessage[]): FamilyMessage[] => {
@@ -247,16 +254,17 @@ const FamilyList = ({
 }) => {
   // Pictures and relationships come from the contact list, which other screens already load.
   const contacts = useQuery(api.contacts.list);
+  const t = useMessages();
   const rows = latestPerPerson(messages);
 
   return (
     <PanelPart
-      action={<AllLink href="/messages">All messages</AllLink>}
+      action={<AllLink href="/messages">{t.today.allMessages}</AllLink>}
       headingId="family-heading"
-      title="From family and friends"
+      title={t.today.fromFamily}
     >
       {rows.length === 0 ? (
-        <SideEmpty>No new messages in the last two days.</SideEmpty>
+        <SideEmpty>{t.today.noMessages}</SideEmpty>
       ) : (
         <ul className="flex flex-col gap-1">
           {rows.map((message) => {
@@ -300,7 +308,7 @@ const FamilyList = ({
                     </span>
                     <span className="text-muted-foreground text-label truncate">
                       <span className="sr-only">, </span>
-                      {message.body.trim() || "New message"}
+                      {message.body.trim() || t.today.newMessage}
                     </span>
                   </span>
                 </Link>

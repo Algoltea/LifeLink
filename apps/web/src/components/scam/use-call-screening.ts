@@ -42,7 +42,7 @@ interface CallState {
   inputPaused: boolean;
   interrupted: boolean;
   muted: boolean;
-  notice: string | null;
+  notice: "time-limit" | null;
   practice: boolean;
   saveError: boolean;
   saving: boolean;
@@ -261,7 +261,7 @@ const useCallScreening = () => {
     }
   };
 
-  const finish = (notice: string | null = null): void => {
+  const finish = (notice: CallState["notice"] = null): void => {
     if (finishing.current || current.current.status === "ended") {
       return;
     }
@@ -441,9 +441,7 @@ const useCallScreening = () => {
           finish();
         }
       } else if (durationMs >= MAX_CALL_MS) {
-        finish(
-          "The check stopped after 30 minutes. Here is the summary so far."
-        );
+        finish("time-limit");
       }
     }, 1000);
   };

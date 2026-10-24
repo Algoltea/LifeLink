@@ -19,6 +19,7 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const MAX_PHOTOS = 4;
@@ -77,6 +78,7 @@ const MessageComposer = ({
   const fileInput = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const hintId = useId();
+  const t = useMessages().threads;
 
   const addPhotos = async (files: FileList | null): Promise<void> => {
     if (files === null) {
@@ -109,9 +111,7 @@ const MessageComposer = ({
         });
 
         if (photoId === null) {
-          toast.error(
-            `${file.name}: Please choose a photo (JPEG, PNG, WebP, or HEIC).`
-          );
+          toast.error(currentMessages().threads.photoInvalid(file.name));
         } else {
           setPhotos((existing) => [
             ...existing,
@@ -134,7 +134,7 @@ const MessageComposer = ({
 
   return (
     <form
-      aria-label={`Write to ${firstName}`}
+      aria-label={t.writeTo(firstName)}
       className="@container/composer flex shrink-0 flex-col gap-2.5"
       data-chat-composer=""
       onSubmit={async (event) => {
@@ -162,7 +162,7 @@ const MessageComposer = ({
     >
       <div className="border-border bg-raised focus-within:outline-ring contrast:border-control flex flex-col gap-1.5 rounded-[1.333rem] border py-2.5 pr-2.5 pl-4 shadow-[0_1px_2px_rgb(45_33_24/0.04),0_8px_24px_rgb(45_33_24/0.06)] focus-within:outline-3 focus-within:outline-offset-3 sm:gap-2 sm:py-3 sm:pr-3 sm:pl-5">
         <label className="sr-only" htmlFor={inputId}>
-          Message to {firstName}
+          {t.messageTo(firstName)}
         </label>
         <textarea
           aria-describedby={hintId}
@@ -176,13 +176,13 @@ const MessageComposer = ({
               notice: draft.notice,
             })
           }
-          placeholder={`Write to ${firstName}…`}
+          placeholder={t.writeToPlaceholder(firstName)}
           ref={inputRef}
           rows={1}
           value={draft.body}
         />
         {photos.length > 0 ? (
-          <ul aria-label="Photos to send" className="flex flex-wrap gap-2">
+          <ul aria-label={t.photosToSend} className="flex flex-wrap gap-2">
             {photos.map((photo) => (
               <li
                 className="bg-parchment flex max-w-full min-w-0 items-center gap-2 rounded-full py-0 pr-0 pl-4 text-base"
@@ -194,7 +194,7 @@ const MessageComposer = ({
                 />
                 <span className="truncate">{photo.name}</span>
                 <Button
-                  aria-label={`Remove ${photo.name}`}
+                  aria-label={t.removePhoto(photo.name)}
                   className="rounded-full"
                   onClick={() =>
                     setPhotos((existing) =>
@@ -238,25 +238,22 @@ const MessageComposer = ({
             ) : (
               <ImagePlusIcon aria-hidden="true" className="size-5" />
             )}
-            {uploading ? "Adding photo…" : "Add a photo"}
+            {uploading ? t.addingPhoto : t.addPhoto}
           </button>
           <Button
             aria-busy={busy}
-            aria-label={
-              busy ? "Preparing your message" : "Review before sending"
-            }
+            aria-label={busy ? t.preparingMessage : t.reviewBeforeSending}
             className="ml-auto rounded-full py-1 pr-1.5 pl-4 text-[0.889rem] disabled:border-transparent sm:pl-5"
             disabled={busy || uploading || empty || !canReach}
             type="submit"
           >
             {busy ? (
-              "Preparing…"
+              t.preparing
             ) : (
               <span>
-                Review
+                {t.review}
                 <span className="hidden @md/composer:inline">
-                  {" "}
-                  before sending
+                  {t.reviewBeforeSendingTail}
                 </span>
               </span>
             )}
@@ -282,22 +279,18 @@ const MessageComposer = ({
       >
         <p>
           {practice
-            ? `Practice: nothing will be sent to ${firstName}.`
-            : `Nothing is sent until you review it and approve it.`}
+            ? t.practiceNothingSent(firstName)
+            : t.nothingSentUntilApproved}
         </p>
         {canReach ? null : (
           <Link
             className="text-foreground min-h-control inline-flex items-center underline underline-offset-4"
             href="/circle"
           >
-            Add a way to reach {firstName} in Trusted circle.
+            {t.addWayToReach(firstName)}
           </Link>
         )}
-        {photos.length >= MAX_PHOTOS ? (
-          <p>
-            You can attach up to {MAX_PHOTOS} photos. Remove one to add another.
-          </p>
-        ) : null}
+        {photos.length >= MAX_PHOTOS ? <p>{t.maxPhotos(MAX_PHOTOS)}</p> : null}
       </div>
     </form>
   );

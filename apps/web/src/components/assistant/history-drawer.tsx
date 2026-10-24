@@ -10,6 +10,9 @@ import { useState, useSyncExternalStore } from "react";
 
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { listTime } from "@/components/email/email-bits";
+import { useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { DAY, MINUTE, relativeDay } from "@/lib/format";
 import { subscribeToClock } from "@/lib/greeting";
 
@@ -19,7 +22,7 @@ type Conversation = FunctionReturnType<
 
 const WEEK_DAYS = 7;
 
-const GROUP_ORDER = ["Today", "Yesterday", "This week", "Earlier"] as const;
+const GROUP_ORDER = ["today", "yesterday", "thisWeek", "earlier"] as const;
 
 type Group = (typeof GROUP_ORDER)[number];
 
@@ -28,26 +31,44 @@ const currentMinute = (): number => Math.floor(Date.now() / MINUTE) * MINUTE;
 
 const serverMinute = (): number => 0;
 
-const groupOf = (updatedAt: number, timeZone: string, now: number): Group => {
+const groupOf = (
+  updatedAt: number,
+  timeZone: string,
+  now: number,
+  t: Messages
+): Group => {
   const day = relativeDay(updatedAt, timeZone, now);
 
-  if (day === "Today" || day === "Yesterday") {
-    return day;
+  if (day === t.format.today) {
+    return "today";
   }
 
-  return now - updatedAt < WEEK_DAYS * DAY ? "This week" : "Earlier";
+  if (day === t.format.yesterday) {
+    return "yesterday";
+  }
+
+  return now - updatedAt < WEEK_DAYS * DAY ? "thisWeek" : "earlier";
+};
+
+const groupLabel = (group: Group, t: Messages): string => {
+  if (group === "today" || group === "yesterday") {
+    return t.format[group];
+  }
+
+  return t.ask.historyGroups[group];
 };
 
 /** Saved chats, newest first, under the same day headings people know from other chat apps. */
 const groupConversations = (
   conversations: Conversation[],
   timeZone: string,
-  now: number
+  now: number,
+  t: Messages
 ): { group: Group; items: Conversation[] }[] => {
   const buckets = new Map<Group, Conversation[]>();
 
   for (const conversation of conversations) {
-    const group = groupOf(conversation.updatedAt, timeZone, now);
+    const group = groupOf(conversation.updatedAt, timeZone, now, t);
     const bucket = buckets.get(group) ?? [];
     bucket.push(conversation);
     buckets.set(group, bucket);
@@ -90,6 +111,8 @@ const HistoryDrawer = ({
   timeZone: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const messages = useMessages();
+  const t = messages.ask;
 
   const now = useSyncExternalStore(
     subscribeToClock,
@@ -103,13 +126,15 @@ const HistoryDrawer = ({
       conversation.hasMessages || conversation.threadId === activeThreadId
   );
 
-  const groups = saved ? groupConversations(saved, timeZone, now) : [];
+  const groups = saved
+    ? groupConversations(saved, timeZone, now, messages)
+    : [];
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
       <Dialog.Trigger render={<Button variant="ghost" />}>
         <HistoryIcon aria-hidden="true" />
-        <span className="sr-only sm:not-sr-only">History</span>
+        <span className="sr-only sm:not-sr-only">{t.history}</span>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgb(45_33_24/0.18)] transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
@@ -119,17 +144,17 @@ const HistoryDrawer = ({
         >
           <div className="flex items-center justify-between gap-4 px-5 pt-4">
             <Dialog.Title className="text-section font-semibold tracking-tight">
-              Chat history
+              {t.historyTitle}
             </Dialog.Title>
             <Dialog.Close
-              aria-label="Close chat history"
+              aria-label={t.closeHistory}
               render={<Button className="-mr-2" size="icon" variant="ghost" />}
             >
               <XIcon aria-hidden="true" />
             </Dialog.Close>
           </div>
           <Dialog.Description className="text-muted-foreground text-label px-5">
-            Pick up where you left off.
+            {t.historyDescription}
           </Dialog.Description>
           {error ? (
             <div className="px-5 pt-3">
@@ -148,19 +173,16 @@ const HistoryDrawer = ({
               type="button"
             >
               <SquarePenIcon aria-hidden="true" className="size-5 shrink-0" />
-              New chat
+              {t.newChat}
             </button>
             {saved === undefined ? (
               <div className="px-3 pt-3">
-                <LoadingRows
-                  layout="history"
-                  label="Loading your chat history"
-                />
+                <LoadingRows layout="history" label={t.loadingHistory} />
               </div>
             ) : null}
             {saved?.length === 0 ? (
               <p className="text-muted-foreground px-3 pt-4 text-lg">
-                No conversations yet. Your first chat will be saved here.
+                {t.historyEmpty}
               </p>
             ) : null}
             {groups.map(({ group, items }) => (
@@ -169,7 +191,7 @@ const HistoryDrawer = ({
                   className="text-muted-foreground text-label px-3 pt-5 pb-1 font-medium"
                   id={`history-${group}`}
                 >
-                  {group}
+                  {groupLabel(group, messages)}
                 </h3>
                 <ul className="flex flex-col gap-0.5">
                   {items.map((conversation) => {
@@ -195,7 +217,7 @@ const HistoryDrawer = ({
                           type="button"
                         >
                           <span className="text-label line-clamp-2 flex-1 font-medium wrap-anywhere">
-                            {conversation.title}
+                            {translateServerMessage(conversation.title)}
                           </span>
                           <time
                             className="text-muted-foreground shrink-0 text-[0.833rem]"
@@ -206,7 +228,7 @@ const HistoryDrawer = ({
                             {listTime(conversation.updatedAt, timeZone, now)}
                           </time>
                           {active ? (
-                            <span className="sr-only">, open now</span>
+                            <span className="sr-only">{t.openNow}</span>
                           ) : null}
                         </button>
                       </li>
@@ -225,8 +247,8 @@ const HistoryDrawer = ({
                 variant="ghost"
               >
                 {historyStatus === "LoadingMore"
-                  ? "Loading conversations…"
-                  : "Show earlier conversations"}
+                  ? t.loadingConversations
+                  : t.loadEarlierConversations}
               </Button>
             ) : null}
           </div>

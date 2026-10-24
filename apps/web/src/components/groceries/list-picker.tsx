@@ -13,6 +13,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { currentMessages, useMessages } from "@/i18n/locale";
 import { formatShortDay, money } from "@/lib/format";
 
 /** Rows follow the app's text size, unlike a phone's built-in picker. */
@@ -26,7 +27,7 @@ const totalOf = (list: Doc<"groceryLists">): number =>
   list.items.reduce((total, item) => total + (item.estimatedCents ?? 0), 0);
 
 const countOf = (list: Doc<"groceryLists">): string =>
-  `${list.items.length} ${list.items.length === 1 ? "item" : "items"}`;
+  currentMessages().groceries.itemCount(list.items.length);
 
 /** The menu stays about one screen tall; older trips live on the past lists page. */
 const PAST_IN_MENU = 3;
@@ -41,6 +42,7 @@ const ListPopup = ({ children }: { children: ReactNode }) => {
 
   const [moreAbove, setMoreAbove] = useState(false);
   const [moreBelow, setMoreBelow] = useState(false);
+  const t = useMessages().groceries;
 
   useEffect(() => {
     if (scrollElement === null) {
@@ -87,7 +89,7 @@ const ListPopup = ({ children }: { children: ReactNode }) => {
           className="border-border bg-raised text-muted-foreground pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-2 border-b py-2 text-base"
         >
           <ChevronUpIcon className="size-5" />
-          More lists above
+          {t.moreAbove}
         </div>
       ) : null}
       {moreBelow ? (
@@ -96,7 +98,7 @@ const ListPopup = ({ children }: { children: ReactNode }) => {
           className="border-border bg-raised text-muted-foreground pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 border-t py-2 text-base"
         >
           <ChevronDownIcon className="size-5" />
-          Scroll for more lists
+          {t.moreBelow}
         </div>
       ) : null}
     </Select.Popup>
@@ -109,26 +111,30 @@ const ListOption = ({
 }: {
   details: string;
   list: Doc<"groceryLists">;
-}) => (
-  <Select.Item className={ITEM} value={list._id}>
-    <Select.ItemIndicator className="col-start-1">
-      <CheckIcon aria-hidden="true" className="size-5" />
-    </Select.ItemIndicator>
-    <span className="col-start-2 flex min-w-0 flex-col">
-      <Select.ItemText className="text-lg font-medium break-words">
-        {list.name}
-      </Select.ItemText>
-      <span className="text-muted-foreground text-base">{details}</span>
-    </span>
-    {/* The star shows here, in the open list, but not on the closed button. */}
-    {list.usual ? (
-      <span className="col-start-3">
-        <StarIcon aria-hidden="true" className="size-5 fill-current" />
-        <span className="sr-only">, your usual list</span>
+}) => {
+  const t = useMessages().groceries;
+
+  return (
+    <Select.Item className={ITEM} value={list._id}>
+      <Select.ItemIndicator className="col-start-1">
+        <CheckIcon aria-hidden="true" className="size-5" />
+      </Select.ItemIndicator>
+      <span className="col-start-2 flex min-w-0 flex-col">
+        <Select.ItemText className="text-lg font-medium break-words">
+          {list.name}
+        </Select.ItemText>
+        <span className="text-muted-foreground text-base">{details}</span>
       </span>
-    ) : null}
-  </Select.Item>
-);
+      {/* The star shows here, in the open list, but not on the closed button. */}
+      {list.usual ? (
+        <span className="col-start-3">
+          <StarIcon aria-hidden="true" className="size-5 fill-current" />
+          <span className="sr-only">{t.usualSr}</span>
+        </span>
+      ) : null}
+    </Select.Item>
+  );
+};
 
 /**
  * One dropdown for every list: current lists first, finished trips below.
@@ -150,6 +156,7 @@ const ListPicker = ({
   timeZone: string;
 }) => {
   const all = [...current, ...past];
+  const t = useMessages().groceries;
 
   if (all.length === 0) {
     return null;
@@ -177,21 +184,21 @@ const ListPicker = ({
       <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex max-w-xl min-w-0 flex-col gap-1.5 xl:max-w-none">
           <Select.Label className="text-muted-foreground text-label font-medium">
-            Switch lists, or open a past trip
+            {t.switchLists}
           </Select.Label>
           <Select.Trigger className="border-control bg-raised hover:border-foreground data-[popup-open]:border-foreground min-h-control flex w-full items-center justify-between gap-3 rounded-md border px-4 py-2 text-left text-lg transition-colors">
             <Select.Value className="min-w-0 break-words">
               {() =>
                 selected === null ? (
-                  "Choose a list"
+                  t.chooseList
                 ) : (
                   <>
                     {selected.name}
                     {selected.archivedAt === undefined ? null : (
                       <span className="text-muted-foreground">
-                        {" "}
-                        · finished{" "}
-                        {formatShortDay(selected.archivedAt, timeZone)}
+                        {t.finishedSuffix(
+                          formatShortDay(selected.archivedAt, timeZone)
+                        )}
                       </span>
                     )}
                   </>
@@ -215,7 +222,7 @@ const ListPicker = ({
             {current.length > 0 ? (
               <Select.Group>
                 <Select.GroupLabel className={GROUP_LABEL}>
-                  Current lists
+                  {t.current}
                 </Select.GroupLabel>
                 {current.map((item) => {
                   const inCart = item.items.filter((row) => row.checked).length;
@@ -224,7 +231,7 @@ const ListPicker = ({
                     <ListOption
                       details={
                         inCart > 0
-                          ? `${countOf(item)} · ${inCart} in your cart`
+                          ? `${countOf(item)} · ${t.inCartDetail(inCart)}`
                           : countOf(item)
                       }
                       key={item._id}
@@ -240,11 +247,11 @@ const ListPicker = ({
             {past.length > 0 ? (
               <Select.Group>
                 <Select.GroupLabel className={GROUP_LABEL}>
-                  Past lists
+                  {t.pastLists}
                 </Select.GroupLabel>
                 {past.slice(0, PAST_IN_MENU).map((item) => (
                   <ListOption
-                    details={`Finished ${formatShortDay(item.archivedAt ?? item.updatedAt, timeZone)} · ${countOf(item)} · ${money(totalOf(item))}`}
+                    details={`${t.finished(formatShortDay(item.archivedAt ?? item.updatedAt, timeZone))} · ${countOf(item)} · ${money(totalOf(item))}`}
                     key={item._id}
                     list={item}
                   />
@@ -252,10 +259,10 @@ const ListPicker = ({
                 <Select.Item className={ITEM} value={SEE_ALL_PAST}>
                   <span className="col-start-2 flex min-w-0 flex-col">
                     <Select.ItemText className="text-lg font-medium">
-                      See all past lists ({past.length})
+                      {t.past.seeAll(past.length)}
                     </Select.ItemText>
                     <span className="text-muted-foreground text-base">
-                      Search, reuse, or delete finished trips
+                      {t.past.seeAllHint}
                     </span>
                   </span>
                   <ArrowRightIcon

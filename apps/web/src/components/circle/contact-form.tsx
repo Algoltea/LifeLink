@@ -2,6 +2,12 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import {
+  interfaceLocaleOf,
+  interfaceLocales,
+  isInterfaceLocale,
+} from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Input } from "@lifelink/ui/components/input";
@@ -21,10 +27,23 @@ import {
   joinPhone,
   splitPhone,
 } from "@/components/app/phone-number-field";
+import { usePreferences } from "@/components/app/preferences";
+import { currentMessages, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { prepareAvatar } from "@/lib/avatar-image";
 import { messageOf } from "@/lib/errors";
 
 type CircleContact = FunctionReturnType<typeof api.contacts.list>[number];
+
+const languageLabel = (language: string | null | undefined): string =>
+  interfaceLocaleOf(language) === "es" ? "Español" : "English";
+
+const contactFormValues = (contact: CircleContact | null) => ({
+  language: contact?.language ?? null,
+  name: contact?.name ?? "",
+  relationship: contact?.relationship ?? "",
+  trusted: contact?.trusted ?? true,
+});
 
 /** What saving does to the picture: keep it, replace it with a prepared one, or clear it. */
 type PictureChange =
@@ -45,62 +64,49 @@ type Way =
 interface WayDetails {
   /** Ways in the same group are the same identity; a person has at most one. */
   group: string;
-  help: string;
-  label: string;
   phone: boolean;
   /** Where messages go; WhatsApp has none and is kept on file only. */
   channel: Channel | null;
-  valueLabel: string;
+  /** Its key in the contact form's words. */
+  words: keyof Messages["contactForm"]["ways"];
 }
 
 const WAYS: Record<Way, WayDetails> = {
   discord: {
     channel: "discord",
     group: "discord",
-    help: "Their Discord user ID, a long number. In Discord: Settings, Advanced, Developer Mode, then Copy User ID.",
-    label: "Discord",
     phone: false,
-    valueLabel: "Discord user ID",
+    words: "discord",
   },
   email: {
     channel: "email",
     group: "email",
-    help: "Their email address.",
-    label: "Email (Gmail, Outlook, and others)",
     phone: false,
-    valueLabel: "Email address",
+    words: "email",
   },
   imessage_email: {
     channel: "imessage",
     group: "imessage",
-    help: "The Apple ID email they use for iMessage. It is a different identity from their phone number. To send real iMessages later, save this person, then choose Edit and Link iMessage.",
-    label: "iMessage (Apple ID email)",
     phone: false,
-    valueLabel: "Apple ID email",
+    words: "imessageEmail",
   },
   imessage_phone: {
     channel: "imessage",
     group: "imessage",
-    help: "Their iPhone number. To send real iMessages later, save this person, then choose Edit and Link iMessage.",
-    label: "iMessage (phone number)",
     phone: true,
-    valueLabel: "Phone number",
+    words: "imessagePhone",
   },
   telegram: {
     channel: "telegram",
     group: "telegram",
-    help: "Their Telegram username, like @sam_alvarez (in Telegram: Settings, then Username). After you save, ask them to open @LifeLinkMessage_Bot in Telegram and tap Start. No username? Leave it blank and use the Telegram link below.",
-    label: "Telegram",
     phone: false,
-    valueLabel: "Telegram username",
+    words: "telegram",
   },
   whatsapp: {
     channel: null,
     group: "whatsapp",
-    help: "Kept on file for you. LifeLink can’t send WhatsApp messages yet.",
-    label: "WhatsApp (saved only)",
     phone: true,
-    valueLabel: "WhatsApp number",
+    words: "whatsapp",
   },
 };
 
@@ -258,7 +264,10 @@ const WayRow = ({
   const selectId = useId();
   const valueId = useId();
   const helpId = useId();
+  const messages = useMessages();
+  const t = messages.contactForm;
   const details = row.way === "" ? null : WAYS[row.way];
+  const words = details === null ? null : t.ways[details.words];
   const input = row.way === "" ? TEXT_INPUT : INPUT_STYLE[row.way];
 
   // WhatsApp can't be preferred: LifeLink has nothing to send it with.
@@ -278,7 +287,7 @@ const WayRow = ({
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
           <Label htmlFor={selectId}>
-            {preferred ? "Preferred way to reach them" : "Another way"}
+            {preferred ? t.preferredWay : t.anotherWay}
           </Label>
           <select
             className="border-control bg-raised text-foreground hover:border-foreground min-h-control w-full min-w-0 rounded-md border px-4 py-2 text-base transition-colors"
@@ -291,23 +300,23 @@ const WayRow = ({
             }}
             value={row.way}
           >
-            {preferred ? <option value="">Not set yet</option> : null}
+            {preferred ? <option value="">{t.notSetYet}</option> : null}
             {choices.map((way) => (
               <option key={way} value={way}>
-                {WAYS[way].label}
+                {t.ways[WAYS[way].words].label}
               </option>
             ))}
           </select>
         </div>
         {onRemove ? (
           <Button onClick={onRemove} type="button" variant="ghost">
-            Remove
+            {messages.common.remove}
           </Button>
         ) : null}
       </div>
-      {details ? (
+      {details && words ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor={valueId}>{details.valueLabel}</Label>
+          <Label htmlFor={valueId}>{words.valueLabel}</Label>
           {details.phone ? (
             <PhoneNumberField
               describedBy={helpId}
@@ -333,7 +342,7 @@ const WayRow = ({
             />
           )}
           <p className="text-muted-foreground text-label" id={helpId}>
-            {details.help}
+            {words.help}
           </p>
         </div>
       ) : null}
@@ -373,6 +382,7 @@ const PicturePicker = ({
   const fileInput = useRef<HTMLInputElement>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const helpId = useId();
+  const t = useMessages().contactForm;
   const preview = change.kind === "replace" ? change.previewUrl : null;
 
   useRevokeOnChange(preview);
@@ -381,7 +391,7 @@ const PicturePicker = ({
 
   return (
     <fieldset className="flex min-w-0 flex-col gap-2">
-      <legend className="text-label pb-2 font-medium">Picture</legend>
+      <legend className="text-label pb-2 font-medium">{t.picture}</legend>
       <div className="flex flex-wrap items-start gap-4">
         <Avatar hue={hue} name={name || "?"} size="lg" src={shown} />
         <div className="flex min-w-0 flex-1 basis-64 flex-col gap-2">
@@ -416,7 +426,9 @@ const PicturePicker = ({
                   });
                 } catch (error) {
                   setFailure(
-                    `${messageOf(error instanceof Error ? error : null)} Choose a picture to try again.`
+                    t.pictureFailed(
+                      messageOf(error instanceof Error ? error : null)
+                    )
                   );
                 }
 
@@ -434,7 +446,7 @@ const PicturePicker = ({
               variant="outline"
             >
               <ImagePlusIcon />
-              {shown ? "Choose a different picture" : "Choose a picture"}
+              {shown ? t.chooseDifferentPicture : t.choosePicture}
             </Button>
             {shown ? (
               <Button
@@ -446,7 +458,7 @@ const PicturePicker = ({
                 type="button"
                 variant="ghost"
               >
-                Remove picture
+                {t.removePicture}
               </Button>
             ) : null}
           </div>
@@ -456,8 +468,7 @@ const PicturePicker = ({
             </p>
           ) : null}
           <p className="text-muted-foreground text-label" id={helpId}>
-            Optional. The photo is made small and square on this device, and
-            location and camera details are removed before it is saved.
+            {t.pictureHelp}
           </p>
         </div>
       </div>
@@ -478,9 +489,20 @@ const ContactForm = ({
   const saveAvatar = useAction(api.avatars.save);
   const removeAvatar = useMutation(api.contacts.removeAvatar);
   const [picture, setPicture] = useState<PictureChange>({ kind: "keep" });
-  const [name, setName] = useState(contact?.name ?? "");
-  const [relationship, setRelationship] = useState(contact?.relationship ?? "");
-  const [trusted, setTrusted] = useState(contact?.trusted ?? true);
+  const initial = contactFormValues(contact);
+  const [name, setName] = useState(initial.name);
+  const [relationship, setRelationship] = useState(initial.relationship);
+  const [trusted, setTrusted] = useState(initial.trusted);
+
+  const [language, setLanguage] = useState<InterfaceLocale | null>(
+    initial.language
+  );
+
+  const { me } = usePreferences();
+  const messages = useMessages();
+  const t = messages.contactForm;
+
+  const ownLanguage = languageLabel(me?.preferences?.supportLanguage);
   const [rows, setRows] = useState<Row[]>(() => initialRows(contact));
 
   const [busy, setBusy] = useState(false);
@@ -490,6 +512,8 @@ const ContactForm = ({
   const saving = useRef(false);
 
   const ids = {
+    language: useId(),
+    languageHelp: useId(),
     name: useId(),
     relationship: useId(),
     trusted: useId(),
@@ -526,9 +550,7 @@ const ContactForm = ({
     });
 
     if (!saved) {
-      throw new Error(
-        "That picture couldn’t be used. Please try another photo."
-      );
+      throw new Error(currentMessages().contactForm.pictureUnusable);
     }
   };
 
@@ -588,6 +610,7 @@ const ContactForm = ({
           if (existingId === null) {
             savedId = await create({
               channels: [...channels, ...inApp],
+              language,
               name,
               relationship,
               savedHandles,
@@ -599,6 +622,7 @@ const ContactForm = ({
             await update({
               channels: [...channels, ...inApp],
               contactId: existingId,
+              language,
               name,
               relationship,
               savedHandles,
@@ -610,15 +634,15 @@ const ContactForm = ({
 
           detailsSaved = true;
           await savePicture(savedId);
-          toast.success(contact === null ? `${name} was added.` : "Saved.");
+          toast.success(contact === null ? t.added(name) : t.saved);
           onDone();
         } catch (error) {
           const message = messageOf(error instanceof Error ? error : null);
 
           setFailure(
             detailsSaved
-              ? `The person’s details are saved, but the picture wasn’t saved. ${message} Your choices are still here. Save again to retry, or choose another picture.`
-              : `The person’s details couldn’t be saved. ${message} Your entries are still here. Save again to retry.`
+              ? t.pictureNotSaved(message)
+              : t.detailsNotSaved(message)
           );
         }
 
@@ -632,10 +656,10 @@ const ContactForm = ({
       >
         <div className={SECTION}>
           <fieldset className="flex min-w-0 flex-col gap-4">
-            <legend className={LEGEND}>Who they are</legend>
+            <legend className={LEGEND}>{t.whoTheyAre}</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.name}>Name</Label>
+                <Label htmlFor={ids.name}>{t.name}</Label>
                 <Input
                   id={ids.name}
                   onChange={(event) => setName(event.target.value)}
@@ -644,11 +668,11 @@ const ContactForm = ({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.relationship}>Who they are to you</Label>
+                <Label htmlFor={ids.relationship}>{t.relationship}</Label>
                 <Input
                   id={ids.relationship}
                   onChange={(event) => setRelationship(event.target.value)}
-                  placeholder="Son, neighbor, friend"
+                  placeholder={t.relationshipPlaceholder}
                   value={relationship}
                 />
               </div>
@@ -662,11 +686,40 @@ const ContactForm = ({
               preparing={preparing}
               onPreparingChange={setPreparing}
             />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.language}>{t.language}</Label>
+              <select
+                aria-describedby={ids.languageHelp}
+                className="border-control bg-raised text-foreground hover:border-foreground min-h-control w-full max-w-sm min-w-0 rounded-md border px-4 py-2 text-base transition-colors"
+                id={ids.language}
+                onChange={(event) =>
+                  setLanguage(
+                    isInterfaceLocale(event.target.value)
+                      ? event.target.value
+                      : null
+                  )
+                }
+                value={language ?? ""}
+              >
+                <option value="">{t.languageSameAsMine(ownLanguage)}</option>
+                {interfaceLocales.map((locale) => (
+                  <option key={locale.id} lang={locale.id} value={locale.id}>
+                    {locale.label}
+                  </option>
+                ))}
+              </select>
+              <p
+                className="text-muted-foreground text-label"
+                id={ids.languageHelp}
+              >
+                {t.languageHelp}
+              </p>
+            </div>
           </fieldset>
         </div>
         <div className={SECTION}>
           <fieldset className="flex min-w-0 flex-col gap-4">
-            <legend className={LEGEND}>How to reach them</legend>
+            <legend className={LEGEND}>{t.howToReach}</legend>
             {rows.map((row, index) => (
               <WayRow
                 key={row.key}
@@ -696,14 +749,14 @@ const ContactForm = ({
                 variant="outline"
               >
                 <PlusIcon />
-                Add another way to reach them
+                {t.addWay}
               </Button>
             ) : null}
           </fieldset>
         </div>
         <div className={SECTION}>
           <fieldset className="flex min-w-0 flex-col gap-3">
-            <legend className={LEGEND}>Asking them for help</legend>
+            <legend className={LEGEND}>{t.askingForHelp}</legend>
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={trusted}
@@ -712,7 +765,7 @@ const ContactForm = ({
               />
               <IsoIcon kind="trusted" size={40} />
               <Label className="cursor-pointer" htmlFor={ids.trusted}>
-                In my trusted circle. LifeLink may suggest asking them for help.
+                {t.trusted}
               </Label>
             </div>
           </fieldset>
@@ -725,7 +778,7 @@ const ContactForm = ({
       ) : null}
       {busy ? (
         <output className="text-muted-foreground text-base">
-          Saving person and picture…
+          {t.savingPersonAndPicture}
         </output>
       ) : null}
       <div className="flex flex-wrap gap-3">
@@ -734,9 +787,7 @@ const ContactForm = ({
           disabled={busy || preparing}
           type="submit"
         >
-          {contact === null && createdId === null
-            ? "Add this person"
-            : "Save changes"}
+          {contact === null && createdId === null ? t.add : t.saveChanges}
         </Button>
         <Button
           disabled={busy || preparing}
@@ -744,7 +795,7 @@ const ContactForm = ({
           type="button"
           variant="ghost"
         >
-          Cancel
+          {messages.common.cancel}
         </Button>
       </div>
     </form>

@@ -5,18 +5,20 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { ArrowDownUpIcon, ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useId } from "react";
 
+import { useMessages } from "@/i18n/locale";
+
 const SORTS = [
-  { label: "Recently changed", value: "recent" },
-  { label: "Oldest first", value: "oldest" },
-  { label: "Name, A to Z", value: "name_asc" },
-  { label: "Name, Z to A", value: "name_desc" },
-  { label: "Folders first", value: "folders_first" },
+  "recent",
+  "oldest",
+  "name_asc",
+  "name_desc",
+  "folders_first",
 ] as const;
 
-type Sort = (typeof SORTS)[number]["value"];
+type Sort = (typeof SORTS)[number];
 
 const isSort = (value: string): value is Sort =>
-  SORTS.some((sort) => sort.value === value);
+  SORTS.some((sort) => sort === value);
 
 /**
  * A file browser's toolbar: find by name and change the order, on one line.
@@ -41,6 +43,7 @@ const FilesToolbar = ({
 }) => {
   const searchId = useId();
   const sortId = useId();
+  const t = useMessages().documents;
 
   return (
     <search className={cn("flex flex-wrap items-center gap-3", className)}>
@@ -52,7 +55,7 @@ const FilesToolbar = ({
         }}
       >
         <label className="sr-only" htmlFor={searchId}>
-          Find a file by name
+          {t.find}
         </label>
         <SearchIcon
           aria-hidden="true"
@@ -62,7 +65,7 @@ const FilesToolbar = ({
           className="pr-32 pl-12"
           id={searchId}
           onChange={(event) => onInput(event.target.value)}
-          placeholder="Find a file by name"
+          placeholder={t.find}
           type="search"
           value={input}
         />
@@ -70,14 +73,14 @@ const FilesToolbar = ({
           aria-live="polite"
           className="text-muted-foreground text-label pointer-events-none absolute right-4"
         >
-          {pending ? "Searching…" : ""}
+          {pending ? t.searching : ""}
         </p>
       </form>
       <div className="relative flex shrink-0 items-center">
         <span className="text-muted-foreground pointer-events-none absolute left-3.5 flex items-center gap-2">
           <ArrowDownUpIcon aria-hidden="true" className="size-5" />
           <label className="text-label" htmlFor={sortId}>
-            Sort
+            {t.sort}
           </label>
         </span>
         <select
@@ -91,8 +94,8 @@ const FilesToolbar = ({
           value={sort}
         >
           {SORTS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+            <option key={option} value={option}>
+              {t.sorts[option]}
             </option>
           ))}
         </select>

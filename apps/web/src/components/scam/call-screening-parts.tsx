@@ -11,7 +11,24 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { useLocale } from "@/i18n/locale";
+import { callScreening as en } from "@/i18n/messages/en/call-screening";
+import { callScreening as es } from "@/i18n/messages/es/call-screening";
+
 import type { CallState } from "./use-call-screening";
+
+const useCallScreeningMessages = () => (useLocale() === "es" ? es : en);
+
+const callFlagReason = (reason: string, messages: typeof en): string => {
+  const reasons = new Map([
+    [en.moneyReason, messages.moneyReason],
+    [en.credentialsReason, messages.credentialsReason],
+    [en.remoteReason, messages.remoteReason],
+    [en.secrecyReason, messages.secrecyReason],
+  ]);
+
+  return reasons.get(reason) ?? reason;
+};
 
 const callTime = (milliseconds: number): string => {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -19,17 +36,16 @@ const callTime = (milliseconds: number): string => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 };
 
-const CALL_PRIVACY =
-  "LifeLink does not record calls. Sound from your microphone goes to Google’s Gemini to make the captions. When you stop, LifeLink saves a short summary of warning signs, not the captions.";
+const CallPrivacy = ({ practice = false }: { practice?: boolean }) => {
+  const messages = useCallScreeningMessages();
 
-const CallPrivacy = ({ practice = false }: { practice?: boolean }) => (
-  <p className="text-muted-foreground text-label flex items-start gap-2">
-    <LockKeyholeIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
-    {practice
-      ? "No microphone or cloud AI is used. A short summary is saved in Earlier checks."
-      : CALL_PRIVACY}
-  </p>
-);
+  return (
+    <p className="text-muted-foreground text-label flex items-start gap-2">
+      <LockKeyholeIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
+      {practice ? messages.practicePrivacy : messages.privacy}
+    </p>
+  );
+};
 
 const CallAlert = ({
   flag,
@@ -40,21 +56,22 @@ const CallAlert = ({
   state: CallState;
   onMute: () => void;
 }) => {
+  const messages = useCallScreeningMessages();
   const headline = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     headline.current?.focus();
   }, []);
 
-  let soundLabel = "Alert ready";
+  let soundLabel = messages.alertReady;
 
   if (state.muted) {
-    soundLabel = "Alert sound is off";
+    soundLabel = messages.alertOff;
   } else if (state.alertStatus === "playing") {
-    soundLabel = "Alert playing out loud";
+    soundLabel = messages.alertPlaying;
   } else if (state.alertStatus === "played") {
-    soundLabel = "Alert played out loud";
+    soundLabel = messages.alertPlayed;
   } else if (state.alertStatus === "unavailable") {
-    soundLabel = "Sound could not play. Read the warning on screen.";
+    soundLabel = messages.alertUnavailable;
   }
 
   return (
@@ -72,10 +89,10 @@ const CallAlert = ({
             ref={headline}
             tabIndex={-1}
           >
-            This sounds like a scam.
+            {messages.scamWarning}
           </h2>
           <p className="mt-2 text-xl leading-relaxed font-medium sm:text-2xl">
-            Do not share codes, passwords, or money. Ask someone you trust.
+            {messages.protect}
           </p>
         </div>
         <div className="ml-auto flex max-w-full flex-col items-end gap-2">
@@ -89,16 +106,19 @@ const CallAlert = ({
             ) : (
               <VolumeXIcon aria-hidden="true" />
             )}
-            {state.muted ? "Unmute alert" : "Mute alert"}
+            {state.muted ? messages.unmute : messages.mute}
           </Button>
         </div>
       </div>
       <div className="flex flex-col gap-2 sm:pl-[5.778rem]">
         <p className="text-muted-foreground text-body font-medium">
-          {state.practice ? "Said in the practice call" : "What LifeLink heard"}{" "}
-          · {callTime(flag.timeMs)} {state.practice ? "in" : "into the call"}
+          {state.practice ? messages.practiceHeard : messages.heard} ·{" "}
+          {callTime(flag.timeMs)}{" "}
+          {state.practice ? messages.practiceTime : messages.callTime}
         </p>
-        <h3 className="text-xl font-semibold">{flag.reason}</h3>
+        <h3 className="text-xl font-semibold">
+          {callFlagReason(flag.reason, messages)}
+        </h3>
         <blockquote className="text-body pl-5 leading-relaxed break-words">
           “{flag.quote}”
         </blockquote>
@@ -116,6 +136,7 @@ const CallCaptions = ({
   flags: CallFlag[];
   practice: boolean;
 }) => {
+  const messages = useCallScreeningMessages();
   const [bigger, setBigger] = useState(true);
   const titleId = useId();
 
@@ -123,32 +144,33 @@ const CallCaptions = ({
     <section aria-labelledby={titleId} className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-section font-semibold" id={titleId}>
-          {practice ? "What’s being said" : "Heard on the call"}
+          {practice ? messages.practiceCaptions : messages.callCaptions}
         </h2>
-        <div aria-label="Caption size" className="flex flex-wrap gap-1">
+        <div aria-label={messages.captionSize} className="flex flex-wrap gap-1">
           <Button
             aria-pressed={!bigger}
             onClick={() => setBigger(false)}
             variant={bigger ? "ghost" : "outline"}
           >
-            Smaller words
+            {messages.smaller}
           </Button>
           <Button
             aria-pressed={bigger}
             onClick={() => setBigger(true)}
             variant={bigger ? "outline" : "ghost"}
           >
-            Bigger words
+            {messages.bigger}
           </Button>
         </div>
       </div>
       <p className="text-muted-foreground text-body">
-        {practice
-          ? "Practice voices are labeled. Real call captions mix both voices and are not labeled."
-          : "These captions mix both voices and may have mistakes."}
+        {practice ? messages.practiceVoices : messages.mixedVoices}
+      </p>
+      <p className="text-muted-foreground text-body">
+        {messages.languageLimit}
       </p>
       <div
-        aria-label="Captions"
+        aria-label={messages.captions}
         aria-live="polite"
         aria-relevant="additions text"
         className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto overscroll-contain"
@@ -158,12 +180,14 @@ const CallCaptions = ({
       >
         {captions.length === 0 ? (
           <p className="text-muted-foreground py-5 text-xl">
-            The call’s words will appear here.
+            {messages.captionsEmpty}
           </p>
         ) : null}
         {captions.map((caption) => {
           const flag = flags.find((item) => item.captionId === caption.id);
-          const label = caption.speaker === "caller" ? "Caller" : "You";
+
+          const label =
+            caption.speaker === "caller" ? messages.caller : messages.you;
 
           return (
             <div
@@ -198,7 +222,9 @@ const CallCaptions = ({
                   )}
                 >
                   {callTime(caption.timeMs)}
-                  {flag ? ` · Warning sign · ${flag.reason}` : ""}
+                  {flag
+                    ? ` · ${messages.warningSign} · ${callFlagReason(flag.reason, messages)}`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -209,22 +235,31 @@ const CallCaptions = ({
   );
 };
 
-const CallWarningGuide = () => (
-  <aside className="text-body flex flex-col gap-4 leading-relaxed">
-    <h2 className="text-xl font-semibold">
-      LifeLink can warn you out loud about:
-    </h2>
-    <ul className="marker:text-accent-ink list-disc space-y-3 pl-5">
-      <li>requests for a code or password</li>
-      <li>requests for money or gift cards</li>
-      <li>requests to control your computer or phone</li>
-      <li>pressure to hurry and keep a secret</li>
-    </ul>
-    <p className="border-rule border-t pt-4">
-      It can miss warning signs. If a call feels wrong, hang up and call back on
-      a number you already trust.
-    </p>
-  </aside>
-);
+const CallWarningGuide = () => {
+  const messages = useCallScreeningMessages();
 
-export { CallAlert, CallCaptions, CallPrivacy, CallWarningGuide, callTime };
+  return (
+    <aside className="text-body flex flex-col gap-4 leading-relaxed">
+      <h2 className="text-xl font-semibold">{messages.guideTitle}</h2>
+      <ul className="marker:text-accent-ink list-disc space-y-3 pl-5">
+        <li>{messages.codes}</li>
+        <li>{messages.money}</li>
+        <li>{messages.remote}</li>
+        <li>{messages.urgency}</li>
+      </ul>
+      <p className="border-rule border-messages pt-4">
+        {messages.guideCaution}
+      </p>
+    </aside>
+  );
+};
+
+export {
+  CallAlert,
+  CallCaptions,
+  CallPrivacy,
+  CallWarningGuide,
+  callTime,
+  callFlagReason,
+  useCallScreeningMessages,
+};

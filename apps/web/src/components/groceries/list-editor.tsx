@@ -29,6 +29,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyNote } from "@/components/app/states";
+import { currentMessages, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { money } from "@/lib/format";
 
@@ -48,7 +50,12 @@ const quantityWords = (item: GroceryItem): string => {
     return "";
   }
 
-  return item.unit ? `${item.quantity} ${item.unit}` : `× ${item.quantity}`;
+  const unit =
+    item.unit === null
+      ? null
+      : (currentMessages().groceries.units[item.unit]?.short ?? item.unit);
+
+  return unit ? `${item.quantity} ${unit}` : `× ${item.quantity}`;
 };
 
 /** The list as plain lines, for copying into a text or an email. */
@@ -62,7 +69,7 @@ const listAsText = (list: Doc<"groceryLists">): string => {
 
   const notes =
     list.preferences.length > 0
-      ? `\n\nNotes: ${list.preferences.join("; ")}`
+      ? `\n\n${currentMessages().groceries.notes(list.preferences.join("; "))}`
       : "";
 
   return `${list.name}\n${lines.join("\n")}${notes}`;
@@ -81,6 +88,7 @@ const ItemRow = ({
   const removeItem = useMutation(api.groceries.removeItem);
   const restoreItem = useMutation(api.groceries.restoreItem);
   const checkboxId = useId();
+  const t = useMessages().groceries;
 
   const remove = async (): Promise<void> => {
     try {
@@ -91,9 +99,9 @@ const ItemRow = ({
       }
 
       // The X is easy to hit by mistake, so every removal can be undone.
-      toast(`Removed ${removed.item.name}.`, {
+      toast(t.removed(removed.item.name), {
         action: {
-          label: "Undo",
+          label: t.undo,
           onClick: async () => {
             try {
               await restoreItem({ ...removed, listId });
@@ -134,21 +142,21 @@ const ItemRow = ({
           htmlFor={checkboxId}
         >
           {item.name}
-          {item.checked ? <span className="sr-only"> (in cart)</span> : null}
+          {item.checked ? <span className="sr-only">{t.inCartSr}</span> : null}
         </Label>
         <span className="text-muted-foreground text-base">
           {[
             quantityWords(item),
             item.estimatedCents === null
               ? ""
-              : `about ${money(item.estimatedCents)}`,
+              : t.about(money(item.estimatedCents)),
           ]
             .filter((part) => part.length > 0)
             .join(" · ")}
         </span>
       </div>
       <Button
-        aria-label={`Remove ${item.name}`}
+        aria-label={t.removeItem(item.name)}
         onClick={remove}
         size="icon"
         variant="ghost"
@@ -166,11 +174,16 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
   const [unit, setUnit] = useState("");
   const [price, setPrice] = useState("");
   const baseId = useId();
+  const t = useMessages().groceries;
 
   const priceInvalid =
     price.trim().length > 0 && centsFromDollars(price) === null;
 
-  const quantityError = groceryQuantityError(Number(quantity), unit);
+  const rawQuantityError = groceryQuantityError(Number(quantity), unit);
+
+  const quantityError =
+    rawQuantityError === null ? null : translateServerMessage(rawQuantityError);
+
   const fractional = groceryUnit(unit)?.fractional === true;
 
   return (
@@ -205,16 +218,16 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
       }}
     >
       <div className="flex flex-col gap-2 @min-[32em]:col-span-3">
-        <Label htmlFor={`${baseId}-name`}>Item</Label>
+        <Label htmlFor={`${baseId}-name`}>{t.item}</Label>
         <Input
           id={`${baseId}-name`}
           onChange={(event) => setName(event.target.value)}
-          placeholder="Bananas"
+          placeholder={t.itemPlaceholder}
           value={name}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${baseId}-quantity`}>Quantity</Label>
+        <Label htmlFor={`${baseId}-quantity`}>{t.quantity}</Label>
         <Input
           aria-describedby={
             quantityError ? `${baseId}-quantity-error` : undefined
@@ -231,7 +244,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${baseId}-unit`}>Unit</Label>
+        <Label htmlFor={`${baseId}-unit`}>{t.unit}</Label>
         <UnitSelect
           id={`${baseId}-unit`}
           onValueChange={setUnit}
@@ -239,7 +252,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${baseId}-price`}>Total estimate ($)</Label>
+        <Label htmlFor={`${baseId}-price`}>{t.totalEstimate}</Label>
         <Input
           aria-describedby={`${baseId}-price-help${priceInvalid ? ` ${baseId}-price-error` : ""}`}
           aria-invalid={priceInvalid}
@@ -263,8 +276,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         className="text-muted-foreground text-base @min-[32em]:col-span-3"
         id={`${baseId}-price-help`}
       >
-        Estimate the total for this quantity after discounts. Enter 0 for a free
-        item, or leave blank if unsure.
+        {t.estimateHelp}
       </p>
       {priceInvalid ? (
         <p
@@ -272,7 +284,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
           id={`${baseId}-price-error`}
           role="alert"
         >
-          Enter an amount such as 3.50, or leave the estimate blank.
+          {t.estimateInvalid}
         </p>
       ) : null}
       <Button
@@ -283,7 +295,7 @@ const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
         type="submit"
       >
         <PlusIcon />
-        Add item
+        {t.addItem}
       </Button>
     </form>
   );
@@ -303,6 +315,7 @@ const DetailsForm = ({
   const [budget, setBudget] = useState(dollarsFromCents(list.budgetCents));
   const [preferences, setPreferences] = useState(list.preferences.join("\n"));
   const baseId = useId();
+  const t = useMessages().groceries;
 
   const budgetInvalid =
     budget.trim().length > 0 && centsFromDollars(budget) === null;
@@ -320,7 +333,7 @@ const DetailsForm = ({
             name,
             preferences: preferences.split("\n"),
           });
-          toast.success("List details saved.");
+          toast.success(t.detailsSaved);
           onDone();
         } catch (error) {
           toast.error(errorText(error));
@@ -329,7 +342,7 @@ const DetailsForm = ({
     >
       <div className="grid gap-4 @min-[32em]:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor={`${baseId}-name`}>List name</Label>
+          <Label htmlFor={`${baseId}-name`}>{t.listName}</Label>
           <Input
             id={`${baseId}-name`}
             onChange={(event) => setName(event.target.value)}
@@ -337,7 +350,7 @@ const DetailsForm = ({
           />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor={`${baseId}-budget`}>Budget for this list ($)</Label>
+          <Label htmlFor={`${baseId}-budget`}>{t.budgetLabel}</Label>
           <Input
             aria-describedby={
               budgetInvalid ? `${baseId}-budget-error` : undefined
@@ -346,7 +359,7 @@ const DetailsForm = ({
             id={`${baseId}-budget`}
             inputMode="decimal"
             onChange={(event) => setBudget(event.target.value)}
-            placeholder="No budget"
+            placeholder={t.noBudget}
             value={budget}
           />
           {budgetInvalid ? (
@@ -355,32 +368,30 @@ const DetailsForm = ({
               id={`${baseId}-budget-error`}
               role="alert"
             >
-              Enter an amount such as 60.00, or leave it blank for no budget.
+              {t.budgetInvalid}
             </p>
           ) : null}
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${baseId}-preferences`}>
-          Preferences, one per line
-        </Label>
+        <Label htmlFor={`${baseId}-preferences`}>{t.preferences}</Label>
         <Textarea
           id={`${baseId}-preferences`}
           onChange={(event) => setPreferences(event.target.value)}
-          placeholder={"Low-sodium where possible\nStore brand is fine"}
+          placeholder={t.preferencesPlaceholder}
           rows={3}
           value={preferences}
         />
         <p className="text-muted-foreground text-lg leading-7">
-          Brands you like, things to avoid, or dietary needs. Up to 10.
+          {t.preferencesHint}
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
         <Button disabled={budgetInvalid} type="submit">
-          Save details
+          {t.saveDetails}
         </Button>
         <Button onClick={onDone} type="button" variant="ghost">
-          Cancel
+          {t.cancel}
         </Button>
         <Button
           className="sm:ml-auto"
@@ -389,7 +400,7 @@ const DetailsForm = ({
           variant="destructive"
         >
           <Trash2Icon />
-          Delete list
+          {t.deleteList}
         </Button>
       </div>
     </form>
@@ -430,11 +441,12 @@ const UnmarkDialog = ({
 }) => {
   const unmarkAll = useMutation(api.groceries.unmarkAll);
   const [resetting, setResetting] = useState(false);
+  const t = useMessages().groceries;
   const inCart = list.items.filter((item) => item.checked).length;
 
   return (
     <Dialog
-      description={`This unticks ${inCart === 1 ? "the 1 item" : `all ${inCart} items`} in your cart, so the list is ready for another trip.`}
+      description={t.unmarkDescription(inCart)}
       finalFocus={finalFocus}
       onOpenChange={(next) => {
         if (!next && !resetting) {
@@ -442,11 +454,11 @@ const UnmarkDialog = ({
         }
       }}
       open={open}
-      title="Unmark every item?"
+      title={t.unmarkTitle}
     >
       <div className="flex flex-wrap gap-3">
         <Button disabled={resetting} onClick={onClose} variant="outline">
-          Keep them ticked
+          {t.keepTicked}
         </Button>
         <Button
           aria-busy={resetting}
@@ -466,7 +478,7 @@ const UnmarkDialog = ({
           }}
         >
           <RotateCcwIcon />
-          {resetting ? "Unmarking…" : "Unmark all"}
+          {resetting ? t.unmarking : t.unmarkAll}
         </Button>
       </div>
     </Dialog>
@@ -492,6 +504,7 @@ const TripActions = ({
   const hasMarkedItems = list.items.some((item) => item.checked);
   const allInCart = hasMarkedItems && list.items.every((item) => item.checked);
   const archived = list.archivedAt !== undefined;
+  const t = useMessages().groceries;
 
   return (
     <>
@@ -508,12 +521,12 @@ const TripActions = ({
       />
       {archived ? null : (
         <section
-          aria-label="Done shopping?"
+          aria-label={t.doneShopping}
           className="border-rule flex flex-col gap-3 border-t pt-5"
         >
-          <SectionHeading>Done shopping?</SectionHeading>
+          <SectionHeading>{t.doneShopping}</SectionHeading>
           {allInCart ? (
-            <p className="text-lg leading-7">Everything is in your cart.</p>
+            <p className="text-lg leading-7">{t.allInCart}</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -522,7 +535,7 @@ const TripActions = ({
               variant={allInCart ? "default" : "outline"}
             >
               <CheckCheckIcon />
-              Finish this trip
+              {t.finishTrip}
             </Button>
             <Button
               disabled={!hasMarkedItems}
@@ -534,27 +547,24 @@ const TripActions = ({
               variant="outline"
             >
               <RotateCcwIcon />
-              Unmark all
+              {t.unmarkAll}
             </Button>
           </div>
-          <p className="text-muted-foreground text-base">
-            Finishing moves this list to Past lists, where you can reuse it
-            later.
-          </p>
+          <p className="text-muted-foreground text-base">{t.finishHint}</p>
         </section>
       )}
       <section
-        aria-label="Take your list with you"
+        aria-label={t.takeWithYou}
         className="border-rule flex flex-col gap-3 border-t pt-5"
       >
-        <SectionHeading>Take your list with you</SectionHeading>
+        <SectionHeading>{t.takeWithYou}</SectionHeading>
         {tools}
       </section>
       <section
-        aria-label="Use this list again"
+        aria-label={t.useAgain}
         className="border-rule flex flex-col gap-3 border-t pt-5"
       >
-        <SectionHeading>Use this list again</SectionHeading>
+        <SectionHeading>{t.useAgain}</SectionHeading>
         <div className="flex flex-wrap gap-3">
           <Button
             className="whitespace-normal"
@@ -563,7 +573,7 @@ const TripActions = ({
             variant="outline"
           >
             <CopyPlusIcon />
-            Start a new list from this one
+            {t.startFromThis}
           </Button>
           <Button
             aria-pressed={list.usual === true}
@@ -572,13 +582,11 @@ const TripActions = ({
             variant="outline"
           >
             <StarIcon className={list.usual ? "fill-current" : undefined} />
-            {list.usual ? "This is your usual list" : "Make this my usual list"}
+            {list.usual ? t.thisIsUsual : t.makeUsual}
           </Button>
         </div>
         <p className="text-muted-foreground text-base">
-          {list.usual
-            ? "New lists can start from this one. Press again to stop."
-            : "Your usual list is what you need most weeks. Each new list can start from it."}
+          {list.usual ? t.usualOnHint : t.usualHint}
         </p>
       </section>
     </>
@@ -605,6 +613,7 @@ const ListEditor = ({
   const inCart = list.items.filter((item) => item.checked).length;
   const toGet = list.items.length - inCart;
   const ordered = shoppingOrder(list.items);
+  const t = useMessages().groceries;
 
   // A ticked item moves to the bottom; keep focus at the same spot so a
   // keyboard or screen reader user carries on with the next item.
@@ -637,12 +646,12 @@ const ListEditor = ({
             {list.name}
           </h2>
           <Button
-            aria-label="Usual list"
+            aria-label={t.usual}
             aria-pressed={list.usual === true}
             className="-my-2 shrink-0"
             onClick={onToggleUsual}
             size="icon"
-            title={list.usual ? "Your usual list" : "Make this your usual list"}
+            title={list.usual ? t.yourUsual : t.makeUsualTitle}
             variant="ghost"
           >
             <StarIcon className={list.usual ? "fill-current" : undefined} />
@@ -653,24 +662,21 @@ const ListEditor = ({
             className="max-sm:size-control -my-2 shrink-0 max-sm:px-0"
             onClick={() => setEditingDetails((open) => !open)}
             ref={detailsTrigger}
-            title="Edit list details"
+            title={t.editListDetails}
             variant="outline"
           >
             <PencilIcon />
-            <span className="max-sm:sr-only">Edit details</span>
+            <span className="max-sm:sr-only">{t.editDetails}</span>
           </Button>
         </div>
         <p className="text-lg">
-          {toGet} {toGet === 1 ? "item" : "items"} to get
-          {inCart > 0 ? ` · ${inCart} in your cart` : null}
+          {t.toGet(toGet)}
+          {inCart > 0 ? t.inCart(inCart) : null}
         </p>
       </div>
       {finishedOn === null ? null : (
         <div className="bg-surface flex flex-col gap-3 rounded-xl p-5">
-          <p className="text-lg leading-7">
-            You finished this trip on {finishedOn}. It is kept under Past lists
-            so you can reuse it.
-          </p>
+          <p className="text-lg leading-7">{t.finishedNote(finishedOn)}</p>
           <div className="flex flex-wrap gap-3">
             <Button
               className="whitespace-normal"
@@ -678,7 +684,7 @@ const ListEditor = ({
               onClick={onCopy}
             >
               <CopyPlusIcon />
-              Start a new list from this one
+              {t.startFromThis}
             </Button>
             <Button
               className="whitespace-normal"
@@ -686,7 +692,7 @@ const ListEditor = ({
               variant="outline"
             >
               <ArchiveRestoreIcon />
-              Move back to current lists
+              {t.moveBack}
             </Button>
             <Button
               className="text-negative whitespace-normal"
@@ -694,7 +700,7 @@ const ListEditor = ({
               variant="outline"
             >
               <Trash2Icon />
-              Delete permanently
+              {t.deletePermanently}
             </Button>
           </div>
         </div>
@@ -716,16 +722,14 @@ const ListEditor = ({
       </div>
       <details>
         <summary className="min-h-control cursor-pointer py-3 text-lg font-medium">
-          Add items
+          {t.addItems}
         </summary>
         <AddItemForm listId={list._id} />
       </details>
       {list.items.length === 0 ? (
-        <EmptyNote>
-          Nothing on this list yet. Open Add items to add the first item.
-        </EmptyNote>
+        <EmptyNote>{t.nothingOnListHint}</EmptyNote>
       ) : (
-        <ul aria-label={`Items on ${list.name}`} ref={itemList}>
+        <ul aria-label={t.itemsOn(list.name)} ref={itemList}>
           {ordered.map((item, index) => (
             <ItemRow
               item={item}
@@ -738,13 +742,10 @@ const ListEditor = ({
           ))}
         </ul>
       )}
-      <p className="text-muted-foreground text-lg leading-7">
-        Tick an item when it is in your cart. It moves to the bottom, stays in
-        the total, and is left out when you copy or print the list.
-      </p>
+      <p className="text-muted-foreground text-lg leading-7">{t.tickHint}</p>
       {list.preferences.length > 0 ? (
         <ul
-          aria-label="List preferences"
+          aria-label={t.listPreferences}
           className="text-muted-foreground flex list-inside list-disc flex-col gap-1 text-lg leading-7"
         >
           {list.preferences.map((preference) => (

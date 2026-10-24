@@ -1,5 +1,6 @@
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 
+import { currentIntlLocale, currentMessages } from "@/i18n/locale";
 import {
   DAY,
   HOUR,
@@ -9,17 +10,6 @@ import {
 } from "@/lib/format";
 
 type Message = Doc<"messages">;
-
-const STATUS_WORDS: Record<Message["status"], string> = {
-  delivered: "Delivered",
-  draft: "Draft, not sent",
-  failed: "Not sent",
-  read: "Read",
-  received: "Received",
-  sending: "Sending…",
-  sent: "Sent",
-  unknown: "Not sure it was sent",
-};
 
 /** Statuses worth repeating under every bubble, not just the latest one. */
 const NEEDS_ATTENTION = new Set<Message["status"]>([
@@ -42,21 +32,22 @@ const dividerLabel = (
 ): string => {
   const time = formatTime(timestamp, timeZone);
   const day = relativeDay(timestamp, timeZone, now);
+  const { format, threads } = currentMessages();
 
-  if (day === "Today" || day === "Yesterday") {
-    return `${day} at ${time}`;
+  if (day === format.today || day === format.yesterday) {
+    return threads.dividerAt(day, time);
   }
 
   if (now - timestamp < RECENT_DAYS * DAY && timestamp <= now) {
-    const weekday = new Intl.DateTimeFormat("en-US", {
+    const weekday = new Intl.DateTimeFormat(currentIntlLocale(), {
       timeZone,
       weekday: "long",
     }).format(timestamp);
 
-    return `${weekday} at ${time}`;
+    return threads.dividerAt(weekday, time);
   }
 
-  return `${formatShortDay(timestamp, timeZone)} at ${time}`;
+  return threads.dividerAt(formatShortDay(timestamp, timeZone), time);
 };
 
 interface ConversationItem {
@@ -157,18 +148,16 @@ const conversationItems = (
 /** One line for the list: who spoke last and what they said. */
 const previewOf = (message: Message): string => {
   const photos = message.photoIds.length;
-  const photoWords = photos === 1 ? "A photo" : `${photos} photos`;
+  const { threads } = currentMessages();
+
+  const photoWords =
+    photos === 1 ? threads.previewOnePhoto : threads.previewManyPhotos(photos);
+
   const words = message.body.trim() || (photos > 0 ? photoWords : "");
 
-  return message.direction === "outgoing" ? `You: ${words}` : words;
+  return message.direction === "outgoing" ? threads.previewYou(words) : words;
 };
 
-export {
-  STATUS_WORDS,
-  conversationItems,
-  dividerLabel,
-  previewOf,
-  receivedMessageActions,
-};
+export { conversationItems, dividerLabel, previewOf, receivedMessageActions };
 
 export type { ConversationItem, Message, ReceivedMessageActions };

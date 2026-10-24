@@ -22,12 +22,14 @@ import { useId, useRef, useState } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
+import { currentMessages, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
 
 import { CallHistory, CallScreening } from "./call-screening";
 import { PhotoInput, photoError } from "./photo-input";
-import { KIND_WORDS, ScamResult, VERDICT_WORDS } from "./scam-result";
+import { ScamResult, verdictOf } from "./scam-result";
 import type { Review } from "./scam-result";
 
 const errorText = (cause: unknown): string =>
@@ -36,9 +38,9 @@ const errorText = (cause: unknown): string =>
 type Source = "email" | "screenshot" | "text";
 
 const SOURCES = [
-  { icon: TextIcon, label: "Text", value: "text" },
-  { icon: ImageIcon, label: "Photo", value: "screenshot" },
-  { icon: MailIcon, label: "Email", value: "email" },
+  { icon: TextIcon, value: "text" },
+  { icon: ImageIcon, value: "screenshot" },
+  { icon: MailIcon, value: "email" },
 ] as const;
 
 interface EmailChoice {
@@ -61,29 +63,30 @@ const EmailPicker = ({
   selected: EmailChoice | null;
 }) => {
   const id = useId();
+  const t = useMessages().scam;
 
   if (emails === undefined) {
-    return <LoadingRows label="Loading your emails" layout="checks" rows={2} />;
+    return <LoadingRows label={t.loadingEmails} layout="checks" rows={2} />;
   }
 
   if (emails.length === 0) {
     return (
       <p className="text-lg">
-        There are no recent emails to choose from.{" "}
+        {t.noRecentEmails}
         <Link
           className="inline-flex min-h-12 items-center font-semibold underline"
           href="/email"
         >
-          Open Email
+          {t.openEmail}
         </Link>
-        , or type the message’s words instead.
+        {t.noRecentEmailsRest}
       </p>
     );
   }
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <Label htmlFor={id}>Choose an email</Label>
+      <Label htmlFor={id}>{t.chooseEmail}</Label>
       <select
         className="border-control bg-raised text-foreground min-h-control text-body w-full min-w-0 rounded-md border px-4"
         disabled={disabled}
@@ -91,21 +94,21 @@ const EmailPicker = ({
         onChange={(event) => onChange(event.target.value)}
         value={selected?.id ?? ""}
       >
-        <option value="">Choose from your recent emails</option>
+        <option value="">{t.chooseRecent}</option>
         {emails.map((email) => (
           <option key={email.id} value={email.id}>
             {email.fromName ?? email.fromAddress} ·{" "}
-            {email.subject || "(No subject)"}
+            {email.subject || t.noSubject}
           </option>
         ))}
       </select>
       {selected ? (
         <div className="border-rule flex flex-col gap-1 border-b py-3 wrap-anywhere">
           <p className="text-muted-foreground text-label">
-            From {selected.fromName ?? selected.fromAddress}
+            {t.from(selected.fromName ?? selected.fromAddress)}
           </p>
           <p className="text-body font-semibold">
-            {selected.subject || "(No subject)"}
+            {selected.subject || t.noSubject}
           </p>
         </div>
       ) : null}
@@ -118,16 +121,18 @@ const photoAvailability = (
   loaded: boolean,
   configured: boolean
 ): string | null => {
+  const t = currentMessages().scam.photo;
+
   if (practice) {
-    return "Practice mode is on. Photos are not checked or sent to an AI service.";
+    return t.practice;
   }
 
   if (!loaded) {
-    return "Checking whether photo checks are available…";
+    return t.availabilityChecking;
   }
 
   if (!configured) {
-    return "Photo checks are not available right now. Your photo will not be uploaded.";
+    return t.unavailable;
   }
 
   return null;
@@ -181,20 +186,16 @@ const formReady = ({
   );
 };
 
-const submitLabel = (source: Source, busy: boolean): string => {
+const submitLabel = (
+  source: Source,
+  busy: boolean,
+  t: Messages["scam"]
+): string => {
   if (busy) {
-    return source === "screenshot"
-      ? "Uploading your photo…"
-      : "Checking the message…";
+    return source === "screenshot" ? t.uploading : t.checkingMessage;
   }
 
-  const labels: Record<Source, string> = {
-    email: "Check this email",
-    screenshot: "Check this photo",
-    text: "Check this message",
-  };
-
-  return labels[source];
+  return t.submit[source];
 };
 
 const CheckPrivacyNote = ({
@@ -208,21 +209,16 @@ const CheckPrivacyNote = ({
   practice: boolean;
   source: Source;
 }) => {
+  const t = useMessages().scam;
+
   if (source === "email" && email?.mode === "simulated") {
     return (
-      <p className="text-muted-foreground text-label">
-        This is a practice email. It is checked on this device without cloud AI.
-      </p>
+      <p className="text-muted-foreground text-label">{t.practiceEmailNote}</p>
     );
   }
 
   if (cloudAvailable) {
-    return (
-      <p className="text-muted-foreground text-label">
-        An AI service reads this to check it. Leave out passwords and card
-        numbers.
-      </p>
-    );
+    return <p className="text-muted-foreground text-label">{t.cloudNote}</p>;
   }
 
   if (source === "screenshot") {
@@ -231,9 +227,7 @@ const CheckPrivacyNote = ({
 
   return (
     <p className="text-muted-foreground text-label">
-      {practice
-        ? "Practice checks use common warning signs. Nothing is sent to an AI service."
-        : "AI checks are not available right now. LifeLink uses common warning signs instead."}
+      {practice ? t.practiceNote : t.localNote}
     </p>
   );
 };
@@ -276,6 +270,7 @@ const CheckForm = ({
   const guidanceId = useId();
   const photo = source === "screenshot";
   const selected = emails?.find((item) => item.id === chosenEmailId) ?? null;
+  const t = useMessages().scam;
 
   const ready = formReady({
     email: selected,
@@ -295,9 +290,7 @@ const CheckForm = ({
     if (photo && file !== null) {
       // Both the UI and the server reject unavailable photo checks before storage.
       if (unavailable !== null) {
-        throw new Error(
-          "Photo checks aren’t available. Type the words instead."
-        );
+        throw new Error(t.photo.unavailableType);
       }
 
       const problem = photoError(file);
@@ -350,9 +343,7 @@ const CheckForm = ({
       }}
     >
       <fieldset className="min-w-0" disabled={busy} id="message-check-sources">
-        <legend className="sr-only">
-          How would you like to show the message?
-        </legend>
+        <legend className="sr-only">{t.howToShow}</legend>
         <div className="flex flex-wrap gap-2">
           {SOURCES.map((option) => (
             <label
@@ -373,7 +364,7 @@ const CheckForm = ({
                 value={option.value}
               />
               <option.icon aria-hidden="true" className="size-5 shrink-0" />
-              {option.label}
+              {t.sources[option.value]}
             </label>
           ))}
         </div>
@@ -391,7 +382,7 @@ const CheckForm = ({
       ) : null}
       {source === "text" ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor={textId}>The message’s words</Label>
+          <Label htmlFor={textId}>{t.messageWords}</Label>
           <Textarea
             className="text-lg"
             disabled={busy}
@@ -400,7 +391,7 @@ const CheckForm = ({
             onChange={(event) => {
               setText(event.target.value);
             }}
-            placeholder="Paste or type the words here"
+            placeholder={t.messageWordsPlaceholder}
             ref={textRef}
             rows={6}
             value={text}
@@ -419,7 +410,7 @@ const CheckForm = ({
             }}
           />
           <div className="flex flex-col gap-2">
-            <Label htmlFor={noteId}>Anything to add? (optional)</Label>
+            <Label htmlFor={noteId}>{t.addNote}</Label>
             <Textarea
               className="text-body min-h-20"
               disabled={busy}
@@ -428,7 +419,7 @@ const CheckForm = ({
               onChange={(event) => {
                 setNote(event.target.value);
               }}
-              placeholder="For example, who it claimed to be from"
+              placeholder={t.addNotePlaceholder}
               rows={2}
               value={note}
             />
@@ -460,26 +451,16 @@ const CheckForm = ({
           type="submit"
         >
           <ShieldCheckIcon aria-hidden="true" />
-          {submitLabel(source, busy)}
+          {submitLabel(source, busy, t)}
         </Button>
       </div>
       {busy ? (
         <output aria-live="polite" className="text-muted-foreground text-label">
-          {photo
-            ? "Uploading your photo. Keep this page open; reading the words comes next."
-            : "Preparing your check…"}
+          {photo ? t.uploadingNote : t.preparing}
         </output>
       ) : null}
     </form>
   );
-};
-
-const STATUS_PILL: Record<
-  Exclude<Doc<"scamReviews">["status"], "done">,
-  string
-> = {
-  failed: "Didn’t finish",
-  reviewing: "Checking",
 };
 
 const HistoryList = ({
@@ -493,24 +474,24 @@ const HistoryList = ({
   reviews: Doc<"scamReviews">[] | undefined;
   timeZone: string;
 }) => {
+  const messages = useMessages();
+  const t = messages.scam;
+
   if (reviews === undefined) {
-    return (
-      <LoadingRows layout="checks" label="Loading earlier checks" rows={3} />
-    );
+    return <LoadingRows layout="checks" label={t.loadingEarlier} rows={3} />;
   }
 
   if (reviews.length === 0) {
     return (
-      <p className="text-muted-foreground py-5 text-lg">
-        Your message, photo and call checks will appear here.
-      </p>
+      <p className="text-muted-foreground py-5 text-lg">{t.earlierEmpty}</p>
     );
   }
 
   return (
     <ul>
       {reviews.map((review) => {
-        const verdict = VERDICT_WORDS[review.verdict];
+        const verdict = verdictOf(review.verdict, messages.scamResult);
+        const kind = messages.scamResult.kinds[review.inputKind];
         const email = emails?.find((item) => item.id === review.emailId);
 
         const Icon =
@@ -530,23 +511,20 @@ const HistoryList = ({
               />
               <span className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
                 <span className="line-clamp-2 text-lg font-semibold wrap-anywhere">
-                  {email?.subject ||
-                    review.inputText?.trim() ||
-                    KIND_WORDS[review.inputKind]}
+                  {email?.subject || review.inputText?.trim() || kind}
                 </span>
                 <span className="text-muted-foreground text-label">
-                  {KIND_WORDS[review.inputKind]} ·{" "}
-                  {ago(review.createdAt, timeZone)}
-                  {review.mode === "simulated" ? " · Practice" : ""}
+                  {kind} · {ago(review.createdAt, timeZone)}
+                  {review.mode === "simulated" ? t.practiceSuffix : ""}
                 </span>
               </span>
               <Pill tone={review.status === "done" ? verdict.tone : "neutral"}>
-                {review.status === "done"
-                  ? verdict.label
-                  : STATUS_PILL[review.status]}
+                {review.status === "done" && verdict.label}
+                {review.status === "failed" && t.didNotFinish}
+                {review.status === "reviewing" && t.checking}
               </Pill>
               <span className="text-label min-h-control flex items-center gap-2 font-medium">
-                Review
+                {t.review}
                 <ArrowRightIcon aria-hidden="true" className="size-5" />
               </span>
             </button>
@@ -618,41 +596,36 @@ const useReviewSelection = (emailId: string | null) => {
   };
 };
 
-const ScamPageIntro = ({ active }: { active: boolean }) =>
-  active ? (
-    <h1 className="sr-only">Scam call check</h1>
-  ) : (
-    <PageHeader
-      subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
-      title="Scam check"
-    />
-  );
+const ScamPageIntro = ({ active }: { active: boolean }) => {
+  const t = useMessages().scam;
 
-const CheckGuidance = () => (
-  <details className="group border-rule rounded-xl border p-4 sm:p-5">
-    <summary className="min-h-control flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
-      What can a scam check tell me?
-      <ChevronDownIcon
-        aria-hidden="true"
-        className="size-5 shrink-0 transition-transform group-open:rotate-180"
-      />
-    </summary>
-    <div className="flex max-w-prose flex-col gap-3 pt-3 text-lg">
-      <p>
-        A check looks for common warning signs. It can’t confirm who sent a
-        message or whether it’s true.
-      </p>
-      <p>
-        An AI service helps with message and photo checks. Photos stay with your
-        check until you delete it. Practice checks never use AI.
-      </p>
-      <p>
-        Read the result, follow “What to do now”, or ask someone you trust for a
-        second opinion. You choose what happens next.
-      </p>
-    </div>
-  </details>
-);
+  return active ? (
+    <h1 className="sr-only">{t.callCheckTitle}</h1>
+  ) : (
+    <PageHeader subline={t.subline} title={t.title} />
+  );
+};
+
+const CheckGuidance = () => {
+  const t = useMessages().scam.guidance;
+
+  return (
+    <details className="group border-rule rounded-xl border p-4 sm:p-5">
+      <summary className="min-h-control flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+        {t.title}
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-5 shrink-0 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="flex max-w-prose flex-col gap-3 pt-3 text-lg">
+        <p>{t.intro}</p>
+        <p>{t.ai}</p>
+        <p>{t.next}</p>
+      </div>
+    </details>
+  );
+};
 
 const SelectedCheck = ({
   selection,
@@ -660,20 +633,17 @@ const SelectedCheck = ({
   selection: ReturnType<typeof useReviewSelection>;
 }) => {
   const { current, openForm, setDeletingReview, timeZone } = selection;
+  const t = useMessages().scam;
 
   if (current === undefined) {
-    return (
-      <LoadingRows label="Opening your check" layout="check-form" rows={2} />
-    );
+    return <LoadingRows label={t.opening} layout="check-form" rows={2} />;
   }
 
   if (current === null) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p className="text-lg">
-          This check is no longer available. You can start a new one.
-        </p>
-        <Button onClick={() => openForm()}>Start a new check</Button>
+        <p className="text-lg">{t.noLongerAvailable}</p>
+        <Button onClick={() => openForm()}>{t.startNew}</Button>
       </div>
     );
   }
@@ -709,6 +679,7 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
   } = selection;
 
   const [callActive, setCallActive] = useState(false);
+  const t = useMessages().scam;
   const showResult = !callActive && showingResult;
 
   return (
@@ -726,16 +697,11 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
         <div className={cn("min-w-0", callActive && "hidden")}>
           {emailId !== null && !waitingForEmail && email === null ? (
             <p className="text-negative mb-4 text-lg" role="alert">
-              This email isn’t in the recent inbox. Pick another email or type
-              its words below.
+              {t.emailMissing}
             </p>
           ) : null}
           {waitingForEmail ? (
-            <LoadingRows
-              layout="check-form"
-              label="Loading the email"
-              rows={2}
-            />
+            <LoadingRows layout="check-form" label={t.loadingEmail} rows={2} />
           ) : (
             <CheckForm
               active={!callActive && !showingResult}
@@ -768,7 +734,7 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
             className="border-rule text-section border-b pb-3 font-semibold"
             id="history-heading"
           >
-            Earlier checks
+            {t.earlier}
           </h2>
           <HistoryList
             emails={emails}

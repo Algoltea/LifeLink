@@ -6,6 +6,7 @@ import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { currentIntlLocale, currentMessages } from "@/i18n/locale";
 import { DAY, formatTime, relativeDay } from "@/lib/format";
 
 const RECENT_DAYS = 6;
@@ -18,19 +19,20 @@ const listTime = (
   now = Date.now()
 ): string => {
   const day = relativeDay(timestamp, timeZone, now);
+  const words = currentMessages().format;
 
-  if (day === "Today") {
+  if (day === words.today) {
     return formatTime(timestamp, timeZone);
   }
 
-  if (day === "Yesterday") {
+  if (day === words.yesterday) {
     return day;
   }
 
   const recent = now - timestamp < RECENT_DAYS * DAY && timestamp <= now;
 
   return new Intl.DateTimeFormat(
-    "en-US",
+    currentIntlLocale(),
     recent
       ? { timeZone, weekday: "short" }
       : { day: "numeric", month: "short", timeZone }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { ChatLoadingWorkspace } from "@/components/assistant/chat-loading-workspace";
+import { useMessages } from "@/i18n/locale";
 
 import {
   CircleLoadingContent,
@@ -65,21 +66,29 @@ const LoadingAccount = () => (
   </div>
 );
 
-const EmailLoadingRows = () => (
-  <LoadingRows
-    label="Loading emails"
-    layout={useSearchParams().get("id") ? "email-selected" : "email"}
-  />
-);
+const EmailLoadingRows = () => {
+  const { appExtras } = useMessages();
+
+  return (
+    <LoadingRows
+      label={appExtras.loading.emails}
+      layout={useSearchParams().get("id") ? "email-selected" : "email"}
+    />
+  );
+};
 
 /** Public route names only. No account facts are available during bootstrap. */
 const LoadingPage = ({ pathname }: { pathname: string }) => {
+  const { appExtras } = useMessages();
+
   if (pathname.startsWith("/tasks/")) {
-    return <LoadingRows label="Loading task details" layout="task" />;
+    return <LoadingRows label={appExtras.loading.task} layout="task" />;
   }
 
   if (pathname.startsWith("/messages/")) {
-    return <LoadingRows label="Loading conversation" layout="thread" />;
+    return (
+      <LoadingRows label={appExtras.loading.conversation} layout="thread" />
+    );
   }
 
   switch (pathname) {
@@ -87,7 +96,7 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <TodayLoadingHeader />
-          <LoadingRows label="Loading today" layout="today" />
+          <LoadingRows label={appExtras.loading.today} layout="today" />
         </>
       );
     }
@@ -100,7 +109,10 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <MessagesLoadingHeader />
-          <LoadingRows label="Loading conversations" layout="messages" />
+          <LoadingRows
+            label={appExtras.loading.conversations}
+            layout="messages"
+          />
         </>
       );
     }
@@ -111,7 +123,9 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
           <EmailLoadingHeader />
           {/* Reading the query string needs a boundary: the shared layout can render ahead of time. */}
           <Suspense
-            fallback={<LoadingRows label="Loading emails" layout="email" />}
+            fallback={
+              <LoadingRows label={appExtras.loading.emails} layout="email" />
+            }
           >
             <EmailLoadingRows />
           </Suspense>
@@ -122,9 +136,9 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
     case "/documents": {
       return (
         <>
-          <PageHeader title="Documents" />
+          <PageHeader title={appExtras.loading.documentsTitle} />
           <LoadingRows
-            label="Loading your Drive files"
+            label={appExtras.loading.drive}
             layout="documents-page"
             rows={6}
           />
@@ -136,10 +150,13 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader
-            subline="Choose what you want help with. Open a card to see everything it can do before you connect."
-            title="Connections"
+            subline={appExtras.loading.connectionsBody}
+            title={appExtras.loading.connectionsTitle}
           />
-          <LoadingRows label="Loading connections" layout="connections" />
+          <LoadingRows
+            label={appExtras.loading.connections}
+            layout="connections"
+          />
         </>
       );
     }
@@ -148,10 +165,10 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader
-            subline="Make LifeLink comfortable to read and listen to."
-            title="Settings"
+            subline={appExtras.loading.settingsBody}
+            title={appExtras.loading.settingsTitle}
           />
-          <LoadingRows label="Loading settings" layout="settings" />
+          <LoadingRows label={appExtras.loading.settings} layout="settings" />
         </>
       );
     }
@@ -160,10 +177,10 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader
-            subline="Keep a grocery list, plan your budget, and copy or print what you need."
-            title="Groceries"
+            subline={appExtras.loading.groceriesBody}
+            title={appExtras.loading.groceriesTitle}
           />
-          <LoadingRows label="Loading your lists" layout="groceries" />
+          <LoadingRows label={appExtras.loading.lists} layout="groceries" />
         </>
       );
     }
@@ -172,11 +189,11 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <CircleLoadingHeader />
-          <div aria-busy="true" aria-label="Loading your trusted circle">
+          <div aria-busy="true" aria-label={appExtras.loading.circle}>
             <div aria-hidden="true">
               <CircleLoadingContent />
             </div>
-            <output className="sr-only">Loading your trusted circle</output>
+            <output className="sr-only">{appExtras.loading.circle}</output>
           </div>
         </>
       );
@@ -186,10 +203,10 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader
-            subline="Not sure about a message or a call? LifeLink looks for warning signs before you act."
-            title="Scam check"
+            subline={appExtras.loading.scamBody}
+            title={appExtras.loading.scamTitle}
           />
-          <LoadingRows label="Loading your checks" layout="scam-page" />
+          <LoadingRows label={appExtras.loading.checks} layout="scam-page" />
         </>
       );
     }
@@ -198,10 +215,10 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader
-            subline="See only what each person chooses to share. You can look, but never send, approve, or spend anything for them."
-            title="Family"
+            subline={appExtras.loading.familyBody}
+            title={appExtras.loading.familyTitle}
           />
-          <LoadingRows label="Loading shared information" layout="note" />
+          <LoadingRows label={appExtras.loading.shared} layout="note" />
         </>
       );
     }
@@ -210,7 +227,7 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
       return (
         <>
           <PageHeader title="LifeLink" />
-          <LoadingRows label="Loading your page" layout="text" />
+          <LoadingRows label={appExtras.loading.page} layout="text" />
         </>
       );
     }
@@ -220,19 +237,27 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
 /** Keep the real shell's breakpoints, gutters, and content width on hard refresh.
  * All apparent controls are inert until authentication and the profile resolve.
  */
-const AppLoadingShell = ({ pathname }: { pathname: string }) => (
-  <div aria-busy="true" aria-label="Loading LifeLink" data-loading-shell="">
-    <output className="sr-only">Loading LifeLink</output>
-    <div aria-hidden="true" inert>
-      <ShellFrame
-        account={<LoadingAccount />}
-        groups={[]}
-        navigation={<LoadingNavigation />}
-      >
-        <LoadingPage pathname={pathname} />
-      </ShellFrame>
+const AppLoadingShell = ({ pathname }: { pathname: string }) => {
+  const { appExtras } = useMessages();
+
+  return (
+    <div
+      aria-busy="true"
+      aria-label={appExtras.loading.app}
+      data-loading-shell=""
+    >
+      <output className="sr-only">{appExtras.loading.app}</output>
+      <div aria-hidden="true" inert>
+        <ShellFrame
+          account={<LoadingAccount />}
+          groups={[]}
+          navigation={<LoadingNavigation />}
+        >
+          <LoadingPage pathname={pathname} />
+        </ShellFrame>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export { AppLoadingShell };

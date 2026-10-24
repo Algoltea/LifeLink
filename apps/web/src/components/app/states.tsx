@@ -3,6 +3,8 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { AlertCircleIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { useMessages } from "@/i18n/locale";
+
 import { LoadingLayoutBody } from "./loading-layouts";
 import type { LoadingLayout } from "./loading-layouts";
 import { MessagesLoadingWorkspace } from "./messages-loading-layouts";
@@ -35,41 +37,25 @@ const ErrorNote = ({
 }: {
   children: ReactNode;
   onRetry?: () => void;
-}) => (
-  <div
-    className="bg-negative-wash text-negative text-body flex flex-wrap items-center justify-between gap-3 rounded-lg px-5 py-4"
-    role="alert"
-  >
-    <p className="flex items-center gap-2">
-      <AlertCircleIcon aria-hidden="true" className="size-5 shrink-0" />
-      {children}
-    </p>
-    {onRetry ? (
-      <Button onClick={onRetry} size="sm" variant="outline">
-        Try again
-      </Button>
-    ) : null}
-  </div>
-);
+}) => {
+  const t = useMessages();
 
-// These existing feature callers still share generic variants during the redesign sync.
-const loadingRegionLayout = (
-  layout: LoadingLayout,
-  label: string
-): LoadingLayout => {
-  if (layout === "note" && label === "Checking your Google Drive connection") {
-    return "documents-notice";
-  }
-
-  if (layout === "panel" && label === "Loading the recap") {
-    return "recap-body";
-  }
-
-  if (layout === "note" && label === "Loading sharing") {
-    return "sharing-body";
-  }
-
-  return layout;
+  return (
+    <div
+      className="bg-negative-wash text-negative text-body flex flex-wrap items-center justify-between gap-3 rounded-lg px-5 py-4"
+      role="alert"
+    >
+      <p className="flex items-center gap-2">
+        <AlertCircleIcon aria-hidden="true" className="size-5 shrink-0" />
+        {children}
+      </p>
+      {onRetry ? (
+        <Button onClick={onRetry} size="sm" variant="outline">
+          {t.common.tryAgain}
+        </Button>
+      ) : null}
+    </div>
+  );
 };
 
 /** Loading reserves the measured frame; only the status label is announced. */
@@ -107,10 +93,7 @@ const LoadingRows = ({
           layout === "ask" ? "flex min-h-0 flex-1 flex-col" : undefined
         }
       >
-        <LoadingLayoutBody
-          layout={loadingRegionLayout(layout, label)}
-          rows={rows}
-        />
+        <LoadingLayoutBody layout={layout} rows={rows} />
       </div>
       <span className="sr-only">{label}</span>
     </div>

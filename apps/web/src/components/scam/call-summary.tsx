@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { callTime } from "./call-screening-parts";
+import {
+  callTime,
+  callFlagReason,
+  useCallScreeningMessages,
+} from "./call-screening-parts";
 import { TrustedPeople } from "./trusted-people";
 
 interface CallSummaryValue {
@@ -38,6 +42,7 @@ const CallSummary = ({
   onRetry?: () => Promise<void>;
   onBack: () => void;
 }) => {
+  const messages = useCallScreeningMessages();
   const remove = useMutation(api.callscreening.remove);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
@@ -49,11 +54,9 @@ const CallSummary = ({
   const hasFlags = summary.flags.length > 0;
 
   const deleteLabel =
-    summaryId === null && !saving ? "Discard summary" : "Delete summary";
+    summaryId === null && !saving ? messages.discard : messages.delete;
 
-  const helpMessage = summary.practice
-    ? "I tried LifeLink’s practice scam call. Could we talk about what to do if a call like that happens?"
-    : "I just had a phone call that I’m not sure about. Could you help me check whether it was real before I share anything or send money?";
+  const helpMessage = summary.practice ? messages.practiceHelp : messages.help;
 
   return (
     <section className="flex flex-col gap-7">
@@ -64,20 +67,23 @@ const CallSummary = ({
             ref={title}
             tabIndex={-1}
           >
-            {summary.practice ? "Practice call summary" : "Call summary"}
+            {summary.practice ? messages.practiceSummary : messages.summary}
           </h2>
           <p className="text-muted-foreground text-body mt-2">
             {callTime(summary.durationMs)} ·{" "}
             {summary.practice
-              ? "Made from the practice script."
-              : "Made from captions that may have mistakes."}
+              ? messages.practiceSource
+              : messages.captionSource}
           </p>
         </div>
         <Button disabled={saving} onClick={onBack} variant="outline">
           <MessageSquareIcon aria-hidden="true" />
-          Check a message
+          {messages.checkMessage}
         </Button>
       </div>
+      <p className="text-muted-foreground text-body">
+        {messages.languageLimit}
+      </p>
       <div className="grid items-start gap-9 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-7">
           <div className="flex items-start gap-4">
@@ -95,42 +101,40 @@ const CallSummary = ({
             <div className="flex flex-col gap-3">
               <h3 className="text-section font-semibold">
                 {hasFlags
-                  ? "This call had warning signs."
-                  : "No warning signs were picked up."}
+                  ? messages.summaryWarnings
+                  : messages.summaryNoWarnings}
               </h3>
               <p className="text-body leading-relaxed">
-                {hasFlags
-                  ? "Do not share codes, passwords, or money. Ask someone you trust."
-                  : "This does not mean the call was safe. LifeLink can miss warning signs and cannot verify who called."}
+                {hasFlags ? messages.protect : messages.notSafe}
               </p>
             </div>
           </div>
           {summary.interrupted ? (
             <p className="text-warning-foreground text-body">
-              The connection stopped during this check. Only the parts LifeLink
-              heard were checked.
+              {messages.interrupted}
             </p>
           ) : null}
           {hasFlags ? (
             <section>
               <h3 className="text-section mb-4 font-semibold">
-                What LifeLink flagged
+                {messages.flagged}
               </h3>
               <p className="text-muted-foreground text-body mb-3">
-                Times are minutes and seconds into the check. Long numbers are
-                hidden.
+                {messages.times}
               </p>
               <ul>
                 {summary.flags.map((flag) => (
                   <li
-                    className="border-rule grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 border-t py-5"
+                    className="border-rule border-messages grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 py-5"
                     key={flag.id}
                   >
                     <span className="text-accent-ink text-body font-semibold">
                       {callTime(flag.timeMs)}
                     </span>
                     <div className="min-w-0 space-y-2">
-                      <h4 className="text-xl font-semibold">{flag.reason}</h4>
+                      <h4 className="text-xl font-semibold">
+                        {callFlagReason(flag.reason, messages)}
+                      </h4>
                       <blockquote className="text-body pl-3 leading-relaxed break-words">
                         “{flag.quote}”
                       </blockquote>
@@ -140,30 +144,23 @@ const CallSummary = ({
               </ul>
             </section>
           ) : null}
-          <p className="text-body leading-relaxed">
-            If anything felt wrong, hang up and call the person or company on a
-            number you already trust.
-          </p>
-          <div className="border-rule flex flex-col gap-3 border-t pt-5">
+          <p className="text-body leading-relaxed">{messages.callback}</p>
+          <div className="border-rule border-messages flex flex-col gap-3 pt-5">
             <p className="text-muted-foreground text-body">
-              LifeLink keeps this short summary in Earlier checks. It does not
-              keep audio or full captions.
+              {messages.summaryStorage}
             </p>
-            {saving ? <output>Saving your summary…</output> : null}
+            {saving ? <output>{messages.saving}</output> : null}
             {saveError ? (
               <div className="text-negative text-body space-y-3" role="alert">
-                <p>
-                  The summary could not be saved. Keep this page open and try
-                  again.
-                </p>
+                <p>{messages.saveError}</p>
                 <Button onClick={onRetry} variant="outline">
-                  Try saving again
+                  {messages.retrySave}
                 </Button>
               </div>
             ) : null}
             {deleteError ? (
               <p className="text-negative text-body" role="alert">
-                The summary could not be deleted. Try again.
+                {messages.deleteError}
               </p>
             ) : null}
             <Button
@@ -190,19 +187,18 @@ const CallSummary = ({
               variant="ghost"
             >
               <Trash2Icon aria-hidden="true" />
-              {deleting ? "Deleting…" : deleteLabel}
+              {deleting ? messages.deleting : deleteLabel}
             </Button>
             <p className="text-muted-foreground text-body">
-              Deleting this summary does not delete messages you prepared or
-              sent.
+              {messages.deleteNotice}
             </p>
           </div>
         </div>
         <aside className="flex min-w-0 flex-col gap-4">
-          <h3 className="text-section font-semibold">Tell someone you trust</h3>
+          <h3 className="text-section font-semibold">{messages.tellTrusted}</h3>
           <div className="border-border rounded-xl border p-5">
             <p className="text-muted-foreground text-body mb-2">
-              Message to review
+              {messages.messageReview}
             </p>
             <p className="text-body leading-relaxed">{helpMessage}</p>
           </div>

@@ -1,5 +1,9 @@
+"use client";
+
 import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { cn } from "@lifelink/ui/lib/utils";
+
+import { useMessages } from "@/i18n/locale";
 
 import { LoadingButton } from "./loading-button";
 import { MessagesLoadingRows } from "./messages-loading-layouts";
@@ -11,25 +15,29 @@ const TodayLine = ({ className = "" }: { className?: string }) => (
 );
 
 /** Also replaces the legacy PageHeader title while its briefing slot is loading. */
-const TodayLoadingHeader = () => (
-  <div
-    className="flex flex-col gap-4 [header:has(&)>div>h1]:hidden"
-    data-loading-part="today-header"
-  >
-    <div className="flex max-w-3xl min-w-0 flex-col gap-1">
-      <TodayLine className="h-[1.333rem] w-52" />
-      <TodayLine className="h-[2.222rem] w-4/5 sm:h-[2.778rem]" />
-      <div className="max-w-prose pt-1">
-        <TodayLine />
-        <TodayLine className="w-5/6" />
-        <TodayLine className="w-2/3 sm:hidden" />
+const TodayLoadingHeader = () => {
+  const { appExtras } = useMessages();
+
+  return (
+    <div
+      className="flex flex-col gap-4 [header:has(&)>div>h1]:hidden"
+      data-loading-part="today-header"
+    >
+      <div className="flex max-w-3xl min-w-0 flex-col gap-1">
+        <TodayLine className="h-[1.333rem] w-52" />
+        <TodayLine className="h-[2.222rem] w-4/5 sm:h-[2.778rem]" />
+        <div className="max-w-prose pt-1">
+          <TodayLine />
+          <TodayLine className="w-5/6" />
+          <TodayLine className="w-2/3 sm:hidden" />
+        </div>
       </div>
+      <LoadingButton className="self-start" icon>
+        {appExtras.loading.readDay}
+      </LoadingButton>
     </div>
-    <LoadingButton className="self-start" icon>
-      Read my day aloud
-    </LoadingButton>
-  </div>
-);
+  );
+};
 
 const PANEL = "flex min-w-0 flex-col gap-2";
 

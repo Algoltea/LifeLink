@@ -17,11 +17,8 @@ import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
 import { useChatViewport } from "@/components/assistant/use-chat-viewport";
 import { RecapPanel } from "@/components/messages/recap-panel";
-import {
-  CHANNEL_WORDS,
-  formatAddress,
-  hidesAddress,
-} from "@/components/tasks/details-view";
+import { formatAddress, hidesAddress } from "@/components/tasks/details-view";
+import { useMessages } from "@/i18n/locale";
 
 import {
   MESSAGES_DOCK,
@@ -55,23 +52,26 @@ const EmptyConversation = ({
 }: {
   contact: Thread["contact"];
   firstName: string;
-}) => (
-  <div className="my-auto flex flex-col items-center gap-3 py-10 text-center">
-    <Avatar
-      hue={contact.hue}
-      name={contact.name}
-      size="lg"
-      src={contact.avatarUrl}
-    />
-    <p className="text-section font-semibold tracking-tight">
-      No messages with {firstName} yet
-    </p>
-    <p className="text-muted-foreground max-w-md text-lg">
-      Write below to start. You’ll see exactly what {firstName} will get before
-      anything is sent.
-    </p>
-  </div>
-);
+}) => {
+  const t = useMessages().threads;
+
+  return (
+    <div className="my-auto flex flex-col items-center gap-3 py-10 text-center">
+      <Avatar
+        hue={contact.hue}
+        name={contact.name}
+        size="lg"
+        src={contact.avatarUrl}
+      />
+      <p className="text-section font-semibold tracking-tight">
+        {t.emptyThread(firstName)}
+      </p>
+      <p className="text-muted-foreground max-w-md text-lg">
+        {t.emptyThreadHint(firstName)}
+      </p>
+    </div>
+  );
+};
 
 /** A slim chat header: back, who, how you reach them, and the recap. */
 const ConversationHeader = ({
@@ -90,6 +90,7 @@ const ConversationHeader = ({
   subline: ReactNode;
 }) => {
   const heading = useRef<HTMLHeadingElement>(null);
+  const t = useMessages().threads;
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -107,7 +108,8 @@ const ConversationHeader = ({
       >
         <ChevronLeftIcon aria-hidden="true" className="size-6 sm:size-5" />
         <span className="sr-only sm:not-sr-only">
-          <span className="sr-only">Back to </span>Messages
+          <span className="sr-only">{t.backTo}</span>
+          {t.title}
         </span>
       </Link>
       <Avatar
@@ -122,7 +124,7 @@ const ConversationHeader = ({
           ref={heading}
           tabIndex={-1}
         >
-          <span className="sr-only">Conversation with </span>
+          <span className="sr-only">{t.conversationWithPrefix}</span>
           {contact.name}
         </h1>
         <p className="text-muted-foreground text-label truncate">{subline}</p>
@@ -142,8 +144,8 @@ const ConversationHeader = ({
             variant="outline"
           >
             <ListChecksIcon aria-hidden="true" />
-            Recap
-            <span className="sr-only lg:not-sr-only"> this conversation</span>
+            {t.recap}
+            <span className="sr-only lg:not-sr-only">{t.recapThis}</span>
           </Button>
         ) : null}
       </div>
@@ -163,6 +165,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   const recapTriggerRef = useRef<HTMLButtonElement>(null);
   const explainTriggerRef = useRef<HTMLButtonElement>(null);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
+  const t = useMessages().threads;
 
   const { contact, messages, pendingTaskIds } = thread;
   const firstName = contact.name.split(" ")[0] ?? contact.name;
@@ -173,15 +176,15 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
 
   const subline = preferred ? (
     <>
-      {contact.relationship} · {CHANNEL_WORDS[preferred.channel]}
+      {contact.relationship} · {t.channels[preferred.channel]}
       {hidesAddress(preferred.channel) ? null : (
         <span className="sr-only sm:not-sr-only">
-          {` to ${formatAddress(preferred.address)}`}
+          {t.toAddress(formatAddress(preferred.address))}
         </span>
       )}
     </>
   ) : (
-    `${contact.relationship} · No way to reach ${firstName} yet`
+    `${contact.relationship} · ${t.noWayToReachName(firstName)}`
   );
 
   const allPractice =
@@ -260,7 +263,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
           )}
         >
           <h2 className="sr-only" id="history-heading">
-            Conversation with {contact.name}
+            {t.conversationWith(contact.name)}
           </h2>
           {recapOpen ? (
             <RecapPanel
@@ -287,8 +290,7 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
                 setDraft({
                   body: suggestion,
                   fromSuggestion: true,
-                  notice:
-                    "Reply added to your message. You can change it before reviewing.",
+                  notice: t.replyAdded,
                 });
                 bodyRef.current?.focus();
               }}
@@ -307,15 +309,15 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
               />
               <span className="min-w-0 flex-1">
                 {pendingTaskIds.length === 1
-                  ? `A message to ${firstName} is waiting for your approval.`
-                  : `${pendingTaskIds.length} messages to ${firstName} are waiting for your approval.`}
+                  ? t.pendingOne(firstName)
+                  : t.pendingMany(pendingTaskIds.length, firstName)}
               </span>
               <Link
                 className="min-h-control inline-flex items-center px-2 font-semibold underline underline-offset-4"
                 // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
                 href={`/tasks/${pendingTask}` as Route}
               >
-                Review it
+                {t.reviewIt}
               </Link>
             </p>
           ) : null}
@@ -334,6 +336,12 @@ const ThreadWorkspace = ({ thread }: { thread: Thread }) => {
   );
 };
 
+const ThreadLoading = () => {
+  const t = useMessages().threads;
+
+  return <LoadingRows label={t.loadingConversation} layout="thread" />;
+};
+
 const ThreadScreen = ({ contactId }: { contactId: string }) => {
   // SAFETY: the id comes from a LifeLink link; the query checks ownership and rejects anything else.
   const thread = useQuery(api.messages.thread, {
@@ -341,7 +349,7 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
   });
 
   if (thread === undefined) {
-    return <LoadingRows layout="thread" label="Loading conversation" />;
+    return <ThreadLoading />;
   }
 
   return <ThreadWorkspace key={thread.contact._id} thread={thread} />;

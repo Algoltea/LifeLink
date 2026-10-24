@@ -10,6 +10,7 @@ import type { ComponentProps } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const errorText = (cause: unknown): string =>
@@ -30,6 +31,7 @@ const DeleteListDialog = ({
   const deleteList = useMutation(api.groceries.deleteList);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const t = useMessages().groceries;
 
   const close = (): void => {
     setDeleteError(null);
@@ -39,14 +41,17 @@ const DeleteListDialog = ({
   return (
     <Dialog
       finalFocus={finalFocus}
-      description={`This permanently deletes “${target?.name ?? ""}” and all its items, budget, and preferences. This cannot be undone.${target?.archivedAt === undefined ? " To keep it for later, finish the trip instead." : ""}`}
+      description={t.deleteDescription(
+        target?.name ?? "",
+        target?.archivedAt === undefined
+      )}
       onOpenChange={(open) => {
         if (!open && !deleting) {
           close();
         }
       }}
       open={target !== null}
-      title="Delete this grocery list?"
+      title={t.deleteTitle}
     >
       {deleteError ? (
         <p className="text-negative text-base" role="alert">
@@ -55,7 +60,7 @@ const DeleteListDialog = ({
       ) : null}
       <div className="flex flex-wrap gap-3">
         <Button disabled={deleting} onClick={close} variant="outline">
-          Keep list
+          {t.keepList}
         </Button>
         <Button
           aria-busy={deleting}
@@ -72,7 +77,7 @@ const DeleteListDialog = ({
               await deleteList({ listId: target._id });
               onDeleted?.(target._id);
               close();
-              toast.success(`“${target.name}” deleted.`);
+              toast.success(t.deleted(target.name));
             } catch (error) {
               setDeleteError(errorText(error));
             }
@@ -82,7 +87,7 @@ const DeleteListDialog = ({
           variant="destructive"
         >
           <Trash2Icon />
-          {deleting ? "Deleting…" : "Delete list"}
+          {deleting ? t.deleting : t.deleteList}
         </Button>
       </div>
     </Dialog>

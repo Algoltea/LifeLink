@@ -8,20 +8,21 @@ import Image from "next/image";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
+import { currentMessages, useMessages } from "@/i18n/locale";
 import { useSpeech } from "@/lib/speech";
 
 import { usePreferences } from "./preferences";
 
 /** Every simulated outcome carries this mark, so practice is never mistaken for the real thing. */
-const SimulatedPill = ({ className }: { className?: string }) => (
-  <Pill
-    className={className}
-    title="Practice mode: nothing was really sent or saved outside LifeLink."
-    tone="simulated"
-  >
-    Practice
-  </Pill>
-);
+const SimulatedPill = ({ className }: { className?: string }) => {
+  const t = useMessages();
+
+  return (
+    <Pill className={className} title={t.common.practiceTitle} tone="simulated">
+      {t.common.practice}
+    </Pill>
+  );
+};
 
 const ModePill = ({ mode }: { mode: "live" | "simulated" }) =>
   mode === "simulated" ? <SimulatedPill /> : null;
@@ -80,7 +81,7 @@ const Avatar = ({
 /** Read text aloud at the person's chosen speed; press again to stop. */
 const ReadAloudButton = ({
   className,
-  label = "Read aloud",
+  label,
   rate,
   text,
   variant = "outline",
@@ -92,14 +93,16 @@ const ReadAloudButton = ({
   variant?: "ghost" | "outline";
 }) => {
   const { preferences } = usePreferences();
+  const t = useMessages();
   const { error, read, status, stop } = useSpeech();
   const errorId = useId();
   const speaking = status !== "idle";
 
   const activeLabel =
-    status === "loading" ? "Preparing audio · Stop" : "Stop reading";
+    status === "loading" ? t.common.readAloudPreparing : t.common.readAloudStop;
 
-  const playbackLabel = status === "ready" ? "Play audio" : activeLabel;
+  const playbackLabel =
+    status === "ready" ? t.common.readAloudPlay : activeLabel;
 
   return (
     <>
@@ -121,11 +124,11 @@ const ReadAloudButton = ({
         variant={variant}
       >
         {speaking ? <VolumeXIcon /> : <Volume2Icon />}
-        {speaking ? playbackLabel : label}
+        {speaking ? playbackLabel : (label ?? t.common.readAloud)}
       </Button>
       {status === "ready" ? (
         <Button onClick={stop} size="sm" variant={variant}>
-          Stop reading
+          {t.common.readAloudStop}
         </Button>
       ) : null}
       {error ? (
@@ -158,7 +161,7 @@ const useAutoReadAloud = (text: string | null): void => {
 
   useEffect(() => {
     if (status === "ready") {
-      toast.info("Your audio is ready. Press Read aloud to listen.");
+      toast.info(currentMessages().common.readAloudReady);
     }
   }, [status]);
 };

@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
+import { useMessages } from "@/i18n/locale";
+
 import { AppLoadingShell } from "./app-loading-shell";
 import { Onboarding } from "./onboarding";
 import { usePreferences } from "./preferences";
@@ -21,6 +23,7 @@ const PUBLIC_PATHS = ["/solitaire"];
  * Every ready branch returns the same `AppShell`, so navigation only swaps the page.
  */
 const AppGate = ({ children }: { children: ReactNode }) => {
+  const { appExtras } = useMessages();
   const { me } = usePreferences();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
@@ -57,7 +60,7 @@ const AppGate = ({ children }: { children: ReactNode }) => {
   return (
     <AppShell>
       {isFamily && !familyAllowed ? (
-        <LoadingRows layout="note" label="Opening your family view" />
+        <LoadingRows layout="note" label={appExtras.openingFamily} />
       ) : (
         children
       )}

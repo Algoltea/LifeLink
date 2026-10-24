@@ -3,10 +3,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { api } from "@lifelink/backend/convex/_generated/api";
 import { findDeveloperIntegration } from "@lifelink/contracts/integrations";
-import type {
-  Capability,
-  CapabilityStatus,
-} from "@lifelink/contracts/integrations";
+import type { Capability } from "@lifelink/contracts/integrations";
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { Pill } from "@lifelink/ui/components/pill";
 import { cn } from "@lifelink/ui/lib/utils";
@@ -18,15 +15,17 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import { toast } from "sonner";
 
-import {
-  IsoIcon,
-  permissionIconFor,
-  permissionLabelFor,
-} from "@/components/app/iso-icon";
+import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
 import type { PermissionIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import type { ConnectionsMessages } from "@/i18n/messages/en/connections";
 import { messageOf } from "@/lib/errors";
+
+import {
+  translateConnectionMessage,
+  useConnectionMessages,
+} from "./connection-messages";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -37,30 +36,21 @@ type ProviderRow = ConnectionsData["providers"][number];
 
 type ProviderId = ProviderRow["definition"]["id"];
 
-const LIMIT_TAGS: Record<Exclude<CapabilityStatus, "available">, string> = {
-  not_offered: "Not possible",
-  not_wired: "Coming later",
-};
-
-const NOT_SET_UP =
-  "This is not turned on yet. Ask the person who set up LifeLink to turn it on.";
-
 const GROUPS = [
-  {
-    ids: ["imessage", "discord", "telegram"],
-    title: "Message family and friends",
-  },
-  { ids: ["gmail", "outlook"], title: "Read and write email" },
-  { ids: ["google_calendar", "google_drive"], title: "Manage appointments" },
+  { ids: ["imessage", "discord", "telegram"], title: "messages" },
+  { ids: ["gmail", "outlook"], title: "email" },
+  { ids: ["google_calendar", "google_drive"], title: "appointments" },
 ] as const;
 
 const ADDITIONAL_IDS = new Set(["paypal", "facebook", "instagram", "ebay"]);
 
-const ADDITIONAL_TITLE = "Coming later";
+const groupTitleFor = (id: ProviderId, words: ConnectionsMessages): string => {
+  const group = GROUPS.find((candidate) =>
+    candidate.ids.some((groupId) => groupId === id)
+  );
 
-const groupTitleFor = (id: ProviderId): string =>
-  GROUPS.find((group) => group.ids.some((groupId) => groupId === id))?.title ??
-  ADDITIONAL_TITLE;
+  return group ? words.groups[group.title] : words.comingLater;
+};
 
 const isAvailable = (capability: Capability): boolean =>
   capability.status === "available";
@@ -70,45 +60,59 @@ interface StatusWords {
   tone: "negative" | "neutral" | "warning";
 }
 
-const statusFor = (demoMode: boolean, row: ProviderRow): StatusWords => {
+const statusFor = (
+  demoMode: boolean,
+  row: ProviderRow,
+  words: ConnectionsMessages
+): StatusWords => {
   if (row.status === "active") {
     return {
-      text: row.mode === "simulated" ? "Practice account" : "Connected",
+      text:
+        row.mode === "simulated"
+          ? words.status.practiceAccount
+          : words.status.connected,
       tone: "neutral",
     };
   }
 
   if (row.status === "pending") {
-    return { text: "Not finished", tone: "warning" };
+    return { text: words.status.pending, tone: "warning" };
   }
 
   if (row.status === "error") {
-    return { text: "Did not connect", tone: "negative" };
+    return { text: words.status.error, tone: "negative" };
   }
 
   if (!row.definition.capabilities.some(isAvailable)) {
-    return { text: "Coming later", tone: "neutral" };
+    return { text: words.comingLater, tone: "neutral" };
   }
 
   if (demoMode && row.hasSavedRealConnection) {
-    return { text: "Real account saved", tone: "neutral" };
+    return { text: words.status.realSaved, tone: "neutral" };
   }
 
   if (demoMode) {
-    return { text: "Practice", tone: "neutral" };
+    return { text: words.status.practice, tone: "neutral" };
   }
 
   if (!row.developerReady) {
-    return { text: "Not turned on", tone: "warning" };
+    return { text: words.status.notOn, tone: "warning" };
   }
 
   return {
-    text: row.definition.connectStyle === "oauth" ? "Not connected" : "Ready",
+    text:
+      row.definition.connectStyle === "oauth"
+        ? words.status.disconnected
+        : words.status.ready,
     tone: "neutral",
   };
 };
 
-const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
+const oauthOptionsFor = (
+  demoMode: boolean,
+  row: ProviderRow,
+  words: ConnectionsMessages
+) => {
   const hasAvailableActions = row.definition.capabilities.some(isAvailable);
 
   const practiceBlocked =
@@ -127,12 +131,12 @@ const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
     !practiceBlocked &&
     (!demoMode || hasAvailableActions);
 
-  let connectLabel = `Connect ${row.definition.label}`;
+  let connectLabel = words.connectProvider(row.definition.label);
 
   if (demoMode) {
-    connectLabel = "Use a practice account";
+    connectLabel = words.practiceAccount;
   } else if (row.status === "error" || row.status === "pending") {
-    connectLabel = "Try connecting again";
+    connectLabel = words.retry;
   }
 
   return {
@@ -145,23 +149,27 @@ const oauthOptionsFor = (demoMode: boolean, row: ProviderRow) => {
 };
 
 /** The card's call to action names only what the window lets the person do. */
-const cardActionFor = (demoMode: boolean, row: ProviderRow): string => {
+const cardActionFor = (
+  demoMode: boolean,
+  row: ProviderRow,
+  words: ConnectionsMessages
+): string => {
   if (row.definition.connectStyle === "oauth") {
-    const { canConnect, canDisconnect } = oauthOptionsFor(demoMode, row);
+    const { canConnect, canDisconnect } = oauthOptionsFor(demoMode, row, words);
 
     if (canConnect) {
-      return "Connect";
+      return words.connect;
     }
 
-    return canDisconnect ? "Manage" : "Details";
+    return canDisconnect ? words.manage : words.details;
   }
 
   // Practice messages need no setup, and Trusted circle holds it back.
   return row.definition.connectStyle === "handle" &&
     row.developerReady &&
     !demoMode
-    ? "Set up"
-    : "Details";
+    ? words.setup
+    : words.details;
 };
 
 const cardIconsFor = (row: ProviderRow): PermissionIconKind[] => {
@@ -181,19 +189,25 @@ const ProviderCard = ({
   onOpen: (id: ProviderId) => void;
   row: ProviderRow;
 }) => {
+  const words = useConnectionMessages();
   const { definition } = row;
-  const status = statusFor(demoMode, row);
+  const status = statusFor(demoMode, row, words);
   const icons = cardIconsFor(row);
 
   const waitingForSetup =
     !row.developerReady && !demoMode && row.status !== "active";
 
-  const canDo = icons.map((kind) => permissionLabelFor(kind)).join(", ");
+  const canDo = icons.map((kind) => words.permissions[kind]).join(", ");
 
   return (
     <li className="flex">
       <button
-        aria-label={`${definition.label}. ${status.text}. ${canDo}. ${cardActionFor(demoMode, row)}.`}
+        aria-label={words.cardLabel(
+          definition.label,
+          status.text,
+          canDo,
+          cardActionFor(demoMode, row, words)
+        )}
         className="border-border bg-surface hover:border-control hover:bg-parchment flex w-full cursor-pointer flex-col gap-5 rounded-xl border p-5 text-left transition-colors duration-150 motion-reduce:transition-none sm:p-6"
         onClick={() => onOpen(definition.id)}
         type="button"
@@ -202,7 +216,7 @@ const ProviderCard = ({
           <span className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
             <span className="text-body font-semibold">{definition.label}</span>
             <span className="text-muted-foreground text-body">
-              {definition.summary}
+              {words.providers[definition.id].summary}
             </span>
           </span>
           <Pill tone={status.tone}>{status.text}</Pill>
@@ -224,14 +238,14 @@ const ProviderCard = ({
                 size={64}
               />
               <span className="text-label text-center font-medium">
-                {permissionLabelFor(kind)}
+                {words.permissions[kind]}
               </span>
             </span>
           ))}
         </span>
         <span className="border-border mt-auto flex w-full items-center justify-end gap-3 border-t pt-4">
           <span className="text-accent-foreground text-label flex items-center gap-1 font-medium">
-            {cardActionFor(demoMode, row)}
+            {cardActionFor(demoMode, row, words)}
             <ChevronRightIcon aria-hidden="true" className="size-5" />
           </span>
         </span>
@@ -263,20 +277,29 @@ const CardGrid = ({
 
 const CanDoSection = ({
   capabilities,
+  provider,
 }: {
   capabilities: readonly Capability[];
-}) =>
-  capabilities.length === 0 ? null : (
+  provider: ProviderId;
+}) => {
+  const words = useConnectionMessages();
+
+  return capabilities.length === 0 ? null : (
     <section className="flex flex-col gap-3">
-      <h3 className="text-body font-semibold">Can do</h3>
+      <h3 className="text-body font-semibold">{words.canDo}</h3>
       <ul className="flex flex-col gap-4">
         {capabilities.map((capability) => (
           <li className="flex items-center gap-4" key={capability.id}>
             <IsoIcon kind={permissionIconFor(capability.id)} />
             <span className="flex min-w-0 flex-col">
-              <span className="text-body font-medium">{capability.label}</span>
-              {capability.note ? (
-                <span className="text-body">{capability.note}</span>
+              <span className="text-body font-medium">
+                {words.providers[provider].capabilities[capability.id]?.label ??
+                  words.details}
+              </span>
+              {words.providers[provider].capabilities[capability.id]?.note ? (
+                <span className="text-body">
+                  {words.providers[provider].capabilities[capability.id]?.note}
+                </span>
               ) : null}
             </span>
           </li>
@@ -284,33 +307,22 @@ const CanDoSection = ({
       </ul>
     </section>
   );
+};
 
-const IMessageSteps = () => (
-  <div className="flex flex-col gap-4">
-    <p className="text-body">
-      Link each person in Trusted circle to their existing Photon contact.
-      LifeLink does not register new contacts.
-    </p>
-    <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
-      <li>
-        Save the exact phone number or Apple ID email address they send
-        iMessages from. A phone number and an email address are separate
-        identities, even for the same person.
-      </li>
-      <li>
-        Make sure this exact address is already registered in the Photon
-        dashboard. If it is missing, add the contact there first. Then choose
-        Link iMessage in Trusted circle and use the assigned number shown for
-        that contact.
-      </li>
-      <li>
-        Ask them to send the first iMessage to their assigned number from that
-        exact saved address. LifeLink can message them after their first message
-        arrives.
-      </li>
-    </ol>
-  </div>
-);
+const IMessageSteps = () => {
+  const words = useConnectionMessages();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-body">{words.imessageIntro}</p>
+      <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
+        {words.imessageSteps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+    </div>
+  );
+};
 
 const HandleNote = ({
   demoMode,
@@ -319,32 +331,26 @@ const HandleNote = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
-  const service =
-    row.definition.id === "imessage" ? "iMessages" : "Discord messages";
+  const words = useConnectionMessages();
 
   return (
     <>
       {demoMode ? (
         <p className="text-body">
-          Practice {service} are simulated. No messages reach your contacts.
+          {words.practiceMessages(row.definition.id === "imessage")}
         </p>
       ) : null}
       {!row.developerReady && !demoMode ? (
-        <p className="text-body">{NOT_SET_UP}</p>
+        <p className="text-body">{words.notSetUp}</p>
       ) : null}
     </>
   );
 };
 
-const introFor = (row: ProviderRow): string =>
+const introFor = (row: ProviderRow, words: ConnectionsMessages): string =>
   row.definition.capabilities.some(isAvailable)
-    ? `LifeLink can do these things with ${row.definition.label}. Nothing is sent until you approve it.`
-    : `LifeLink can’t do anything with ${row.definition.label} yet.`;
-
-const requirementFor = (row: ProviderRow): string =>
-  row.definition.id === "imessage"
-    ? "Your contacts don't need an invitation, a LifeLink account, or access to the Photon dashboard."
-    : row.definition.accountRequirement;
+    ? words.intro(row.definition.label)
+    : words.unavailableIntro(row.definition.label);
 
 const DialogActions = ({
   demoMode,
@@ -355,6 +361,7 @@ const DialogActions = ({
   onDone: () => void;
   row: ProviderRow;
 }) => {
+  const words = useConnectionMessages();
   const start = useAction(api.connections.start);
   const disconnect = useAction(api.connections.disconnect);
   const connectPractice = useMutation(api.connections.connectPractice);
@@ -362,7 +369,7 @@ const DialogActions = ({
   const [operationError, setOperationError] = useState<string | null>(null);
   const { definition } = row;
   const isOAuth = definition.connectStyle === "oauth";
-  const options = oauthOptionsFor(demoMode, row);
+  const options = oauthOptionsFor(demoMode, row, words);
   const canConnect = isOAuth && options.canConnect;
   const canDisconnect = isOAuth && options.canDisconnect;
 
@@ -391,9 +398,7 @@ const DialogActions = ({
     run(async () => {
       if (demoMode) {
         await connectPractice({ provider: definition.id });
-        toast.success(
-          `A practice ${definition.label} account is connected. It never reaches the real service.`
-        );
+        toast.success(words.practiceConnected(definition.label));
         onDone();
 
         return;
@@ -413,8 +418,8 @@ const DialogActions = ({
       await disconnect({ connectionId: row.connectionId });
       toast.success(
         row.mode === "simulated"
-          ? `The practice ${definition.label} account is disconnected.`
-          : `${definition.label} is disconnected. Nothing will use it from now on.`
+          ? words.practiceDisconnected(definition.label)
+          : words.disconnected(definition.label)
       );
       onDone();
     });
@@ -427,14 +432,14 @@ const DialogActions = ({
           id={errorId}
           role="alert"
         >
-          {visibleError}
+          {translateConnectionMessage(visibleError)}
         </p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DialogPrimitive.Close
           className={cn(buttonVariants({ variant: "outline" }))}
         >
-          {canConnect ? "Cancel" : "Close"}
+          {canConnect ? words.cancel : words.close}
         </DialogPrimitive.Close>
         <div className="flex flex-wrap items-center gap-3">
           {canDisconnect ? (
@@ -446,8 +451,8 @@ const DialogActions = ({
               variant="destructive"
             >
               {row.mode === "simulated"
-                ? "Disconnect practice account"
-                : `Disconnect ${definition.label}`}
+                ? words.disconnectPractice
+                : words.disconnect(definition.label)}
             </Button>
           ) : null}
           {canConnect ? (
@@ -462,7 +467,7 @@ const DialogActions = ({
           ) : null}
           {opensCircle ? (
             <Link className={buttonVariants()} href="/circle">
-              Open Trusted circle
+              {words.openCircle}
             </Link>
           ) : null}
         </div>
@@ -551,34 +556,43 @@ const Fold = ({ children, title }: { children: ReactNode; title: string }) => (
   </ConnectionDisclosure>
 );
 
-const LIMITS_TITLE = "What LifeLink can’t do yet";
-
 const LimitRows = ({
   capabilities,
+  provider,
 }: {
   capabilities: readonly Capability[];
-}) => (
-  <ul className="flex flex-col gap-4">
-    {capabilities.map((capability) => (
-      <li
-        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
-        key={capability.id}
-      >
-        <span className="flex min-w-0 flex-1 basis-56 flex-col">
-          <span className="text-body font-medium">{capability.label}</span>
-          {capability.note ? (
-            <span className="text-body">{capability.note}</span>
-          ) : null}
-        </span>
-        <span className="text-muted-foreground text-label shrink-0">
-          {capability.status === "available"
-            ? null
-            : LIMIT_TAGS[capability.status]}
-        </span>
-      </li>
-    ))}
-  </ul>
-);
+  provider: ProviderId;
+}) => {
+  const words = useConnectionMessages();
+
+  return (
+    <ul className="flex flex-col gap-4">
+      {capabilities.map((capability) => (
+        <li
+          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+          key={capability.id}
+        >
+          <span className="flex min-w-0 flex-1 basis-56 flex-col">
+            <span className="text-body font-medium">
+              {words.providers[provider].capabilities[capability.id]?.label ??
+                words.details}
+            </span>
+            {words.providers[provider].capabilities[capability.id]?.note ? (
+              <span className="text-body">
+                {words.providers[provider].capabilities[capability.id]?.note}
+              </span>
+            ) : null}
+          </span>
+          <span className="text-muted-foreground text-label shrink-0">
+            {capability.status === "available"
+              ? null
+              : words.limitTags[capability.status]}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 /**
  * Limits stay one tap away so the window leads with what works. A service
@@ -587,10 +601,14 @@ const LimitRows = ({
 const Limits = ({
   capabilities,
   collapsed,
+  provider,
 }: {
   capabilities: readonly Capability[];
   collapsed: boolean;
+  provider: ProviderId;
 }) => {
+  const words = useConnectionMessages();
+
   if (capabilities.length === 0) {
     return null;
   }
@@ -598,20 +616,18 @@ const Limits = ({
   if (!collapsed) {
     return (
       <section className="flex flex-col gap-3">
-        <h3 className="text-body font-semibold">{LIMITS_TITLE}</h3>
-        <LimitRows capabilities={capabilities} />
+        <h3 className="text-body font-semibold">{words.limitsTitle}</h3>
+        <LimitRows capabilities={capabilities} provider={provider} />
       </section>
     );
   }
 
   return (
-    <Fold title={`${LIMITS_TITLE} (${capabilities.length})`}>
-      <LimitRows capabilities={capabilities} />
+    <Fold title={words.limitsCount(capabilities.length)}>
+      <LimitRows capabilities={capabilities} provider={provider} />
     </Fold>
   );
 };
-
-const HELPER_TITLE = "Setting this up for someone?";
 
 const OAuthSteps = ({
   connectLabel,
@@ -619,22 +635,28 @@ const OAuthSteps = ({
 }: {
   connectLabel: string;
   label: string;
-}) => (
-  <div className="flex flex-col gap-4">
-    <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
-      <li>Press {connectLabel} below.</li>
-      <li>Sign in with their account, not yours.</li>
-      <li>Choose Allow on {label}’s page.</li>
-      <li>You come back here and it says Connected.</li>
-    </ol>
-    <p className="text-body">
-      Tip: they can disconnect {label} from this window at any time.
-    </p>
-  </div>
-);
+}) => {
+  const words = useConnectionMessages();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ol className="text-body flex list-decimal flex-col gap-3 pl-6">
+        <li>{words.pressConnect(connectLabel)}</li>
+        <li>{words.signInTheirAccount}</li>
+        <li>{words.allowProvider(label)}</li>
+        <li>{words.returnConnected}</li>
+      </ol>
+      <p className="text-body">{words.disconnectTip(label)}</p>
+    </div>
+  );
+};
 
 /** What a helper does next, or null when there is nothing to set up. */
-const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
+const helperStepsFor = (
+  demoMode: boolean,
+  row: ProviderRow,
+  words: ConnectionsMessages
+): ReactNode => {
   const { definition } = row;
 
   if (!definition.capabilities.some(isAvailable)) {
@@ -648,8 +670,9 @@ const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
 
     return (
       <p className="text-body">
-        For whoever runs LifeLink: run <code>bun run dev:setup</code> and choose{" "}
-        {integration?.label ?? definition.label}.
+        {words.developerSetupBefore}
+        <code>bun run dev:setup</code>
+        {words.developerSetupAfter(integration?.label ?? definition.label)}
       </p>
     );
   }
@@ -658,33 +681,18 @@ const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
   if (definition.id === "imessage") {
     return (
       <div className="flex flex-col gap-4">
-        {demoMode ? (
-          <p className="text-body">
-            When you use real iMessage, follow these steps.
-          </p>
-        ) : null}
+        {demoMode ? <p className="text-body">{words.realImessage}</p> : null}
         <IMessageSteps />
       </div>
     );
   }
 
   if (definition.id === "discord") {
-    return (
-      <p className="text-body">
-        {demoMode ? "When you use real Discord, add" : "Add"} each person’s
-        Discord user ID in Trusted circle.
-      </p>
-    );
+    return <p className="text-body">{words.discordSetup(demoMode)}</p>;
   }
 
   if (definition.id === "telegram") {
-    return (
-      <p className="text-body">
-        {demoMode ? "When you use real Telegram, open" : "Open"} each person in
-        Trusted circle, choose Link Telegram, and send them their link. They tap
-        Start once.
-      </p>
-    );
+    return <p className="text-body">{words.telegramSetup(demoMode)}</p>;
   }
 
   if (definition.connectStyle !== "oauth" || demoMode) {
@@ -692,7 +700,7 @@ const helperStepsFor = (demoMode: boolean, row: ProviderRow): ReactNode => {
     return null;
   }
 
-  const { canConnect, connectLabel } = oauthOptionsFor(demoMode, row);
+  const { canConnect, connectLabel } = oauthOptionsFor(demoMode, row, words);
 
   return canConnect ? (
     <OAuthSteps connectLabel={connectLabel} label={definition.label} />
@@ -707,9 +715,10 @@ const HelperSection = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
-  const steps = helperStepsFor(demoMode, row);
+  const words = useConnectionMessages();
+  const steps = helperStepsFor(demoMode, row, words);
 
-  return steps === null ? null : <Fold title={HELPER_TITLE}>{steps}</Fold>;
+  return steps === null ? null : <Fold title={words.helperTitle}>{steps}</Fold>;
 };
 
 const DialogBody = ({
@@ -719,11 +728,13 @@ const DialogBody = ({
   demoMode: boolean;
   row: ProviderRow;
 }) => {
+  const words = useConnectionMessages();
   const { definition } = row;
 
   const { canConnect, needsSetup, practiceBlocked } = oauthOptionsFor(
     demoMode,
-    row
+    row,
+    words
   );
 
   const isOAuth = definition.connectStyle === "oauth";
@@ -737,38 +748,45 @@ const DialogBody = ({
     <div className="flex flex-col gap-7 overflow-y-auto px-5 pb-6 sm:px-8">
       {isOAuth && practiceBlocked ? (
         <p className="bg-parchment text-body rounded-lg p-5">
-          Your real {definition.label} connection is saved. Practice accounts
-          cannot replace it. Turn off Practice mode in Settings to manage it.
+          {words.practiceBlocked(definition.label)}
         </p>
       ) : null}
-      {isOAuth && needsSetup ? <p className="text-body">{NOT_SET_UP}</p> : null}
+      {isOAuth && needsSetup ? (
+        <p className="text-body">{words.notSetUp}</p>
+      ) : null}
       {definition.connectStyle === "handle" ? (
         <HandleNote demoMode={demoMode} row={row} />
       ) : null}
       {row.accountLabel && row.status === "active" ? (
-        <p className="text-body break-words">Account: {row.accountLabel}</p>
+        <p className="text-body break-words">
+          {words.account(row.accountLabel)}
+        </p>
       ) : null}
-      <CanDoSection capabilities={available} />
+      <CanDoSection capabilities={available} provider={definition.id} />
       <div className="bg-parchment flex flex-col gap-2 rounded-lg px-5 py-4">
-        <h3 className="text-body font-semibold">What you need</h3>
-        <p className="text-body">{requirementFor(row)}</p>
+        <h3 className="text-body font-semibold">{words.requirements}</h3>
+        <p className="text-body">
+          {words.providers[definition.id].accountRequirement}
+        </p>
         {isOAuth && canConnect ? (
           <p className="text-body">
             {demoMode
-              ? "This practice account never connects to the real service."
-              : `You’ll sign in on ${definition.label}’s own page. LifeLink never sees your password.`}
+              ? words.practiceNeverConnects
+              : words.signInProvider(definition.label)}
           </p>
         ) : null}
         {definition.connectStyle === "developer_only" &&
         available.length > 0 ? (
           <p className="text-body">
-            {row.developerReady
-              ? "This works through the app's own account, so there's nothing for you to sign in to."
-              : NOT_SET_UP}
+            {row.developerReady ? words.appAccount : words.notSetUp}
           </p>
         ) : null}
       </div>
-      <Limits capabilities={notYet} collapsed={available.length > 0} />
+      <Limits
+        capabilities={notYet}
+        collapsed={available.length > 0}
+        provider={definition.id}
+      />
       <HelperSection demoMode={demoMode} row={row} />
     </div>
   );
@@ -788,7 +806,8 @@ const ConnectionDialog = ({
   open: boolean;
   row: ProviderRow | null;
 }) => {
-  const status = row ? statusFor(demoMode, row) : null;
+  const words = useConnectionMessages();
+  const status = row ? statusFor(demoMode, row, words) : null;
 
   return (
     <DialogPrimitive.Root
@@ -812,7 +831,7 @@ const ConnectionDialog = ({
               <header className="flex items-start justify-between gap-4 px-5 pt-6 pb-5 sm:px-8 sm:pt-8">
                 <div className="flex min-w-0 flex-col gap-2">
                   <p className="text-muted-foreground text-label font-medium">
-                    {groupTitleFor(row.definition.id)}
+                    {groupTitleFor(row.definition.id, words)}
                   </p>
                   <DialogPrimitive.Title className="text-mobile-title sm:text-page-title font-semibold">
                     {row.definition.label}
@@ -821,11 +840,11 @@ const ConnectionDialog = ({
                     {status.text}
                   </Pill>
                   <DialogPrimitive.Description className="text-body">
-                    {introFor(row)}
+                    {introFor(row, words)}
                   </DialogPrimitive.Description>
                 </div>
                 <DialogPrimitive.Close
-                  aria-label="Close"
+                  aria-label={words.close}
                   className="hover:bg-neutral-wash size-control -m-2 inline-flex shrink-0 items-center justify-center rounded-md"
                 >
                   <XIcon aria-hidden="true" className="size-6" />
@@ -847,6 +866,7 @@ const ConnectionDialog = ({
 };
 
 const ConnectionsScreen = () => {
+  const words = useConnectionMessages();
   const data = useQuery(api.connections.list);
   const [openId, setOpenId] = useState<ProviderId | null>(null);
   const [open, setOpen] = useState(false);
@@ -865,19 +885,12 @@ const ConnectionsScreen = () => {
 
   return (
     <>
-      <PageHeader
-        subline="Connect the services you already use. Open one to see what LifeLink can do with it."
-        title="Connections"
-      />
+      <PageHeader subline={words.subline} title={words.title} />
       {data === undefined ? (
-        <LoadingRows
-          layout="connections"
-          label="Loading connections"
-          rows={5}
-        />
+        <LoadingRows layout="connections" label={words.loading} rows={5} />
       ) : null}
       {data !== undefined && data.providers.length === 0 ? (
-        <EmptyNote>No services are listed.</EmptyNote>
+        <EmptyNote>{words.empty}</EmptyNote>
       ) : null}
       {data === undefined
         ? null
@@ -911,7 +924,9 @@ const ConnectionsScreen = () => {
           <summary className="flex min-h-12 cursor-pointer list-none items-center gap-4 rounded-xl px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
             <IsoIcon kind="unavailable" size={48} />
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold">Coming later</span>
+              <span className="text-body font-semibold">
+                {words.comingLater}
+              </span>
               <span className="text-muted-foreground text-label">
                 {additionalRows.map((row) => row.definition.label).join(", ")}
               </span>
@@ -928,7 +943,10 @@ const ConnectionsScreen = () => {
                 key={row.definition.id}
               >
                 <button
-                  aria-label={`${row.definition.label}. ${row.definition.summary} Details.`}
+                  aria-label={words.detailLabel(
+                    row.definition.label,
+                    words.providers[row.definition.id].summary
+                  )}
                   className="hover:text-accent-foreground flex min-h-14 w-full items-center gap-4 py-3 text-left transition-colors duration-150 motion-reduce:transition-none"
                   onClick={() => openService(row.definition.id)}
                   type="button"
@@ -937,7 +955,7 @@ const ConnectionsScreen = () => {
                     {row.definition.label}
                   </span>
                   <span className="text-muted-foreground text-label min-w-0 flex-1">
-                    {row.definition.summary}
+                    {words.providers[row.definition.id].summary}
                   </span>
                   <ChevronRightIcon
                     aria-hidden="true"

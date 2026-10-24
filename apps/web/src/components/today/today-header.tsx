@@ -4,6 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
+import { useMessages } from "@/i18n/locale";
 import { formatDay } from "@/lib/format";
 import { subscribeToClock, useGreeting } from "@/lib/greeting";
 
@@ -30,6 +31,7 @@ const TodayHeader = ({
   const heading = useRef<HTMLHeadingElement>(null);
 
   const greeting = useGreeting(timeZone);
+  const t = useMessages();
 
   const date = useSyncExternalStore(
     subscribeToClock,
@@ -58,7 +60,7 @@ const TodayHeader = ({
           ref={heading}
           tabIndex={-1}
         >
-          <span className="sr-only">Today: </span>
+          <span className="sr-only">{t.today.titlePrefix}</span>
           {salutation}
         </h1>
         <p className="text-muted-foreground text-body max-w-prose pt-1">
@@ -67,7 +69,7 @@ const TodayHeader = ({
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <ReadAloudButton
-          label="Read my day aloud"
+          label={t.today.readMyDay}
           text={[`${salutation}.`, ...lines, ...spoken]
             .filter(Boolean)
             .join(" ")}

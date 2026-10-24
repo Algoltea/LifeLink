@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { currentMessages, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { ago, formatDay, formatTime } from "@/lib/format";
 
@@ -50,44 +52,32 @@ interface Heading {
 const headingFor = (focus: ActionView | null, detail: TaskDetail): Heading => {
   const kind = focus?.current?.details.kind;
   const awaiting = focus?.action.status === "awaiting_approval";
-  const who = detail.contact?.name.split(" ")[0] ?? "them";
+  const { tasks } = currentMessages();
+  const t = tasks.heading;
+  const who = detail.contact?.name.split(" ")[0] ?? tasks.them;
+  const title = translateServerMessage(detail.task.title);
 
   if (awaiting && kind === "send_message") {
-    return {
-      subline: `Nothing goes to ${who} until you press Approve. You can change the words first.`,
-      title: "Read this before it's sent",
-    };
+    return { subline: t.sendSubline(who), title: t.sendTitle };
   }
 
   if (awaiting && kind === "confirm_arrangement") {
-    return {
-      subline: `${who} replied. Check the time, then confirm.`,
-      title: "Confirm the ride",
-    };
+    return { subline: t.confirmSubline(who), title: t.confirmTitle };
   }
 
   if (awaiting) {
-    return {
-      subline: "Nothing happens until you approve it.",
-      title: "Check this, then approve",
-    };
+    return { subline: t.approveSubline, title: t.approveTitle };
   }
 
   if (detail.task.status === "waiting_for_reply") {
-    return {
-      subline: `Your message was sent. We'll show ${who}'s answer here as soon as it arrives.`,
-      title: `Waiting for ${who}`,
-    };
+    return { subline: t.waitingSubline(who), title: t.waitingTitle(who) };
   }
 
   if (detail.task.status === "completed") {
-    return {
-      subline: "Everything for this is done.",
-      title: detail.task.title,
-    };
+    return { subline: t.completedSubline, title };
   }
 
-  return { subline: "Here is where this stands.", title: detail.task.title };
+  return { subline: t.standsSubline, title };
 };
 
 /** What the backend checked, stated from the stored facts, never assumed. */
@@ -99,25 +89,31 @@ const ChecksPanel = ({
   focus: ActionView | null;
 }) => {
   const details = focus?.current?.details;
+  const t = useMessages().tasks;
   const checks: string[] = [];
 
   if (detail.contact !== null) {
     checks.push(
-      `${detail.contact.name} is in your contacts (${detail.contact.relationship.toLowerCase() || "trusted"}).`
+      t.checks.contact(
+        detail.contact.name,
+        detail.contact.relationship.toLowerCase() || t.checks.trusted
+      )
     );
   }
 
   if (detail.appointment !== null) {
     checks.push(
-      `The day and time match ${detail.appointment.title} on ${formatDay(detail.appointment.startsAt, detail.timeZone)} at ${formatTime(detail.appointment.startsAt, detail.timeZone)}.`
+      t.checks.appointment(
+        detail.appointment.title,
+        formatDay(detail.appointment.startsAt, detail.timeZone),
+        formatTime(detail.appointment.startsAt, detail.timeZone)
+      )
     );
   }
 
   if (details?.kind === "send_message") {
     checks.push(
-      LINK_PATTERN.test(details.body)
-        ? "This message contains a link. Make sure you meant to include it."
-        : "No links in the message."
+      LINK_PATTERN.test(details.body) ? t.checks.hasLink : t.checks.noLinks
     );
   }
 
@@ -126,7 +122,7 @@ const ChecksPanel = ({
     focus?.current !== undefined &&
     focus.current.ambiguities.every((item) => item.resolvedValue !== null)
   ) {
-    checks.push("Nothing is unclear about who or when.");
+    checks.push(t.checks.nothingUnclear);
   }
 
   if (checks.length === 0) {
@@ -139,7 +135,7 @@ const ChecksPanel = ({
       className="bg-surface flex flex-col gap-4 rounded-xl px-6 py-6"
     >
       <h2 className="text-2xl font-semibold" id="checked-heading">
-        Checked for you
+        {t.checkedForYou}
       </h2>
       <ul className="flex flex-col gap-3">
         {checks.map((check) => (
@@ -167,7 +163,9 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
   );
 
   const unclear = waitStep?.status === "waiting" && replies.length > 0;
-  const who = detail.contact?.name.split(" ")[0] ?? "They";
+  const words = useMessages();
+  const t = words.tasks;
+  const who = detail.contact?.name.split(" ")[0] ?? t.they;
 
   if (detail.messages.length === 0) {
     return null;
@@ -179,7 +177,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
       className="flex flex-col gap-4"
     >
       <h2 className="text-2xl font-semibold" id="conversation-heading">
-        Messages
+        {t.messages}
       </h2>
       <ol className="flex flex-col gap-3">
         {detail.messages.map((message) => (
@@ -192,10 +190,10 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
             key={message._id}
           >
             <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-base">
-              {message.direction === "incoming" ? `${who} replied` : "You sent"}{" "}
-              · {ago(message.createdAt, detail.timeZone)}
+              {message.direction === "incoming" ? t.replied(who) : t.youSent} ·{" "}
+              {ago(message.createdAt, detail.timeZone)}
               {message.direction === "outgoing"
-                ? ` · ${message.status === "sent" ? "sent" : message.status}`
+                ? ` · ${words.threads.status[message.status].toLowerCase()}`
                 : ""}
               <ModePill mode={message.mode} />
             </span>
@@ -205,9 +203,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
       </ol>
       {unclear ? (
         <div className="bg-surface flex flex-col gap-3 rounded-xl px-5 py-4">
-          <p className="text-lg">
-            We couldn’t tell for sure what {who} meant. Did {who} say yes?
-          </p>
+          <p className="text-lg">{t.unclearReply(who)}</p>
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={async () => {
@@ -219,7 +215,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
               }}
               variant="outline"
             >
-              Yes, {who} can
+              {t.whoCan(who)}
             </Button>
             <Button
               onClick={async () => {
@@ -231,7 +227,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
               }}
               variant="outline"
             >
-              No, {who} can’t
+              {t.whoCannot(who)}
             </Button>
           </div>
         </div>
@@ -243,9 +239,11 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
 const TaskScreen = ({ taskId }: { taskId: string }) => {
   // SAFETY: the id comes from a LifeLink link; the query validates it and rejects anything not owned by this person.
   const detail = useQuery(api.tasks.detail, { taskId: taskId as Id<"tasks"> });
+  const words = useMessages();
+  const t = words.tasks;
 
   if (detail === undefined) {
-    return <LoadingRows layout="task" label="Loading task details" rows={4} />;
+    return <LoadingRows layout="task" label={t.loadingDetails} rows={4} />;
   }
 
   if (detail === null) {
@@ -253,11 +251,11 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
       <EmptyNote
         action={
           <Link className="text-lg font-semibold underline" href="/">
-            Back to Today
+            {t.backToToday}
           </Link>
         }
       >
-        This could not be found.
+        {t.notFound}
       </EmptyNote>
     );
   }
@@ -272,12 +270,12 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="text-muted-foreground text-lg">
+      <nav aria-label={t.breadcrumb} className="text-muted-foreground text-lg">
         <Link className="underline-offset-4 hover:underline" href="/">
-          Today
+          {words.today.title}
         </Link>
         <span aria-hidden="true"> › </span>
-        <span>{detail.task.title}</span>
+        <span>{translateServerMessage(detail.task.title)}</span>
       </nav>
       <PageHeader
         actions={
@@ -296,7 +294,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
       <div className="grid items-start gap-9 @min-[56rem]/content:grid-cols-[minmax(0,1fr)_22.5rem]">
         <div className="flex min-w-0 flex-col gap-8">
           {focus === null ? (
-            <EmptyNote>Nothing to approve here.</EmptyNote>
+            <EmptyNote>{t.nothingToApprove}</EmptyNote>
           ) : (
             <ActionReview hue={hue} timeZone={detail.timeZone} view={focus} />
           )}
@@ -305,7 +303,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
               className="border-rule flex flex-col gap-4 border-t pt-8"
               key={view.action._id}
             >
-              <h2 className="text-2xl font-semibold">Also waiting for you</h2>
+              <h2 className="text-2xl font-semibold">{t.alsoWaiting}</h2>
               <ActionReview hue={hue} timeZone={detail.timeZone} view={view} />
             </section>
           ))}
@@ -318,9 +316,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
             className="flex flex-col gap-4"
           >
             <h2 className="text-2xl font-semibold" id="progress-heading">
-              {detail.task.status === "completed"
-                ? "How it went"
-                : "Step by step"}
+              {detail.task.status === "completed" ? t.howItWent : t.stepByStep}
             </h2>
             <JourneyGauge orientation="vertical" steps={detail.steps} />
           </section>
