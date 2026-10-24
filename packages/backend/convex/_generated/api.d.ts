@@ -43,6 +43,7 @@ import type * as lib_avatarimage from "../lib/avatarimage.js";
 import type * as lib_capabilities from "../lib/capabilities.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_env from "../lib/env.js";
+import type * as lib_feeds from "../lib/feeds.js";
 import type * as lib_imessage from "../lib/imessage.js";
 import type * as lib_incoming from "../lib/incoming.js";
 import type * as lib_journey from "../lib/journey.js";
@@ -53,8 +54,10 @@ import type * as lib_sampledrive from "../lib/sampledrive.js";
 import type * as lib_session from "../lib/session.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_usage from "../lib/usage.js";
+import type * as lib_weather from "../lib/weather.js";
 import type * as maintenance from "../maintenance.js";
 import type * as messages from "../messages.js";
+import type * as news from "../news.js";
 import type * as ownership from "../ownership.js";
 import type * as photos from "../photos.js";
 import type * as profiles from "../profiles.js";
@@ -68,6 +71,7 @@ import type * as status from "../status.js";
 import type * as tasks from "../tasks.js";
 import type * as today from "../today.js";
 import type * as voice from "../voice.js";
+import type * as weather from "../weather.js";
 import type * as webhooks from "../webhooks.js";
 
 import type {
@@ -112,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   "lib/capabilities": typeof lib_capabilities;
   "lib/crypto": typeof lib_crypto;
   "lib/env": typeof lib_env;
+  "lib/feeds": typeof lib_feeds;
   "lib/imessage": typeof lib_imessage;
   "lib/incoming": typeof lib_incoming;
   "lib/journey": typeof lib_journey;
@@ -122,8 +127,10 @@ declare const fullApi: ApiFromModules<{
   "lib/session": typeof lib_session;
   "lib/time": typeof lib_time;
   "lib/usage": typeof lib_usage;
+  "lib/weather": typeof lib_weather;
   maintenance: typeof maintenance;
   messages: typeof messages;
+  news: typeof news;
   ownership: typeof ownership;
   photos: typeof photos;
   profiles: typeof profiles;
@@ -137,6 +144,7 @@ declare const fullApi: ApiFromModules<{
   tasks: typeof tasks;
   today: typeof today;
   voice: typeof voice;
+  weather: typeof weather;
   webhooks: typeof webhooks;
 }>;
 
