@@ -340,6 +340,8 @@ Built at SBUHacks 2026 (October 23 to 25) with Claude Code and Codex.
 | `bun run check` / `bun run fix` | Ultracite (Oxlint + Oxfmt + anti-slop) |
 | `bun run build` | Production build |
 
+**CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `check`, `check-types`, `test` and `build` on every push to `main` and every pull request. It uses placeholder public Convex URLs, so it needs no secrets. Nothing deploys yet.
+
 **Layout**
 
 ```
