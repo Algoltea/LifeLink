@@ -16,11 +16,15 @@ import {
 } from "./_generated/server";
 import type { ActionCtx, QueryCtx } from "./_generated/server";
 import { request } from "./integrations/http";
+import { onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
 import { interleave, parseFeed } from "./lib/feeds";
 import { requireProfile } from "./lib/session";
 import schema from "./schema";
 
 const STORED = 10;
+
+/** Real feeds are well under 1 MB; anything far larger is not read. */
+const MAX_FEED_CHARS = 3_000_000;
 const TIMEOUT_MS = 10_000;
 
 const kindValidator = schema.tables.newsCache.validator.fields.kind;
@@ -87,8 +91,30 @@ const readSource = async (
     url: source.feedUrl,
   });
 
-  return outcome.kind === "ok" ? parseFeed(outcome.body, source) : [];
+  if (outcome.kind !== "ok" || outcome.body.length > MAX_FEED_CHARS) {
+    return [];
+  }
+
+  // One malformed feed must not cost the other sources their headlines.
+  try {
+    return parseFeed(outcome.body, source);
+  } catch {
+    return [];
+  }
 };
+
+/** One attempt per feed kind every few minutes, and a per-person ceiling. */
+export const claim = internalMutation({
+  args: { kind: kindValidator },
+  handler: async (ctx, args): Promise<boolean> => {
+    const profile = await requireProfile(ctx);
+
+    return await reserveFetch(ctx, [
+      onceUntilRetry(`news:${args.kind}`),
+      personClaim(profile._id),
+    ]);
+  },
+});
 
 /**
  * Fresh headlines of one kind. When every feed fails, the last good list
@@ -107,6 +133,14 @@ const ensureHeadlines = async (
 
   if (existing !== null && now - existing.fetchedAt < NEWS_REFRESH_MS) {
     return existing.headlines;
+  }
+
+  const claimed: boolean = await ctx.runMutation(internal.news.claim, {
+    kind,
+  });
+
+  if (!claimed) {
+    return existing?.headlines ?? [];
   }
 
   const lists = await Promise.all(NEWS_SOURCES[kind].map(readSource));
@@ -128,11 +162,12 @@ const ensureHeadlines = async (
 /** Called by Today when its headlines are missing or old. */
 export const refresh = action({
   args: { kind: kindValidator },
-  handler: async (ctx, args): Promise<null> => {
+  handler: async (ctx, args): Promise<{ available: boolean }> => {
     await ctx.runQuery(internal.news.signedIn, {});
-    await ensureHeadlines(ctx, args.kind);
 
-    return null;
+    const fresh = await ensureHeadlines(ctx, args.kind);
+
+    return { available: fresh.length > 0 };
   },
 });
 

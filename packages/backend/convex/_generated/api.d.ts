@@ -41,6 +41,7 @@ import type * as integrations_tts from "../integrations/tts.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_avatarimage from "../lib/avatarimage.js";
 import type * as lib_capabilities from "../lib/capabilities.js";
+import type * as lib_claims from "../lib/claims.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_feeds from "../lib/feeds.js";
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "lib/audit": typeof lib_audit;
   "lib/avatarimage": typeof lib_avatarimage;
   "lib/capabilities": typeof lib_capabilities;
+  "lib/claims": typeof lib_claims;
   "lib/crypto": typeof lib_crypto;
   "lib/env": typeof lib_env;
   "lib/feeds": typeof lib_feeds;

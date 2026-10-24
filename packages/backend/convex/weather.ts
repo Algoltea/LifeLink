@@ -16,6 +16,7 @@ import {
   query,
 } from "./_generated/server";
 import type { ActionCtx, QueryCtx } from "./_generated/server";
+import { onceUntilRetry, personClaim, reserveFetch } from "./lib/claims";
 import { requireProfile } from "./lib/session";
 import {
   findPlace,
@@ -114,6 +115,19 @@ export const store = internalMutation({
   },
 });
 
+/** One attempt per place every few minutes, and a per-person ceiling across places. */
+export const claim = internalMutation({
+  args: { key: v.string() },
+  handler: async (ctx, args): Promise<boolean> => {
+    const profile = await requireProfile(ctx);
+
+    return await reserveFetch(ctx, [
+      onceUntilRetry(`weather:${args.key}`),
+      personClaim(profile._id),
+    ]);
+  },
+});
+
 /**
  * The forecast for a saved location, fetched when the cached copy is old.
  * A failed fetch keeps the last good forecast instead of erasing it.
@@ -146,6 +160,14 @@ const ensureForecast = async (
     return existing.forecast;
   }
 
+  const claimed: boolean = await ctx.runMutation(internal.weather.claim, {
+    key,
+  });
+
+  if (!claimed) {
+    return existing?.forecast ?? null;
+  }
+
   try {
     const place = await findPlace(location);
     const fresh = place === null ? null : await readForecast(place);
@@ -165,15 +187,15 @@ const ensureForecast = async (
 /** Called by Today when its forecast is missing or old. */
 export const refresh = action({
   args: {},
-  handler: async (ctx): Promise<null> => {
+  handler: async (ctx): Promise<{ available: boolean }> => {
     const location: SavedLocation = await ctx.runQuery(
       internal.weather.savedLocation,
       {}
     );
 
-    await ensureForecast(ctx, location);
+    const found = await ensureForecast(ctx, location);
 
-    return null;
+    return { available: found !== null };
   },
 });
 

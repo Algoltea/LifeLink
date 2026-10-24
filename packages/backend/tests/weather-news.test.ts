@@ -332,3 +332,140 @@ describe("news on Today", () => {
     expect(me?.preferences).toMatchObject({ newsKind: "top", showNews: false });
   });
 });
+
+describe("review fixes for outside fetches", () => {
+  afterEach(resetFetch);
+
+  it("does not throw on a character code that names no character", () => {
+    if (!SMITHSONIAN) {
+      throw new Error("Expected a Smithsonian source.");
+    }
+
+    const headlines = parseFeed(
+      rss([
+        item(
+          "Bad &#x110000; code",
+          "https://example.org/x",
+          "Sat, 24 Oct 2026 08:00:00 GMT"
+        ),
+        item(
+          "Kept &#8217; quote",
+          "https://example.org/y",
+          "Sat, 24 Oct 2026 07:00:00 GMT"
+        ),
+      ]),
+      SMITHSONIAN
+    );
+
+    expect(headlines.map((headline) => headline.title)).toStrictEqual([
+      "Bad &#x110000; code",
+      "Kept ’ quote",
+    ]);
+  });
+
+  it("drops an unclosed item and clips a very long title", () => {
+    if (!SMITHSONIAN) {
+      throw new Error("Expected a Smithsonian source.");
+    }
+
+    const long = "A".repeat(1000);
+
+    const headlines = parseFeed(
+      `${rss([item(long, "https://example.org/l", "Sat, 24 Oct 2026 08:00:00 GMT")])}<item><title>Never closed`,
+      SMITHSONIAN
+    );
+
+    expect(headlines).toHaveLength(1);
+    expect(headlines[0]?.title.length).toBeLessThanOrEqual(300);
+  });
+
+  it("prefers a city in the saved time zone over a postal match abroad", async () => {
+    const abroad = JSON.stringify({
+      results: [
+        {
+          latitude: 51,
+          longitude: 0,
+          name: "Abroad",
+          timezone: "Europe/London",
+        },
+      ],
+    });
+
+    useFetch((url) => {
+      if (!url.includes("geocoding")) {
+        return respond(FORECAST);
+      }
+
+      return url.includes("name=Springfield")
+        ? respond(GEOCODE)
+        : respond(abroad);
+    });
+
+    const backend = newBackend();
+
+    const { person } = await signUp(backend, {
+      demo: false,
+      name: "Ruth Alvarez",
+      role: "owner",
+      subject: "owner-1",
+    });
+
+    await person.mutation(api.profiles.updateProfile, {
+      city: "Springfield",
+      displayName: "Ruth Alvarez",
+      postalCode: "01101",
+      preferredName: "Ruth",
+      signOffName: null,
+      timeZone: "America/New_York",
+    });
+
+    await person.action(api.weather.refresh, {});
+
+    const result = await person.query(api.weather.forecast, { today: TODAY });
+
+    expect(result.status === "ready" && result.forecast.place).toBe(
+      "Springfield, Massachusetts"
+    );
+  });
+
+  it("keeps a good forecast when the place search answers with nonsense", async () => {
+    vi.useFakeTimers({
+      now: Date.parse(`${TODAY}T12:00:00Z`),
+      toFake: ["Date"],
+    });
+    useFetch(weatherServer);
+    const { person } = await ownerIn("Springfield");
+
+    await person.action(api.weather.refresh, {});
+
+    vi.setSystemTime(Date.parse(`${TODAY}T12:00:00Z`) + HOUR);
+    useFetch(() => respond("<html>busy</html>"));
+    await person.action(api.weather.refresh, {});
+
+    const result = await person.query(api.weather.forecast, { today: TODAY });
+
+    expect(result.status).toBe("ready");
+  });
+
+  it("tries a failing feed once, then waits before trying again", async () => {
+    vi.useFakeTimers({
+      now: Date.parse(`${TODAY}T12:00:00Z`),
+      toFake: ["Date"],
+    });
+    useFetch(() => respond("down", 503));
+    const { person } = await ownerIn(null);
+
+    const first = await person.action(api.news.refresh, { kind: "top" });
+    const calls = fetchMock.mock.calls.length;
+    const second = await person.action(api.news.refresh, { kind: "top" });
+
+    expect(first).toStrictEqual({ available: false });
+    expect(second).toStrictEqual({ available: false });
+    expect(fetchMock).toHaveBeenCalledTimes(calls);
+
+    vi.setSystemTime(Date.parse(`${TODAY}T12:00:00Z`) + 6 * 60_000);
+    await person.action(api.news.refresh, { kind: "top" });
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+  });
+});

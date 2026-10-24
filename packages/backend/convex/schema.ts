@@ -484,6 +484,13 @@ export default defineSchema({
     text: v.string(),
   }).index("by_owner_created", ["ownerId", "createdAt"]),
 
+  // Outside fetches reserved per place, feed, or person, so failures and bursts cannot repeat them.
+  fetchClaims: defineTable({
+    count: v.number(),
+    key: v.string(),
+    windowStartedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   groceryLists: defineTable({
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(

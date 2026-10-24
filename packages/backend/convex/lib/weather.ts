@@ -79,43 +79,65 @@ const searchesFor = (location: SavedLocation): string[] => {
 const placeName = (name: string, region: string | undefined): string =>
   region && region !== name ? `${name}, ${region}` : name;
 
-/** Many towns share a name; the saved time zone picks the right one. */
-const findPlace = async (location: SavedLocation): Promise<Place | null> => {
-  for (const search of searchesFor(location)) {
-    const url = `${GEOCODE_URL}?${new URLSearchParams({
-      count: String(CANDIDATES),
-      format: "json",
-      language: "en",
-      name: search,
-    }).toString()}`;
+type Candidate = NonNullable<z.infer<typeof geocodeSchema>["results"]>[number];
 
-    // oxlint-disable-next-line no-await-in-loop -- searches run in order and stop at the first match.
-    const outcome = await request({
-      method: "GET",
-      timeoutMs: TIMEOUT_MS,
-      url,
-    });
+const searchPlaces = async (search: string): Promise<Candidate[]> => {
+  const url = `${GEOCODE_URL}?${new URLSearchParams({
+    count: String(CANDIDATES),
+    format: "json",
+    language: "en",
+    name: search,
+  }).toString()}`;
 
-    if (outcome.kind !== "ok") {
-      throw new Error("The weather service could not be reached.");
-    }
+  const outcome = await request({ method: "GET", timeoutMs: TIMEOUT_MS, url });
 
-    const results = decodeJson(geocodeSchema, outcome.body)?.results ?? [];
+  const decoded =
+    outcome.kind === "ok" ? decodeJson(geocodeSchema, outcome.body) : null;
 
-    const match =
-      results.find((result) => result.timezone === location.timeZone) ??
-      results[0];
-
-    if (match) {
-      return {
-        latitude: match.latitude,
-        longitude: match.longitude,
-        name: placeName(match.name, match.admin1),
-      };
-    }
+  // A broken answer is a failure, not "no such place", so a good forecast is kept.
+  if (decoded === null) {
+    throw new Error("The weather service could not be reached.");
   }
 
-  return null;
+  return decoded.results ?? [];
+};
+
+/**
+ * Many towns share a name, and short postal codes match abroad. A result in
+ * the saved time zone wins from any search; only when none matches does the
+ * first result of the most exact search stand.
+ */
+const findPlace = async (location: SavedLocation): Promise<Place | null> => {
+  const found: Candidate[][] = [];
+
+  for (const search of searchesFor(location)) {
+    // oxlint-disable-next-line no-await-in-loop -- searches run in order and stop at the first time zone match.
+    const results = await searchPlaces(search);
+
+    const local = results.find(
+      (result) => result.timezone === location.timeZone
+    );
+
+    if (local) {
+      return {
+        latitude: local.latitude,
+        longitude: local.longitude,
+        name: placeName(local.name, local.admin1),
+      };
+    }
+
+    found.push(results);
+  }
+
+  const [fallback] = found.find((results) => results.length > 0) ?? [];
+
+  return fallback
+    ? {
+        latitude: fallback.latitude,
+        longitude: fallback.longitude,
+        name: placeName(fallback.name, fallback.admin1),
+      }
+    : null;
 };
 
 const readForecast = async (place: Place): Promise<Forecast> => {
