@@ -343,7 +343,7 @@ const Notices = () => {
         </section>
       ))}
       {demo ? (
-        <div className="border-border bg-parchment text-muted-foreground text-label flex flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
+        <div className="border-border bg-parchment text-muted-foreground text-label flex min-h-[3.722rem] flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
           <p>
             <strong className="font-semibold">Practice mode is on.</strong> No
             real messages are sent.
@@ -432,7 +432,7 @@ const ShellFrame = ({
       <aside
         className={cn(
           "border-border bg-parchment sticky top-0 hidden h-svh flex-col overflow-y-auto border-r min-[1101px]:flex",
-          guest ? "px-[1.333rem] py-[1.778rem]" : "gap-6 px-3 py-5"
+          guest ? "px-[1.333rem] py-[1.778rem]" : "gap-6 px-3 pb-5"
         )}
       >
         {guest ? (
@@ -444,12 +444,15 @@ const ShellFrame = ({
           </>
         ) : (
           <>
-            <Link
-              className="min-h-control hover:bg-neutral-wash rounded-md px-4 py-1 transition-colors"
-              href={groups === FAMILY_NAV ? "/family" : "/"}
-            >
-              <BrandName />
-            </Link>
+            {/* Same height as the practice banner, so the logo and its text share one centre line. */}
+            <div className="flex h-[3.722rem] shrink-0 items-center">
+              <Link
+                className="min-h-control hover:bg-neutral-wash flex items-center rounded-md px-4 transition-colors"
+                href={groups === FAMILY_NAV ? "/family" : "/"}
+              >
+                <BrandName />
+              </Link>
+            </div>
             {navigation ?? <NavList groups={groups} />}
             <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
               {account}
