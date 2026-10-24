@@ -193,6 +193,22 @@ const messageExplanationSchema = z.strictObject({
 
 type MessageExplanation = z.infer<typeof messageExplanationSchema>;
 
+/**
+ * The two halves are written by separate model calls: guidance for the owner
+ * (which may use their private notes) and reply drafts (which never see them).
+ */
+const explanationGuidanceSchema = messageExplanationSchema.omit({
+  suggestedReplies: true,
+});
+
+const suggestedRepliesSchema = messageExplanationSchema.pick({
+  suggestedReplies: true,
+});
+
+type ExplanationGuidance = z.infer<typeof explanationGuidanceSchema>;
+
+type SuggestedReplies = z.infer<typeof suggestedRepliesSchema>;
+
 const appointmentExtractionSchema = z.strictObject({
   ambiguity: nullableString.describe(
     "What is unclear about the date, time, or place, or null."
@@ -255,9 +271,11 @@ export {
   proposalIntents,
   proposalSchema,
   emailSummarySchema,
+  explanationGuidanceSchema,
   messageExplanationSchema,
   replyClassificationSchema,
   replyKinds,
+  suggestedRepliesSchema,
   replyDecisions,
   scamReviewSchema,
   scamVerdicts,
@@ -269,7 +287,9 @@ export type {
   Briefing,
   Proposal,
   EmailSummary,
+  ExplanationGuidance,
   MessageExplanation,
   ReplyClassification,
   ScamReviewResult,
+  SuggestedReplies,
 };

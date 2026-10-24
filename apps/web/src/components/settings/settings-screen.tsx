@@ -2,12 +2,17 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
-import { helpStyleOf } from "@lifelink/contracts/help-style";
+import {
+  MAX_NOTES_LENGTH,
+  helpStyleOf,
+  supportLanguages,
+} from "@lifelink/contracts/help-style";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
 import { Segmented } from "@lifelink/ui/components/segmented";
 import { Switch } from "@lifelink/ui/components/switch";
+import { Textarea } from "@lifelink/ui/components/textarea";
 import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useId, useState } from "react";
@@ -241,6 +246,66 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   );
 };
 
+/** The person's own words about how they like help. Private, and never put in anything sent to others. */
+const NotesSetting = ({ saved }: { saved: string }) => {
+  const update = useMutation(api.profiles.updatePreferences);
+  const [notes, setNotes] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  const notesId = useId();
+  const hintId = useId();
+
+  return (
+    <form
+      className="border-rule flex flex-col gap-3 border-t py-5"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+
+        try {
+          await update({ communicationNotes: notes });
+          toast.success("Your notes are saved.");
+        } catch (error) {
+          toast.error(errorText(error));
+        }
+
+        setBusy(false);
+      }}
+    >
+      <Label htmlFor={notesId}>Notes about how I like help</Label>
+      <span
+        className="text-muted-foreground max-w-prose text-lg leading-7"
+        id={hintId}
+      >
+        For example, “Give me one step at a time.” Only LifeLink’s explanations
+        to you use these. They are never shown to family or put in a message. If
+        you allow a cloud explanation, these notes go to the AI provider with
+        the message.
+      </span>
+      <Textarea
+        aria-describedby={hintId}
+        className="bg-raised"
+        id={notesId}
+        maxLength={MAX_NOTES_LENGTH}
+        onChange={(event) => setNotes(event.target.value)}
+        rows={3}
+        value={notes}
+      />
+      <span className="text-muted-foreground text-base">
+        {notes.length} of {MAX_NOTES_LENGTH} characters
+      </span>
+      <Button
+        aria-busy={busy}
+        className="self-start"
+        disabled={busy || notes.trim() === saved}
+        type="submit"
+        variant="outline"
+      >
+        Save notes
+      </Button>
+    </form>
+  );
+};
+
 /** How LifeLink explains messages, scam checks, briefings, and practice. */
 const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const update = useMutation(api.profiles.updatePreferences);
@@ -284,6 +349,24 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
         label="One step at a time"
         onChange={(stepByStep) => save({ stepByStep })}
       />
+      <Row
+        description="LifeLink’s cloud explanations and scam checks are written in this language. Quotes stay in the message’s own words, local readings stay in English, and suggested replies follow the message’s language. Read-aloud and voice typing stay in English for now."
+        label="Language for help"
+      >
+        <select
+          aria-label="Language for help"
+          className="border-control bg-raised text-foreground min-h-12 max-w-full self-start rounded-md border px-4 text-base"
+          onChange={(event) => save({ supportLanguage: event.target.value })}
+          value={style.language}
+        >
+          {supportLanguages.map((language) => (
+            <option key={language.id} lang={language.id} value={language.id}>
+              {language.label}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <NotesSetting saved={style.notes} />
     </section>
   );
 };

@@ -13,6 +13,11 @@ import {
   stanceOf,
 } from "@lifelink/contracts/evidence";
 import type { SignalStance } from "@lifelink/contracts/evidence";
+import {
+  helpStyleOf,
+  ownerGuidanceLines,
+} from "@lifelink/contracts/help-style";
+import type { HelpStyle } from "@lifelink/contracts/help-style";
 import { scamReviewSchema } from "@lifelink/contracts/model-output";
 import type { ScamReviewResult } from "@lifelink/contracts/model-output";
 import { ConvexError, v } from "convex/values";
@@ -648,6 +653,19 @@ export const reviewInput = internalQuery({
   handler: async (ctx, args) => await ctx.db.get(args.reviewId),
 });
 
+/** Detail, pacing, and language for the result. Private notes are not used for scam checks. */
+export const resultStyle = internalQuery({
+  args: { ownerId: v.id("profiles") },
+  handler: async (ctx, args): Promise<HelpStyle> => {
+    const preferences = await ctx.db
+      .query("preferences")
+      .withIndex("by_profile", (index) => index.eq("profileId", args.ownerId))
+      .unique();
+
+    return { ...helpStyleOf(preferences), notes: "" };
+  },
+});
+
 const toBase64 = (bytes: ArrayBuffer): string => {
   let binary = "";
 
@@ -721,11 +739,16 @@ export const run = internalAction({
       });
     }
 
+    const style: HelpStyle = await ctx.runQuery(internal.scam.resultStyle, {
+      ownerId: review.ownerId,
+    });
+
     const result = await structuredCompletion({
       messages: [
         {
           content: [
             "You help an older adult decide whether a message is a scam. Return only JSON.",
+            ...ownerGuidanceLines(style),
             "Explain in two to four short, plain sentences. Quote the exact words that worry you, copied character for character.",
             "For each signal, set stance: requests when the message asks the reader to do it, warns_against when the message tells the reader not to do it (for example, never share your code), and mentions otherwise. A warning against an action is not a request for it.",
             "Never tell them to click a link, call a number in the message, or reply to the sender.",

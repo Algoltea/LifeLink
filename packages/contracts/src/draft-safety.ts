@@ -15,11 +15,12 @@ const CODE_LIKE = /\b\d{4,8}\b/gu;
 // Four-digit years are dates, not codes.
 const YEAR = /^(?:19|20)\d{2}$/u;
 
+// Replies follow the message's language, so the common words are checked in each support language.
 const PAYMENT =
-  /\b(?:gift cards?|wire (?:transfer|money)|bitcoin|crypto|zelle|venmo|cash app|western union)\b/iu;
+  /\b(?:gift cards?|wire (?:transfer|money)|bitcoin|crypto|zelle|venmo|cash app|western union|tarjetas? de regalo|cartes? cadeaux?|geschenkkarten?|gutscheinkarten?|buoni? regalo|cart(?:ão|ões) (?:de )?presente|thẻ quà tặng)\b|礼品卡|禮品卡|기프트\s?카드|상품권/iu;
 
 const PRIVATE_DETAILS =
-  /\b(?:password|pin|verification code|one[- ]time code|account number|social security|ssn|medicare number|bank details)\b/iu;
+  /\b(?:password|pin|verification code|one[- ]time code|account number|social security|ssn|medicare number|bank details|contraseña|código de verificación|mot de passe|code de vérification|passwort|bestätigungscode|kennwort|codice di verifica|senha|código de verificação|mật khẩu|mã xác minh)\b|密码|密碼|验证码|비밀번호|인증번호/iu;
 
 type DraftProblem =
   | "code"

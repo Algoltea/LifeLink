@@ -483,6 +483,16 @@ export default defineSchema({
     ),
     droppedCount: v.number(),
     emailId: v.union(v.id("emails"), v.null()),
+    // The help style this explanation was written for, kept so a scheduled run uses the same one.
+    helpStyle: v.optional(
+      v.object({
+        detail: v.union(v.literal("short"), v.literal("detailed")),
+        language: v.string(),
+        notes: v.string(),
+        stepByStep: v.boolean(),
+      })
+    ),
+    helpStyleKey: v.optional(v.string()),
     interpretations: v.array(v.object({ text: v.string(), why: v.string() })),
     localReason,
     messageId: v.union(v.id("messages"), v.null()),
@@ -550,6 +560,8 @@ export default defineSchema({
 
   preferences: defineTable({
     captions: v.boolean(),
+    // The owner's own words about how they like help. Owner-only; used only for explanations written to them.
+    communicationNotes: v.optional(v.union(v.string(), v.null())),
     contrast: v.union(v.literal("standard"), v.literal("more")),
     // How LifeLink explains things. Optional so older rows read as the defaults.
     explanationDetail: v.optional(
@@ -561,6 +573,8 @@ export default defineSchema({
     reducedMotion: v.boolean(),
     speechRate: v.number(),
     stepByStep: v.optional(v.boolean()),
+    // One of the offered support languages; checked when saved.
+    supportLanguage: v.optional(v.string()),
     textScale: v.number(),
     theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     updatedAt: v.number(),

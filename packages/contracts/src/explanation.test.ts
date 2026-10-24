@@ -208,6 +208,10 @@ describe("draft safety", () => {
     ["I'll buy the gift cards.", "payment"],
     ["My PIN is below.", "private_details"],
     ["x".repeat(601), "too_long"],
+    ["Compraré las tarjetas de regalo.", "payment"],
+    ["Voici mon mot de passe.", "private_details"],
+    ["我会买礼品卡", "payment"],
+    ["비밀번호를 보낼게요", "private_details"],
   ])("rejects %j", (draft, problem) => {
     expect(draftProblem(draft, "")).toBe(problem);
   });

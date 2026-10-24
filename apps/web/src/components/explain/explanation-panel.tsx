@@ -287,8 +287,14 @@ const ExplanationBody = ({
   const { preferences } = usePreferences();
   const steps = sectionsOf(explanation, level, onUseReply);
 
+  // Mark the language the explanation was written in, so screen readers pronounce it properly.
+  const language =
+    explanation.method === "cloud"
+      ? (explanation.helpStyle?.language ?? "en")
+      : "en";
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" lang={language}>
       {explanation.droppedCount > 0 ? (
         <p className="text-base font-semibold">{DROPPED_WORDS}</p>
       ) : null}
@@ -316,6 +322,8 @@ const RequestForm = ({
   upgrade: boolean;
 }) => {
   const request = useMutation(api.explanations.request);
+  const { me } = usePreferences();
+  const hasNotes = (me?.preferences?.communicationNotes ?? "").length > 0;
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [busy, setBusy] = useState(false);
   const consentId = useId();
@@ -353,7 +361,10 @@ const RequestForm = ({
           />
           <span>
             Use the cloud assistant for a fuller explanation. The message text
-            is sent to the AI provider. Leave unchecked for a local reading.
+            {hasNotes
+              ? ", and your notes about how you like help, are"
+              : " is"}{" "}
+            sent to the AI provider. Leave unchecked for a local reading.
           </span>
         </label>
       )}
@@ -428,6 +439,13 @@ const ExplanationPanel = ({
     body = (
       <>
         <p className="text-base font-semibold">{methodWords(explanation)}</p>
+        {explanation.method === "local" &&
+        (explanation.helpStyle?.language ?? "en") !== "en" ? (
+          <p className="text-base">
+            Local readings are in English. A cloud explanation can be written in
+            your chosen language.
+          </p>
+        ) : null}
         <ExplanationBody
           explanation={explanation}
           level={level}

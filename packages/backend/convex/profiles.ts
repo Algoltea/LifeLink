@@ -1,3 +1,4 @@
+import { cleanNotes, isSupportLanguage } from "@lifelink/contracts/help-style";
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
@@ -208,6 +209,7 @@ export const updateProfile = mutation({
 export const updatePreferences = mutation({
   args: {
     captions: v.optional(v.boolean()),
+    communicationNotes: v.optional(v.union(v.string(), v.null())),
     contrast: v.optional(v.union(v.literal("standard"), v.literal("more"))),
     explanationDetail: v.optional(
       v.union(v.literal("short"), v.literal("detailed"))
@@ -217,6 +219,7 @@ export const updatePreferences = mutation({
     reducedMotion: v.optional(v.boolean()),
     speechRate: v.optional(v.number()),
     stepByStep: v.optional(v.boolean()),
+    supportLanguage: v.optional(v.string()),
     textScale: v.optional(v.number()),
     theme: v.optional(
       v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
@@ -241,6 +244,23 @@ export const updatePreferences = mutation({
 
     if (args.stepByStep !== undefined) {
       patch.stepByStep = args.stepByStep;
+    }
+
+    if (args.supportLanguage !== undefined) {
+      if (!isSupportLanguage(args.supportLanguage)) {
+        throw new ConvexError({
+          code: "invalid",
+          message: "Please choose one of the languages offered.",
+        });
+      }
+
+      patch.supportLanguage = args.supportLanguage;
+    }
+
+    if (args.communicationNotes !== undefined) {
+      const notes = cleanNotes(args.communicationNotes);
+
+      patch.communicationNotes = notes.length === 0 ? null : notes;
     }
 
     if (args.groceryNotes !== undefined) {
