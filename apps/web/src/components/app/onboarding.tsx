@@ -110,6 +110,11 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
 
     if (latest.current === run) {
       setLookup(answer);
+
+      // A miss may be a passing outage, so the next blur or Continue asks again.
+      if (answer.kind === "missing") {
+        latest.current = null;
+      }
     }
 
     return answer;
@@ -169,136 +174,141 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
           void submit(new FormData(event.currentTarget));
         }}
       >
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-section pb-2 font-semibold">
-            Who is LifeLink for?
-          </legend>
-          <Segmented
-            label="Who is LifeLink for?"
-            onValueChange={setRole}
-            options={ROLES}
-            value={role}
-          />
-          <p className="text-muted-foreground text-base">
-            {role === "owner"
-              ? "You'll use LifeLink every day. Family members see only what you choose to share."
-              : "You'll see only what your family member shares with you. You'll enter the invitation code they give you on the next screen."}
-          </p>
-        </fieldset>
-        <fieldset
-          className="border-border grid gap-5 border-t pt-6 sm:grid-cols-2"
-          key={accountName}
-        >
-          <legend className="text-section pr-3 font-semibold">About you</legend>
-          {accountName || sessionPending ? null : (
-            <div className="flex flex-col gap-2 sm:col-span-2">
-              <Label htmlFor={ids.name}>Your full name</Label>
-              <Input autoComplete="name" id={ids.name} name="name" required />
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.preferred}>
-              What should LifeLink call you?
-            </Label>
-            <Input
-              autoComplete="given-name"
-              defaultValue={accountName.split(" ")[0]}
-              id={ids.preferred}
-              name="preferred"
-              required
+        {/* Locked while saving, so an edit made while Continue waits cannot be lost. */}
+        <fieldset className="contents" disabled={busy}>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="text-section pb-2 font-semibold">
+              Who is LifeLink for?
+            </legend>
+            <Segmented
+              label="Who is LifeLink for?"
+              onValueChange={setRole}
+              options={ROLES}
+              value={role}
             />
-          </div>
-          {role === "owner" ? (
+            <p className="text-muted-foreground text-base">
+              {role === "owner"
+                ? "You'll use LifeLink every day. Family members see only what you choose to share."
+                : "You'll see only what your family member shares with you. You'll enter the invitation code they give you on the next screen."}
+            </p>
+          </fieldset>
+          <fieldset
+            className="border-border grid gap-5 border-t pt-6 sm:grid-cols-2"
+            key={accountName}
+          >
+            <legend className="text-section pr-3 font-semibold">
+              About you
+            </legend>
+            {accountName || sessionPending ? null : (
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label htmlFor={ids.name}>Your full name</Label>
+                <Input autoComplete="name" id={ids.name} name="name" required />
+              </div>
+            )}
             <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.signOff}>
-                How you sign your messages (optional)
+              <Label htmlFor={ids.preferred}>
+                What should LifeLink call you?
               </Label>
               <Input
-                aria-describedby={ids.signOffHint}
-                id={ids.signOff}
-                name="signOff"
+                autoComplete="given-name"
+                defaultValue={accountName.split(" ")[0]}
+                id={ids.preferred}
+                name="preferred"
+                required
               />
-              <p
-                className="text-muted-foreground text-label"
-                id={ids.signOffHint}
-              >
-                For example, Mom or Grandma Ruth. If you leave it blank,
-                messages end with the name above.
-              </p>
             </div>
-          ) : null}
-          {role === "owner" ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.postal}>Postal code (optional)</Label>
-              <Input
-                aria-describedby={ids.postalHint}
-                autoComplete="postal-code"
-                id={ids.postal}
-                maxLength={16}
-                name="postal"
-                onBlur={async (event) => {
-                  await check(event.currentTarget.value, timeZone);
-                }}
-                onChange={forget}
-              />
-              <p
-                aria-live="polite"
-                className="text-muted-foreground text-label flex items-center gap-1.5"
-                id={ids.postalHint}
-              >
-                {lookup.kind === "found" ? (
-                  <>
-                    <CheckIcon
-                      aria-hidden="true"
-                      className="text-foreground size-4"
-                    />
-                    <span className="text-foreground font-medium">
-                      {lookup.place}
-                    </span>
-                  </>
-                ) : (
-                  LOOKUP_WORDS[lookup.kind]
-                )}
-              </p>
-            </div>
-          ) : null}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.timeZone}>Time zone</Label>
-            <TimeZoneSelect
-              current={timeZone}
-              id={ids.timeZone}
-              name="timeZone"
-              onChange={(event) => {
-                setTimeZone(event.target.value);
-                // The town was found for the old zone.
-                forget();
-              }}
-              required
-              value={timeZone}
-            />
-          </div>
-        </fieldset>
-        {role === "owner" && demoModeAllowed ? (
-          <section className="border-border bg-parchment rounded-lg border p-5">
-            <div className="flex items-start gap-4 pt-1">
-              <Checkbox
-                checked={demo}
-                id={ids.demo}
-                onCheckedChange={(checked) => setDemo(checked)}
-              />
-              <div className="flex flex-col gap-1">
-                <Label className="cursor-pointer" htmlFor={ids.demo}>
-                  Start in practice mode
+            {role === "owner" ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.signOff}>
+                  How you sign your messages (optional)
                 </Label>
-                <p className="text-muted-foreground text-label">
-                  Adds sample family members, an appointment email, and practice
-                  replies. Nothing is really sent. Every practice result is
-                  marked Practice. You can turn it off in Settings.
+                <Input
+                  aria-describedby={ids.signOffHint}
+                  id={ids.signOff}
+                  name="signOff"
+                />
+                <p
+                  className="text-muted-foreground text-label"
+                  id={ids.signOffHint}
+                >
+                  For example, Mom or Grandma Ruth. If you leave it blank,
+                  messages end with the name above.
                 </p>
               </div>
+            ) : null}
+            {role === "owner" ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={ids.postal}>Postal code (optional)</Label>
+                <Input
+                  aria-describedby={ids.postalHint}
+                  autoComplete="postal-code"
+                  id={ids.postal}
+                  maxLength={16}
+                  name="postal"
+                  onBlur={async (event) => {
+                    await check(event.currentTarget.value, timeZone);
+                  }}
+                  onChange={forget}
+                />
+                <p
+                  aria-live="polite"
+                  className="text-muted-foreground text-label flex items-center gap-1.5"
+                  id={ids.postalHint}
+                >
+                  {lookup.kind === "found" ? (
+                    <>
+                      <CheckIcon
+                        aria-hidden="true"
+                        className="text-foreground size-4"
+                      />
+                      <span className="text-foreground font-medium">
+                        {lookup.place}
+                      </span>
+                    </>
+                  ) : (
+                    LOOKUP_WORDS[lookup.kind]
+                  )}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.timeZone}>Time zone</Label>
+              <TimeZoneSelect
+                current={timeZone}
+                id={ids.timeZone}
+                name="timeZone"
+                onChange={(event) => {
+                  setTimeZone(event.target.value);
+                  // The town was found for the old zone.
+                  forget();
+                }}
+                required
+                value={timeZone}
+              />
             </div>
-          </section>
-        ) : null}
+          </fieldset>
+          {role === "owner" && demoModeAllowed ? (
+            <section className="border-border bg-parchment rounded-lg border p-5">
+              <div className="flex items-start gap-4 pt-1">
+                <Checkbox
+                  checked={demo}
+                  id={ids.demo}
+                  onCheckedChange={(checked) => setDemo(checked)}
+                />
+                <div className="flex flex-col gap-1">
+                  <Label className="cursor-pointer" htmlFor={ids.demo}>
+                    Start in practice mode
+                  </Label>
+                  <p className="text-muted-foreground text-label">
+                    Adds sample family members, an appointment email, and
+                    practice replies. Nothing is really sent. Every practice
+                    result is marked Practice. You can turn it off in Settings.
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+        </fieldset>
         {problem ? (
           <p
             className="bg-negative-wash text-negative rounded-lg px-4 py-3 text-base"
