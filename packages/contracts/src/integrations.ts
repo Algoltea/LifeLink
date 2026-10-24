@@ -379,7 +379,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "calendar.read",
         label: "See your upcoming events",
-        note: "Verified in Google Calendar's connector; Today does not show them yet.",
+        note: "Your existing calendar events are not shown in LifeLink yet.",
         status: "not_wired",
       },
       {
@@ -393,22 +393,21 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "google_calendar",
     label: "Google Calendar",
-    summary: "Your calendar on Today, and approved appointments added to it.",
+    summary: "Add appointments to your calendar after you approve them.",
   },
   {
-    accountRequirement:
-      "The developer's PayPal app credentials. Personal sign-in is not offered.",
+    accountRequirement: "Personal PayPal accounts cannot be connected here.",
     capabilities: [
       {
         id: "paypal.invoices",
         label: "Look up invoices",
-        note: "Verified in PayPal's connector; no screen uses it yet.",
+        note: "Invoice lookup is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "paypal.send_money",
         label: "Send money to a person",
-        note: "PayPal's connector has no payout or send-money action. This app will not move money.",
+        note: "LifeLink cannot send money through PayPal.",
         status: "not_offered",
       },
     ],
@@ -417,22 +416,23 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "paypal",
     label: "PayPal",
-    summary: "Invoice look-ups only. No payments are sent from this app.",
+    summary:
+      "Invoice lookup is not available yet. LifeLink does not send payments.",
   },
   {
     accountRequirement:
-      "A Facebook Page you manage. Personal profiles are not supported by Facebook's API.",
+      "Facebook Page features only. Personal profiles are not supported.",
     capabilities: [
       {
         id: "facebook.page_post",
         label: "Post to a Page after you approve it",
-        note: "Verified in Facebook's connector; no screen uses it yet.",
+        note: "Posting to Facebook Pages is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "facebook.page_inbox",
         label: "Read and answer your Page's messages",
-        note: "Verified in Facebook's connector; no screen uses it yet.",
+        note: "Facebook Page messages are not available in LifeLink yet.",
         status: "not_wired",
       },
       {
@@ -455,19 +455,19 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "instagram.post",
         label: "Share a photo post after you approve it",
-        note: "Verified in Instagram's connector; no screen uses it yet.",
+        note: "Sharing Instagram posts is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "instagram.messages",
         label: "Answer direct messages",
-        note: "Verified in Instagram's connector (only within 24 hours of their last message); no screen uses it yet.",
+        note: "Instagram replies are not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "instagram.personal",
         label: "Personal accounts",
-        note: "Instagram's API does not support personal accounts.",
+        note: "Personal Instagram accounts are not supported.",
         status: "not_offered",
       },
     ],
@@ -479,19 +479,18 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     summary: "Business and Creator accounts only.",
   },
   {
-    accountRequirement:
-      "The developer's eBay app credentials. Personal sign-in is not offered.",
+    accountRequirement: "Personal eBay accounts cannot be connected here.",
     capabilities: [
       {
         id: "ebay.search",
         label: "Search eBay listings",
-        note: "Verified in eBay's connector; no screen uses it yet.",
+        note: "Searching eBay is not available in LifeLink yet.",
         status: "not_wired",
       },
       {
         id: "ebay.selling",
         label: "Your listings, orders, or purchases",
-        note: "The eBay connector only covers public catalog search.",
+        note: "LifeLink cannot manage your eBay account, purchases, or sales.",
         status: "not_offered",
       },
     ],
@@ -500,7 +499,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     developerIntegration: "composio",
     id: "ebay",
     label: "eBay",
-    summary: "Search public listings. Buying and selling are not available.",
+    summary: "Search is not available yet. LifeLink cannot buy or sell items.",
   },
   {
     accountRequirement:
@@ -516,7 +515,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "imessage.delivery",
         label: "Delivery updates",
-        note: "LifeLink currently confirms provider acceptance. Delivery and read updates are not connected.",
+        note: "LifeLink can confirm that the messaging service accepted your message, but not that it was delivered or read.",
         status: "not_wired",
       },
       {
@@ -545,7 +544,7 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
       {
         id: "discord.receive",
         label: "Receive replies",
-        note: "Needs the Discord bridge running with bun run dev.",
+        note: "Replies depend on LifeLink's Discord connection staying online.",
         status: "available",
       },
     ],
