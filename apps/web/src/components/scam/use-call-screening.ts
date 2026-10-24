@@ -89,13 +89,26 @@ interface CheckTracker {
   active: Promise<boolean> | null;
   at: number;
   checkedText: string;
+  /** Some unchecked speech scrolled out of the window before a check covered it. */
+  missed: boolean;
+  /** First line still waiting since the last failed check. */
+  pendingSince: string | null;
 }
 
 const newTracker = (): CheckTracker => ({
   active: null,
   at: 0,
   checkedText: "",
+  missed: false,
+  pendingSince: null,
 });
+
+/** Remembers where unchecked speech began, so losing it can be noticed later. */
+const markPending = (tracker: CheckTracker, transcript: string): void => {
+  if (tracker.pendingSince === null) {
+    tracker.pendingSince = transcript.split("\n")[0] ?? "";
+  }
+};
 
 /** A continued call keeps what it heard so far; a new call starts empty. */
 const startingState = (
@@ -328,11 +341,26 @@ const useCallScreening = () => {
     } catch {
       // Unchecked words stay unchecked, so the next tick retries them.
       tracker.active = null;
+      markPending(tracker, transcript);
 
       return false;
     }
 
     tracker.active = null;
+
+    if (result.status === "checked") {
+      // Words that left the window while checks failed were never checked.
+      if (
+        tracker.pendingSince !== null &&
+        !transcript.includes(tracker.pendingSince)
+      ) {
+        tracker.missed = true;
+      }
+
+      tracker.pendingSince = null;
+    } else {
+      markPending(tracker, transcript);
+    }
 
     // Late results never reach another call or a summary that already saved.
     const accepting =
@@ -364,8 +392,8 @@ const useCallScreening = () => {
   };
 
   /** Checks the newest captions in the cloud, one request at a time per call. */
-  const checkCall = (): Promise<boolean> => {
-    const tracker = checks.current;
+  const checkCall = (given?: CheckTracker): Promise<boolean> => {
+    const tracker = given ?? checks.current;
     tracker.at = performance.now();
     tracker.active = runCheck(
       tracker,
@@ -421,14 +449,22 @@ const useCallScreening = () => {
 
   /** Waits for a running check, then checks any words it didn't cover. */
   const finalCheck = async (): Promise<void> => {
-    const { active } = checks.current;
+    const tracker = checks.current;
 
-    if (active !== null) {
-      await active;
+    if (tracker.active !== null) {
+      await tracker.active;
     }
 
-    if (uncheckedText() && !current.current.checksUnavailable) {
-      await checkCall();
+    // A timed-out final check must not start a request for a newer call.
+    const stillFinishing =
+      checks.current === tracker && current.current.checking;
+
+    if (
+      stillFinishing &&
+      uncheckedText() &&
+      !current.current.checksUnavailable
+    ) {
+      await checkCall(tracker);
     }
   };
 
@@ -457,7 +493,9 @@ const useCallScreening = () => {
       checkIncomplete:
         !practice &&
         current.current.heardWords > 0 &&
-        (current.current.checksUnavailable || uncheckedText()),
+        (current.current.checksUnavailable ||
+          checks.current.missed ||
+          uncheckedText()),
     });
     await saveSummary();
   };

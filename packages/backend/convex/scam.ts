@@ -1211,7 +1211,27 @@ export const claimEmailCheck = internalMutation({
     if (
       review === null ||
       review.automatic !== true ||
-      review.cloudAnalysisConsent === true
+      review.cloudAnalysisConsent === true ||
+      review.emailId === null
+    ) {
+      return false;
+    }
+
+    // Settings may have changed since the email was read; check them again here.
+    const email = await ctx.db.get(review.emailId);
+    const owner = await ctx.db.get(review.ownerId);
+
+    const preferences = await ctx.db
+      .query("preferences")
+      .withIndex("by_profile", (index) => index.eq("profileId", review.ownerId))
+      .unique();
+
+    if (
+      email?.mode !== "live" ||
+      email.scamCheck?.reviewId !== review._id ||
+      owner === null ||
+      owner.demoMode ||
+      preferences?.aiEmailChecks === false
     ) {
       return false;
     }
