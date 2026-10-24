@@ -1,6 +1,6 @@
 # Conversation support: product and implementation plan
 
-Status: implemented on `feature/lifelink-conversation-support`, increments 1 to 5. Section 11 records where the implementation differs from this plan. The live phone companion (section 8) remains evaluation only.
+Status: increments 1, 2, 4, and 5 are implemented. Increment 3 (guided practice) shipped and was then removed. Section 11 records that and the other differences from this plan. The live phone companion (section 8) remains evaluation only.
 
 LifeLink's core flow still applies to everything here: _speak or type → review the exact action → approve → follow progress → see an accurate result._ None of these features adds a new way to send, save, or share anything. Any outward step goes through an existing action kind (`send_message`, `email_draft`, `create_reminder`, `calendar_event`) and the existing exact-version approval.
 
@@ -250,7 +250,7 @@ Backend tests call `finish` through `internal.scam.finish` with hand-written res
 
 ---
 
-## 5. Increment 3: Guided practice conversations
+## 5. Increment 3: Guided practice conversations (removed)
 
 ### Product behavior
 
@@ -356,7 +356,7 @@ This isn't recommended for near-term work. Before it could be scoped, it would n
 - **Honest capability reporting:** the integrations catalog would need new entries with clear "not offered" states.
 - **Safety:** no real-time action-taking. Anything that comes out of a call would become a recap (increment 5) followed by the normal approval flow.
 
-The rehearsal for a suspicious caller (increment 3) and the recaps of text conversations (increment 5) deliver much of the value without this scope.
+The recaps of text conversations (increment 5) deliver much of the value without this scope.
 
 ---
 
@@ -383,7 +383,7 @@ What shipped differs from the plan above in these ways:
 - **Warning stance.** A model's `warns_against` is believed only when the local reading agrees at the same words. The local reading also treats conditionals ("if you don't…"), pressure ("don't forget to…"), and exceptions ("…except our agent") as requests.
 - **Email rescans.** A rules update rewrites the earlier automatic check in place, so a corrected result replaces the old one in history and in family Scam alerts. Rescanning clears only the local check's own flag. Flags from cloud summaries and manual cloud checks are kept.
 - **Suggested replies.** A separate model request writes the reply drafts from the message alone, so private notes and the help language can't shape words sent to someone else. If that request fails, the local suggestions remain.
-- **Rehearsals.** "Do it for real" suggests words to use in Ask rather than pre-filling it, because Ask has no pre-fill. Dictation uses the existing browser dictation.
+- **Guided practice removed.** Increment 3 shipped and was then removed. Scripted conversation rehearsal risked feeling like skills training rather than help, and older users often reject anything that assumes they can't cope. Its package, `/practice` route, navigation item, Settings link, and lint rule are gone. The suspicious-caller and hearing-related situations remain worth revisiting with real users, for example as part of Scam check.
 - **Preferences.** Phase B shipped with a narrow scope:
   - The help language applies to cloud explanations and cloud scam results. Local readings stay in English and say so, and read-aloud and voice typing are unchanged.
   - Notes are used only for message explanations. They aren't used for scam checks or recaps.

@@ -329,8 +329,8 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
         How I like help
       </h2>
       <p className="text-muted-foreground pb-6 text-lg leading-7">
-        Used when LifeLink explains a message, a scam check, or your morning
-        briefing, and in conversation practice. Only you see these.
+        Used when LifeLink explains a message, a scam check, a conversation
+        recap, or your morning briefing. Only you see these.
       </p>
       <Row
         description="Short gives the main points. Detailed explains a little more."
@@ -552,13 +552,6 @@ const DemoSettings = ({
       <p className="text-muted-foreground text-lg leading-7">
         Anything prepared in one mode has to be reviewed again before it runs in
         the other.
-      </p>
-      <p className="text-lg leading-7">
-        To rehearse a phone call or a conversation with made-up people, try{" "}
-        <Link className="font-semibold underline" href="/practice">
-          Conversation practice
-        </Link>
-        . It works in either mode, and nothing in it is sent or saved.
       </p>
     </section>
   );
