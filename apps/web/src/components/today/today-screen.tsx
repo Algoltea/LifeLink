@@ -189,7 +189,7 @@ const TodayContent = ({
         <DueReminder key={reminder._id} reminder={reminder} />
       ))}
 
-      {/* Groups sit further apart than the rows inside them. One column on a phone, in the same order. */}
+      {/* Groups sit further apart than the rows inside them, in one column on every width. */}
       <div className="motion-enter flex flex-col gap-10">
         {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
         {/* With nothing to review the group steps aside; the header line already says so. */}
@@ -206,13 +206,11 @@ const TodayContent = ({
             ))}
           </section>
         ) : null}
-        <div className="grid items-start gap-x-6 gap-y-10 @min-[56rem]/content:grid-cols-2">
-          <WeekList rows={week} timeZone={timeZone} weather={weather} />
-          <TodayPanel headingId="messages-heading" title="Messages">
-            <FamilyList messages={summary.messages} timeZone={timeZone} />
-            <LatestEmail timeZone={timeZone} />
-          </TodayPanel>
-        </div>
+        <WeekList rows={week} timeZone={timeZone} weather={weather} />
+        <TodayPanel headingId="messages-heading" title="Messages">
+          <FamilyList messages={summary.messages} timeZone={timeZone} />
+          <LatestEmail timeZone={timeZone} />
+        </TodayPanel>
         <NewsCard />
         <Composer />
       </div>

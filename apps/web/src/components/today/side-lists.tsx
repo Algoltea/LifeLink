@@ -38,11 +38,11 @@ interface WeekRow {
   };
 }
 
-/** Rows inside a Today panel; the wash shows on the panel's parchment. */
+/** Rows in a Today group, inset so their text lines up with the part headings. */
 const PANEL_ROW =
-  "text-foreground hover:bg-neutral-wash/70 flex min-w-0 items-center gap-3.5 rounded-lg px-3 py-3.5 transition-colors";
+  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 rounded-lg px-3 py-3.5 transition-colors";
 
-/** One Today group on a soft panel. Rows are inset to line up with the heading. */
+/** One Today group: a heading and its rows, flat like News. */
 const TodayPanel = ({
   children,
   headingId,
@@ -52,18 +52,15 @@ const TodayPanel = ({
   headingId: string;
   title: string;
 }) => (
-  <section
-    aria-labelledby={headingId}
-    className="border-rule bg-parchment flex min-w-0 flex-col gap-2 rounded-xl border px-2 py-5 sm:px-3"
-  >
-    <h2 className="text-section px-3 font-semibold" id={headingId}>
+  <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2">
+    <h2 className="text-section font-semibold" id={headingId}>
       {title}
     </h2>
     {children}
   </section>
 );
 
-/** A smaller part of a panel, such as "From family" in Messages. */
+/** A smaller part of a panel, such as "From family and friends" in Messages. */
 const PanelPart = ({
   action,
   children,
@@ -242,7 +239,7 @@ const FamilyList = ({
   const rows = latestPerPerson(messages);
 
   return (
-    <PanelPart headingId="family-heading" title="From family">
+    <PanelPart headingId="family-heading" title="From family and friends">
       {rows.length === 0 ? (
         <SideEmpty>No new messages in the last two days.</SideEmpty>
       ) : (

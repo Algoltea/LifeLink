@@ -31,21 +31,17 @@ const TodayLoadingHeader = () => (
   </div>
 );
 
-const PANEL =
-  "border-rule bg-parchment flex min-w-0 flex-col gap-2 rounded-xl border px-2 py-5 sm:px-3";
+const PANEL = "flex min-w-0 flex-col gap-2";
 
-const PanelHeading = () => <TodayLine className="mx-3 h-[1.778rem] w-2/5" />;
+const PanelHeading = () => <TodayLine className="h-[1.778rem] w-2/5" />;
 
 const PartHeading = () => (
   <TodayLine className="min-h-control mx-3 h-auto w-1/3" />
 );
 
-/** Your week and Messages, side by side on a wide screen like the real panels. */
+/** Your week and Messages, stacked like the real groups. */
 const TodayLoadingPanels = () => (
-  <div
-    className="grid items-start gap-x-6 gap-y-10 @min-[56rem]/content:grid-cols-2"
-    data-loading-part="today-panels"
-  >
+  <div className="flex flex-col gap-10" data-loading-part="today-panels">
     <div className={PANEL}>
       <PanelHeading />
       <div className="flex items-center gap-3.5 px-3 py-3.5">
