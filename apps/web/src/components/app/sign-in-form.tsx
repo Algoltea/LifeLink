@@ -7,6 +7,7 @@ import { Segmented } from "@lifelink/ui/components/segmented";
 import Link from "next/link";
 import { useId, useState } from "react";
 
+import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { authClient } from "@/lib/auth-client";
 
 import { BrandName } from "./brand";
@@ -187,6 +188,15 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
         >
           Play Solitaire without signing in
         </Link>
+        <span className={HIDE_ON_PHONES}>
+          {", or "}
+          <Link
+            className="text-accent-foreground inline-flex min-h-12 items-center font-medium underline"
+            href="/mahjong"
+          >
+            play Mahjong
+          </Link>
+        </span>
       </p>
     </main>
   );

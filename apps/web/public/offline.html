@@ -81,6 +81,12 @@
         background: var(--accent);
         color: var(--ground);
       }
+      /* Mahjong needs a tablet-sized screen, so phones are only offered Solitaire (see features/mahjong/screen.ts). */
+      @media (max-width: 39.99rem), (max-height: 29.99rem) {
+        .wide-only {
+          display: none;
+        }
+      }
       a:focus-visible {
         outline: 3px solid var(--brass);
         outline-offset: 3px;
@@ -105,8 +111,12 @@
     <main>
       <h1>You're offline</h1>
       <p>
-        This page needs the internet. You can still play Solitaire while you
-        wait.
+        This page needs the internet. You can still play Solitaire<span
+          class="wide-only"
+        >
+          or Mahjong</span
+        >
+        while you wait.
       </p>
       <p class="muted">
         Requests and approvals saved to your offline queue stay on this device.
@@ -116,6 +126,7 @@
       <div class="actions">
         <a class="primary" href="/">Try again</a>
         <a href="/solitaire">Play solitaire (works offline)</a>
+        <a class="wide-only" href="/mahjong">Play mahjong (works offline)</a>
       </div>
     </main>
   </body>

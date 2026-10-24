@@ -44,6 +44,7 @@
         "@google/genai": "2.30.0",
         "@lifelink/backend": "workspace:*",
         "@lifelink/contracts": "workspace:*",
+        "@lifelink/mahjong": "workspace:*",
         "@lifelink/solitaire": "workspace:*",
         "@lifelink/ui": "workspace:*",
         "@swc/helpers": "^0.5.23",
@@ -113,6 +114,16 @@
       "dependencies": {
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "@lifelink/config": "workspace:*",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
+    "packages/mahjong": {
+      "name": "@lifelink/mahjong",
+      "version": "0.0.0",
       "devDependencies": {
         "@lifelink/config": "workspace:*",
         "@types/node": "catalog:",
@@ -430,6 +441,8 @@
     "@lifelink/contracts": ["@lifelink/contracts@workspace:packages/contracts"],
 
     "@lifelink/discord-bridge": ["@lifelink/discord-bridge@workspace:apps/discord-bridge"],
+
+    "@lifelink/mahjong": ["@lifelink/mahjong@workspace:packages/mahjong"],
 
     "@lifelink/solitaire": ["@lifelink/solitaire@workspace:packages/solitaire"],
 
