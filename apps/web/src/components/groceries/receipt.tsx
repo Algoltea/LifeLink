@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 
 import { money } from "@/lib/format";
 
-import { quantityWords } from "./list-editor";
+import { quantityWords, shoppingOrder } from "./list-editor";
 
 const Rule = () => (
   <hr aria-hidden="true" className="border-control border-t border-dashed" />
@@ -193,7 +193,7 @@ const Receipt = ({
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll a long list inside the sticky receipt.
           tabIndex={scrollable ? 0 : undefined}
         >
-          {items.map((item) => (
+          {shoppingOrder(items).map((item) => (
             <li
               className={cn(
                 "flex flex-col gap-1 @min-[16em]:flex-row @min-[16em]:items-baseline @min-[16em]:justify-between @min-[16em]:gap-4",

@@ -24,7 +24,7 @@ import {
   XIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyNote } from "@/components/app/states";
@@ -70,9 +70,11 @@ const listAsText = (list: Doc<"groceryLists">): string => {
 const ItemRow = ({
   item,
   listId,
+  onToggle,
 }: {
   item: GroceryItem;
   listId: Doc<"groceryLists">["_id"];
+  onToggle: () => void;
 }) => {
   const updateItem = useMutation(api.groceries.updateItem);
   const removeItem = useMutation(api.groceries.removeItem);
@@ -112,6 +114,8 @@ const ItemRow = ({
         checked={item.checked}
         id={checkboxId}
         onCheckedChange={async (checked) => {
+          onToggle();
+
           try {
             await updateItem({ checked, itemId: item.id, listId });
           } catch (error) {
@@ -123,7 +127,7 @@ const ItemRow = ({
         <Label
           className={
             item.checked
-              ? "text-muted-foreground cursor-pointer line-through"
+              ? "text-muted-foreground cursor-pointer"
               : "cursor-pointer"
           }
           htmlFor={checkboxId}
@@ -391,6 +395,12 @@ const DetailsForm = ({
   );
 };
 
+/** Ticked items sink to the bottom; stored order is kept, so unticking puts them back. */
+const shoppingOrder = (items: GroceryItem[]): GroceryItem[] => [
+  ...items.filter((item) => !item.checked),
+  ...items.filter((item) => item.checked),
+];
+
 interface ListActions {
   onCopy: () => void;
   onDelete: () => void;
@@ -524,8 +534,33 @@ const ListEditor = ({
   const { onCopy, onDelete, onReopen, onToggleUsual } = actions;
   const [editingDetails, setEditingDetails] = useState(false);
   const detailsTrigger = useRef<HTMLButtonElement>(null);
+  const itemList = useRef<HTMLUListElement>(null);
+  const refocusAt = useRef<number | null>(null);
   const inCart = list.items.filter((item) => item.checked).length;
   const toGet = list.items.length - inCart;
+  const ordered = shoppingOrder(list.items);
+
+  // A ticked item moves to the bottom; keep focus at the same spot so a
+  // keyboard or screen reader user carries on with the next item.
+  useEffect(() => {
+    const index = refocusAt.current;
+    refocusAt.current = null;
+
+    const { activeElement } = document;
+
+    const focusInList =
+      activeElement === document.body ||
+      itemList.current?.contains(activeElement) === true;
+
+    if (index === null || !focusInList) {
+      return;
+    }
+
+    const boxes =
+      itemList.current?.querySelectorAll<HTMLElement>('[role="checkbox"]');
+
+    boxes?.[Math.min(index, boxes.length - 1)]?.focus();
+  });
 
   return (
     <div className="@container flex flex-col gap-5">
@@ -620,15 +655,22 @@ const ListEditor = ({
           Nothing on this list yet. Open Add items to add the first item.
         </EmptyNote>
       ) : (
-        <ul aria-label={`Items on ${list.name}`}>
-          {list.items.map((item) => (
-            <ItemRow item={item} key={item.id} listId={list._id} />
+        <ul aria-label={`Items on ${list.name}`} ref={itemList}>
+          {ordered.map((item, index) => (
+            <ItemRow
+              item={item}
+              key={item.id}
+              listId={list._id}
+              onToggle={() => {
+                refocusAt.current = index;
+              }}
+            />
           ))}
         </ul>
       )}
       <p className="text-muted-foreground text-lg leading-7">
-        Tick an item when it is in your cart. It stays in the total, and is left
-        out when you copy or print the list.
+        Tick an item when it is in your cart. It moves to the bottom, stays in
+        the total, and is left out when you copy or print the list.
       </p>
       {list.preferences.length > 0 ? (
         <ul
@@ -645,4 +687,4 @@ const ListEditor = ({
   );
 };
 
-export { ListEditor, UNDO_WINDOW_MS, listAsText, quantityWords };
+export { ListEditor, UNDO_WINDOW_MS, listAsText, quantityWords, shoppingOrder };
