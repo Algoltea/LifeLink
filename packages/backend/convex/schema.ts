@@ -274,7 +274,11 @@ export default defineSchema({
   assistantUsage: defineTable({
     dayRequests: v.number(),
     dayStartedAt: v.number(),
-    kind: v.union(v.literal("explanation"), v.literal("recap")),
+    kind: v.union(
+      v.literal("aisles"),
+      v.literal("explanation"),
+      v.literal("recap")
+    ),
     minuteRequests: v.number(),
     minuteStartedAt: v.number(),
     profileId: v.id("profiles"),
@@ -512,6 +516,8 @@ export default defineSchema({
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(
       v.object({
+        // Store section from `@lifelink/contracts/grocery-aisles`; unset until sorted.
+        aisle: v.optional(v.string()),
         checked: v.boolean(),
         estimatedCents: v.union(v.number(), v.null()),
         id: v.string(),

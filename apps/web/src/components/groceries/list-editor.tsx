@@ -7,7 +7,6 @@ import {
   groceryUnit,
 } from "@lifelink/contracts/groceries";
 import { Button } from "@lifelink/ui/components/button";
-import { Checkbox } from "@lifelink/ui/components/checkbox";
 import { Dialog } from "@lifelink/ui/components/dialog";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -22,142 +21,19 @@ import {
   RotateCcwIcon,
   StarIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { EmptyNote } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
-import { money } from "@/lib/format";
 
 import { centsFromDollars, dollarsFromCents } from "./amounts";
+import { GroceryItems } from "./item-list";
 import { UnitSelect } from "./unit-select";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
-
-type GroceryItem = Doc<"groceryLists">["items"][number];
-
-/** Long enough to notice a stray tap and reach Undo without hurrying. */
-const UNDO_WINDOW_MS = 10_000;
-
-const quantityWords = (item: GroceryItem): string => {
-  if (item.quantity === null) {
-    return "";
-  }
-
-  return item.unit ? `${item.quantity} ${item.unit}` : `× ${item.quantity}`;
-};
-
-/** The list as plain lines, for copying into a text or an email. */
-const listAsText = (list: Doc<"groceryLists">): string => {
-  const open = list.items.filter((item) => !item.checked);
-
-  const lines = open.map(
-    (item) =>
-      `- ${item.name}${item.quantity === null ? "" : ` (${quantityWords(item).replace("× ", "")})`}`
-  );
-
-  const notes =
-    list.preferences.length > 0
-      ? `\n\nNotes: ${list.preferences.join("; ")}`
-      : "";
-
-  return `${list.name}\n${lines.join("\n")}${notes}`;
-};
-
-const ItemRow = ({
-  item,
-  listId,
-  onToggle,
-}: {
-  item: GroceryItem;
-  listId: Doc<"groceryLists">["_id"];
-  onToggle: () => void;
-}) => {
-  const updateItem = useMutation(api.groceries.updateItem);
-  const removeItem = useMutation(api.groceries.removeItem);
-  const restoreItem = useMutation(api.groceries.restoreItem);
-  const checkboxId = useId();
-
-  const remove = async (): Promise<void> => {
-    try {
-      const removed = await removeItem({ itemId: item.id, listId });
-
-      if (removed === null) {
-        return;
-      }
-
-      // The X is easy to hit by mistake, so every removal can be undone.
-      toast(`Removed ${removed.item.name}.`, {
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            try {
-              await restoreItem({ ...removed, listId });
-            } catch (error) {
-              toast.error(errorText(error));
-            }
-          },
-        },
-        duration: UNDO_WINDOW_MS,
-      });
-    } catch (error) {
-      toast.error(errorText(error));
-    }
-  };
-
-  return (
-    <li className="border-rule flex items-center gap-3 border-t py-1">
-      <Checkbox
-        checked={item.checked}
-        id={checkboxId}
-        onCheckedChange={async (checked) => {
-          onToggle();
-
-          try {
-            await updateItem({ checked, itemId: item.id, listId });
-          } catch (error) {
-            toast.error(errorText(error));
-          }
-        }}
-      />
-      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3">
-        <Label
-          className={
-            item.checked
-              ? "text-muted-foreground cursor-pointer"
-              : "cursor-pointer"
-          }
-          htmlFor={checkboxId}
-        >
-          {item.name}
-          {item.checked ? <span className="sr-only"> (in cart)</span> : null}
-        </Label>
-        <span className="text-muted-foreground text-base">
-          {[
-            quantityWords(item),
-            item.estimatedCents === null
-              ? ""
-              : `about ${money(item.estimatedCents)}`,
-          ]
-            .filter((part) => part.length > 0)
-            .join(" · ")}
-        </span>
-      </div>
-      <Button
-        aria-label={`Remove ${item.name}`}
-        onClick={remove}
-        size="icon"
-        variant="ghost"
-      >
-        <XIcon />
-      </Button>
-    </li>
-  );
-};
 
 const AddItemForm = ({ listId }: { listId: Doc<"groceryLists">["_id"] }) => {
   const addItem = useMutation(api.groceries.addItem);
@@ -396,12 +272,6 @@ const DetailsForm = ({
   );
 };
 
-/** Ticked items sink to the bottom; stored order is kept, so unticking puts them back. */
-const shoppingOrder = (items: GroceryItem[]): GroceryItem[] => [
-  ...items.filter((item) => !item.checked),
-  ...items.filter((item) => item.checked),
-];
-
 interface ListActions {
   onCopy: () => void;
   onDelete: () => void;
@@ -600,33 +470,8 @@ const ListEditor = ({
   const { onCopy, onDelete, onReopen, onToggleUsual } = actions;
   const [editingDetails, setEditingDetails] = useState(false);
   const detailsTrigger = useRef<HTMLButtonElement>(null);
-  const itemList = useRef<HTMLUListElement>(null);
-  const refocusAt = useRef<number | null>(null);
   const inCart = list.items.filter((item) => item.checked).length;
   const toGet = list.items.length - inCart;
-  const ordered = shoppingOrder(list.items);
-
-  // A ticked item moves to the bottom; keep focus at the same spot so a
-  // keyboard or screen reader user carries on with the next item.
-  useEffect(() => {
-    const index = refocusAt.current;
-    refocusAt.current = null;
-
-    const { activeElement } = document;
-
-    const focusInList =
-      activeElement === document.body ||
-      itemList.current?.contains(activeElement) === true;
-
-    if (index === null || !focusInList) {
-      return;
-    }
-
-    const boxes =
-      itemList.current?.querySelectorAll<HTMLElement>('[role="checkbox"]');
-
-    boxes?.[Math.min(index, boxes.length - 1)]?.focus();
-  });
 
   return (
     <div className="@container flex flex-col gap-5">
@@ -720,27 +565,12 @@ const ListEditor = ({
         </summary>
         <AddItemForm listId={list._id} />
       </details>
-      {list.items.length === 0 ? (
-        <EmptyNote>
-          Nothing on this list yet. Open Add items to add the first item.
-        </EmptyNote>
-      ) : (
-        <ul aria-label={`Items on ${list.name}`} ref={itemList}>
-          {ordered.map((item, index) => (
-            <ItemRow
-              item={item}
-              key={item.id}
-              listId={list._id}
-              onToggle={() => {
-                refocusAt.current = index;
-              }}
-            />
-          ))}
-        </ul>
-      )}
+      <GroceryItems key={list._id} list={list} />
       <p className="text-muted-foreground text-lg leading-7">
         Tick an item when it is in your cart. It moves to the bottom, stays in
-        the total, and is left out when you copy or print the list.
+        the total, and is left out when you copy or print the list. Use the
+        arrows to move an item up or down. Sort by aisle puts items in the order
+        you reach them in a typical store, with frozen food last.
       </p>
       {list.preferences.length > 0 ? (
         <ul
@@ -757,4 +587,4 @@ const ListEditor = ({
   );
 };
 
-export { ListEditor, UNDO_WINDOW_MS, listAsText, quantityWords, shoppingOrder };
+export { ListEditor };
