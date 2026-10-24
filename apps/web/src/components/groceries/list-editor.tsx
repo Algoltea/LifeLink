@@ -81,7 +81,9 @@ const ItemRow = ({
       <div className="flex min-w-0 flex-1 flex-col">
         <Label
           className={
-            item.checked ? "text-muted-foreground line-through" : undefined
+            item.checked
+              ? "text-muted-foreground cursor-pointer line-through"
+              : "cursor-pointer"
           }
           htmlFor={checkboxId}
         >

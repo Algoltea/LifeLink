@@ -70,7 +70,9 @@ const ScopePicker = ({
             }
           />
           <div className="flex flex-col">
-            <Label htmlFor={`${baseId}-${scope.id}`}>{scope.label}</Label>
+            <Label className="cursor-pointer" htmlFor={`${baseId}-${scope.id}`}>
+              {scope.label}
+            </Label>
             <span className="text-muted-foreground text-lg leading-7">
               {scope.description}
             </span>

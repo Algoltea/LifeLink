@@ -638,7 +638,7 @@ const ContactForm = ({
                 onCheckedChange={(checked) => setTrusted(checked)}
               />
               <IsoIcon kind="trusted" size={40} />
-              <Label htmlFor={ids.trusted}>
+              <Label className="cursor-pointer" htmlFor={ids.trusted}>
                 In my trusted circle. LifeLink may suggest asking them for help.
               </Label>
             </div>

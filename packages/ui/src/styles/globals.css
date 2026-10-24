@@ -247,11 +247,12 @@
   }
 
   /* Tailwind v4 resets buttons to the default cursor; utilities such as cursor-not-allowed still win. */
-  button:not(:disabled),
-  select:not(:disabled),
-  summary,
-  input:is([type="checkbox"], [type="radio"], [type="file"]):not(:disabled),
+  /* Base UI marks focusable disabled controls with attributes, not :disabled. */
   :is(
+    button,
+    select,
+    summary,
+    input:is([type="checkbox"], [type="radio"], [type="file"]),
     [role="button"],
     [role="checkbox"],
     [role="menuitem"],
@@ -259,7 +260,7 @@
     [role="radio"],
     [role="switch"],
     [role="tab"]
-  ):not([aria-disabled="true"], [data-disabled]) {
+  ):not(:disabled, [aria-disabled="true"], [data-disabled]) {
     cursor: pointer;
   }
 

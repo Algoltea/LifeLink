@@ -203,7 +203,7 @@ const NavList = ({
 const ACCOUNT_HUE = 25;
 
 const ACCOUNT_ITEM =
-  "text-label min-h-control flex cursor-default items-center gap-3 rounded-md px-3 font-medium whitespace-nowrap outline-none select-none data-[highlighted]:bg-neutral-wash";
+  "text-label min-h-control flex cursor-pointer items-center gap-3 rounded-md px-3 font-medium whitespace-nowrap outline-none select-none data-[highlighted]:bg-neutral-wash";
 
 const signOut = async (): Promise<void> => {
   await authClient.signOut();

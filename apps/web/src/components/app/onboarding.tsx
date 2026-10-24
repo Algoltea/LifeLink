@@ -176,7 +176,9 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
                 onCheckedChange={(checked) => setDemo(checked)}
               />
               <div className="flex flex-col gap-1">
-                <Label htmlFor={ids.demo}>Start in practice mode</Label>
+                <Label className="cursor-pointer" htmlFor={ids.demo}>
+                  Start in practice mode
+                </Label>
                 <p className="text-muted-foreground text-label">
                   Adds sample family members, an appointment email, and practice
                   replies. Nothing is really sent. Every practice result is

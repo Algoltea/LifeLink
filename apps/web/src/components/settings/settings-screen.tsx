@@ -209,7 +209,9 @@ const Toggle = ({
   return (
     <div className="border-rule flex flex-col items-start gap-4 border-t py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="flex min-w-0 flex-col gap-1">
-        <Label htmlFor={id}>{label}</Label>
+        <Label className="cursor-pointer" htmlFor={id}>
+          {label}
+        </Label>
         <span className="text-muted-foreground max-w-prose text-lg leading-7">
           {description}
         </span>
@@ -646,7 +648,9 @@ const DemoSettings = ({
       </p>
       {allowed ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <Label htmlFor={id}>Use practice mode</Label>
+          <Label className="cursor-pointer" htmlFor={id}>
+            Use practice mode
+          </Label>
           <div className="flex items-center gap-3">
             <span aria-hidden="true" className="w-8 text-base font-semibold">
               {profile.demoMode ? "On" : "Off"}
