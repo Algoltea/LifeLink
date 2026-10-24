@@ -1,24 +1,17 @@
 /**
- * Saved grocery lists, preferences, budgets, and the Instacart handoff.
- * Editing a list is the person's own data and needs no approval; handing it
- * to Instacart is an action that is reviewed against the budget and limits.
+ * Saved grocery lists, preferences, and budgets. Retired shopping endpoints
+ * remain callable so older clients get a clear explanation without creating work.
  */
 import { ConvexError, v } from "convex/values";
 
-import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
-import { developerConfigured } from "./lib/capabilities";
-import { createTask } from "./lib/journey";
-import { approveUnderAuthorization, createAction } from "./lib/lifecycle";
+import { INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import { requireOwned, requireOwner } from "./lib/session";
-import { DAY } from "./lib/time";
 
 const MAX_ITEMS = 100;
-const MAX_AUTHORIZATION_DAYS = 90;
-const MAX_AUTHORIZATION_USES = 12;
 
 export const lists = query({
   args: {},
@@ -48,7 +41,7 @@ export const lists = query({
       authorizations: authorizations.filter(
         (item) => item.revokedAt === null && item.expiresAt > now
       ),
-      instacartAvailable: owner.demoMode || developerConfigured("instacart"),
+      instacartAvailable: false,
       limit,
       lists: groceryLists,
     };
@@ -237,81 +230,20 @@ export const setLimit = mutation({
   },
 });
 
-const estimateOf = (list: Doc<"groceryLists">): number | null => {
-  const open = list.items.filter((item) => !item.checked);
-
-  if (open.length === 0 || open.some((item) => item.estimatedCents === null)) {
-    return null;
-  }
-
-  return open.reduce((total, item) => total + (item.estimatedCents ?? 0), 0);
-};
-
-const createHandoff = async (
-  ctx: MutationCtx,
-  owner: Doc<"profiles">,
-  list: Doc<"groceryLists">
-): Promise<{ actionId: Id<"actions">; taskId: Id<"tasks"> }> => {
-  const items = list.items.filter((item) => !item.checked);
-
-  if (items.length === 0) {
-    throw new ConvexError({
-      code: "invalid",
-      message: "Add something to the list first (checked items are left out).",
-    });
-  }
-
-  const mode = owner.demoMode ? "simulated" : "live";
-
-  const { stepIds, taskId } = await createTask(ctx, {
-    appointmentId: null,
-    contactId: null,
-    kind: "grocery_handoff",
-    mode,
-    origin: "text",
-    ownerId: owner._id,
-    request: `Shop for ${list.name}`,
-    steps: [{ kind: "grocery_handoff", label: "Open the list on Instacart" }],
-    title: `Shop for ${list.name} on Instacart`,
-  });
-
-  const actionId = await createAction(ctx, {
-    ambiguities: [],
-    details: {
-      budgetCents: list.budgetCents,
-      estimatedCents: estimateOf(list),
-      items: items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-      kind: "grocery_handoff",
-      listId: list._id,
-      listName: list.name,
-    },
-    mode,
-    ownerId: owner._id,
-    proposedBy: "person",
-    rationale:
-      "Instacart shows matching products. You choose the store, see prices, and pay on Instacart.",
-    stepId: stepIds[0] ?? null,
-    taskId,
-  });
-
-  return { actionId, taskId };
-};
-
+/** Retained for older clients; no shopping task is created in either mode. */
 export const proposeHandoff = mutation({
   args: { listId: v.id("groceryLists") },
   handler: async (ctx, args): Promise<Id<"tasks">> => {
-    const { list, owner } = await ownedList(ctx, args.listId);
-    const { taskId } = await createHandoff(ctx, owner, list);
+    await ownedList(ctx, args.listId);
 
-    return taskId;
+    throw new ConvexError({
+      code: "retired",
+      message: INSTACART_RETIRED_REASON,
+    });
   },
 });
 
-/** A standing permission with hard bounds. Only the person can create one. */
+/** Retained for older clients; existing permissions can still be revoked below. */
 export const createAuthorization = mutation({
   args: {
     days: v.number(),
@@ -319,39 +251,13 @@ export const createAuthorization = mutation({
     maxPerUseCents: v.number(),
     maxUses: v.number(),
   },
-  handler: async (ctx, args) => {
-    const { list, owner } = await ownedList(ctx, args.listId);
+  handler: async (ctx, args): Promise<Id<"recurringAuthorizations">> => {
+    await ownedList(ctx, args.listId);
 
-    const days = Math.min(
-      MAX_AUTHORIZATION_DAYS,
-      Math.max(1, Math.round(args.days))
-    );
-
-    const maxUses = Math.min(
-      MAX_AUTHORIZATION_USES,
-      Math.max(1, Math.round(args.maxUses))
-    );
-
-    const id = await ctx.db.insert("recurringAuthorizations", {
-      actionKind: "grocery_handoff",
-      createdAt: Date.now(),
-      expiresAt: Date.now() + days * DAY,
-      listId: list._id,
-      maxPerUseCents: Math.max(0, Math.round(args.maxPerUseCents)),
-      maxUses,
-      ownerId: owner._id,
-      revokedAt: null,
-      usesCount: 0,
+    throw new ConvexError({
+      code: "retired",
+      message: INSTACART_RETIRED_REASON,
     });
-
-    await audit(ctx, {
-      actor: "person",
-      detail: `Weekly handoff of "${list.name}" allowed up to $${(args.maxPerUseCents / 100).toFixed(2)}, ${maxUses} times, for ${days} days.`,
-      event: "authorization.created",
-      ownerId: owner._id,
-    });
-
-    return id;
   },
 });
 
@@ -376,65 +282,8 @@ export const revokeAuthorization = mutation({
   },
 });
 
-/** Prepare one handoff under a standing permission; anything outside its bounds waits for approval. */
-const runAuthorization = async (
-  ctx: MutationCtx,
-  authorization: Doc<"recurringAuthorizations">,
-  now: number
-): Promise<void> => {
-  const exhausted =
-    authorization.revokedAt !== null ||
-    authorization.expiresAt <= now ||
-    authorization.usesCount >= authorization.maxUses;
-
-  if (exhausted) {
-    return;
-  }
-
-  const owner = await ctx.db.get(authorization.ownerId);
-  const list = await ctx.db.get(authorization.listId);
-
-  if (
-    owner === null ||
-    list === null ||
-    list.items.every((item) => item.checked)
-  ) {
-    return;
-  }
-
-  const { actionId } = await createHandoff(ctx, owner, list);
-  const action = await ctx.db.get(actionId);
-
-  if (action === null) {
-    return;
-  }
-
-  const result = await approveUnderAuthorization(
-    ctx,
-    owner,
-    action,
-    authorization
-  );
-
-  if (result.ok) {
-    await ctx.scheduler.runAfter(0, internal.execution.run, { actionId });
-  }
-};
-
-/** Weekly: prepare handoffs under active authorizations; anything outside the bounds waits for approval. */
+/** Retained for scheduled invocations from before shopping was retired. */
 export const runRecurring = internalMutation({
   args: {},
-  handler: async (ctx) => {
-    const now = Date.now();
-
-    const authorizations = await ctx.db
-      .query("recurringAuthorizations")
-      .collect();
-
-    await Promise.all(
-      authorizations.map(
-        async (authorization) => await runAuthorization(ctx, authorization, now)
-      )
-    );
-  },
+  handler: () => null,
 });

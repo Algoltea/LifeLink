@@ -20,13 +20,11 @@ import {
   sendDirectMessage,
 } from "./integrations/discord";
 import type { DiscordPhoto } from "./integrations/discord";
-import { createShoppingListPage, instacartKey } from "./integrations/instacart";
 import { createDraft, findMail, sendMail } from "./integrations/mail";
 import type { MailAccount, OutgoingMail } from "./integrations/mail";
 import { photonConfig } from "./integrations/photon";
 import type { PhotonResult } from "./integrations/photon";
-import { activeMailbox } from "./lib/capabilities";
-import { readEnvOr } from "./lib/env";
+import { activeMailbox, INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import {
   photonReconciliationValidator,
   photonRouteValidator,
@@ -792,43 +790,9 @@ const performLive = async (
     }
 
     case "grocery_handoff": {
-      const apiKey = instacartKey();
-
-      if (apiKey === null) {
-        return {
-          handleCache: null,
-          result: {
-            error: "Instacart is not set up for this app.",
-            kind: "failed_safe",
-          },
-        };
-      }
-
-      const created = await createShoppingListPage(
-        apiKey,
-        details.listName,
-        details.items,
-        `${readEnvOr("SITE_URL", "http://localhost:3001")}/groceries`,
-        []
-      );
-
-      if (created.kind === "ok") {
-        return {
-          handleCache: null,
-          result: {
-            kind: "succeeded",
-            reference: null,
-            summary:
-              "Instacart made a shopping page for this list. Choose a store and check out there.",
-            url: created.url,
-          },
-        };
-      }
-
-      // Creating a shopping page changes nothing on its own, so even an uncertain attempt is safe to repeat.
       return {
         handleCache: null,
-        result: { error: created.error, kind: "failed_safe" },
+        result: { error: INSTACART_RETIRED_REASON, kind: "failed_safe" },
       };
     }
 
@@ -848,16 +812,13 @@ const performLive = async (
 const performSimulated = (start: StartedAttempt): PerformResult => {
   const { details } = start;
 
-  const simulated = (
-    summary: string,
-    url: string | null = null
-  ): PerformResult => ({
+  const simulated = (summary: string): PerformResult => ({
     handleCache: null,
     result: {
       kind: "succeeded",
       reference: `sim_${start.attemptId}`,
       summary: `Practice: ${summary}`,
-      url,
+      url: null,
     },
   });
 
@@ -877,10 +838,10 @@ const performSimulated = (start: StartedAttempt): PerformResult => {
     }
 
     case "grocery_handoff": {
-      return simulated(
-        "no Instacart page was created. This is a practice page.",
-        `/groceries/practice?list=${details.listId}`
-      );
+      return {
+        handleCache: null,
+        result: { error: INSTACART_RETIRED_REASON, kind: "failed_safe" },
+      };
     }
 
     default: {

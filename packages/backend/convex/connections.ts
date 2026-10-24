@@ -27,8 +27,10 @@ import {
 } from "./integrations/composio";
 import type { ConnectedAccount } from "./integrations/composio";
 import type { JsonObject } from "./integrations/http";
-import { instacartKey, nearbyRetailers } from "./integrations/instacart";
-import { developerConfigured } from "./lib/capabilities";
+import {
+  developerConfigured,
+  INSTACART_RETIRED_REASON,
+} from "./lib/capabilities";
 import { demoModeAllowed, readEnvOr } from "./lib/env";
 import { requireOwned, requireOwner } from "./lib/session";
 
@@ -445,7 +447,7 @@ export const postalCodeFor = internalQuery({
   },
 });
 
-/** Stores near the person's ZIP code, read-only from Instacart. */
+/** Retained for older clients; store lookup is retired and never calls a provider. */
 export const instacartStores = action({
   args: {},
   handler: async (
@@ -457,27 +459,6 @@ export const instacartStores = action({
       return { reason: "Please sign in again.", stores: null };
     }
 
-    const apiKey = instacartKey();
-
-    const postalCode = await ctx.runQuery(internal.connections.postalCodeFor, {
-      ownerId: owner.id,
-    });
-
-    if (apiKey === null) {
-      return { reason: "Instacart is not set up for this app.", stores: null };
-    }
-
-    if (postalCode === null) {
-      return {
-        reason: "Add your ZIP code in Settings to see nearby stores.",
-        stores: null,
-      };
-    }
-
-    const stores = await nearbyRetailers(apiKey, postalCode);
-
-    return stores === null
-      ? { reason: "Instacart did not answer. Try again later.", stores: null }
-      : { reason: null, stores };
+    return { reason: INSTACART_RETIRED_REASON, stores: null };
   },
 });

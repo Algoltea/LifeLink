@@ -12,8 +12,15 @@ type ReaderCtx = MutationCtx | QueryCtx;
 
 type Mode = "live" | "simulated";
 
-/** True when every required variable of a developer integration is set (defaults count). */
+const INSTACART_RETIRED_REASON =
+  "Instacart shopping is no longer supported in LifeLink. You can still save, copy, or print your grocery lists.";
+
+/** True when an available integration has every required variable set (defaults count). */
 const developerConfigured = (id: DeveloperIntegrationId): boolean => {
+  if (id === "instacart") {
+    return false;
+  }
+
   const integration = findDeveloperIntegration(id);
 
   if (integration === undefined) {
@@ -77,44 +84,6 @@ const activeMailbox = async (
     active[0] ??
     null
   );
-};
-
-/** Spending checks: the per-order limit and the list's own budget both bound a handoff. */
-const spendingProblems = async (
-  ctx: ReaderCtx,
-  owner: Doc<"profiles">,
-  details: Extract<ActionDetails, { kind: "grocery_handoff" }>
-): Promise<string[]> => {
-  const limit = await ctx.db
-    .query("spendingLimits")
-    .withIndex("by_owner_category", (index) =>
-      index.eq("ownerId", owner._id).eq("category", "groceries")
-    )
-    .unique();
-
-  const problems: string[] = [];
-
-  if (
-    details.estimatedCents !== null &&
-    limit !== null &&
-    details.estimatedCents > limit.perOrderCents
-  ) {
-    problems.push(
-      `This list is estimated at $${(details.estimatedCents / 100).toFixed(2)}, over your grocery limit of $${(limit.perOrderCents / 100).toFixed(2)} per order.`
-    );
-  }
-
-  if (
-    details.estimatedCents !== null &&
-    details.budgetCents !== null &&
-    details.estimatedCents > details.budgetCents
-  ) {
-    problems.push(
-      `This list is estimated at $${(details.estimatedCents / 100).toFixed(2)}, over its budget of $${(details.budgetCents / 100).toFixed(2)}.`
-    );
-  }
-
-  return problems;
 };
 
 const contactProblems = async (
@@ -198,6 +167,11 @@ const executionProblems = async (
   details: ActionDetails,
   mode: Mode
 ): Promise<string[]> => {
+  // Old proposals, offline approvals, and queued work all pass through here.
+  if (details.kind === "grocery_handoff") {
+    return [INSTACART_RETIRED_REASON];
+  }
+
   if (mode === "live" && owner.demoMode) {
     return [
       "Practice mode is on. Turn it off and review this again to do it for real.",
@@ -238,16 +212,6 @@ const executionProblems = async (
             "That account is no longer connected. Reconnect it on the Connections screen.",
           ]
         : [];
-    }
-
-    case "grocery_handoff": {
-      if (mode === "live" && !developerConfigured("instacart")) {
-        return [
-          "Instacart is not set up for this app. You can still print or copy the list.",
-        ];
-      }
-
-      return await spendingProblems(ctx, owner, details);
     }
 
     case "family_update": {
@@ -291,6 +255,7 @@ export {
   activeMailbox,
   developerConfigured,
   executionProblems,
+  INSTACART_RETIRED_REASON,
 };
 
 export type { Mode };

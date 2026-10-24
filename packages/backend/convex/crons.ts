@@ -13,12 +13,4 @@ crons.interval(
   {}
 );
 
-// Bounded standing permissions for grocery handoffs, checked weekly.
-crons.weekly(
-  "recurring grocery handoffs",
-  { dayOfWeek: "monday", hourUTC: 14, minuteUTC: 0 },
-  internal.groceries.runRecurring,
-  {}
-);
-
 export default crons;

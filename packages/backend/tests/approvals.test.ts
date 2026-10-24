@@ -189,9 +189,9 @@ describe("approval binds to one exact version", () => {
     expect(approved.view.action.status).toBe("approved");
   });
 
-  it("blocks a grocery handoff over the per-order spending limit", async () => {
+  it("blocks approval of a legacy grocery handoff after shopping is retired", async () => {
     const backend = newBackend();
-    const { owner } = await ownerWithContact(backend, true);
+    const { owner, ownerId } = await ownerWithContact(backend, true);
 
     const listId = await owner.mutation(api.groceries.createList, {
       name: "Weekly groceries",
@@ -209,8 +209,41 @@ describe("approval binds to one exact version", () => {
       perOrderCents: 8000,
     });
 
-    const taskId = await owner.mutation(api.groceries.proposeHandoff, {
-      listId,
+    // This proposal predates retirement; public calls no longer create handoffs.
+    const taskId = await backend.run(async (ctx) => {
+      const created = await createTask(ctx, {
+        appointmentId: null,
+        contactId: null,
+        kind: "grocery_handoff",
+        mode: "simulated",
+        origin: "text",
+        ownerId,
+        request: "Shop for Weekly groceries",
+        steps: [
+          { kind: "grocery_handoff", label: "Open the list on Instacart" },
+        ],
+        title: "Shop for Weekly groceries on Instacart",
+      });
+
+      await createAction(ctx, {
+        ambiguities: [],
+        details: {
+          budgetCents: null,
+          estimatedCents: 9000,
+          items: [{ name: "Big shop", quantity: 1, unit: null }],
+          kind: "grocery_handoff",
+          listId,
+          listName: "Weekly groceries",
+        },
+        mode: "simulated",
+        ownerId,
+        proposedBy: "person",
+        rationale: null,
+        stepId: created.stepIds[0] ?? null,
+        taskId: created.taskId,
+      });
+
+      return created.taskId;
     });
 
     const { current, view } = await onlyAction(owner, taskId);
@@ -222,6 +255,6 @@ describe("approval binds to one exact version", () => {
         method: "tap",
         version: current.version,
       })
-    ).rejects.toThrow(/grocery limit/u);
+    ).rejects.toThrow(/Instacart shopping is no longer supported/u);
   });
 });

@@ -1,4 +1,7 @@
 /**
+ * Retired adapter, retained for a future integration with approved access.
+ * No active LifeLink workflow calls it; grocery handoffs are disabled.
+ *
  * Instacart Developer Platform: turn a list into an Instacart-hosted shopping
  * page. The API cannot check out, show prices, or report order status; the
  * person picks a store and pays on Instacart.

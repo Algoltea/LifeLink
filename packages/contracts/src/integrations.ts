@@ -26,6 +26,7 @@ type DeveloperIntegrationId =
   | "composio"
   | "photon"
   | "discord"
+  // Retained for historical records; absent from the active catalog.
   | "instacart";
 
 interface DeveloperIntegration {
@@ -62,6 +63,7 @@ type ConnectionProviderId =
   | "ebay"
   | "imessage"
   | "discord"
+  // Retained for historical records; absent from the active catalog.
   | "instacart";
 
 interface ConnectionDefinition {
@@ -293,39 +295,6 @@ const developerIntegrations: readonly DeveloperIntegration[] = [
     purpose:
       "Message family members who use Discord, and receive their replies.",
     validation: "GET https://discord.com/api/v10/users/@me with the bot token.",
-  },
-  {
-    consoleSteps: [
-      "Instacart is not accepting new developer applications as of October 2026. If you already have access, open the Instacart Developer Dashboard, then API Keys.",
-      "Create a Development key (it works against connect.dev.instacart.tools). Production keys need Instacart's review.",
-      "Without a key, grocery lists still work and can be printed or copied.",
-    ],
-    consoleUrl: "https://www.instacart.com/developer_platform",
-    envVars: [
-      {
-        hint: "keys.... Shown only once when created.",
-        label: "Instacart API key",
-        name: "INSTACART_API_KEY",
-        required: true,
-        secret: true,
-        target: "convex",
-      },
-      {
-        defaultValue: "development",
-        hint: "development or production.",
-        label: "Instacart environment",
-        name: "INSTACART_ENVIRONMENT",
-        required: true,
-        secret: false,
-        target: "convex",
-      },
-    ],
-    id: "instacart",
-    label: "Instacart",
-    purpose:
-      "Turn a saved grocery list into an Instacart shopping page; the person picks a store and checks out there.",
-    validation:
-      "GET /idp/v1/retailers?postal_code=10001&country_code=US with the key (read-only).",
   },
 ];
 
@@ -585,34 +554,6 @@ const connectionDefinitions: readonly ConnectionDefinition[] = [
     id: "discord",
     label: "Discord",
     summary: "Direct messages with family members on Discord.",
-  },
-  {
-    accountRequirement:
-      "Instacart in the United States or Canada. You check out on Instacart.",
-    capabilities: [
-      {
-        id: "instacart.list_page",
-        label: "Open your list as an Instacart shopping page",
-        status: "available",
-      },
-      {
-        id: "instacart.nearby_stores",
-        label: "See stores near your ZIP code",
-        status: "available",
-      },
-      {
-        id: "instacart.checkout",
-        label: "Place the order or see prices",
-        note: "Instacart's developer API cannot check out, show prices, or report order status.",
-        status: "not_offered",
-      },
-    ],
-    connectStyle: "developer_only",
-    developerIntegration: "instacart",
-    id: "instacart",
-    label: "Instacart",
-    summary:
-      "Hand a grocery list to Instacart. You choose the store and pay there.",
   },
 ];
 
