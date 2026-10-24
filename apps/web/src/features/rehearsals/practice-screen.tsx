@@ -30,6 +30,7 @@ import {
   useAutoReadAloud,
 } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
+import { usePreferences } from "@/components/app/preferences";
 import {
   dictationAvailable,
   startDictation,
@@ -287,6 +288,12 @@ const Conversation = ({
   const latest = rehearsal.lines.at(-1);
   const latestRef = useRef<HTMLLIElement>(null);
   const lineCount = rehearsal.lines.length;
+  const { preferences } = usePreferences();
+  const [showWhole, setShowWhole] = useState(false);
+
+  // One step at a time shows only your last answer and their reply.
+  const firstShown =
+    preferences.stepByStep && !showWhole ? Math.max(0, lineCount - 2) : 0;
 
   useAutoReadAloud(latest?.from === "them" ? latest.text : null);
 
@@ -313,28 +320,39 @@ const Conversation = ({
           <SimulatedPill />
         </div>
         <p className="text-lg leading-7">{script.setting}</p>
+        {firstShown > 0 ? (
+          <Button
+            className="self-start"
+            onClick={() => setShowWhole(true)}
+            variant="outline"
+          >
+            Show the whole conversation
+          </Button>
+        ) : null}
         <ol aria-live="polite" className="flex flex-col gap-3">
-          {rehearsal.lines.map((line, index) => (
-            <li
-              className={
-                line.from === "them"
-                  ? "border-border bg-parchment flex max-w-prose flex-col gap-1 rounded-xl border px-5 py-4 outline-none"
-                  : "bg-surface flex max-w-prose flex-col gap-1 self-end rounded-xl px-5 py-4 outline-none"
-              }
-              // Lines are only ever appended, so their position is a stable identity.
-              key={`${index}-${line.from}`}
-              ref={index === lineCount - 1 ? latestRef : undefined}
-              tabIndex={index === lineCount - 1 ? -1 : undefined}
-            >
-              <span className="text-muted-foreground text-base font-semibold">
-                {line.speaker}
-              </span>
-              <span className="text-lg leading-7">{line.text}</span>
-              {line.feedback ? (
-                <span className="text-base leading-6">{line.feedback}</span>
-              ) : null}
-            </li>
-          ))}
+          {rehearsal.lines.map((line, index) =>
+            index < firstShown ? null : (
+              <li
+                className={
+                  line.from === "them"
+                    ? "border-border bg-parchment flex max-w-prose flex-col gap-1 rounded-xl border px-5 py-4 outline-none"
+                    : "bg-surface flex max-w-prose flex-col gap-1 self-end rounded-xl px-5 py-4 outline-none"
+                }
+                // Lines are only ever appended, so their position is a stable identity.
+                key={`${index}-${line.from}`}
+                ref={index === lineCount - 1 ? latestRef : undefined}
+                tabIndex={index === lineCount - 1 ? -1 : undefined}
+              >
+                <span className="text-muted-foreground text-base font-semibold">
+                  {line.speaker}
+                </span>
+                <span className="text-lg leading-7">{line.text}</span>
+                {line.feedback ? (
+                  <span className="text-base leading-6">{line.feedback}</span>
+                ) : null}
+              </li>
+            )
+          )}
         </ol>
         {latest?.from === "them" ? (
           <ReadAloudButton

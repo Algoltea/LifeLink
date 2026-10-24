@@ -12,6 +12,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
+import { OneAtATime } from "@/components/app/one-at-a-time";
+import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
 import { ago } from "@/lib/format";
@@ -72,10 +74,13 @@ type Signal = Doc<"scamReviews">["signals"][number];
 const SignalList = ({
   heading,
   id,
+  short,
   signals,
 }: {
   heading: string;
   id: string;
+  /** Short help keeps the reason one press away instead of always open. */
+  short: boolean;
   signals: Signal[];
 }) => (
   <section aria-labelledby={id} className="flex flex-col gap-3">
@@ -90,7 +95,16 @@ const SignalList = ({
           key={`${signal.label}-${index}`}
         >
           <span className="text-lg font-bold">{signal.label}</span>
-          <span className="text-lg">{signal.detail}</span>
+          {short ? (
+            <details className="text-lg">
+              <summary className="min-h-12 cursor-pointer py-2 font-semibold underline underline-offset-4">
+                Why this matters
+              </summary>
+              {signal.detail}
+            </details>
+          ) : (
+            <span className="text-lg">{signal.detail}</span>
+          )}
           {signal.quote ? (
             <blockquote className="text-muted-foreground text-base italic">
               “{signal.quote}”
@@ -219,6 +233,7 @@ const ScamResult = ({
   timeZone: string;
 }) => {
   const resultRef = useRef<HTMLElement>(null);
+  const { preferences } = usePreferences();
   useEffect(() => {
     if (review.status !== "reviewing") {
       resultRef.current?.focus();
@@ -327,6 +342,7 @@ const ScamResult = ({
         <SignalList
           heading="What stood out"
           id={`signals-${review._id}`}
+          short={preferences.explanationDetail === "short"}
           signals={stoodOut}
         />
       ) : null}
@@ -335,6 +351,7 @@ const ScamResult = ({
         <SignalList
           heading="Advice in the message itself"
           id={`warnings-${review._id}`}
+          short={preferences.explanationDetail === "short"}
           signals={warnings}
         />
       ) : null}
@@ -347,11 +364,21 @@ const ScamResult = ({
           <h3 className="text-xl font-semibold" id={`steps-${review._id}`}>
             What to do now
           </h3>
-          <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
-            {review.nextSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
+          {preferences.stepByStep ? (
+            <OneAtATime
+              noun="Step"
+              steps={review.nextSteps.map((step) => ({
+                content: <p className="text-lg">{step}</p>,
+                key: step,
+              }))}
+            />
+          ) : (
+            <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
+              {review.nextSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          )}
         </section>
       ) : null}
 

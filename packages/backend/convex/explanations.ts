@@ -12,6 +12,7 @@ import {
   localExplanation,
 } from "@lifelink/contracts/explanation";
 import type { CheckedExplanation } from "@lifelink/contracts/explanation";
+import { helpStyleLines, helpStyleOf } from "@lifelink/contracts/help-style";
 import { messageExplanationSchema } from "@lifelink/contracts/model-output";
 import { ConvexError, v } from "convex/values";
 
@@ -233,7 +234,13 @@ export const runInput = internalQuery({
       return null;
     }
 
+    const preferences = await ctx.db
+      .query("preferences")
+      .withIndex("by_profile", (index) => index.eq("profileId", owner._id))
+      .unique();
+
     return {
+      helpStyle: helpStyleOf(preferences),
       name: owner.preferredName,
       now: isoWithOffset(Date.now(), owner.timeZone),
       senderName: explanation.senderName,
@@ -260,6 +267,7 @@ export const run = internalAction({
           content: [
             `You help ${input.name}, an older adult, understand one message from ${input.senderName}. Return only JSON.`,
             "Use short, plain sentences. One idea per sentence. No jargon, no emoji.",
+            ...helpStyleLines(input.helpStyle),
             "For every request, date, and stated fact, copy the message's exact words into quote, character for character. If you cannot quote it, it is an interpretation, not a fact.",
             "Interpretations are guesses. Give the reason for each. Never present a guess as something the message says.",
             `Today is ${input.now} (${input.timeZone}). Give isoDate only when the calendar date is certain.`,

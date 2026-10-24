@@ -2,6 +2,8 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import { helpStyleOf } from "@lifelink/contracts/help-style";
+import type { ExplanationDetail } from "@lifelink/contracts/help-style";
 import { useQuery } from "convex/react";
 import { useTheme } from "next-themes";
 import { createContext, use, useEffect, useMemo } from "react";
@@ -11,14 +13,18 @@ import { saveDisplay } from "@/lib/display";
 
 interface Preferences {
   captions: boolean;
+  explanationDetail: ExplanationDetail;
   readAloud: boolean;
   speechRate: number;
+  stepByStep: boolean;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
   captions: true,
+  explanationDetail: helpStyleOf(null).detail,
   readAloud: false,
   speechRate: 0.9,
+  stepByStep: helpStyleOf(null).stepByStep,
 };
 
 interface Me {
@@ -65,8 +71,10 @@ const PreferencesProvider = ({ children }: { children: ReactNode }) => {
           ? DEFAULT_PREFERENCES
           : {
               captions: stored.captions,
+              explanationDetail: helpStyleOf(stored).detail,
               readAloud: stored.readAloud,
               speechRate: stored.speechRate,
+              stepByStep: helpStyleOf(stored).stepByStep,
             },
     }),
     [me, stored]

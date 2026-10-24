@@ -544,11 +544,16 @@ export default defineSchema({
   preferences: defineTable({
     captions: v.boolean(),
     contrast: v.union(v.literal("standard"), v.literal("more")),
+    // How LifeLink explains things. Optional so older rows read as the defaults.
+    explanationDetail: v.optional(
+      v.union(v.literal("short"), v.literal("detailed"))
+    ),
     groceryNotes: v.union(v.string(), v.null()),
     profileId: v.id("profiles"),
     readAloud: v.boolean(),
     reducedMotion: v.boolean(),
     speechRate: v.number(),
+    stepByStep: v.optional(v.boolean()),
     textScale: v.number(),
     theme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
     updatedAt: v.number(),

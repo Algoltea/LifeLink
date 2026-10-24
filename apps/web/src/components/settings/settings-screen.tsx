@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import { helpStyleOf } from "@lifelink/contracts/help-style";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -41,6 +42,11 @@ const THEMES = [
   { label: "Light", value: "light" },
   { label: "Dark", value: "dark" },
   { label: "Match my device", value: "system" },
+] as const;
+
+const DETAILS = [
+  { label: "Short", value: "short" },
+  { label: "Detailed", value: "detailed" },
 ] as const;
 
 const CONTRASTS = [
@@ -231,6 +237,53 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           />
         </div>
       </Row>
+    </section>
+  );
+};
+
+/** How LifeLink explains messages, scam checks, briefings, and practice. */
+const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
+  const update = useMutation(api.profiles.updatePreferences);
+  const style = helpStyleOf(stored);
+
+  const save = async (patch: Parameters<typeof update>[0]): Promise<void> => {
+    try {
+      await update(patch);
+    } catch (error) {
+      toast.error(errorText(error));
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby="help-heading"
+      className="border-rule flex min-w-0 flex-col border-t pt-6"
+      id="help"
+    >
+      <h2 className="pb-2 text-2xl leading-8 font-semibold" id="help-heading">
+        How I like help
+      </h2>
+      <p className="text-muted-foreground pb-6 text-lg leading-7">
+        Used when LifeLink explains a message, a scam check, or your morning
+        briefing, and in conversation practice. Only you see these.
+      </p>
+      <Row
+        description="Short gives the main points. Detailed explains a little more."
+        label="Explanations"
+      >
+        <Segmented
+          label="Explanations"
+          onValueChange={(explanationDetail) => save({ explanationDetail })}
+          options={DETAILS}
+          value={style.detail}
+        />
+      </Row>
+      <Toggle
+        checked={style.stepByStep}
+        description="Shows explanations and next steps one at a time, with a Next button."
+        label="One step at a time"
+        onChange={(stepByStep) => save({ stepByStep })}
+      />
     </section>
   );
 };
@@ -452,6 +505,7 @@ const SettingsScreen = () => {
         <DisplaySettings stored={me.preferences} />
         <div className="flex flex-col gap-8">
           <ProfileSettings profile={me.profile} />
+          {isOwner ? <HelpSettings stored={me.preferences} /> : null}
           {isOwner ? (
             <DemoSettings allowed={me.demoModeAllowed} profile={me.profile} />
           ) : null}

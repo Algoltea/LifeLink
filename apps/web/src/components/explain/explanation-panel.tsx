@@ -10,6 +10,8 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
+import { OneAtATime } from "@/components/app/one-at-a-time";
+import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
 import { messageOf } from "@/lib/errors";
@@ -128,6 +130,151 @@ const spokenText = (explanation: Explanation): string =>
     .filter((part) => part.length > 0)
     .join(" ");
 
+/** The explanation's sections, in reading order; empty sections are left out. */
+const sectionsOf = (
+  explanation: Explanation,
+  level: HeadingLevel,
+  onUseReply: (draft: string) => void
+): Step[] => {
+  const steps: Step[] = [
+    {
+      content: (
+        <Part level={level} title="In plain words">
+          <p className="text-lg leading-relaxed">{explanation.plainSummary}</p>
+        </Part>
+      ),
+      key: "summary",
+    },
+  ];
+
+  if (explanation.requests.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="What they’re asking">
+          <ul className="flex flex-col gap-3">
+            {explanation.requests.map((item) => (
+              <li className="flex flex-col gap-1" key={item.quote}>
+                <span className="text-lg">{item.text}</span>
+                <Quote>{item.quote}</Quote>
+              </li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "requests",
+    });
+  }
+
+  if (explanation.dates.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="Dates and times mentioned">
+          <ul className="flex flex-col gap-2 text-lg">
+            {explanation.dates.map((date) => (
+              <li key={date.quote}>
+                “{date.quote}”
+                {date.isoDate ? ` (${formatIsoDate(date.isoDate)})` : ""}
+              </li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "dates",
+    });
+  }
+
+  if (explanation.missingDetails.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="Not said yet">
+          <ul className="flex list-disc flex-col gap-1 pl-6 text-lg">
+            {explanation.missingDetails.map((detail) => (
+              <li key={detail}>{detail}</li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "missing",
+    });
+  }
+
+  if (explanation.statedFacts.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="What the message says">
+          <ul className="flex flex-col gap-3">
+            {explanation.statedFacts.map((item) => (
+              <li className="flex flex-col gap-1" key={item.quote}>
+                <span className="text-lg">{item.text}</span>
+                <Quote>{item.quote}</Quote>
+              </li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "facts",
+    });
+  }
+
+  if (explanation.interpretations.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="What it might mean">
+          <p className="text-base font-semibold">{GUESS_WORDS}</p>
+          <ul className="flex flex-col gap-3">
+            {explanation.interpretations.map((item) => (
+              <li className="flex flex-col gap-1" key={item.text}>
+                <span className="text-lg">{item.text}</span>
+                <span className="text-muted-foreground text-base">
+                  {item.why}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "guesses",
+    });
+  }
+
+  if (explanation.suggestedReplies.length > 0) {
+    steps.push({
+      content: (
+        <Part level={level} title="Possible replies">
+          <p className="text-muted-foreground text-base">
+            Nothing is sent. A reply goes into your message box, where you can
+            change it and review it before anything happens.
+          </p>
+          <ul className="flex flex-col gap-4">
+            {explanation.suggestedReplies.map((reply) => (
+              <li
+                className="border-rule flex flex-col gap-2 border-b pb-4"
+                key={reply.kind}
+              >
+                <span className="text-lg font-bold">{reply.label}</span>
+                <p className="text-lg leading-7 whitespace-pre-wrap">
+                  {reply.draft}
+                </p>
+                <Button
+                  aria-label={`Use this reply: ${reply.label}`}
+                  className="self-start whitespace-normal"
+                  onClick={() => onUseReply(reply.draft)}
+                  variant="outline"
+                >
+                  Use this reply
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Part>
+      ),
+      key: "replies",
+    });
+  }
+
+  return steps;
+};
+
 const ExplanationBody = ({
   explanation,
   level,
@@ -136,118 +283,28 @@ const ExplanationBody = ({
   explanation: Explanation;
   level: HeadingLevel;
   onUseReply: (draft: string) => void;
-}) => (
-  <div className="flex flex-col gap-5">
-    <Part level={level} title="In plain words">
-      <p className="text-lg leading-relaxed">{explanation.plainSummary}</p>
-    </Part>
+}) => {
+  const { preferences } = usePreferences();
+  const steps = sectionsOf(explanation, level, onUseReply);
 
-    {explanation.requests.length > 0 ? (
-      <Part level={level} title="What they’re asking">
-        <ul className="flex flex-col gap-3">
-          {explanation.requests.map((item) => (
-            <li className="flex flex-col gap-1" key={item.quote}>
-              <span className="text-lg">{item.text}</span>
-              <Quote>{item.quote}</Quote>
-            </li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-
-    {explanation.dates.length > 0 ? (
-      <Part level={level} title="Dates and times mentioned">
-        <ul className="flex flex-col gap-2 text-lg">
-          {explanation.dates.map((date) => (
-            <li key={date.quote}>
-              “{date.quote}”
-              {date.isoDate ? ` (${formatIsoDate(date.isoDate)})` : ""}
-            </li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-
-    {explanation.missingDetails.length > 0 ? (
-      <Part level={level} title="Not said yet">
-        <ul className="flex list-disc flex-col gap-1 pl-6 text-lg">
-          {explanation.missingDetails.map((detail) => (
-            <li key={detail}>{detail}</li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-
-    {explanation.statedFacts.length > 0 ? (
-      <Part level={level} title="What the message says">
-        <ul className="flex flex-col gap-3">
-          {explanation.statedFacts.map((item) => (
-            <li className="flex flex-col gap-1" key={item.quote}>
-              <span className="text-lg">{item.text}</span>
-              <Quote>{item.quote}</Quote>
-            </li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-
-    {explanation.interpretations.length > 0 ? (
-      <Part level={level} title="What it might mean">
-        <p className="text-base font-semibold">{GUESS_WORDS}</p>
-        <ul className="flex flex-col gap-3">
-          {explanation.interpretations.map((item) => (
-            <li className="flex flex-col gap-1" key={item.text}>
-              <span className="text-lg">{item.text}</span>
-              <span className="text-muted-foreground text-base">
-                {item.why}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-
-    {explanation.droppedCount > 0 ? (
-      <p className="text-base font-semibold">{DROPPED_WORDS}</p>
-    ) : null}
-
-    <ReadAloudButton
-      className="self-start"
-      label="Read the explanation aloud"
-      text={spokenText(explanation)}
-    />
-
-    {explanation.suggestedReplies.length > 0 ? (
-      <Part level={level} title="Possible replies">
-        <p className="text-muted-foreground text-base">
-          Nothing is sent. A reply goes into your message box, where you can
-          change it and review it before anything happens.
-        </p>
-        <ul className="flex flex-col gap-4">
-          {explanation.suggestedReplies.map((reply) => (
-            <li
-              className="border-rule flex flex-col gap-2 border-b pb-4"
-              key={reply.kind}
-            >
-              <span className="text-lg font-bold">{reply.label}</span>
-              <p className="text-lg leading-7 whitespace-pre-wrap">
-                {reply.draft}
-              </p>
-              <Button
-                aria-label={`Use this reply: ${reply.label}`}
-                className="self-start whitespace-normal"
-                onClick={() => onUseReply(reply.draft)}
-                variant="outline"
-              >
-                Use this reply
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </Part>
-    ) : null}
-  </div>
-);
+  return (
+    <div className="flex flex-col gap-5">
+      {explanation.droppedCount > 0 ? (
+        <p className="text-base font-semibold">{DROPPED_WORDS}</p>
+      ) : null}
+      <ReadAloudButton
+        className="self-start"
+        label="Read the explanation aloud"
+        text={spokenText(explanation)}
+      />
+      {preferences.stepByStep ? (
+        <OneAtATime noun="Part" steps={steps} />
+      ) : (
+        steps.map((step) => <div key={step.key}>{step.content}</div>)
+      )}
+    </div>
+  );
+};
 
 const RequestForm = ({
   practice,

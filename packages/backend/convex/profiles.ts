@@ -209,10 +209,14 @@ export const updatePreferences = mutation({
   args: {
     captions: v.optional(v.boolean()),
     contrast: v.optional(v.union(v.literal("standard"), v.literal("more"))),
+    explanationDetail: v.optional(
+      v.union(v.literal("short"), v.literal("detailed"))
+    ),
     groceryNotes: v.optional(v.union(v.string(), v.null())),
     readAloud: v.optional(v.boolean()),
     reducedMotion: v.optional(v.boolean()),
     speechRate: v.optional(v.number()),
+    stepByStep: v.optional(v.boolean()),
     textScale: v.optional(v.number()),
     theme: v.optional(
       v.union(v.literal("light"), v.literal("dark"), v.literal("system"))
@@ -229,6 +233,14 @@ export const updatePreferences = mutation({
 
     if (args.contrast !== undefined) {
       patch.contrast = args.contrast;
+    }
+
+    if (args.explanationDetail !== undefined) {
+      patch.explanationDetail = args.explanationDetail;
+    }
+
+    if (args.stepByStep !== undefined) {
+      patch.stepByStep = args.stepByStep;
     }
 
     if (args.groceryNotes !== undefined) {
