@@ -281,6 +281,12 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           onChange={(reducedMotion) => save({ reducedMotion })}
         />
         <Toggle
+          checked={value.showNews ?? true}
+          description="Shows three headlines on Today. You choose good news or top news there."
+          label="News on Today"
+          onChange={(showNews) => save({ showNews })}
+        />
+        <Toggle
           checked={value.readAloud}
           description="LifeLink reads new briefings and replies out loud."
           label="Read aloud automatically"
@@ -487,6 +493,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
     signOff: useId(),
     timeZone: useId(),
     zip: useId(),
+    zipHint: useId(),
   };
 
   return (
@@ -594,14 +601,17 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.zip}>ZIP code</Label>
+            <Label htmlFor={ids.zip}>Postal code</Label>
             <Input
+              aria-describedby={ids.zipHint}
               autoComplete="postal-code"
               defaultValue={profile.postalCode ?? ""}
               id={ids.zip}
-              inputMode="numeric"
               name="zip"
             />
+            <span className="text-muted-foreground text-base" id={ids.zipHint}>
+              Used for the weather on Today.
+            </span>
           </div>
         </fieldset>
         <SaveFeedback failure={failure} state={submissionState(busy, saved)} />
