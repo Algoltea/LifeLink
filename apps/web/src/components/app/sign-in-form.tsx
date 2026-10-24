@@ -25,8 +25,8 @@ const MODES = [
   { label: "Create an account", value: "sign-up" },
 ] as const;
 
-const SignInForm = () => {
-  const [mode, setMode] = useState<Mode>("sign-in");
+const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
