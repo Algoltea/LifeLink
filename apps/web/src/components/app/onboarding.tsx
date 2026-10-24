@@ -9,7 +9,7 @@ import { Segmented } from "@lifelink/ui/components/segmented";
 import { useAction, useMutation } from "convex/react";
 import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
@@ -19,10 +19,13 @@ import { TimeZoneSelect } from "./time-zone-select";
 
 type Role = "family" | "owner";
 
+/** A lookup answers for one postal code in one time zone; either changing makes it stale. */
 type Lookup =
-  | { code: string; kind: "found"; city: string; place: string }
-  | { code: string; kind: "checking" | "missing" }
+  | { city: string; code: string; kind: "found"; place: string; zone: string }
+  | { code: string; kind: "checking" | "missing"; zone: string }
   | { kind: "idle" };
+
+const lookupKey = (code: string, zone: string): string => `${zone}|${code}`;
 
 const LOOKUP_WORDS: Record<Exclude<Lookup["kind"], "found">, string> = {
   checking: "Looking up your town…",
@@ -39,6 +42,8 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
   const complete = useMutation(api.profiles.completeOnboarding);
   const lookupPlace = useAction(api.weather.lookupPlace);
   const [lookup, setLookup] = useState<Lookup>({ kind: "idle" });
+  // Only the latest lookup may show its answer; an edit cancels the ones before it.
+  const latest = useRef<{ key: string; answer: Promise<Lookup> } | null>(null);
   const { data: session, isPending: sessionPending } = authClient.useSession();
   // The name given when creating the account; setup doesn't ask for it twice.
   const accountName = session?.user.name.trim() ?? "";
@@ -65,29 +70,49 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
     timeZone: useId(),
   };
 
+  const forget = (): void => {
+    latest.current = null;
+    setLookup({ kind: "idle" });
+  };
+
+  const ask = async (code: string, zone: string): Promise<Lookup> => {
+    try {
+      const found = await lookupPlace({ postalCode: code, timeZone: zone });
+
+      return found === null
+        ? { code, kind: "missing", zone }
+        : { city: found.city, code, kind: "found", place: found.place, zone };
+    } catch {
+      return { code, kind: "missing", zone };
+    }
+  };
+
   /** Confirm the code by showing its town, so a typo is caught now. */
-  const check = async (value: string): Promise<void> => {
+  const check = async (value: string, zone: string): Promise<Lookup> => {
     const code = value.trim();
 
     if (code === "") {
-      setLookup({ kind: "idle" });
+      forget();
 
-      return;
+      return { kind: "idle" };
     }
 
-    setLookup({ code, kind: "checking" });
+    const key = lookupKey(code, zone);
 
-    try {
-      const found = await lookupPlace({ postalCode: code, timeZone });
-
-      setLookup(
-        found === null
-          ? { code, kind: "missing" }
-          : { city: found.city, code, kind: "found", place: found.place }
-      );
-    } catch {
-      setLookup({ code, kind: "missing" });
+    // The same code and zone share one request, so Continue can wait for the blur's lookup.
+    if (latest.current?.key !== key) {
+      latest.current = { answer: ask(code, zone), key };
+      setLookup({ code, kind: "checking", zone });
     }
+
+    const run = latest.current;
+    const answer = await run.answer;
+
+    if (latest.current === run) {
+      setLookup(answer);
+    }
+
+    return answer;
   };
 
   const submit = async (form: FormData): Promise<void> => {
@@ -96,12 +121,11 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
 
     const text = (key: string): string => String(form.get(key) ?? "").trim();
     const postalCode = role === "owner" ? text("postal") : "";
+    const zone = text("timeZone") || timeZone;
 
     // The town comes from the confirmed code, so nobody types it twice.
-    const city =
-      lookup.kind === "found" && lookup.code === postalCode
-        ? lookup.city
-        : null;
+    const confirmed = postalCode ? await check(postalCode, zone) : null;
+    const city = confirmed?.kind === "found" ? confirmed.city : null;
 
     try {
       await complete({
@@ -212,8 +236,10 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
                 id={ids.postal}
                 maxLength={16}
                 name="postal"
-                onBlur={async (event) => await check(event.currentTarget.value)}
-                onChange={() => setLookup({ kind: "idle" })}
+                onBlur={async (event) => {
+                  await check(event.currentTarget.value, timeZone);
+                }}
+                onChange={forget}
               />
               <p
                 aria-live="polite"
@@ -242,7 +268,11 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
               current={timeZone}
               id={ids.timeZone}
               name="timeZone"
-              onChange={(event) => setTimeZone(event.target.value)}
+              onChange={(event) => {
+                setTimeZone(event.target.value);
+                // The town was found for the old zone.
+                forget();
+              }}
               required
               value={timeZone}
             />
