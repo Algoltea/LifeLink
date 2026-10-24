@@ -10,6 +10,8 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { RotateCcw } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 
+import { currentMessages, useMessages } from "@/i18n/locale";
+
 import {
   foundationLabel,
   sameSlot,
@@ -70,15 +72,17 @@ interface SlotButtonProps {
 }
 
 const markSuffix = (mark: Mark): string => {
+  const t = currentMessages().solitaire;
+
   if (mark === "selected") {
-    return " Selected.";
+    return t.selected;
   }
 
   if (mark === "target") {
-    return " The selected card can go here.";
+    return t.target;
   }
 
-  return mark === "hint" ? " Suggested by the hint." : "";
+  return mark === "hint" ? t.suggested : "";
 };
 
 const SlotButton = ({
@@ -170,6 +174,7 @@ const StockPile = ({ board }: { readonly board: BoardProps }) => {
 const FAN_OFFSETS = ["left-0", "left-[24cqi]", "left-[48cqi]"] as const;
 
 const WastePile = ({ board }: { readonly board: BoardProps }) => {
+  const t = useMessages().solitaire;
   const { state } = board;
   const visible = state.waste.slice(-state.drawCount);
   const top = visible.at(-1);
@@ -206,7 +211,7 @@ const WastePile = ({ board }: { readonly board: BoardProps }) => {
               tone={mark === "selected" ? "selected" : "plain"}
             />
           ) : (
-            <EmptyPile label="Waste" />
+            <EmptyPile label={t.waste} />
           )}
         </SlotButton>
         {under.length > 0 ? (
@@ -288,6 +293,7 @@ const TableauColumn = ({
   readonly board: BoardProps;
   readonly index: number;
 }) => {
+  const t = useMessages().solitaire;
   const column = board.state.tableau[index] ?? [];
 
   if (column.length === 0) {
@@ -301,7 +307,7 @@ const TableauColumn = ({
           mark={mark}
           slot={{ area: "tableau", cardIndex: 0, index }}
         >
-          <EmptyPile label="King" />
+          <EmptyPile label={t.king} />
         </SlotButton>
       </div>
     );
@@ -361,24 +367,28 @@ const COLUMN_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
  * the shell is narrower. Card sizes follow the person's text-size setting.
  */
 // Every slot button forwards arrow keys and Escape to the board; Enter and Space click it natively.
-export const Board = (board: BoardProps) => (
-  <section
-    aria-label="Card table"
-    className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 [--board-gap:0.75rem] sm:p-6"
-  >
-    <div className="mx-auto w-full max-w-[56rem] min-w-[36rem]">
-      <div className="grid grid-cols-7 gap-(--board-gap)">
-        <StockPile board={board} />
-        <WastePile board={board} />
-        {FOUNDATION_INDEXES.map((index) => (
-          <FoundationPile board={board} index={index} key={index} />
-        ))}
+export const Board = (board: BoardProps) => {
+  const t = useMessages().solitaire;
+
+  return (
+    <section
+      aria-label={t.table}
+      className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 [--board-gap:0.75rem] sm:p-6"
+    >
+      <div className="mx-auto w-full max-w-[56rem] min-w-[36rem]">
+        <div className="grid grid-cols-7 gap-(--board-gap)">
+          <StockPile board={board} />
+          <WastePile board={board} />
+          {FOUNDATION_INDEXES.map((index) => (
+            <FoundationPile board={board} index={index} key={index} />
+          ))}
+        </div>
+        <div className="mt-6 grid grid-cols-7 items-start gap-(--board-gap) pb-2">
+          {COLUMN_INDEXES.map((index) => (
+            <TableauColumn board={board} index={index} key={index} />
+          ))}
+        </div>
       </div>
-      <div className="mt-6 grid grid-cols-7 items-start gap-(--board-gap) pb-2">
-        {COLUMN_INDEXES.map((index) => (
-          <TableauColumn board={board} index={index} key={index} />
-        ))}
-      </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};

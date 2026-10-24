@@ -1,4 +1,4 @@
-import { ACE, cardName } from "@lifelink/solitaire/cards";
+import { ACE } from "@lifelink/solitaire/cards";
 import type { Card } from "@lifelink/solitaire/cards";
 import type {
   MoveSource,
@@ -6,6 +6,10 @@ import type {
   Position,
 } from "@lifelink/solitaire/game";
 import { FOUNDATION_SUITS } from "@lifelink/solitaire/rules";
+
+import { currentMessages } from "@/i18n/locale";
+
+import { cardName } from "./localization";
 
 /** One focusable place on the board. Tableau slots name a card by index; an empty column uses index 0. */
 export type Slot =
@@ -244,40 +248,37 @@ export const targetMatches = (
 ): boolean =>
   targets.some((target) => target.kind === kind && target.index === index);
 
-const plural = (count: number, word: string): string =>
-  `${count} ${word}${count === 1 ? "" : "s"}`;
-
 export const stockLabel = (state: Position): string => {
+  const t = currentMessages().solitaire;
+
   if (state.stock.length > 0) {
-    return `Stock, ${plural(state.stock.length, "card")}. Press to draw.`;
+    return t.stock(t.cards(state.stock.length));
   }
 
-  return state.waste.length > 0
-    ? "Stock is empty. Press to turn the waste pile over."
-    : "Stock is empty.";
+  return state.waste.length > 0 ? t.stockRecycle : t.stockEmpty;
 };
 
 export const wasteLabel = (state: Position): string => {
+  const t = currentMessages().solitaire;
   const top = state.waste.at(-1);
 
-  return top
-    ? `Waste pile, ${cardName(top)} on top.`
-    : "Waste pile, empty. Draw from the stock.";
+  return top ? t.wasteTop(cardName(top)) : t.wasteEmpty;
 };
 
 export const foundationLabel = (state: Position, index: number): string => {
+  const t = currentMessages().solitaire;
   const top = state.foundations[index]?.at(-1);
   const suit = FOUNDATION_SUITS[index];
 
   if (!suit) {
-    return `Foundation ${index + 1}.`;
+    return t.foundation(index + 1);
   }
 
-  const name = `${suit.charAt(0).toUpperCase()}${suit.slice(1)} foundation`;
+  const name = t.foundationName(t.suits[suit]);
 
   return top
-    ? `${name}, ${cardName(top)} on top.`
-    : `${name}, empty. It starts with the ${cardName({ rank: ACE, suit })}.`;
+    ? t.foundationTop(name, cardName(top))
+    : t.foundationEmpty(name, cardName({ rank: ACE, suit }));
 };
 
 const countFaceDown = (cards: readonly Card[]): number =>
@@ -288,22 +289,23 @@ export const tableauCardLabel = (
   index: number,
   cardIndex: number
 ): string => {
+  const t = currentMessages().solitaire;
   const card = column[cardIndex];
 
   if (!card) {
-    return `Column ${index + 1}, empty. Only a king can go here.`;
+    return t.columnEmpty(index + 1);
   }
 
   const above = column.length - 1 - cardIndex;
   const hidden = countFaceDown(column.slice(0, cardIndex));
-  const parts = [`${cardName(card)}, column ${index + 1}`];
+  const parts = [t.columnCard(cardName(card), index + 1)];
 
   if (above > 0) {
-    parts.push(`${plural(above, "card")} on top of it`);
+    parts.push(t.cardsAbove(above));
   }
 
   if (hidden > 0 && cardIndex === firstFaceUpIndex(column)) {
-    parts.push(`${plural(hidden, "face-down card")} under it`);
+    parts.push(t.cardsBelow(hidden));
   }
 
   return `${parts.join(", ")}.`;

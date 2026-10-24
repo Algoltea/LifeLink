@@ -1,6 +1,5 @@
 "use client";
 
-import { cardName } from "@lifelink/solitaire/cards";
 import {
   applyMove,
   autoMoveToFoundations,
@@ -26,6 +25,8 @@ import { Button } from "@lifelink/ui/components/button";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
+import { currentIntlLocale, currentMessages, useMessages } from "@/i18n/locale";
+
 import { Board } from "./board";
 import {
   clampSlot,
@@ -40,6 +41,7 @@ import {
 } from "./board-model";
 import type { Direction, Slot } from "./board-model";
 import { HowToPlay } from "./how-to-play";
+import { cardName, translateGameMessage } from "./localization";
 import { freshGame, loadGame, saveGame } from "./storage";
 import type { LoadedGame } from "./storage";
 
@@ -73,77 +75,83 @@ const directionFor = (key: string): Direction | null => {
 };
 
 const drawWords = (count: DrawCount): string =>
-  count === 1 ? "one card" : "three cards";
+  currentMessages().solitaire.drawWords(count);
 
 const describeSource = (state: GameState, source: MoveSource): string => {
+  const t = currentMessages().solitaire;
   const picked = sourceCards(state, source);
 
   if (!picked.ok) {
-    return "that card";
+    return t.thatCard;
   }
 
   const [first] = picked.cards;
   const extra = picked.cards.length - 1;
-  const name = first ? cardName(first) : "that card";
+  const name = first ? cardName(first) : t.thatCard;
 
-  return extra > 0
-    ? `${name} and the ${extra === 1 ? "card" : `${extra} cards`} on it`
-    : name;
+  return extra > 0 ? t.sourceWithCards(name, extra) : name;
 };
 
 const describeTarget = (state: GameState, target: MoveTarget): string => {
+  const t = currentMessages().solitaire;
+
   if (target.kind === "foundation") {
-    return "to a foundation";
+    return t.toFoundation;
   }
 
   const top = state.tableau[target.index]?.at(-1);
 
-  return top ? `onto ${cardName(top)}` : `to empty column ${target.index + 1}`;
+  return top ? t.onto(cardName(top)) : t.toColumn(target.index + 1);
 };
 
 const describeHint = (state: GameState, hint: Move): string =>
   hint.type === "draw"
-    ? "Hint: draw from the stock."
-    : `Hint: move ${describeSource(state, hint.source)} ${describeTarget(state, hint.target)}.`;
+    ? currentMessages().solitaire.hintDraw
+    : currentMessages().solitaire.hintMove(
+        describeSource(state, hint.source),
+        describeTarget(state, hint.target)
+      );
 
 const emptyReason = (state: GameState, slot: Slot): string => {
+  const t = currentMessages().solitaire;
+
   if (slot.area === "waste") {
-    return "The waste pile is empty. Draw from the stock first.";
+    return t.emptyWaste;
   }
 
   if (slot.area === "foundation") {
-    return "This foundation is empty. Aces go here first.";
+    return t.emptyFoundation;
   }
 
   if (
     slot.area === "tableau" &&
     (state.tableau[slot.index]?.length ?? 0) === 0
   ) {
-    return "This column is empty. Only a king can go here.";
+    return t.emptyColumn;
   }
 
-  return "That card is face down. Move the cards on top of it to turn it over.";
+  return t.faceDown;
 };
 
 const formatSavedAt = (savedAt: string): string => {
   const date = new Date(savedAt);
 
   return Number.isNaN(date.getTime())
-    ? "earlier"
-    : date.toLocaleString(undefined, {
+    ? currentMessages().solitaire.earlier
+    : date.toLocaleString(currentIntlLocale(), {
         dateStyle: "medium",
         timeStyle: "short",
       });
 };
 
 const outcomeNote = (state: GameState): string => {
+  const t = currentMessages().solitaire;
+
   if (isWon(state)) {
-    return ` You won in ${state.moves} moves. Well played.`;
+    return t.wonNote(state.moves);
   }
 
-  return hasMovesLeft(state)
-    ? ""
-    : " No moves are left in this deal. You can undo or start a new game.";
+  return hasMovesLeft(state) ? "" : t.noMovesNote;
 };
 
 /** The parts of a key press that shortcuts read; React and DOM keyboard events both provide them. */
@@ -163,13 +171,15 @@ const isUndoChord = (event: KeyChord): boolean =>
   event.key.toLowerCase() === "z";
 
 const openingMessage = (loaded: LoadedGame): string => {
+  const t = currentMessages().solitaire;
+
   if (loaded.resumedFrom) {
-    return "Resumed your last game.";
+    return t.resumed;
   }
 
   return loaded.discarded
-    ? `Your saved game could not be opened, so a new game was dealt. ${loaded.discarded}`
-    : "A new game is ready. Choose a card to begin.";
+    ? t.discarded(translateGameMessage(loaded.discarded))
+    : t.ready;
 };
 
 const isInside = (
@@ -181,6 +191,7 @@ const isInside = (
 
 /** The playable table. Client-only: it reads the saved game from localStorage while it first renders. */
 export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
+  const t = useMessages().solitaire;
   const [opening, setOpening] = useState(() => loadGame(1));
   const [game, setGame] = useState<GameState>(opening.state);
   const [cursor, setCursor] = useState<Slot>(STOCK_SLOT);
@@ -224,9 +235,13 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
 
   const run = (result: MoveResult, nextCursor?: Slot) => {
     if (result.ok) {
-      commit(result.state, result.description, nextCursor);
+      commit(
+        result.state,
+        translateGameMessage(result.description),
+        nextCursor
+      );
     } else {
-      announce(result.error.message);
+      announce(translateGameMessage(result.error.message));
     }
   };
 
@@ -258,8 +273,8 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
 
     announce(
       targets.length === 0
-        ? `Selected ${name}. It has no place to go right now. Press Escape to put it back.`
-        : `Selected ${name}. It can go to ${targets.length} places. Choose one, or press Escape.`
+        ? t.selectedBlocked(name)
+        : t.selectedTargets(name, targets.length)
     );
   };
 
@@ -277,10 +292,10 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       const home = sendToFoundation(game, selected);
 
       if (home.ok) {
-        commit(home.state, home.description);
+        commit(home.state, translateGameMessage(home.description));
       } else {
         setSelected(null);
-        announce("Put the card back. Nothing is selected.");
+        announce(t.putBack);
       }
 
       return;
@@ -296,12 +311,12 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       if (result.ok) {
         commit(
           result.state,
-          result.description,
+          translateGameMessage(result.description),
           slotForTarget(result.state, target)
         );
       } else {
         announce(
-          `${result.error.message} Choose another place, or press Escape to pick a different card.`
+          `${translateGameMessage(result.error.message)} ${t.chooseAnother}`
         );
       }
 
@@ -330,7 +345,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const next = findHint(game);
 
     if (!next) {
-      announce("There are no useful moves left. Try undo or start a new game.");
+      announce(t.noUsefulMoves);
 
       return;
     }
@@ -348,7 +363,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const result = autoMoveToFoundations(game);
 
     if (result.moved.length === 0) {
-      announce("No cards are safe to send to the foundations right now.");
+      announce(t.noSafeCards);
 
       return;
     }
@@ -356,10 +371,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     const names = result.moved.map((card) => cardName(card)).join(", ");
     const count = result.moved.length;
 
-    commit(
-      result.state,
-      `Sent ${count} ${count === 1 ? "card" : "cards"} to the foundations: ${names}.`
-    );
+    commit(result.state, t.sentSafe(count, names));
   };
 
   const startNewGame = (drawCount: DrawCount = preferredDraw) => {
@@ -368,11 +380,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       discarded: null,
       resumedFrom: null,
     }));
-    commit(
-      freshGame(drawCount),
-      `Dealt a new game, drawing ${drawWords(drawCount)} at a time.`,
-      STOCK_SLOT
-    );
+    commit(freshGame(drawCount), t.dealt(drawWords(drawCount)), STOCK_SLOT);
   };
 
   const changeDrawCount = (drawCount: DrawCount) => {
@@ -384,9 +392,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
       return;
     }
 
-    announce(
-      `New games will draw ${drawWords(drawCount)} at a time. This game keeps drawing ${drawWords(game.drawCount)}.`
-    );
+    announce(t.drawSetting(drawWords(drawCount), drawWords(game.drawCount)));
   };
 
   const handleBoardKeys = (event: KeyboardEvent<HTMLElement>) => {
@@ -403,7 +409,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
     if (event.key === "Escape" && selected) {
       event.preventDefault();
       setSelected(null);
-      announce("Nothing is selected.");
+      announce(t.nothingSelected);
     }
   };
 
@@ -473,38 +479,33 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
             className="text-mobile-title sm:text-page-title font-semibold"
             id="solitaire-title"
           >
-            Solitaire
+            {t.title}
           </h1>
           <Button onClick={() => startNewGame()} variant="outline">
-            New game
+            {t.newGame}
           </Button>
         </div>
         <p className="text-muted-foreground text-body">
-          {guest
-            ? "A quiet game. No account needed."
-            : "A quiet game. Available offline."}
+          {guest ? t.guestIntro : t.intro}
         </p>
         <p className="num text-muted-foreground text-label">
-          Drawing {drawWords(game.drawCount)} at a time
+          {t.drawing(drawWords(game.drawCount))}
+          {" · "}
+          <span className="whitespace-nowrap">{t.moves(game.moves)}</span>
           {" · "}
           <span className="whitespace-nowrap">
-            {game.moves} {game.moves === 1 ? "move" : "moves"}
+            {t.foundationCount(cardsOnFoundations(game))}
           </span>
-          {" · "}
-          <span className="whitespace-nowrap">
-            {cardsOnFoundations(game)} of 52 cards
-          </span>
-          {" on the foundations"}
         </p>
       </header>
 
       {opening.resumedFrom === null ? null : (
         <div className="bg-parchment flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
           <p className="text-body">
-            Resumed your last game, saved {formatSavedAt(opening.resumedFrom)}.
+            {t.resumedAt(formatSavedAt(opening.resumedFrom))}
           </p>
           <Button onClick={() => startNewGame()} size="sm" variant="outline">
-            Start fresh instead
+            {t.startFresh}
           </Button>
         </div>
       )}
@@ -516,22 +517,22 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
             onClick={requestUndo}
             variant="outline"
           >
-            Undo
+            {t.undo}
           </Button>
           <Button onClick={requestDraw} variant="outline">
-            Draw
+            {t.draw}
           </Button>
           <Button onClick={requestHint} variant="outline">
-            Hint
+            {t.hint}
           </Button>
           <Button onClick={requestAutoMove} variant="outline">
-            Send safe cards home
+            {t.safeCards}
           </Button>
         </div>
         <fieldset className="flex flex-wrap items-center gap-2">
-          <legend className="sr-only">Cards per draw</legend>
+          <legend className="sr-only">{t.cardsPerDraw}</legend>
           <span aria-hidden="true" className="text-label font-medium">
-            Draw
+            {t.draw}
           </span>
           {([1, 3] as const).map((count) => (
             <label
@@ -546,7 +547,7 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
                 type="radio"
                 value={count}
               />
-              {count} {count === 1 ? "card" : "cards"}
+              {t.cards(count)}
             </label>
           ))}
         </fieldset>
@@ -561,17 +562,14 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
 
       {won ? (
         <div className="bg-positive-wash text-positive flex flex-wrap items-center gap-4 rounded-lg px-4 py-4">
-          <p className="text-section font-semibold">
-            You won in {game.moves} moves.
-          </p>
-          <Button onClick={() => startNewGame()}>Deal another game</Button>
+          <p className="text-section font-semibold">{t.won(game.moves)}</p>
+          <Button onClick={() => startNewGame()}>{t.dealAgain}</Button>
         </div>
       ) : null}
 
       <div className="flex min-w-0 flex-col gap-3">
         <p className="text-muted-foreground text-label md:hidden">
-          Scroll the table sideways to reach every pile, or turn your phone
-          sideways for more room.
+          {t.scrollHint}
         </p>
         <Board
           cursor={cursor}
@@ -589,14 +587,10 @@ export const SolitaireTable = ({ guest = false }: { guest?: boolean }) => {
 
       {saveFailed ? (
         <p className="bg-warning-wash text-warning text-body rounded-lg px-4 py-3">
-          This browser is not letting the game save, so your progress will be
-          lost if you close this page.
+          {t.saveFailed}
         </p>
       ) : (
-        <p className="text-muted-foreground text-label">
-          Your game saves on this device after every move, even without an
-          internet connection.
-        </p>
+        <p className="text-muted-foreground text-label">{t.savedHint}</p>
       )}
 
       <HowToPlay />

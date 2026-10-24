@@ -15,6 +15,8 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import type { LiveServerMessage, Session } from "@google/genai";
 import type { CallCaption } from "@lifelink/contracts/call-screening";
 
+import { currentMessages } from "../../i18n/locale";
+
 const INPUT_RATE = 16_000;
 const OUTPUT_RATE = 24_000;
 
@@ -85,19 +87,21 @@ class MicrophoneError extends Error {
 /** Plain words for the reasons a microphone can't start. */
 /** `name` is the DOMException name getUserMedia rejected with, or "" for anything else. */
 const microphoneProblem = (name: string): string => {
+  const t = currentMessages().voice;
+
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return "LifeLink isn't allowed to use the microphone. Allow it in your browser's settings for this site, or type instead.";
+    return t.microphoneDenied;
   }
 
   if (name === "NotFoundError" || name === "OverconstrainedError") {
-    return "No microphone was found. Check that one is connected, or type instead.";
+    return t.microphoneMissing;
   }
 
   if (name === "NotReadableError") {
-    return "Another app is using the microphone. Close it and try again, or type instead.";
+    return t.microphoneBusy;
   }
 
-  return "The microphone didn't start. Please try again, or type instead.";
+  return t.microphoneFailed;
 };
 
 const closeQuietly = async (context: AudioContext): Promise<void> => {
@@ -136,7 +140,10 @@ const prepareAudio = async (signal: AbortSignal): Promise<AudioRig> => {
   const stopIfAborted = (): void => {
     if (signal.aborted) {
       releaseAll();
-      throw new DOMException("Voice was stopped.", "AbortError");
+      throw new DOMException(
+        currentMessages().voice.voiceStopped,
+        "AbortError"
+      );
     }
   };
 
@@ -246,7 +253,7 @@ const startLiveSession = async (
     for (const call of message.toolCall?.functionCalls ?? []) {
       const request = call.args?.request;
       const text = String(request ?? "").trim();
-      let result = "Nothing was prepared because the request was empty.";
+      let result = currentMessages().voice.emptyRequest;
 
       if (call.name === "submit_request" && text.length > 0) {
         // oxlint-disable-next-line eslint/no-await-in-loop -- tool calls are answered one at a time, in order.
@@ -291,7 +298,7 @@ const startLiveSession = async (
         onerror: () => {
           if (!stopped) {
             stop();
-            callbacks.onClosed("The voice connection had a problem.");
+            callbacks.onClosed(currentMessages().voice.connectionProblem);
           }
         },
         onmessage: (message) => {
@@ -411,7 +418,7 @@ const startCallScreeningSession = async (
   options: CallScreeningOptions = {}
 ): Promise<CallScreeningHandle> => {
   const abortError = new DOMException(
-    "Call screening was stopped.",
+    currentMessages().voice.screeningStopped,
     "AbortError"
   );
 
@@ -501,7 +508,9 @@ const startCallScreeningSession = async (
 
     closed = true;
     cleanup();
-    rejectCancelled?.(new Error(reason ?? "Call screening disconnected."));
+    rejectCancelled?.(
+      new Error(reason ?? currentMessages().voice.screeningDisconnected)
+    );
 
     if (started) {
       callbacks.onClosed(reason);
@@ -611,7 +620,7 @@ const startCallScreeningSession = async (
       try {
         session?.sendRealtimeInput({ audioStreamEnd: true });
       } catch {
-        fail("Call screening lost its connection.");
+        fail(currentMessages().voice.screeningLost);
       }
     }
 
@@ -619,9 +628,7 @@ const startCallScreeningSession = async (
       // Never analyze the old segment after an alert. If the provider cannot
       // flush it, fail visibly instead of leaving a silently stalled monitor.
       drainTimer = setTimeout(() => {
-        fail(
-          "Call screening could not resume after the alert. Start it again."
-        );
+        fail(currentMessages().voice.screeningResumeFailed);
       }, INPUT_DRAIN_TIMEOUT_MS);
     }
   };
@@ -648,7 +655,7 @@ const startCallScreeningSession = async (
       });
       sentAudio = true;
     } catch {
-      fail("Call screening lost its connection.");
+      fail(currentMessages().voice.screeningLost);
     }
   };
 
@@ -667,9 +674,7 @@ const startCallScreeningSession = async (
       track.addEventListener(
         "ended",
         () => {
-          fail(
-            "The microphone stopped. Start call screening again to reconnect."
-          );
+          fail(currentMessages().voice.screeningMicrophoneStopped);
         },
         { signal: listenerAbort.signal }
       );
@@ -703,7 +708,7 @@ const startCallScreeningSession = async (
     session = await ai.live.connect({
       callbacks: {
         onclose: (event) => fail(event.reason || null),
-        onerror: () => fail("The call-screening connection had a problem."),
+        onerror: () => fail(currentMessages().voice.screeningConnectionProblem),
         onmessage: receive,
       },
       // Keep automatic VAD enabled: audioStreamEnd requires it. The token owns

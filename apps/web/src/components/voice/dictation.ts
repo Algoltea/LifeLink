@@ -3,6 +3,8 @@
  * only fills the text box; the person still presses Ask.
  */
 
+import { currentIntlLocale, currentMessages } from "@/i18n/locale";
+
 interface RecognitionResult {
   0: { transcript: string };
   isFinal: boolean;
@@ -60,31 +62,19 @@ interface DictationHandle {
 }
 
 /** Plain words for the browser's dictation error codes; null when nothing went wrong. */
-const PROBLEMS: ReadonlyMap<string, string> = new Map([
-  [
-    "audio-capture",
-    "No microphone was found. Check that one is connected, or type instead.",
-  ],
-  [
-    "network",
-    "Voice typing needs an internet connection right now. Please type instead.",
-  ],
-  [
-    "no-speech",
-    "I didn't hear anything. Press Speak and try again, a little closer to the microphone.",
-  ],
-  [
-    "not-allowed",
-    "LifeLink isn't allowed to use the microphone. Allow it in your browser's settings for this site, or type instead.",
-  ],
-  [
-    "service-not-allowed",
-    "Voice typing is turned off in this browser. Please type instead.",
-  ],
-]);
+const dictationProblem = (error: string): string => {
+  const t = currentMessages().voice;
 
-const GENERIC_PROBLEM =
-  "Voice typing stopped. Please try again, or type instead.";
+  const problems = new Map([
+    ["audio-capture", t.microphoneMissing],
+    ["network", t.network],
+    ["no-speech", t.noSpeech],
+    ["not-allowed", t.microphoneDenied],
+    ["service-not-allowed", t.serviceDenied],
+  ]);
+
+  return problems.get(error) ?? t.dictationStopped;
+};
 
 /** onEnd receives a plain explanation when dictation stopped because of a problem. */
 const startDictation = (
@@ -100,7 +90,7 @@ const startDictation = (
   const recognition = new Constructor();
   let problem: string | null = null;
 
-  recognition.lang = globalThis.navigator?.language || "en-US";
+  recognition.lang = currentIntlLocale();
   recognition.interimResults = true;
   recognition.continuous = false;
   recognition.addEventListener("result", (event: RecognitionEvent) => {
@@ -116,17 +106,14 @@ const startDictation = (
   });
   recognition.addEventListener("error", (event: RecognitionErrorEvent) => {
     // "aborted" means the person pressed Stop.
-    problem =
-      event.error === "aborted"
-        ? null
-        : (PROBLEMS.get(event.error) ?? GENERIC_PROBLEM);
+    problem = event.error === "aborted" ? null : dictationProblem(event.error);
   });
   recognition.addEventListener("end", () => onEnd(problem));
 
   try {
     recognition.start();
   } catch {
-    onEnd(GENERIC_PROBLEM);
+    onEnd(currentMessages().voice.dictationStopped);
 
     return null;
   }
