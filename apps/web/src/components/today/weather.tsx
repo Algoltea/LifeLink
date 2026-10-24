@@ -153,7 +153,7 @@ const WeatherChip = ({
       </span>
       <Popover.Root>
         {/* Text-sized to sit in the date line; the full row height keeps a large tap target. */}
-        <Popover.Trigger className="text-muted-foreground hover:text-foreground data-[popup-open]:text-foreground text-label min-h-control -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 transition-colors">
+        <Popover.Trigger className="group/weather text-muted-foreground hover:text-foreground data-[popup-open]:text-foreground text-label min-h-control -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 transition-colors">
           <WeatherIcon
             className="size-4"
             code={forecast.current.code}
@@ -169,7 +169,10 @@ const WeatherChip = ({
             </span>
           ) : null}
           <span className="sr-only">. Show the week’s weather</span>
-          <ChevronDownIcon aria-hidden="true" className="size-4" />
+          <ChevronDownIcon
+            aria-hidden="true"
+            className="size-4 transition-transform group-data-[popup-open]/weather:rotate-180 motion-reduce:transition-none"
+          />
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner align="end" className="z-50" sideOffset={8}>
