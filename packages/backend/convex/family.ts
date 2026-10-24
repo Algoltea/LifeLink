@@ -131,12 +131,21 @@ const groceriesSection = async (section: Section) => {
     .withIndex("by_owner", (index) => index.eq("ownerId", section.ownerId))
     .collect();
 
-  return rows.map((list) => ({
-    budgetCents: list.budgetCents,
-    id: list._id,
-    items: list.items.flatMap((item) => (item.checked ? [] : [item.name])),
-    name: list.name,
-  }));
+  // The circle sees current lists only; finished trips stay with the person.
+  return rows.flatMap((list) =>
+    list.archivedAt === undefined
+      ? [
+          {
+            budgetCents: list.budgetCents,
+            id: list._id,
+            items: list.items.flatMap((item) =>
+              item.checked ? [] : [item.name]
+            ),
+            name: list.name,
+          },
+        ]
+      : []
+  );
 };
 
 const photosSection = async (section: Section) => {

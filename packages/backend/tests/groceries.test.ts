@@ -420,7 +420,7 @@ describe("undoing removals and reusing lists", () => {
 
     expect(copy).toMatchObject({
       budgetCents: 5000,
-      name: "Weekly (copy)",
+      name: expect.stringMatching(/^Weekly · [A-Z][a-z]{2} \d{1,2}$/u),
       preferences: ["Low sodium"],
     });
     expect(copy?.items.map((item) => [item.name, item.checked])).toStrictEqual([
@@ -457,5 +457,149 @@ describe("undoing removals and reusing lists", () => {
     expect(lists[0]?.name).toBe("Weekly groceries");
     expect(long).toHaveLength(1);
     expect(long[0]?.items.length).toBeGreaterThanOrEqual(60);
+  });
+});
+
+describe("past lists and the usual list", () => {
+  it("names copies for the day without piling up earlier dates", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const firstId = await person.mutation(api.groceries.copyList, { listId });
+
+    const secondId = await person.mutation(api.groceries.copyList, {
+      listId: firstId,
+    });
+
+    const [first, second] = await backend.run(async (ctx) => [
+      await ctx.db.get(firstId),
+      await ctx.db.get(secondId),
+    ]);
+
+    expect(second?.name).toBe(first?.name);
+  });
+
+  it("moves a finished list to past lists and back", async () => {
+    const { backend, listId, person } = await setupList();
+
+    await person.mutation(api.groceries.archiveList, { listId });
+    const archived = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(archived?.archivedAt).toBeTypeOf("number");
+
+    await person.mutation(api.groceries.archiveList, { listId });
+    await expect(
+      backend.run(async (ctx) => await ctx.db.get(listId))
+    ).resolves.toMatchObject({ archivedAt: archived?.archivedAt });
+
+    await person.mutation(api.groceries.unarchiveList, { listId });
+    const reopened = await backend.run(async (ctx) => await ctx.db.get(listId));
+    expect(reopened?.archivedAt).toBeUndefined();
+  });
+
+  it("keeps one usual list at a time and does not copy the mark", async () => {
+    const { listId, person } = await setupList();
+
+    const otherId = await person.mutation(api.groceries.createList, {
+      name: "Other",
+    });
+
+    await person.mutation(api.groceries.setUsual, { listId, usual: true });
+    await person.mutation(api.groceries.setUsual, {
+      listId: otherId,
+      usual: true,
+    });
+
+    const copyId = await person.mutation(api.groceries.copyList, {
+      listId: otherId,
+    });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+    const usual = lists.filter((list) => list.usual === true);
+
+    expect(usual.map((list) => list._id)).toStrictEqual([otherId]);
+    expect(lists.find((list) => list._id === copyId)?.usual).toBeUndefined();
+
+    await person.mutation(api.groceries.setUsual, {
+      listId: otherId,
+      usual: false,
+    });
+
+    const after = await person.query(api.groceries.lists, {});
+    expect(after.lists.some((list) => list.usual === true)).toBeFalsy();
+  });
+
+  it("shows the circle current lists only", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const ownerId = await backend.run(async (ctx) => {
+      const list = await ctx.db.get(listId);
+
+      if (!list) {
+        throw new Error("Missing list");
+      }
+
+      return list.ownerId;
+    });
+
+    await person.mutation(api.groceries.createList, { name: "This week" });
+    await person.mutation(api.groceries.archiveList, { listId });
+
+    const { family } = await connectFamily(backend, person, ["groceries.view"]);
+    const view = await family.query(api.family.overview, { ownerId });
+
+    expect(view?.groceries?.map((list) => list.name)).toStrictEqual([
+      "This week",
+    ]);
+  });
+
+  it("adds assistant items to this week's list, not the usual or a past one", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const ownerId = await backend.run(async (ctx) => {
+      const list = await ctx.db.get(listId);
+
+      if (!list) {
+        throw new Error("Missing list");
+      }
+
+      return list.ownerId;
+    });
+
+    await person.mutation(api.groceries.setUsual, { listId, usual: true });
+
+    const thisWeekId = await person.mutation(api.groceries.copyList, {
+      listId,
+    });
+
+    const finishedId = await person.mutation(api.groceries.createList, {
+      name: "Finished",
+    });
+
+    await person.mutation(api.groceries.archiveList, { listId: finishedId });
+
+    await backend.mutation(internal.assistant.applyProposalForOwner, {
+      channel: "text",
+      model: "test",
+      ownerId,
+      proposalJson: JSON.stringify({
+        appointmentId: null,
+        dateTimeAsSaid: null,
+        dateTimeIso: null,
+        groceryItems: [{ name: "Milk", quantity: 1, unit: null }],
+        intent: "grocery_list",
+        messageDraft: null,
+        recipients: [],
+        reminderTitle: null,
+      }),
+      request: "Add milk to my grocery list",
+    });
+
+    const { lists } = await person.query(api.groceries.lists, {});
+
+    const names = (id: string) =>
+      lists.find((list) => list._id === id)?.items.map((item) => item.name);
+
+    expect(names(thisWeekId)).toStrictEqual(["Milk"]);
+    expect(names(listId)).toStrictEqual([]);
+    expect(names(finishedId)).toStrictEqual([]);
   });
 });

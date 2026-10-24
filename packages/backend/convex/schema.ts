@@ -498,6 +498,8 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   groceryLists: defineTable({
+    // Set when a trip is finished; past lists stay for reuse instead of being deleted.
+    archivedAt: v.optional(v.number()),
     budgetCents: v.union(v.number(), v.null()),
     items: v.array(
       v.object({
@@ -521,6 +523,8 @@ export default defineSchema({
     ownerId: v.id("profiles"),
     preferences: v.array(v.string()),
     updatedAt: v.number(),
+    // At most one list per person: the baseline each week's list starts from.
+    usual: v.optional(v.boolean()),
   }).index("by_owner", ["ownerId"]),
 
   imessageEnrollments: defineTable({

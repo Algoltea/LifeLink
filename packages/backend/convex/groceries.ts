@@ -18,6 +18,20 @@ import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_ITEMS = 100;
 
+/** " · Oct 24" or " (copy)" left by an earlier copy, so names don't pile up. */
+const COPY_SUFFIX = / (?:· [A-Z][a-z]{2} \d{1,2}|\(copy\))$/u;
+
+/** "Weekly groceries · Oct 24": copies are named for the day they start. */
+const datedName = (name: string, now: number, timeZone: string): string => {
+  const day = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone,
+  }).format(now);
+
+  return `${name.replace(COPY_SUFFIX, "")} · ${day}`;
+};
+
 const FULL_LIST = "This list is full. Start a new list for more items.";
 
 /** The same checks for a new item and for one put back by Undo. */
@@ -303,6 +317,7 @@ export const copyList = mutation({
   args: { listId: v.id("groceryLists") },
   handler: async (ctx, args): Promise<Id<"groceryLists">> => {
     const { list, owner } = await ownedList(ctx, args.listId);
+    const now = Date.now();
 
     return await ctx.db.insert("groceryLists", {
       budgetCents: list.budgetCents,
@@ -312,11 +327,53 @@ export const copyList = mutation({
         id: crypto.randomUUID(),
       })),
       lastHandoff: null,
-      name: `${list.name} (copy)`,
+      name: datedName(list.name, now, owner.timeZone),
       ownerId: owner._id,
       preferences: list.preferences,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+  },
+});
+
+/** Finishing a trip keeps the list under past lists so it can be reused. */
+export const archiveList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    if (list.archivedAt === undefined) {
+      await ctx.db.patch(list._id, { archivedAt: Date.now() });
+    }
+  },
+});
+
+export const unarchiveList = mutation({
+  args: { listId: v.id("groceryLists") },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+    await ctx.db.patch(list._id, { archivedAt: undefined });
+  },
+});
+
+/** Marks one list as the usual weekly list, or clears it; only one at a time. */
+export const setUsual = mutation({
+  args: { listId: v.id("groceryLists"), usual: v.boolean() },
+  handler: async (ctx, args) => {
+    const { list, owner } = await ownedList(ctx, args.listId);
+
+    if (args.usual) {
+      const owned = ctx.db
+        .query("groceryLists")
+        .withIndex("by_owner", (index) => index.eq("ownerId", owner._id));
+
+      for await (const other of owned) {
+        if (other.usual === true && other._id !== list._id) {
+          await ctx.db.patch(other._id, { usual: undefined });
+        }
+      }
+    }
+
+    await ctx.db.patch(list._id, { usual: args.usual ? true : undefined });
   },
 });
 
