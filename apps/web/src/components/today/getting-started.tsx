@@ -67,7 +67,7 @@ const stepsFor = (progress: Progress): Step[] => [
   {
     action: "Ask LifeLink",
     description:
-      "Try “Remind me to water the plants at five.” You’ll check anything before it happens.",
+      "Try “Remind me to water the plants at five.” You’ll review anything before it happens.",
     done: progress.asked,
     href: "/ask",
     title: "Ask for a hand",
