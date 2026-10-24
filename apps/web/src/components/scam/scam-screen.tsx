@@ -462,7 +462,7 @@ const HistoryList = ({
         return (
           <li className="border-rule border-t" key={review._id}>
             <button
-              className="bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 flex-col items-start gap-3 rounded-md px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring -mx-3 flex w-[calc(100%+1.5rem)] min-w-0 flex-col items-start gap-3 rounded-md px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
               onClick={() => onOpen(review._id)}
               type="button"
             >
