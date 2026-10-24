@@ -35,7 +35,7 @@ import {
   quantityWords,
 } from "./list-editor";
 import { ListPicker } from "./list-picker";
-import { BudgetSummary, Receipt, ReceiptBar } from "./receipt";
+import { Receipt, ReceiptBar } from "./receipt";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -146,12 +146,6 @@ const GroceryWorkspace = ({
           finishedOn={finishedOn}
           key={list._id}
           list={list}
-          summary={
-            // On wide screens the sticky receipt already shows these totals.
-            <div className="xl:hidden">
-              <BudgetSummary list={list} />
-            </div>
-          }
           tools={<ListTools list={list} />}
         />
       </section>
@@ -380,7 +374,7 @@ const GroceriesScreen = () => {
       <style>{PRINT_STYLES}</style>
       <PageHeader
         actions={startButtons}
-        subline="Keep a grocery list, plan your budget, and copy or print what you need."
+        subline="Your shopping lists and budget."
         title="Groceries"
       />
       <DeleteListDialog

@@ -2,6 +2,7 @@
 
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { cn } from "@lifelink/ui/lib/utils";
+import { ChevronUpIcon } from "lucide-react";
 import type { Ref } from "react";
 import { useCallback, useState } from "react";
 
@@ -58,48 +59,6 @@ const estimateFor = (list: Doc<"groceryLists">) => {
     overBudget: budget !== null && estimate > budget,
     toGetCents: estimate - inCartCents,
   };
-};
-
-const BudgetSummary = ({ list }: { list: Doc<"groceryLists"> }) => {
-  const {
-    budget,
-    estimate,
-    inCart,
-    inCartCents,
-    missingEstimates,
-    overBudget,
-  } = estimateFor(list);
-
-  return (
-    <section aria-label="Budget summary" className="flex flex-col gap-2">
-      <dl className="flex flex-col gap-1 text-lg tabular-nums">
-        <Line
-          label="Estimated total"
-          value={money(estimate)}
-          className="font-semibold"
-        />
-        {inCart.length > 0 ? (
-          <Line label="In your cart" value={money(inCartCents)} />
-        ) : null}
-        <Line
-          label="Budget"
-          value={budget === null ? "Not set" : money(budget)}
-        />
-        {budget === null ? null : (
-          <Line
-            label={overBudget ? "Over budget" : "Left to spend"}
-            value={money(Math.abs(budget - estimate))}
-            className={overBudget ? "text-negative font-semibold" : undefined}
-          />
-        )}
-      </dl>
-      {missingEstimates ? (
-        <p className="text-muted-foreground text-base">
-          Some items have no estimate, so the real total may be higher.
-        </p>
-      ) : null}
-    </section>
-  );
 };
 
 /**
@@ -275,7 +234,8 @@ const Receipt = ({
 
 /**
  * A compact total that stays at the bottom of narrow screens, where the
- * receipt sits far below the editor. Tapping it jumps to the receipt.
+ * receipt sits far below the editor. It is the only budget summary there, so
+ * the top of the list stays clear. Tapping it jumps to the receipt.
  */
 const ReceiptBar = ({
   list,
@@ -284,35 +244,42 @@ const ReceiptBar = ({
   list: Doc<"groceryLists">;
   onShow: () => void;
 }) => {
-  const { budget, estimate, inCart, items, overBudget } = estimateFor(list);
+  const { budget, estimate, items, overBudget } = estimateFor(list);
 
   if (items.length === 0) {
     return null;
   }
 
-  const count =
-    inCart.length > 0
-      ? `${inCart.length} of ${items.length} in your cart`
-      : `${items.length} ${items.length === 1 ? "item" : "items"}`;
+  // Money only: the item count is in the list header, and a short bar covers less of the list.
+  const total = `${money(estimate)} ${budget === null ? "estimated" : "total"}`;
 
   return (
     <button
-      className="bg-raised border-control hover:bg-parchment min-h-control sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border px-5 py-3 text-left text-lg tabular-nums shadow-[0_-4px_16px_rgb(0_0_0/0.12)] transition-colors xl:hidden dark:shadow-[0_-4px_20px_rgb(0_0_0/0.5)]"
+      className="bg-raised border-control hover:bg-parchment min-h-control @container sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex w-full items-center justify-between gap-3 rounded-lg border px-5 py-2 text-left text-lg tabular-nums shadow-[0_-4px_16px_rgb(0_0_0/0.12)] transition-colors xl:hidden dark:shadow-[0_-4px_20px_rgb(0_0_0/0.5)]"
       onClick={onShow}
       type="button"
     >
       <span className="min-w-0">
-        {count} · {money(estimate)}
-        {budget === null ? null : ` of ${money(budget)} budget`}
-        {overBudget ? (
-          <span className="text-negative font-semibold"> · Over budget</span>
+        {total}
+        {budget !== null && !overBudget
+          ? ` · ${money(budget - estimate)} left`
+          : null}
+        {budget !== null && overBudget ? (
+          <span className="text-negative font-semibold">
+            {" "}
+            · {money(estimate - budget)} over
+          </span>
         ) : null}
       </span>
-      <span className="font-medium underline underline-offset-4">
-        See estimate
+      <span className="flex shrink-0 items-center gap-1 text-base font-medium">
+        {/* rem-based, so the words drop out only when large text leaves no room. */}
+        <span className="underline underline-offset-4 @max-[14rem]:sr-only">
+          See estimate
+        </span>
+        <ChevronUpIcon aria-hidden="true" className="size-5" />
       </span>
     </button>
   );
 };
 
-export { BudgetSummary, Receipt, ReceiptBar };
+export { Receipt, ReceiptBar };

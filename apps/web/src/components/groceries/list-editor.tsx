@@ -110,7 +110,7 @@ const ItemRow = ({
   };
 
   return (
-    <li className="border-rule flex items-center gap-4 border-t py-3">
+    <li className="border-rule flex items-center gap-3 border-t py-1">
       <Checkbox
         checked={item.checked}
         id={checkboxId}
@@ -124,7 +124,7 @@ const ItemRow = ({
           }
         }}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3">
         <Label
           className={
             item.checked
@@ -590,13 +590,11 @@ const ListEditor = ({
   actions,
   finishedOn,
   list,
-  summary,
   tools,
 }: {
   actions: ListActions;
   finishedOn: string | null;
   list: Doc<"groceryLists">;
-  summary: ReactNode;
   tools: ReactNode;
 }) => {
   const { onCopy, onDelete, onReopen, onToggleUsual } = actions;
@@ -633,8 +631,9 @@ const ListEditor = ({
   return (
     <div className="@container flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <div className="flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 text-2xl leading-8 font-semibold break-words">
+        {/* With large text the name needs the full width, so the buttons wrap below it. */}
+        <div className="flex flex-wrap items-start gap-2">
+          <h2 className="min-w-[min(100%,12rem)] flex-1 text-2xl leading-8 font-semibold break-words">
             {list.name}
           </h2>
           <Button
@@ -651,13 +650,14 @@ const ListEditor = ({
           <Button
             aria-controls="grocery-details"
             aria-expanded={editingDetails}
-            className="-my-2 shrink-0"
+            className="max-sm:size-control -my-2 shrink-0 max-sm:px-0"
             onClick={() => setEditingDetails((open) => !open)}
             ref={detailsTrigger}
+            title="Edit list details"
             variant="outline"
           >
             <PencilIcon />
-            Edit details
+            <span className="max-sm:sr-only">Edit details</span>
           </Button>
         </div>
         <p className="text-lg">
@@ -699,7 +699,10 @@ const ListEditor = ({
           </div>
         </div>
       )}
-      <div id="grocery-details">
+      <div
+        className={editingDetails ? undefined : "hidden"}
+        id="grocery-details"
+      >
         {editingDetails ? (
           <DetailsForm
             list={list}
@@ -711,7 +714,6 @@ const ListEditor = ({
           />
         ) : null}
       </div>
-      {summary}
       <details>
         <summary className="min-h-control cursor-pointer py-3 text-lg font-medium">
           Add items
