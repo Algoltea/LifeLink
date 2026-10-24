@@ -9,7 +9,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
@@ -364,10 +364,12 @@ const RecapPanel = ({
   contactId,
   contactName,
   onClose,
+  returnFocusRef,
 }: {
   contactId: Id<"contacts">;
   contactName: string;
   onClose: () => void;
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
 }) => {
   const view = useQuery(api.recaps.forContact, { contactId });
   const { me, preferences } = usePreferences();
@@ -448,7 +450,13 @@ const RecapPanel = ({
         </h2>
         <Button
           aria-label="Close the recap"
-          onClick={onClose}
+          onClick={() => {
+            if (returnFocusRef?.current?.isConnected) {
+              returnFocusRef.current.focus();
+            }
+
+            onClose?.();
+          }}
           size="icon"
           type="button"
           variant="ghost"

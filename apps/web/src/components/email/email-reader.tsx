@@ -220,6 +220,7 @@ const EmailReader = ({
 }) => {
   const detail = useQuery(api.emails.get, { emailId });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const explainTriggerRef = useRef<HTMLButtonElement>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const [explaining, setExplaining] = useState(false);
   const [reply, setReply] = useState<ReplyDraft>(EMPTY_REPLY);
@@ -261,6 +262,9 @@ const EmailReader = ({
         >
           {email.subject || "(No subject)"}
         </h2>
+        <p className="text-base font-semibold">
+          {scanSummary} Local rules cannot verify the sender or its claims.
+        </p>
         <p className="text-lg">
           From {email.fromName ? `${email.fromName} ` : ""}
           <span className="text-muted-foreground">
@@ -271,6 +275,63 @@ const EmailReader = ({
           {formatWhen(email.receivedAt, timeZone)}
         </p>
       </header>
+
+      <section aria-labelledby="body-heading" className="flex flex-col gap-3">
+        <h3 className="sr-only" id="body-heading">
+          The email
+        </h3>
+        {email.bodyText.trim().length === 0 ? (
+          <EmptyNote>This email has no text.</EmptyNote>
+        ) : (
+          <>
+            <p className="max-w-prose text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
+              {email.bodyText}
+            </p>
+            <ReadAloudButton
+              label="Read the email aloud"
+              text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
+            />
+            <Button
+              aria-controls="explanation-panel"
+              aria-expanded={explaining}
+              ref={explainTriggerRef}
+              onClick={() => setExplaining(true)}
+              size="sm"
+              variant="outline"
+            >
+              <LightbulbIcon aria-hidden="true" />
+              Help me understand
+            </Button>
+          </>
+        )}
+        <p className="text-muted-foreground text-base">
+          Links in emails aren’t opened by LifeLink. If it asks for money or
+          private details, check it first.
+        </p>
+      </section>
+      <SummaryPanel emailId={emailId} />
+
+      {appointment === null ? null : (
+        <section
+          aria-labelledby="appointment-heading"
+          className="border-rule flex flex-col gap-2 border-y py-5"
+        >
+          <h3 className="text-xl font-semibold" id="appointment-heading">
+            Appointment found
+          </h3>
+          <p className="text-lg font-bold">{appointment.title}</p>
+          <p className="text-lg">
+            {formatWhen(appointment.startsAt, timeZone)}
+            {appointment.location ? ` · ${appointment.location}` : ""}
+          </p>
+          <p className="text-muted-foreground text-base">
+            It’s in your week on Today.{ride ? ` ${ride}` : ""}{" "}
+            <Link className="text-foreground font-semibold underline" href="/">
+              Go to Today
+            </Link>
+          </p>
+        </section>
+      )}
 
       <section
         aria-labelledby="email-check-heading"
@@ -304,69 +365,11 @@ const EmailReader = ({
         </Link>
       </section>
 
-      <SummaryPanel emailId={emailId} />
-
-      {appointment === null ? null : (
-        <section
-          aria-labelledby="appointment-heading"
-          className="border-rule flex flex-col gap-2 border-y py-5"
-        >
-          <h3 className="text-xl font-semibold" id="appointment-heading">
-            Appointment found
-          </h3>
-          <p className="text-lg font-bold">{appointment.title}</p>
-          <p className="text-lg">
-            {formatWhen(appointment.startsAt, timeZone)}
-            {appointment.location ? ` · ${appointment.location}` : ""}
-          </p>
-          <p className="text-muted-foreground text-base">
-            It’s in your week on Today.{ride ? ` ${ride}` : ""}{" "}
-            <Link className="text-foreground font-semibold underline" href="/">
-              Go to Today
-            </Link>
-          </p>
-        </section>
-      )}
-
-      <section aria-labelledby="body-heading" className="flex flex-col gap-3">
-        <h3 className="sr-only" id="body-heading">
-          The email
-        </h3>
-        {email.bodyText.trim().length === 0 ? (
-          <EmptyNote>This email has no text.</EmptyNote>
-        ) : (
-          <>
-            <p className="max-w-prose text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
-              {email.bodyText}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <ReadAloudButton
-                label="Read the email aloud"
-                text={`${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`}
-              />
-              <Button
-                aria-controls="explanation-panel"
-                aria-expanded={explaining}
-                onClick={() => setExplaining(true)}
-                size="sm"
-                variant="outline"
-              >
-                <LightbulbIcon aria-hidden="true" />
-                Help me understand
-              </Button>
-            </div>
-          </>
-        )}
-        <p className="text-muted-foreground text-base">
-          Links in emails aren’t opened by LifeLink. If it asks for money or
-          private details, check it first.
-        </p>
-      </section>
-
       {explaining ? (
         <ExplanationPanel
           level={3}
           onClose={() => setExplaining(false)}
+          returnFocusRef={explainTriggerRef}
           onUseReply={(suggestion) => {
             setReply({
               body: suggestion,

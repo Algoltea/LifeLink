@@ -8,7 +8,7 @@ import { Pill } from "@lifelink/ui/components/pill";
 import { Textarea } from "@lifelink/ui/components/textarea";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/app/page-header";
@@ -32,18 +32,51 @@ const canCheck = (
   source: Source,
   text: string,
   file: File | null,
-  allowCloudAnalysis: boolean
+  allowCloudAnalysis: boolean,
+  practice: boolean,
+  loading: boolean
 ): boolean => {
   if (source === "email") {
     return true;
   }
 
   if (source === "screenshot") {
-    return file !== null && allowCloudAnalysis;
+    return file !== null && allowCloudAnalysis && !practice && !loading;
   }
 
   return text.trim().length > 0;
 };
+
+const checkButtonLabel = (
+  source: Source,
+  cloud: boolean,
+  practice: boolean
+): string => {
+  if (source === "screenshot") {
+    if (practice) {
+      return "Screenshot checks unavailable in Practice";
+    }
+
+    return "Check screenshot with cloud AI";
+  }
+
+  return cloud ? "Check with cloud AI" : "Check locally";
+};
+
+const checkGuidance = (source: Source, practice: boolean): string => {
+  if (source === "screenshot") {
+    if (practice) {
+      return "Practice mode cannot analyze screenshots and never sends them to an AI provider. Paste or type the words for a local check. ";
+    }
+
+    return "Local rules cannot read images. Choose an image and allow cloud AI above, or paste or type its words for a local check. ";
+  }
+
+  return "The local check looks for common warning signs without sending your message to an AI provider. ";
+};
+
+const validScreenshot = (file: File): boolean =>
+  file.size <= MAX_SCREENSHOT_BYTES && file.type.startsWith("image/");
 
 const BASE_SOURCES = [
   { label: "Paste the words", value: "text" },
@@ -108,6 +141,49 @@ const ScreenshotFields = ({
   );
 };
 
+const CloudConsent = ({
+  source,
+  practice,
+  busy,
+  allowed,
+  onChange,
+}: {
+  source: Source;
+  practice: boolean;
+  busy: boolean;
+  allowed: boolean;
+  onChange: (allowed: boolean) => void;
+}) => {
+  const consentId = useId();
+
+  if (source === "screenshot" && practice) {
+    return null;
+  }
+
+  return (
+    <label
+      className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
+      htmlFor={consentId}
+    >
+      <input
+        checked={allowed}
+        className="accent-primary mt-1 size-5 shrink-0"
+        disabled={busy}
+        id={consentId}
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+      />
+      <span>
+        Allow this {source === "screenshot" ? "screenshot and note" : "message"}{" "}
+        to be sent to the cloud AI provider for this check.
+        {source === "screenshot"
+          ? " A screenshot must be sent to cloud AI to read its words."
+          : " Leave unchecked to use local rules."}
+      </span>
+    </label>
+  );
+};
+
 /** Text, a screenshot, or a chosen email goes to the backend; the result appears below as it finishes. */
 const CheckForm = ({
   email,
@@ -116,6 +192,9 @@ const CheckForm = ({
   email: EmailChoice | null;
   onStarted: (reviewId: Id<"scamReviews">) => void;
 }) => {
+  const { me } = usePreferences();
+  const practice = me?.profile?.demoMode === true;
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const submit = useMutation(api.scam.submit);
   const uploadUrl = useMutation(api.messages.generatePhotoUploadUrl);
 
@@ -129,18 +208,28 @@ const CheckForm = ({
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const textId = useId();
-  const consentId = useId();
   const sourceName = useId();
 
   const activeSource: Source =
     source === "email" && email === null ? "text" : source;
 
   const screenshotReady = activeSource === "screenshot" && file !== null;
-  const ready = canCheck(activeSource, text, file, allowCloudAnalysis);
+  const screenshotMode = activeSource === "screenshot";
 
-  const checkLabel = allowCloudAnalysis
-    ? "Check with cloud AI"
-    : "Check locally";
+  const ready = canCheck(
+    activeSource,
+    text,
+    file,
+    allowCloudAnalysis,
+    practice,
+    me === undefined
+  );
+
+  const checkLabel = checkButtonLabel(
+    activeSource,
+    allowCloudAnalysis,
+    practice
+  );
 
   const uploadScreenshot = async (
     screenshot: File
@@ -204,10 +293,7 @@ const CheckForm = ({
           return;
         }
 
-        if (
-          screenshotReady &&
-          (file.size > MAX_SCREENSHOT_BYTES || !file.type.startsWith("image/"))
-        ) {
+        if (screenshotReady && !validScreenshot(file)) {
           setFormError("Please choose a screenshot image under 6 MB.");
 
           return;
@@ -277,6 +363,7 @@ const CheckForm = ({
           <Label htmlFor={textId}>The message</Label>
           <Textarea
             id={textId}
+            ref={textRef}
             maxLength={8000}
             onChange={(event) => setText(event.target.value)}
             placeholder="Paste or type the words here"
@@ -295,32 +382,34 @@ const CheckForm = ({
         />
       ) : null}
 
-      <label
-        className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
-        htmlFor={consentId}
-      >
-        <input
-          checked={allowCloudAnalysis}
-          className="accent-primary mt-1 size-5 shrink-0"
-          disabled={busy}
-          id={consentId}
-          onChange={(event) => setAllowCloudAnalysis(event.target.checked)}
-          type="checkbox"
-        />
-        <span>
-          Allow this{" "}
-          {activeSource === "screenshot" ? "screenshot and note" : "message"} to
-          be sent to the cloud AI provider for this check. Leave unchecked to
-          use local rules.
-        </span>
-      </label>
+      <CloudConsent
+        source={activeSource}
+        practice={practice}
+        busy={busy}
+        allowed={allowCloudAnalysis}
+        onChange={setAllowCloudAnalysis}
+      />
       <p className="text-muted-foreground max-w-prose text-base">
-        {activeSource === "screenshot"
-          ? "The local check cannot read images. A screenshot needs cloud permission; in Practice mode, paste its words instead. "
-          : "The local check looks for common warning signs without sending your message to an AI provider. "}
+        {checkGuidance(activeSource, practice)}
         LifeLink does not open links or contact the sender. No check can prove a
         message is genuine.
       </p>
+      {screenshotMode ? (
+        <Button
+          className="self-start whitespace-normal"
+          disabled={busy}
+          onClick={() => {
+            setSource("text");
+            setAllowCloudAnalysis(false);
+            setFormError(null);
+            requestAnimationFrame(() => textRef.current?.focus());
+          }}
+          type="button"
+          variant="outline"
+        >
+          Paste the words instead
+        </Button>
+      ) : null}
       {formError === null ? null : <ErrorNote>{formError}</ErrorNote>}
       <Button
         aria-busy={busy}
@@ -344,10 +433,12 @@ const STATUS_PILL: Record<
 };
 
 const HistoryList = ({
+  emails,
   onOpen,
   reviews,
   timeZone,
 }: {
+  emails: EmailChoice[] | undefined;
   onOpen: (reviewId: Id<"scamReviews">) => void;
   reviews: Doc<"scamReviews">[] | undefined;
   timeZone: string;
@@ -364,28 +455,42 @@ const HistoryList = ({
     <ul>
       {reviews.map((review) => {
         const verdict = VERDICT_WORDS[review.verdict];
+        const email = emails?.find((item) => item.id === review.emailId);
 
         return (
           <li className="border-rule border-t" key={review._id}>
             <button
-              className="bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 flex-wrap items-center gap-3 rounded-md px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 flex-col items-start gap-3 rounded-md px-3 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
               onClick={() => onOpen(review._id)}
               type="button"
             >
-              {review.status === "done" ? (
-                <Pill tone={verdict.tone}>{verdict.label}</Pill>
-              ) : (
-                <Pill>{STATUS_PILL[review.status]}</Pill>
-              )}
-              <span className="text-lg">{KIND_WORDS[review.inputKind]}</span>
-              <span className="text-muted-foreground text-base">
-                {review.automatic ? "Automatic local check" : "Manual check"}
+              {email ? (
+                <span className="flex min-w-0 flex-col gap-1 wrap-anywhere">
+                  <span className="text-lg font-semibold">
+                    {email.fromName ?? email.fromAddress}
+                  </span>
+                  <span className="text-lg">
+                    {email.subject || "(No subject)"}
+                  </span>
+                </span>
+              ) : null}
+              <span className="line-clamp-3 w-full text-lg wrap-anywhere">
+                {review.inputText?.trim() ||
+                  (review.inputKind === "screenshot"
+                    ? "Screenshot without a note"
+                    : KIND_WORDS[review.inputKind])}
               </span>
-              <span className="text-muted-foreground min-w-0 flex-1 truncate text-base">
-                {review.inputText ?? ""}
-              </span>
-              <span className="text-muted-foreground text-base">
-                {ago(review.createdAt, timeZone)}
+              <span className="flex flex-wrap items-center gap-2">
+                {review.status === "done" ? (
+                  <Pill tone={verdict.tone}>{verdict.label}</Pill>
+                ) : (
+                  <Pill>{STATUS_PILL[review.status]}</Pill>
+                )}
+                <span className="text-muted-foreground text-base">
+                  {KIND_WORDS[review.inputKind]} ·{" "}
+                  {review.automatic ? "Automatic local check" : "Manual check"}{" "}
+                  · {ago(review.createdAt, timeZone)}
+                </span>
               </span>
             </button>
           </li>
@@ -441,6 +546,7 @@ const ScamScreen = ({ emailId }: { emailId: string | null }) => {
           Earlier checks
         </h2>
         <HistoryList
+          emails={emails}
           onOpen={(reviewId) => {
             setCurrentId(reviewId);
             globalThis.scrollTo({ top: 0 });

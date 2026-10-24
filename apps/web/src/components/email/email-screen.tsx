@@ -8,7 +8,8 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { toast } from "sonner";
 
 import { ModePill } from "@/components/app/bits";
@@ -129,11 +130,13 @@ type EmailRow = NonNullable<FunctionReturnType<typeof api.emails.list>>[number];
 const EmailList = ({
   emails,
   onSelect,
+  rowRefs,
   selectedId,
   timeZone,
 }: {
   emails: EmailRow[] | undefined;
   onSelect: (id: string) => void;
+  rowRefs: RefObject<Map<string, HTMLButtonElement>>;
   selectedId: string | null;
   timeZone: string;
 }) => {
@@ -163,6 +166,13 @@ const EmailList = ({
                 "bg-background text-foreground hover:bg-surface hover:text-foreground focus-visible:outline-ring flex w-full min-w-0 flex-col gap-1 rounded-md px-3 py-4 text-left wrap-anywhere focus-visible:outline-2 focus-visible:outline-offset-2",
                 isSelected && "bg-surface text-foreground"
               )}
+              ref={(node) => {
+                if (node) {
+                  rowRefs.current.set(email.id, node);
+                } else {
+                  rowRefs.current.delete(email.id);
+                }
+              }}
               onClick={() => onSelect(email.id)}
               type="button"
             >
@@ -210,6 +220,26 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
   const checkRecent = useMutation(api.emails.checkRecent);
   const { me } = usePreferences();
   const [selectedId, setSelectedId] = useState<string | null>(initialEmailId);
+  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const inboxHeadingRef = useRef<HTMLHeadingElement>(null);
+  const listPosition = useRef({ x: 0, y: 0 });
+  const returningTo = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (selectedId !== null || returningTo.current === null) {
+      return;
+    }
+
+    const target =
+      rowRefs.current.get(returningTo.current) ?? inboxHeadingRef.current;
+
+    target?.focus({ preventScroll: true });
+    globalThis.scrollTo({
+      behavior: "instant",
+      left: listPosition.current.x,
+      top: listPosition.current.y,
+    });
+    returningTo.current = null;
+  }, [selectedId]);
   const [scanError, setScanError] = useState<string | null>(null);
   const needsChecks = emails?.some((email) => email.needsSafetyCheck) ?? false;
   useEffect(() => {
@@ -270,12 +300,24 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
             selected === null ? "flex" : "hidden lg:flex"
           )}
         >
-          <h2 className="pb-3 text-2xl font-semibold" id="inbox-heading">
+          <h2
+            className="pb-3 text-2xl font-semibold"
+            id="inbox-heading"
+            ref={inboxHeadingRef}
+            tabIndex={-1}
+          >
             Recent emails
           </h2>
           <EmailList
             emails={emails}
-            onSelect={setSelectedId}
+            onSelect={(id) => {
+              listPosition.current = {
+                x: globalThis.scrollX,
+                y: globalThis.scrollY,
+              };
+              setSelectedId(id);
+            }}
+            rowRefs={rowRefs}
             selectedId={selectedId}
             timeZone={timeZone}
           />
@@ -288,7 +330,10 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
           <div className="flex min-w-0 flex-col gap-4">
             <Button
               className="hover:bg-surface hover:text-foreground self-start rounded-md lg:hidden"
-              onClick={() => setSelectedId(null)}
+              onClick={() => {
+                returningTo.current = selectedId;
+                setSelectedId(null);
+              }}
               variant="outline"
             >
               Back to recent emails

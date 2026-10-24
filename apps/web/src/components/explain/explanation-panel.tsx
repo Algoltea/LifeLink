@@ -6,7 +6,7 @@ import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import { XIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
@@ -404,11 +404,13 @@ const RequestForm = ({
 const ExplanationPanel = ({
   level = 2,
   onClose,
+  returnFocusRef,
   onUseReply,
   source,
 }: {
   level?: HeadingLevel;
   onClose?: () => void;
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
   onUseReply: (draft: string) => void;
   source: ExplainSource;
 }) => {
@@ -480,7 +482,13 @@ const ExplanationPanel = ({
         {onClose ? (
           <Button
             aria-label="Close the explanation"
-            onClick={onClose}
+            onClick={() => {
+              if (returnFocusRef?.current?.isConnected) {
+                returnFocusRef.current.focus();
+              }
+
+              onClose?.();
+            }}
             size="icon"
             type="button"
             variant="ghost"

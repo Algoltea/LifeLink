@@ -102,6 +102,8 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
   const [notice, setNotice] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const recapTriggerRef = useRef<HTMLButtonElement>(null);
+  const explainTriggerRef = useRef<HTMLButtonElement>(null);
   const bodyId = useId();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
 
@@ -207,6 +209,7 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
               <Button
                 aria-controls="recap-panel"
                 aria-expanded={recapOpen}
+                ref={recapTriggerRef}
                 onClick={() => setRecapOpen(true)}
                 size="sm"
                 variant="outline"
@@ -273,7 +276,10 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
                         aria-controls="explanation-panel"
                         aria-expanded={explaining === message._id}
                         className="self-start whitespace-normal"
-                        onClick={() => setExplaining(message._id)}
+                        onClick={(event) => {
+                          explainTriggerRef.current = event.currentTarget;
+                          setExplaining(message._id);
+                        }}
                         size="sm"
                         variant="outline"
                       >
@@ -305,12 +311,14 @@ const ThreadScreen = ({ contactId }: { contactId: string }) => {
               contactId={contact._id}
               contactName={contact.name}
               onClose={() => setRecapOpen(false)}
+              returnFocusRef={recapTriggerRef}
             />
           ) : null}
           {explaining === null ? null : (
             <ExplanationPanel
               key={explaining}
               onClose={() => setExplaining(null)}
+              returnFocusRef={explainTriggerRef}
               onUseReply={(suggestion) => {
                 setBody(suggestion);
                 setFromSuggestion(true);
