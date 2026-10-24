@@ -1,10 +1,9 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ChevronRightIcon, ShieldAlertIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -17,29 +16,10 @@ const MAILBOX_IDS = new Set(["gmail", "outlook"]);
 
 type EmailRow = FunctionReturnType<typeof api.emails.list>[number];
 
-type ScamLevel = "likely_scam" | "warning";
-
-/** The same words as the scam check screen, so a flag reads the same everywhere. */
-const SCAM_LABELS: Record<ScamLevel, string> = {
-  likely_scam: "Likely a scam",
-  warning: "Warning signs",
-};
-
-/** A summary flag without a scam verdict counts as warning signs. */
-const scamLevelOf = (email: EmailRow): ScamLevel | null => {
-  if (email.scamCheck?.verdict === "likely_scam") {
-    return "likely_scam";
-  }
-
-  return email.suspicious === true || email.scamCheck?.verdict === "suspicious"
-    ? "warning"
-    : null;
-};
-
 /** The emails Today shows, newest first. */
 const newestEmails = (emails: EmailRow[]): EmailRow[] => emails.slice(0, SHOWN);
 
-/** The three newest emails, each opening in Email; a warning shows when a check flagged one. */
+/** The three newest emails, each opening in Email where warning signs are shown. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   const emails = useQuery(api.emails.list);
   const connections = useQuery(api.connections.list);
@@ -84,64 +64,41 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
         </p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {newest.map((email) => {
-            const level = scamLevelOf(email);
-
-            return (
-              <li key={email.id}>
-                <Link
-                  className={PANEL_ROW}
-                  // SAFETY: a stored email id; /email reads ?id= to open it.
-                  href={`/email?id=${email.id}` as Route}
-                >
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="text-body truncate font-semibold">
-                        {email.fromName ?? email.fromAddress}
-                      </span>
-                      <time
-                        className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
-                        dateTime={new Date(email.receivedAt).toISOString()}
-                        title={formatWhen(email.receivedAt, timeZone)}
-                      >
-                        <span className="sr-only">, </span>
-                        {listTime(email.receivedAt, timeZone)}
-                      </time>
+          {newest.map((email) => (
+            <li key={email.id}>
+              <Link
+                className={PANEL_ROW}
+                // SAFETY: a stored email id; /email reads ?id= to open it.
+                href={`/email?id=${email.id}` as Route}
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="text-body truncate font-semibold">
+                      {email.fromName ?? email.fromAddress}
                     </span>
-                    <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
-                      {level ? (
-                        <span
-                          className={cn(
-                            "inline-flex shrink-0 items-center gap-1 font-semibold",
-                            level === "likely_scam"
-                              ? "text-negative"
-                              : "text-warning"
-                          )}
-                        >
-                          <ShieldAlertIcon
-                            aria-hidden="true"
-                            className="size-4"
-                          />
-                          {SCAM_LABELS[level]}
-                          <span className="sr-only">,</span>
-                        </span>
-                      ) : null}
-                      <span className="truncate">
-                        <span className="sr-only">, </span>
-                        {email.subject || "No subject"}
-                      </span>
+                    <time
+                      className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
+                      dateTime={new Date(email.receivedAt).toISOString()}
+                      title={formatWhen(email.receivedAt, timeZone)}
+                    >
+                      <span className="sr-only">, </span>
+                      {listTime(email.receivedAt, timeZone)}
+                    </time>
+                  </span>
+                  <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
+                    <span className="truncate">
+                      <span className="sr-only">, </span>
+                      {email.subject || "No subject"}
                     </span>
                   </span>
-                </Link>
-              </li>
-            );
-          })}
+                </span>
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
     </PanelPart>
   );
 };
 
-export { LatestEmail, newestEmails, scamLevelOf };
-
-export type { EmailRow };
+export { LatestEmail };

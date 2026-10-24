@@ -129,7 +129,7 @@ const TrustedPersonRow = ({
             aria-label={`Call ${contact.name}`}
             className={cn(
               buttonVariants({ variant: "outline" }),
-              "text-body min-h-control flex-1 px-4"
+              "min-h-control flex-1 px-4"
             )}
             href={`tel:${phone}`}
           >
@@ -141,7 +141,7 @@ const TrustedPersonRow = ({
           <Button
             aria-describedby={needsDetails ? fallbackId : reviewNoteId}
             aria-label={`Call ${contact.name}`}
-            className="text-body min-h-control flex-1 px-4"
+            className="min-h-control flex-1 px-4"
             disabled
             type="button"
             variant="outline"
@@ -154,7 +154,7 @@ const TrustedPersonRow = ({
           aria-busy={busy}
           aria-describedby={channel === null ? fallbackId : reviewNoteId}
           aria-label={`Prepare a message to ${contact.name}`}
-          className="text-body min-h-control flex-1 px-4"
+          className="min-h-control flex-1 px-4"
           disabled={disabled || channel === null}
           onClick={onMessage}
           type="button"

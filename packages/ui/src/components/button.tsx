@@ -15,7 +15,7 @@ const buttonVariants = cva(
       size: {
         default: "text-label min-h-control px-6",
         icon: "size-control",
-        lg: "min-h-control-lg px-8 text-lg",
+        lg: "text-label min-h-control-lg px-8",
         sm: "text-label min-h-control px-4",
       },
       variant: {

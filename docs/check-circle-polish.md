@@ -17,3 +17,15 @@ Trusted Circle now has one list. Each contact shows what they can see and a Perm
 - Added a regression test for same-name contacts: listing, changing, and revoking one person's grants stays associated with their ID, and another owner sees none of those grants. Existing permission enforcement tests still pass.
 
 The desktop and phone review used the existing workshop palette, typography, focus treatment, and generous targets. No new visual direction or assets were introduced. The Chrome-based design inspector was not used because the requested verification browser was Safari. This is a bounded visual and interaction check, not a screen-reader certification or live-delivery test. Active-grant mutation and revoke behavior were exercised in the isolated backend tests, not against the user's real account.
+
+## Follow-up: simpler email guidance and contact actions
+
+Email warnings show the actual warning-sign labels, with **What should I do?** for the existing advice screen. The count-only “signs to review” wording is removed. The quiet result is **No warning signs found. Sender not confirmed.** Supporting check-method detail remains available in the email disclosure.
+
+Today is an overview of appointments, reminders, messages, recent email, and news. The Needs you section, request count, and repeated email warnings in the overview/read-aloud are removed. There is no bell or notification center. Request and approval records remain available in their existing conversation and task routes.
+
+**Change the words** edits the prefilled message inside its existing sheet, keeping the recipient and email subject visible. It preserves unsaved edits across a newer version, offers the latest wording for comparison, and requires review after saving. Read-only message and email bodies use the same body type. Shared button labels use the same label size; large buttons retain their generous target height. The disconnected mailbox action uses the existing copper primary treatment. Reply is secondary when an email is flagged.
+
+Messages now offers a copper **Add a person** button with the person-plus icon. It opens `/circle?add=1` directly with the form visible and focused, including on a fresh load. The duplicate Add button is hidden while the new-person form is open, and the loading header uses the same action label.
+
+Safari checks covered the email warning and shorter quiet result, in-place editing and cancellation without changing the saved request, the simplified Today overview, and the direct Messages → Add a person route. Phone rendering was checked at 390px during this follow-up; the prior 768/1440 result checks remain above. No message was sent, contact created, or request approved. Full formatting/lint, typechecks, **629 tests**, and production build passed on the final implementation. The added backend test verifies that protective advice is excluded from inline warning reasons, actual scam reasons are included, and another owner cannot read them.

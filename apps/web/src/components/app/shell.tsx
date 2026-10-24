@@ -2,10 +2,8 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
-import { api } from "@lifelink/backend/convex/_generated/api";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
-import { useQuery } from "convex/react";
 import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
@@ -45,7 +43,6 @@ import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 
 interface NavItem {
-  count?: number;
   href: Route;
   icon: LucideIcon;
   label: string;
@@ -64,16 +61,10 @@ const SETTINGS_GROUP: NavGroup = {
   pinned: true,
 };
 
-const WAITING = new Set([
-  "needs_clarification",
-  "awaiting_approval",
-  "needs_attention",
-]);
-
-const ownerNavigation = (waiting = 0): NavGroup[] => [
+const ownerNavigation = (): NavGroup[] => [
   {
     items: [
-      { count: waiting, href: "/", icon: HomeIcon, label: "Today" },
+      { href: "/", icon: HomeIcon, label: "Today" },
       { href: "/ask", icon: MessageSquareTextIcon, label: "Ask LifeLink" },
       { href: "/messages", icon: MessagesSquareIcon, label: "Messages" },
       { href: "/email", icon: MailIcon, label: "Email" },
@@ -171,12 +162,6 @@ const NavList = ({
                       strokeWidth={1.75}
                     />
                     <span className="flex-1">{item.label}</span>
-                    {item.count ? (
-                      <span className="num bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-sm font-semibold">
-                        {item.count}
-                        <span className="sr-only"> waiting for you</span>
-                      </span>
-                    ) : null}
                   </Link>
                 </li>
               );
@@ -498,21 +483,13 @@ const AppShell = ({ children }: { children: ReactNode }) => {
   const profile = me?.profile ?? null;
   const isOwner = profile?.role === "owner";
 
-  // The task count is owner-only; guests and family members never query it.
-  const tasks = useQuery(
-    api.tasks.list,
-    isOwner ? { include: "active" } : "skip"
-  );
-
-  const waiting = tasks?.filter((task) => WAITING.has(task.status)).length ?? 0;
-
   // Signed in but the profile is still loading or offline: keep the minimal navigation.
   let groups = PLAY_NAV;
 
   if (profile?.role === "family") {
     groups = FAMILY_NAV;
   } else if (isOwner) {
-    groups = ownerNavigation(waiting);
+    groups = ownerNavigation();
   }
 
   return (

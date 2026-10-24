@@ -29,8 +29,8 @@ const MessageLine = ({ className }: { className?: string }) => (
 const MessagesLoadingHeader = () => (
   <PageHeader
     actions={
-      <LoadingButton className="text-[0.889rem]" size="default">
-        Trusted circle
+      <LoadingButton icon size="default">
+        Add a person
       </LoadingButton>
     }
     subline="Write to the people in your trusted circle. You see every message before it’s sent."

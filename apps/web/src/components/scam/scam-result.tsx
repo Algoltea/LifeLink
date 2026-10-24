@@ -169,7 +169,7 @@ const PhotoThumbnail = ({ url }: { url: string | null | undefined }) => {
       <figcaption>
         <Button
           aria-expanded={expanded}
-          className="w-full px-1 text-lg underline underline-offset-4"
+          className="w-full px-1 underline underline-offset-4"
           onClick={() => setExpanded((open) => !open)}
           variant="ghost"
         >
@@ -208,7 +208,6 @@ const DeleteCheck = ({
           <div className="flex flex-wrap gap-3">
             <Button
               aria-busy={busy}
-              className="text-lg"
               disabled={busy}
               onClick={async () => {
                 if (inFlight.current) {
@@ -238,7 +237,6 @@ const DeleteCheck = ({
               {busy ? "Deleting…" : "Delete this check"}
             </Button>
             <Button
-              className="text-lg"
               disabled={busy}
               onClick={() => setConfirming(false)}
               variant="ghost"
@@ -248,11 +246,7 @@ const DeleteCheck = ({
           </div>
         </>
       ) : (
-        <Button
-          className="text-lg"
-          onClick={() => setConfirming(true)}
-          variant="ghost"
-        >
+        <Button onClick={() => setConfirming(true)} variant="ghost">
           <Trash2Icon aria-hidden="true" />
           Delete this check
         </Button>
@@ -307,7 +301,7 @@ const ResultBanner = ({
         </div>
       </div>
       <ReadAloudButton
-        className="self-start text-lg"
+        className="self-start"
         label="Read the result aloud"
         text={spoken}
       />
@@ -639,11 +633,7 @@ const ScamResult = ({
           </div>
         </div>
         {onCheckAnother ? (
-          <Button
-            className="text-lg"
-            onClick={onCheckAnother}
-            variant="outline"
-          >
+          <Button onClick={onCheckAnother} variant="outline">
             Check something else
           </Button>
         ) : null}

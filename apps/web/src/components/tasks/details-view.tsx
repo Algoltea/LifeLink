@@ -1,6 +1,7 @@
 import type { ActionDetails } from "@lifelink/contracts/actions";
 import { sharingScopes } from "@lifelink/contracts/sharing";
 import { cn } from "@lifelink/ui/lib/utils";
+import type { ReactNode } from "react";
 
 import { Avatar, ReadAloudButton } from "@/components/app/bits";
 import { formatWhen, money } from "@/lib/format";
@@ -34,9 +35,11 @@ const CHANNEL_WORDS: Record<
 const MessageSlip = ({
   details,
   hue,
+  bodyEditor,
 }: {
   details: Extract<ActionDetails, { kind: "send_message" }>;
   hue: number;
+  bodyEditor?: ReactNode;
 }) => (
   <div className="border-border bg-raised overflow-hidden rounded-xl border">
     <div className="border-border flex items-center gap-4 border-b px-6 py-5">
@@ -54,20 +57,24 @@ const MessageSlip = ({
       </div>
     </div>
     <div className="flex flex-col gap-4 px-6 py-6 sm:px-7">
-      <p className="text-2xl leading-snug whitespace-pre-wrap">
-        {details.body}
-      </p>
+      {bodyEditor ?? (
+        <p className="text-body leading-relaxed wrap-anywhere whitespace-pre-wrap">
+          {details.body}
+        </p>
+      )}
       {details.photoIds.length > 0 ? (
         <p className="text-muted-foreground text-base">
           With {details.photoIds.length}{" "}
           {details.photoIds.length === 1 ? "photo" : "photos"}.
         </p>
       ) : null}
-      <ReadAloudButton
-        className="self-start"
-        label="Read the message aloud"
-        text={details.body}
-      />
+      {bodyEditor ? null : (
+        <ReadAloudButton
+          className="self-start"
+          label="Read the message aloud"
+          text={details.body}
+        />
+      )}
     </div>
   </div>
 );
@@ -139,13 +146,59 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
   }
 };
 
+const EmailDraftSlip = ({
+  details,
+  bodyEditor,
+  className,
+}: {
+  details: Extract<ActionDetails, { kind: "email_draft" }>;
+  bodyEditor?: ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      "border-border bg-raised flex flex-col gap-4 rounded-xl border px-6 py-6",
+      className
+    )}
+  >
+    {/* Stacked like an email header, so long addresses never crowd the subject. */}
+    <dl className="border-border grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 border-b pb-4 text-base">
+      <dt className="text-muted-foreground">To</dt>
+      <dd className="[overflow-wrap:anywhere]">{details.to}</dd>
+      <dt className="text-muted-foreground">Subject</dt>
+      <dd className="font-medium [overflow-wrap:anywhere]">
+        {details.subject}
+      </dd>
+    </dl>
+    {bodyEditor ?? (
+      <p className="text-body leading-relaxed wrap-anywhere whitespace-pre-wrap">
+        {details.body}
+      </p>
+    )}
+    {bodyEditor ? null : (
+      <ReadAloudButton
+        className="self-start"
+        label="Read the email aloud"
+        text={`Subject: ${details.subject}. ${details.body}`}
+      />
+    )}
+    <p className="text-muted-foreground text-base">
+      Saved as a draft in your{" "}
+      {details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent until
+      you send it there.
+    </p>
+  </div>
+);
+
 const DetailsView = ({
+  bodyEditor,
   className,
   details,
   granteeNames,
   hue,
   timeZone,
 }: {
+  bodyEditor?: ReactNode;
   className?: string;
   details: ActionDetails;
   granteeNames: string[];
@@ -154,7 +207,9 @@ const DetailsView = ({
 }) => {
   switch (details.kind) {
     case "send_message": {
-      return <MessageSlip details={details} hue={hue} />;
+      return (
+        <MessageSlip details={details} hue={hue} bodyEditor={bodyEditor} />
+      );
     }
 
     case "confirm_arrangement": {
@@ -260,35 +315,11 @@ const DetailsView = ({
 
     case "email_draft": {
       return (
-        <div
-          className={cn(
-            "border-border bg-raised flex flex-col gap-4 rounded-xl border px-6 py-6",
-            className
-          )}
-        >
-          {/* Stacked like an email header, so long addresses never crowd the subject. */}
-          <dl className="border-border grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 border-b pb-4 text-base">
-            <dt className="text-muted-foreground">To</dt>
-            <dd className="[overflow-wrap:anywhere]">{details.to}</dd>
-            <dt className="text-muted-foreground">Subject</dt>
-            <dd className="font-medium [overflow-wrap:anywhere]">
-              {details.subject}
-            </dd>
-          </dl>
-          <p className="text-lg leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap">
-            {details.body}
-          </p>
-          <ReadAloudButton
-            className="self-start"
-            label="Read the email aloud"
-            text={`Subject: ${details.subject}. ${details.body}`}
-          />
-          <p className="text-muted-foreground text-base">
-            Saved as a draft in your{" "}
-            {details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent
-            until you send it there.
-          </p>
-        </div>
+        <EmailDraftSlip
+          details={details}
+          bodyEditor={bodyEditor}
+          className={className}
+        />
       );
     }
 

@@ -98,7 +98,11 @@ const RemovePersonDialog = ({
   );
 };
 
-const CircleScreen = () => {
+const CircleScreen = ({
+  initiallyAdding = false,
+}: {
+  initiallyAdding?: boolean;
+}) => {
   const savedContacts = useQuery(api.contacts.list);
   const imessage = useQuery(api.imessage.list, {});
   const grants = useQuery(api.sharing.listGrants);
@@ -118,7 +122,11 @@ const CircleScreen = () => {
         );
 
   const { me } = usePreferences();
-  const [editing, setEditing] = useState<CircleContact | "new" | null>(null);
+
+  const [editing, setEditing] = useState<CircleContact | "new" | null>(() =>
+    initiallyAdding ? "new" : null
+  );
+
   const [permissionsFor, setPermissionsFor] = useState<string | null>(null);
   const [removing, setRemoving] = useState<CircleContact | null>(null);
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
@@ -149,10 +157,12 @@ const CircleScreen = () => {
     <>
       <PageHeader
         actions={
-          <Button onClick={() => setEditing("new")} ref={addButton} size="lg">
-            <UserPlusIcon />
-            Add a person
-          </Button>
+          editing === "new" ? null : (
+            <Button onClick={() => setEditing("new")} ref={addButton} size="lg">
+              <UserPlusIcon />
+              Add a person
+            </Button>
+          )
         }
         subline="The people you trust, how to reach them, and exactly what each one can see."
         title="Trusted circle"

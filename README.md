@@ -119,10 +119,10 @@ Secrets never touch the browser or a committed file. There are three places:
 
 | Screen | What it's for |
 | --- | --- |
-| **Today** | Greeting and briefing (read aloud on request), appointments, due reminders, what's waiting for approval, and recent family messages |
+| **Today** | Greeting and briefing (read aloud on request), appointments, due reminders, recent family messages, and recent email |
 | **Ask** | Separate saved conversations, streamed replies, inline reviews of the latest proposal, and a History drawer |
 | **Task** | A journey gauge (asked → sent → replied → confirmed → reminded), the exact message slip, approve, change, or cancel, earlier versions, and outcome handling |
-| **Messages** | Family threads over iMessage, email, Discord, or in-app, with photos, drafts that become tasks, and delivery status in words. **Help me understand** explains a received message (what it asks, dates, what's missing, labelled guesses) and offers up to three replies that only fill your message box. **Recap this conversation** separates what was agreed from what was only offered, shows what LifeLink's records show as done, and proposes next steps for review |
+| **Messages** | **Add a person** opens the Trusted Circle add form directly. Family threads over iMessage, email, Discord, or in-app, with photos, drafts that become tasks, and delivery status in words. **Help me understand** explains a received message (what it asks, dates, what's missing, labelled guesses) and offers up to three replies that only fill your message box. **Recap this conversation** separates what was agreed from what was only offered, shows what LifeLink's records show as done, and proposes next steps for review |
 | **Email** | Automatic local concern screening, optional AI analysis of emails you choose, **Help me understand**, and reply drafts that are never sent automatically |
 | **Scam check** | Paste text, pick an email, take a photo of a letter, or choose a screenshot. Check a speakerphone call with live captions and spoken warnings, or try the fixed practice call without a microphone. Results explain the warning signs and offer **Ask someone you trust** through a draft for review. Photo quotes remain unverified. See [Scam check v2](docs/scam-check-v2.md) for privacy and verification limits |
 | **Trusted circle** | People and how to reach them, including **Set up iMessage** for each contact; plus sharing: one-time invitation codes with chosen scopes and an optional end date, scope changes, and immediate revoke |

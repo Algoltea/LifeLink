@@ -48,8 +48,8 @@ const scanSummaryFor = (email: Doc<"emails">): string => {
   }
 
   return email.suspicious
-    ? "Warning signs found. Pause before acting."
-    : "No warning signs found in this email’s text.";
+    ? "Warning signs found"
+    : "No warning signs found. Sender not confirmed.";
 };
 
 const checkLinkClass = buttonVariants({
@@ -59,7 +59,13 @@ const checkLinkClass = buttonVariants({
 });
 
 /** The local check's result, said once, where it can't be missed. */
-const ScanBanner = ({ email }: { email: Doc<"emails"> }) => {
+const ScanBanner = ({
+  email,
+  warningSigns,
+}: {
+  email: Doc<"emails">;
+  warningSigns: string[];
+}) => {
   const scanSummary = scanSummaryFor(email);
   const checkHref = { pathname: "/scam", query: { email: email._id } };
 
@@ -70,16 +76,12 @@ const ScanBanner = ({ email }: { email: Doc<"emails"> }) => {
           aria-hidden="true"
           className="mt-0.5 size-5 shrink-0"
         />
-        <span>
-          {scanSummary} This check can’t confirm who sent it or whether what it
-          says is true.
-        </span>
+        <span>{scanSummary}</span>
       </p>
     );
   }
 
-  const pending = email.scamCheck === undefined;
-  const signs = email.scamCheck?.warningCount ?? 0;
+  const pending = email.scamCheck === undefined && !email.suspicious;
 
   return (
     <div
@@ -103,16 +105,30 @@ const ScanBanner = ({ email }: { email: Doc<"emails"> }) => {
       )}
       <div className="flex min-w-0 flex-1 basis-64 flex-col gap-0.5">
         <p className="text-body font-semibold">{scanSummary}</p>
-        <p className="text-label">
-          {pending
-            ? "You can check it yourself now."
-            : `${signs} ${signs === 1 ? "sign" : "signs"} to review.`}{" "}
-          This check can’t confirm who sent it or whether what it says is true.
-        </p>
+        {pending ? (
+          <p className="text-body">
+            Check for common warning signs before you act.
+          </p>
+        ) : null}
+        {!pending && warningSigns.length > 0 ? (
+          <ul className="text-body mt-2 flex list-disc flex-col gap-1 pl-5">
+            {warningSigns.map((sign) => (
+              <li key={sign}>{sign}</li>
+            ))}
+          </ul>
+        ) : null}
+        {!pending && warningSigns.length === 0 ? (
+          <p className="text-body">
+            This email raised a concern. Check the request before acting.
+          </p>
+        ) : null}
       </div>
-      <Link className={checkLinkClass} href={checkHref}>
+      <Link
+        className={buttonVariants({ className: "self-start", size: "sm" })}
+        href={checkHref}
+      >
         <ShieldQuestionIcon aria-hidden="true" />
-        {pending ? "Check this email" : "Review the check"}
+        {pending ? "Check this email" : "What should I do?"}
       </Link>
     </div>
   );
@@ -127,7 +143,7 @@ const SummaryBody = ({ email }: { email: Doc<"emails"> }) => {
   if (email.summary !== null) {
     return (
       <div aria-live="polite" className="flex flex-col gap-3">
-        <p className="text-section leading-snug">{email.summary}</p>
+        <p className="text-body leading-relaxed">{email.summary}</p>
         {email.actionNeeded ? (
           <p className="font-semibold">{email.actionNeeded}</p>
         ) : null}
@@ -317,7 +333,7 @@ const CheckDisclosure = ({
       href={{ pathname: "/scam", query: { email: email._id } }}
     >
       <ShieldQuestionIcon aria-hidden="true" />
-      {email.scamCheck === undefined ? "Check this email" : "Review the check"}
+      {email.scamCheck === undefined ? "Check this email" : "What should I do?"}
     </Link>
   </Disclosure>
 );
@@ -368,7 +384,7 @@ const EmailReader = ({
     return <ReaderSkeleton label="Loading email" />;
   }
 
-  const { appointment, email } = detail;
+  const { appointment, email, warningSigns } = detail;
   const sender = email.fromName ?? email.fromAddress;
   const hasBody = email.bodyText.trim().length > 0;
 
@@ -384,7 +400,7 @@ const EmailReader = ({
     >
       <ReaderHeader email={email} headingRef={headingRef} timeZone={timeZone} />
 
-      <ScanBanner email={email} />
+      <ScanBanner email={email} warningSigns={warningSigns} />
 
       <div className="border-rule flex flex-wrap items-center gap-2 border-b pb-4">
         <Button
@@ -393,6 +409,7 @@ const EmailReader = ({
           onClick={openReply}
           ref={replyTriggerRef}
           size="sm"
+          variant={email.suspicious ? "outline" : "default"}
         >
           <ReplyIcon aria-hidden="true" />
           Reply

@@ -5,7 +5,7 @@ import { buttonVariants } from "@lifelink/ui/components/button";
 import { Pill } from "@lifelink/ui/components/pill";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
+import { CircleAlertIcon, TriangleAlertIcon, UserPlusIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -119,10 +119,11 @@ const MessagesScreen = () => {
       <PageHeader
         actions={
           <Link
-            className={buttonVariants({ variant: "outline" })}
-            href="/circle"
+            className={buttonVariants()}
+            href={{ pathname: "/circle", query: { add: "1" } }}
           >
-            Trusted circle
+            <UserPlusIcon aria-hidden="true" />
+            Add a person
           </Link>
         }
         subline="Write to the people in your trusted circle. You see every message before it’s sent."
@@ -137,9 +138,9 @@ const MessagesScreen = () => {
           action={
             <Link
               className="min-h-control inline-flex items-center text-lg font-semibold underline"
-              href="/circle"
+              href={{ pathname: "/circle", query: { add: "1" } }}
             >
-              Add someone
+              Add a person
             </Link>
           }
         >

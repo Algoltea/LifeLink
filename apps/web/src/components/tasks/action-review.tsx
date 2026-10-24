@@ -388,8 +388,8 @@ const WordsEditor = ({
     <div className="flex flex-col gap-3">
       {canSave ? null : (
         <output className="text-muted-foreground text-base">
-          This request can no longer be edited. Your unsaved words are kept
-          below so you can copy them.
+          This request can no longer be edited. Your unsaved words are kept here
+          so you can copy them.
         </output>
       )}
       {outdated && canSave ? (
@@ -398,9 +398,17 @@ const WordsEditor = ({
           aria-live="polite"
         >
           <p>
-            The details changed while you were editing. Your words are kept
-            below. Compare them with the latest version above before saving.
+            The details changed while you were editing. Your edits are kept
+            here. Compare them with the latest wording before saving.
           </p>
+          <details>
+            <summary className="min-h-control cursor-pointer content-center font-semibold">
+              See the latest wording
+            </summary>
+            <p className="text-body wrap-anywhere whitespace-pre-wrap">
+              {initialBody}
+            </p>
+          </details>
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => setEditingVersion(version)}
@@ -420,9 +428,9 @@ const WordsEditor = ({
           </div>
         </div>
       ) : null}
-      <Label htmlFor={editId}>Change the words</Label>
+      <Label htmlFor={editId}>Message text</Label>
       <Textarea
-        className="text-xl"
+        className="text-body min-h-40 leading-relaxed"
         disabled={saving}
         id={editId}
         onChange={(event) => setDraft(event.target.value)}
@@ -452,7 +460,7 @@ const WordsEditor = ({
                 );
               } else {
                 toast.success(
-                  "Your changes are saved. Review the updated details below."
+                  "Changes saved. Review the updated message before approving."
                 );
               }
             } catch (error) {
@@ -462,7 +470,7 @@ const WordsEditor = ({
             setSaving(false);
           }}
         >
-          {saving ? "Saving…" : "Save these words"}
+          {saving ? "Saving…" : "Save changes"}
         </Button>
         <Button disabled={saving} onClick={onDone} variant="ghost">
           Cancel editing
@@ -780,20 +788,22 @@ const ReviewVersion = ({
       ) : null}
 
       <DetailsView
+        bodyEditor={
+          editing && body !== null ? (
+            <WordsEditor
+              actionId={view.action._id}
+              canSave={awaiting}
+              initialBody={body}
+              onDone={() => setEditing(false)}
+              version={current.version}
+            />
+          ) : undefined
+        }
         details={details}
         granteeNames={view.granteeNames}
         hue={hue}
         timeZone={timeZone}
       />
-      {editing && body !== null ? (
-        <WordsEditor
-          actionId={view.action._id}
-          canSave={awaiting}
-          initialBody={body}
-          onDone={() => setEditing(false)}
-          version={current.version}
-        />
-      ) : null}
 
       {details.kind === "create_reminder" && awaiting ? (
         <ReminderSharing
