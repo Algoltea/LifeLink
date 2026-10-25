@@ -1,13 +1,49 @@
 import { v } from "convex/values";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { recordIncoming } from "./lib/incoming";
 import { channelFor, createTask, firstName } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
+import { grantIsLive } from "./lib/permissions";
 import { requireOwned, requireOwner, requireProfile } from "./lib/session";
 
 const MAX_PHOTOS = 4;
+
+/** A contact link identifies the conversation; a live grant authorizes access. */
+const familyConversationContact = async (
+  ctx: MutationCtx | QueryCtx,
+  viewerId: Id<"profiles">,
+  ownerId: Id<"profiles">
+): Promise<Doc<"contacts"> | null> => {
+  const contacts = ctx.db
+    .query("contacts")
+    .withIndex("by_linked_profile", (index) =>
+      index.eq("linkedProfileId", viewerId)
+    )
+    .filter((row) => row.eq(row.field("ownerId"), ownerId));
+
+  const now = Date.now();
+
+  for await (const contact of contacts) {
+    const grants = ctx.db
+      .query("sharingGrants")
+      .withIndex("by_contact", (index) => index.eq("contactId", contact._id));
+
+    for await (const grant of grants) {
+      if (
+        grant.ownerId === ownerId &&
+        grant.granteeProfileId === viewerId &&
+        grantIsLive(grant, now)
+      ) {
+        return contact;
+      }
+    }
+  }
+
+  return null;
+};
 
 /** Display-only: shown with the review, never part of what is approved. */
 export const SUGGESTION_RATIONALE =
@@ -269,13 +305,11 @@ export const replyInApp = mutation({
   handler: async (ctx, args) => {
     const viewer = await requireProfile(ctx);
 
-    const contact = await ctx.db
-      .query("contacts")
-      .withIndex("by_linked_profile", (index) =>
-        index.eq("linkedProfileId", viewer._id)
-      )
-      .filter((row) => row.eq(row.field("ownerId"), args.ownerId))
-      .first();
+    const contact = await familyConversationContact(
+      ctx,
+      viewer._id,
+      args.ownerId
+    );
 
     const body = args.body.trim();
 
@@ -307,13 +341,11 @@ export const inAppThreadWith = query({
   handler: async (ctx, args) => {
     const viewer = await requireProfile(ctx);
 
-    const contact = await ctx.db
-      .query("contacts")
-      .withIndex("by_linked_profile", (index) =>
-        index.eq("linkedProfileId", viewer._id)
-      )
-      .filter((row) => row.eq(row.field("ownerId"), args.ownerId))
-      .first();
+    const contact = await familyConversationContact(
+      ctx,
+      viewer._id,
+      args.ownerId
+    );
 
     if (contact === null) {
       return null;

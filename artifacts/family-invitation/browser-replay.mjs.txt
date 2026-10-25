@@ -1,0 +1,25 @@
+// Interactive JSON-lines replay harness used for local browser verification.
+// Requires Node 22+, Chrome, and the setup-installed CDP helper.
+// Fresh Browser.launch instances isolate account cookies; credentials remain in memory.
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+const helper = process.env.FAMILY_BROWSER_CDP_HELPER ?? resolve('.agents/skills/design-taste-frontend/scripts/lib/cdp.mjs');
+const {Browser,sleep} = await import(pathToFileURL(helper).href);
+import {createInterface} from 'node:readline';
+import {randomBytes} from 'node:crypto';
+import {mkdirSync,writeFileSync} from 'node:fs';
+const root=resolve(process.env.FAMILY_BROWSER_OUTPUT ?? 'artifacts/family-invitation/replay');
+mkdirSync(root,{recursive:true});
+const browsers={},pages={},secrets={password:randomBytes(24).toString('hex')};
+const rl=createInterface({input:process.stdin});
+for await(const line of rl){try{const a=JSON.parse(line); let result;
+if(a.op==='open'){browsers[a.page]=await Browser.launch(); pages[a.page]=await browsers[a.page].newPage();await pages[a.page].goto(a.url);result='opened';}
+if(a.op==='eval')result=await pages[a.page].eval(a.script);
+if(a.op==='goto'){await pages[a.page].goto(a.url);result='navigated';}
+if(a.op==='wait'){await sleep(a.ms??1500);result='waited';}
+if(a.op==='signup'){await pages[a.page].eval(({name,email,password})=>{for(const [key,value] of Object.entries({name,email,password})){const el=document.querySelector(`input[name=${key}]`);const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));}document.querySelector('form').requestSubmit();},{name:a.name,email:a.email,password:secrets.password});result='submitted';}
+if(a.op==='capture'){const p=pages[a.page]; await p.screenshot({path:`${root}/${a.name}.png`,format:'png',fullPage:true});const state=await p.eval(()=>({url:location.href,text:document.body.innerText,inputs:[...document.querySelectorAll('input')].map(e=>({name:e.name,type:e.type,label:e.labels?.[0]?.textContent})),buttons:[...document.querySelectorAll('button')].map(e=>({text:e.innerText,disabled:e.disabled}))}));writeFileSync(`${root}/${a.name}.json`,JSON.stringify(state,null,2));result=state;}
+if(a.op==='rememberCode'){secrets.code=await pages[a.page].eval(()=>document.querySelector('[aria-label^="Invitation code "]')?.textContent.trim()); result=secrets.code?'code captured privately':'NO CODE';}
+if(a.op==='enterCode'){await pages[a.page].eval(code=>{const el=document.querySelector('main form input');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,code);el.dispatchEvent(new Event('input',{bubbles:true}));},secrets.code);result='code entered';}
+if(a.op==='close'){for(const b of Object.values(browsers))await b.close();console.log('closed');process.exit(0);}
+console.log(JSON.stringify({ok:true,result}));}catch(e){console.log(JSON.stringify({ok:false,error:e.message}));}}
