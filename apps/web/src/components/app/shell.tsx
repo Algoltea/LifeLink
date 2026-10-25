@@ -7,8 +7,6 @@ import { cn } from "@lifelink/ui/lib/utils";
 import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
-  FolderOpenIcon,
-  HomeIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -39,9 +37,11 @@ import {
 import {
   AskIcon,
   ConnectionsIcon,
+  DocumentsIcon,
   GroceriesIcon,
   MahjongIcon,
   SolitaireIcon,
+  TodayIcon,
   TrustedCircleIcon,
 } from "./nav-icons";
 import { useOffline } from "./offline-queue";
@@ -104,11 +104,11 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
   return [
     {
       items: [
-        { href: "/", icon: HomeIcon, label: nav.today },
+        { href: "/", icon: TodayIcon, label: nav.today },
         { href: "/ask", icon: AskIcon, label: nav.ask },
         { href: "/messages", icon: MessagesSquareIcon, label: nav.messages },
         { href: "/email", icon: MailIcon, label: nav.email },
-        { href: "/documents", icon: FolderOpenIcon, label: nav.documents },
+        { href: "/documents", icon: DocumentsIcon, label: nav.documents },
       ],
       label: null,
     },

@@ -80,6 +80,30 @@ const ConnectionsIcon = (props: NavIconProps) => (
   </svg>
 );
 
+/** The sun coming up over the horizon, for the day ahead. */
+const TodayIcon = (props: NavIconProps) => (
+  <svg {...iconAttributes} {...props}>
+    <path d="M2 15H22M6 19H18" />
+    <path d="M6.5 15A5.5 5.5 0 0 1 17.5 15" />
+    <path d="M12 7.75V5M6.87 9.87L4.93 7.93M17.13 9.87L19.07 7.93" />
+  </svg>
+);
+
+/**
+ * A written page with a folded corner and a wax seal, so the person's papers
+ * read as papers rather than a folder on a computer desktop.
+ */
+const DocumentsIcon = (props: NavIconProps) => (
+  <svg {...iconAttributes} {...props}>
+    {/* The page's edge stops where the seal covers its corner. */}
+    <path d="M12.5 21.5H6.5A2 2 0 0 1 4.5 19.5V4.5A2 2 0 0 1 6.5 2.5H14.5L19.5 7.5V12.5" />
+    <path d="M14.5 2.5V6.5A1 1 0 0 0 15.5 7.5H19.5" />
+    <path d="M8 10H12M8 13.5H13.5" />
+    <circle cx="17" cy="17.75" r="3.25" />
+    <path d="M15.5 21.25L14.75 23M18.5 21.25L19.25 23" />
+  </svg>
+);
+
 /**
  * A woven basket with an apple and a loaf in it: a rolled rim, a rounded belly
  * and a staggered weave, so it reads as wicker rather than a wire shop basket.
@@ -116,8 +140,10 @@ const TrustedCircleIcon = (props: NavIconProps) => (
 export {
   AskIcon,
   ConnectionsIcon,
+  DocumentsIcon,
   GroceriesIcon,
   MahjongIcon,
   SolitaireIcon,
+  TodayIcon,
   TrustedCircleIcon,
 };
