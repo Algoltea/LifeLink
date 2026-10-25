@@ -308,6 +308,26 @@
 }
 
 /*
+ * Safari draws its own glossy select and ignores padding, so every select
+ * gets the same flat box and a chevron drawn in the text colour. Unlayered,
+ * so the room for the chevron wins over padding utilities. A select that
+ * draws its own chevron opts out with appearance-none.
+ */
+select:not([multiple], [size], .appearance-none) {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    right 1.25rem center,
+    right 0.9rem center;
+  background-repeat: no-repeat;
+  background-size: 0.35rem 0.35rem;
+  padding-inline-end: 2.5rem;
+  text-overflow: ellipsis;
+}
+
+/*
  * Motion stays small and short: it confirms that something opened, closed,
  * or arrived, and never makes anyone wait. The reduced-motion rules above
  * cut every duration to nothing.
