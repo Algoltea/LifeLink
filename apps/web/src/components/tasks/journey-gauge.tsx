@@ -48,7 +48,8 @@ const markFor = (kind: Step["kind"], className: string): ReactNode => {
       return <ShoppingBasketIcon aria-hidden="true" className={className} />;
     }
 
-    case "email_draft": {
+    case "email_draft":
+    case "email_reply": {
       return <MailIcon aria-hidden="true" className={className} />;
     }
 

@@ -136,6 +136,10 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
       return `Email to ${details.to}. Subject: ${details.subject}. It says: ${details.body}`;
     }
 
+    case "email_reply": {
+      return `Reply to ${details.to}. Subject: ${details.subject}. It says: ${details.body}`;
+    }
+
     case "calendar_event": {
       return `${details.title}. ${formatWhen(details.startsAt, timeZone)}${details.location ? `, at ${details.location}` : ""}.`;
     }
@@ -150,12 +154,12 @@ const spokenDetails = (details: ActionDetails, timeZone: string): string => {
   }
 };
 
-const EmailDraftSlip = ({
+const EmailSlip = ({
   details,
   bodyEditor,
   className,
 }: {
-  details: Extract<ActionDetails, { kind: "email_draft" }>;
+  details: Extract<ActionDetails, { kind: "email_draft" | "email_reply" }>;
   bodyEditor?: ReactNode;
   className?: string;
 }) => (
@@ -187,9 +191,9 @@ const EmailDraftSlip = ({
       />
     )}
     <p className="text-muted-foreground text-base">
-      Saved as a draft in your{" "}
-      {details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent until
-      you send it there.
+      {details.kind === "email_reply"
+        ? `Sent from your ${details.provider === "gmail" ? "Gmail" : "Outlook"} as a reply in the same conversation, only after you approve it.`
+        : `Saved as a draft in your ${details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent until you send it there.`}
     </p>
   </div>
 );
@@ -317,9 +321,10 @@ const DetailsView = ({
       );
     }
 
-    case "email_draft": {
+    case "email_draft":
+    case "email_reply": {
       return (
-        <EmailDraftSlip
+        <EmailSlip
           details={details}
           bodyEditor={bodyEditor}
           className={className}

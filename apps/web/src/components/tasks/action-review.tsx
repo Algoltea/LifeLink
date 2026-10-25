@@ -48,10 +48,19 @@ const APPROVE_WORDS: Record<ActionDetails["kind"], string> = {
   create_reminder: "Save the reminder",
   drive_note: "Approve and save it",
   email_draft: "Approve and save the draft",
+  email_reply: "Approve and send",
   family_update: "Share the update",
   grocery_handoff: "Approve request",
   send_message: "Approve and send",
 };
+
+/** The words the person can change before approving, for actions that have them. */
+const wordsOf = (details: ActionDetails): string | null =>
+  details.kind === "send_message" ||
+  details.kind === "email_draft" ||
+  details.kind === "email_reply"
+    ? details.body
+    : null;
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -649,7 +658,9 @@ const ApprovalBar = ({
           onClick={onApprove}
           size="lg"
         >
-          {kind === "send_message" ? <SendIcon /> : null}
+          {kind === "send_message" || kind === "email_reply" ? (
+            <SendIcon />
+          ) : null}
           {pending === "approve" ? "Approving…" : APPROVE_WORDS[kind]}
         </Button>
         {editable ? (
@@ -765,10 +776,7 @@ const ReviewVersion = ({
   const awaiting = view.action.status === "awaiting_approval";
   const canApprove = awaiting && !retired;
 
-  const body =
-    details.kind === "send_message" || details.kind === "email_draft"
-      ? details.body
-      : null;
+  const body = wordsOf(details);
 
   const reapproval =
     canApprove &&

@@ -59,6 +59,13 @@ const headingFor = (focus: ActionView | null, detail: TaskDetail): Heading => {
     };
   }
 
+  if (awaiting && focus?.current?.details.kind === "email_reply") {
+    return {
+      subline: `Nothing goes to ${focus.current.details.to} until you press Approve. You can change the words first.`,
+      title: "Read this before it's sent",
+    };
+  }
+
   if (awaiting && kind === "confirm_arrangement") {
     return {
       subline: `${who} replied. Check the time, then confirm.`,
@@ -113,7 +120,7 @@ const ChecksPanel = ({
     );
   }
 
-  if (details?.kind === "send_message") {
+  if (details?.kind === "send_message" || details?.kind === "email_reply") {
     checks.push(
       LINK_PATTERN.test(details.body)
         ? "This message contains a link. Make sure you meant to include it."

@@ -488,7 +488,7 @@ const EmailReader = ({
               body: suggestion,
               fromSuggestion: true,
               notice:
-                "Reply added to your draft. You can change it before reviewing.",
+                "Reply added to your message. You can change it before reviewing.",
             });
             openReply();
           }}
