@@ -23,7 +23,7 @@ import {
 import type { RecipientMatch } from "./journey";
 import { createAction } from "./lifecycle";
 import { ownerLocale } from "./locale";
-import { proposalMessagesFor } from "./proposal-messages";
+import { proposalMessagesFor } from "./proposalMessages";
 import { DAY, formatDay, formatWhen, parseAbsoluteIso } from "./time";
 
 const UPCOMING_WINDOW = 45 * DAY;

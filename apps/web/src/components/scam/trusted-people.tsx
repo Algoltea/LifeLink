@@ -4,6 +4,7 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
+import { Pill } from "@lifelink/ui/components/pill";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import { MessageCircleIcon, PhoneIcon } from "lucide-react";
@@ -96,7 +97,8 @@ const TrustedPersonRow = ({
   const fallbackId = useId();
   const needsDetails = channel === null;
   const callEnabled = canCall && phone !== null && !disabled;
-  const t = useMessages().trustedPeople;
+  const messages = useMessages();
+  const t = messages.trustedPeople;
 
   return (
     <li className="border-rule grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 border-b py-5 last:border-b-0">
@@ -112,6 +114,9 @@ const TrustedPersonRow = ({
             {contact.name}
           </span>
           <TrustedBadge />
+          {contact.sample ? (
+            <Pill>{messages.circle.practiceContact}</Pill>
+          ) : null}
         </div>
         <p className="text-muted-foreground text-body">
           {contact.relationship || t.contactFallback} ·{" "}
@@ -180,7 +185,7 @@ const TrustedPersonRow = ({
   );
 };
 
-/** Real trusted people, with calls to saved numbers and message drafts that open review. */
+/** Trusted people for the current mode, with message drafts that open review. */
 const TrustedPeople = ({
   reviewId,
   message,
@@ -202,6 +207,7 @@ const TrustedPeople = ({
   const preparing = useRef(false);
   const reviewNoteId = useId();
   const t = useMessages().trustedPeople;
+  const practiceMode = me?.profile?.demoMode === true;
   const canCall = me?.profile?.demoMode === false;
 
   const bodyFor = (contact: CircleContact): string => {
@@ -220,7 +226,7 @@ const TrustedPeople = ({
   };
 
   const trusted = contacts?.filter(
-    (contact) => contact.trusted && !contact.sample
+    (contact) => contact.trusted && (practiceMode || !contact.sample)
   );
 
   const prepareMessage = async (contact: CircleContact): Promise<void> => {
@@ -252,7 +258,7 @@ const TrustedPeople = ({
     }
   };
 
-  if (trusted === undefined) {
+  if (trusted === undefined || (trusted.length === 0 && me === undefined)) {
     return (
       <div aria-busy="true" aria-label={t.loading}>
         <div aria-hidden="true">

@@ -59,7 +59,7 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { decodeJson } from "./integrations/http";
 import { modelFor } from "./integrations/openrouter";
-import { assistantMessagesFor } from "./lib/assistant-messages";
+import { assistantMessagesFor } from "./lib/assistantMessages";
 import { readEnv, readEnvOr } from "./lib/env";
 import { ownerLocale } from "./lib/locale";
 import { UPCOMING_WINDOW, applyProposal } from "./lib/proposals";

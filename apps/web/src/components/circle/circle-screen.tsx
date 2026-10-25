@@ -105,13 +105,15 @@ const CircleScreen = ({
   const savedContacts = useQuery(api.contacts.list);
   const imessage = useQuery(api.imessage.list, {});
   const grants = useQuery(api.sharing.listGrants);
+  const { me } = usePreferences();
 
-  // Keep a sample visible if it still has access that the owner may need to revoke.
+  // Outside Practice, keep samples with access the owner may need to revoke.
   const contacts =
-    grants === undefined
+    me === undefined || grants === undefined
       ? undefined
       : savedContacts?.filter(
           (contact) =>
+            me?.profile?.demoMode === true ||
             !contact.sample ||
             grants.some(
               (grant) =>
@@ -120,7 +122,6 @@ const CircleScreen = ({
             )
         );
 
-  const { me } = usePreferences();
   const messages = useMessages();
   const t = messages.circle;
 
