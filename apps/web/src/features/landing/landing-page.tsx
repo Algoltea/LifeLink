@@ -3,6 +3,7 @@ import { EverydayHelp } from "./everyday-help";
 import { FeatureIndex } from "./feature-index";
 import { Hero } from "./hero";
 import { HowItWorks } from "./how-it-works";
+import { LanguagePicker } from "./language-picker";
 import { OurPromise } from "./promise";
 import { Questions } from "./questions";
 import { ScamCheck } from "./scam-check";
@@ -22,6 +23,7 @@ const LandingPage = () => (
       <OurPromise />
       <Questions />
       <Start />
+      <LanguagePicker />
     </main>
     <LandingFooter />
   </div>

@@ -17,6 +17,7 @@ import { greeting } from "./de/greeting";
 import { groceries } from "./de/groceries";
 import { guest } from "./de/guest";
 import { imessageSetup } from "./de/imessage-setup";
+import { landing } from "./de/landing";
 import { onboarding } from "./de/onboarding";
 import { photoInput } from "./de/photo-input";
 import { recap } from "./de/recap";
@@ -57,6 +58,7 @@ const de: Messages = {
   groceries,
   guest,
   imessageSetup,
+  landing,
   onboarding,
   photoInput,
   recap,

@@ -18,6 +18,7 @@ import { greeting } from "./ko/greeting";
 import { groceries } from "./ko/groceries";
 import { guest } from "./ko/guest";
 import { imessageSetup } from "./ko/imessage-setup";
+import { landing } from "./ko/landing";
 import { onboarding } from "./ko/onboarding";
 import { photoInput } from "./ko/photo-input";
 import { recap } from "./ko/recap";
@@ -57,6 +58,7 @@ const ko: Messages = {
   groceries,
   guest,
   imessageSetup,
+  landing,
   onboarding,
   photoInput,
   recap,

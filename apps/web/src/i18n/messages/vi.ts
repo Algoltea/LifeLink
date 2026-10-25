@@ -18,6 +18,7 @@ import { greeting } from "./vi/greeting";
 import { groceries } from "./vi/groceries";
 import { guest } from "./vi/guest";
 import { imessageSetup } from "./vi/imessage-setup";
+import { landing } from "./vi/landing";
 import { onboarding } from "./vi/onboarding";
 import { photoInput } from "./vi/photo-input";
 import { recap } from "./vi/recap";
@@ -57,6 +58,7 @@ const vi: Messages = {
   groceries,
   guest,
   imessageSetup,
+  landing,
   onboarding,
   photoInput,
   recap,
