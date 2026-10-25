@@ -278,18 +278,25 @@ const startLiveSession = async (
   let source: MediaStreamAudioSourceNode | null = null;
   let worklet: AudioWorkletNode | null = null;
 
-  // Stopping can come from the person, the server closing, or an error; it runs once.
+  // Release audio once, but also close a session that arrives after termination.
   const stop = (): void => {
-    if (stopped) {
-      return;
+    const connection = session;
+    session = null;
+
+    if (!stopped) {
+      stopped = true;
+      worklet?.disconnect();
+      source?.disconnect();
+      rig.release();
     }
 
-    stopped = true;
-    worklet?.disconnect();
-    source?.disconnect();
-    rig.release();
-    session?.close();
-    session = null;
+    connection?.close();
+  };
+
+  const ensureActive = (): void => {
+    if (stopped) {
+      throw new Error(currentMessages().voice.connectionProblem);
+    }
   };
 
   // Every step that can fail after the microphone is open is guarded, so a failure closes the socket too.
@@ -319,6 +326,7 @@ const startLiveSession = async (
       },
       model,
     });
+    ensureActive();
 
     const moduleUrl = URL.createObjectURL(
       new Blob([WORKLET_SOURCE], { type: "text/javascript" })
@@ -330,6 +338,7 @@ const startLiveSession = async (
       URL.revokeObjectURL(moduleUrl);
     }
 
+    ensureActive();
     source = capture.createMediaStreamSource(stream);
     worklet = new AudioWorkletNode(capture, "pcm-capture");
 

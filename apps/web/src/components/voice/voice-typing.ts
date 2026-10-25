@@ -191,8 +191,7 @@ const useVoiceTyping = (
               return;
             }
 
-            handle.current = null;
-            setState("idle");
+            stop();
             toast.error(currentMessages().voice.dictationStopped);
           },
           // The voice-typing token has no tools, so nothing is ever requested.
@@ -229,8 +228,7 @@ const useVoiceTyping = (
         return;
       }
 
-      abort.current = null;
-      setState("idle");
+      stop();
       toast.error(problemOf(error instanceof Error ? error : null));
     }
   };

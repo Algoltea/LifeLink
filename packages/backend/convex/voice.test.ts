@@ -128,6 +128,7 @@ describe("voice session authorization", () => {
   it.each([
     { endpoint: api.voice.createCallScreeningSession, purpose: "screening" },
     { endpoint: api.voice.createLiveSession, purpose: "conversation" },
+    { endpoint: api.voice.createVoiceTypingSession, purpose: "voice typing" },
   ])("reports missing configuration for $purpose", async ({ endpoint }) => {
     const backend = newBackend();
 
@@ -145,6 +146,71 @@ describe("voice session authorization", () => {
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("rejects anonymous, un-onboarded, and family voice typing before contacting Gemini", async () => {
+    const backend = newBackend();
+
+    const { person: family } = await signUp(backend, {
+      demo: false,
+      name: "Family Member",
+      role: "family",
+      subject: "typing-family",
+    });
+
+    for (const caller of [
+      backend,
+      backend.withIdentity({ subject: "typing-no-profile" }),
+      family,
+    ]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- check each authorization boundary independently.
+      await expect(
+        caller.action(api.voice.createVoiceTypingSession, {})
+      ).rejects.toMatchObject({ data: { code: "not_signed_in" } });
+    }
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    "allows owner voice typing in Practice mode %s with a one-use tool-free token",
+    async (demo) => {
+      const backend = newBackend();
+
+      const { person } = await signUp(backend, {
+        demo,
+        name: "Typing Owner",
+        role: "owner",
+        subject: "typing-owner",
+      });
+
+      fetchMock.mockResolvedValueOnce(
+        Response.json({ name: "auth_tokens/mock-typing" })
+      );
+
+      await expect(
+        person.action(api.voice.createVoiceTypingSession, {})
+      ).resolves.toStrictEqual({
+        expiresAt: NOW + 30 * 60_000,
+        model: "test-live-model",
+        token: "auth_tokens/mock-typing",
+      });
+
+      const [, options] = fetchMock.mock.calls[0] ?? [];
+      const body: unknown = JSON.parse(String(options?.body));
+      expect(body).toMatchObject({
+        bidiGenerateContentSetup: {
+          inputAudioTranscription: {},
+          model: "models/test-live-model",
+          tools: [],
+        },
+        expireTime: "2026-10-24T12:30:00.000Z",
+        newSessionExpireTime: "2026-10-24T12:01:00.000Z",
+        uses: 1,
+      });
+      expect(body).not.toHaveProperty("fieldMask");
+      expect(String(options?.body)).not.toContain("submit_request");
+    }
+  );
 
   it("returns only the short-lived token for an owner outside Practice mode", async () => {
     const backend = newBackend();

@@ -304,8 +304,15 @@ const ComposerSession = ({
 
               stopVoice();
             },
-            onRequest: async (request) =>
-              (await send(request, "voice")) ? t.prepared : t.prepareFailed,
+            onRequest: async (request) => {
+              if (cancelled()) {
+                return t.prepareFailed;
+              }
+
+              return (await send(request, "voice"))
+                ? t.prepared
+                : t.prepareFailed;
+            },
             onSpeaking: (now) => {
               if (!cancelled()) {
                 setSpeaking(now);
@@ -406,7 +413,7 @@ const ComposerSession = ({
               listening &&
                 "bg-foreground text-background hover:bg-foreground/85 border-transparent"
             )}
-            disabled={!voiceAvailable}
+            disabled={!listening && !voiceAvailable}
             onClick={() => {
               if (listening) {
                 stopVoice();
