@@ -68,8 +68,8 @@ const headingFor = (
 
   if (awaiting && focus?.current?.details.kind === "email_reply") {
     return {
-      subline: `Nothing goes to ${focus.current.details.to} until you press Approve. You can change the words first.`,
-      title: "Read this before it's sent",
+      subline: t.sendSubline(focus.current.details.to),
+      title: t.sendTitle,
     };
   }
 

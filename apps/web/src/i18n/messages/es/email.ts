@@ -77,13 +77,14 @@ const email: Messages["email"] = {
   reconnect: "Volver a conectar",
   reply: "Responder",
   replyAdded:
-    "Se agregó la respuesta a su borrador. Puede cambiarla antes de revisarla.",
+    "Se agregó la respuesta a su mensaje. Puede cambiarla antes de revisarla.",
   replyComposer: {
     nothingSent: (provider) =>
-      `No se envía nada. Primero lo revisará y luego se guardará como borrador en su ${provider}.`,
+      `Todavía no se envía nada. Primero lo revisará y luego se enviará desde su ${provider} en la misma conversación. ¿Prefiere terminarlo en ${provider}? Guárdelo como borrador.`,
     placeholder: "Escriba su respuesta…",
     replyTo: (to) => `Responder a ${to}`,
-    review: "Revisar el borrador",
+    review: "Revisar y enviar",
+    saveDraft: "Guardarlo como borrador",
     speak: "Hablar",
     stopListening: "Dejar de escuchar",
   },

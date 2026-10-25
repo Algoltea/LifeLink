@@ -150,7 +150,7 @@ const spokenDetails = (
     }
 
     case "email_reply": {
-      return `Reply to ${details.to}. Subject: ${details.subject}. It says: ${details.body}`;
+      return t.reply(details.to, details.subject, details.body);
     }
 
     case "calendar_event": {
@@ -211,23 +211,13 @@ const EmailSlip = ({
         />
       )}
       <p className="text-muted-foreground text-base">
-        {t.draftSavedIn(details.provider === "gmail" ? "Gmail" : "Outlook")}
+        {details.kind === "email_reply"
+          ? t.replySentFrom(details.provider === "gmail" ? "Gmail" : "Outlook")
+          : t.draftSavedIn(details.provider === "gmail" ? "Gmail" : "Outlook")}
       </p>
-    )}
-    {bodyEditor ? null : (
-      <ReadAloudButton
-        className="self-start"
-        label="Read the email aloud"
-        text={`Subject: ${details.subject}. ${details.body}`}
-      />
-    )}
-    <p className="text-muted-foreground text-base">
-      {details.kind === "email_reply"
-        ? `Sent from your ${details.provider === "gmail" ? "Gmail" : "Outlook"} as a reply in the same conversation, only after you approve it.`
-        : `Saved as a draft in your ${details.provider === "gmail" ? "Gmail" : "Outlook"}. It is not sent until you send it there.`}
-    </p>
-  </div>
-);
+    </div>
+  );
+};
 
 const DetailsView = ({
   bodyEditor,
