@@ -2,7 +2,7 @@ import { NEWS_SOURCES } from "@lifelink/contracts/news";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { api, internal } from "../convex/_generated/api";
-import { interleave, parseFeed } from "../convex/lib/feeds";
+import { articleText, interleave, parseFeed } from "../convex/lib/feeds";
 import { locationKey, searchesFor } from "../convex/lib/weather";
 import { newBackend, signUp } from "./harness";
 import type { Person } from "./harness";
@@ -578,5 +578,199 @@ describe("very long titles in CDATA", () => {
 
     expect(headline?.title).toMatch(/^B{10}/u);
     expect(headline?.title).not.toContain("CDATA");
+  });
+});
+
+const STORY_URL = "https://www.goodnewsnetwork.org/walrus-rescued/";
+const OFF_SITE_URL = "https://example.org/walrus";
+
+const STORY_PAGE = `<html><body><nav><p>Home</p></nav>
+<p>A walrus that wandered onto a beach in Maine was guided back to the sea by volunteers on Saturday morning.</p>
+<p class="caption">Photo: credit</p>
+<script>const banner = "<p>Accept all cookies to keep reading this website today, thank you for visiting us.</p>";</script >
+<p>Wildlife officers said the walrus was healthy and had likely followed fish farther south than usual &amp; got tired.</p>
+<p>Volunteers kept people at a safe distance for six hours until the tide came in and the walrus swam away.</p>
+<p>Officials asked anyone who sees a marine animal on a beach to call the local rescue line and keep their distance.</p>
+</body></html>`;
+
+const summaryReply = (): Response =>
+  Response.json({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            gist: "  Volunteers helped a tired walrus get back to the sea in Maine.  ",
+            kind: "news",
+            points: [
+              "The walrus came ashore on Saturday.",
+              "",
+              "Volunteers kept people away for six hours.",
+              "It swam away when the tide came in.",
+              "A fourth point that is not kept.",
+            ],
+          }),
+        },
+      },
+    ],
+    model: "test-news-model",
+  });
+
+const newsServer = (url: string): Response => {
+  if (url === GOOD_NEWS?.feedUrl) {
+    return respond(
+      rss([
+        `<item><title>Walrus rescued</title><link>${STORY_URL}</link><description><![CDATA[<p>A walrus is back at sea.</p>]]></description><pubDate>Sat, 24 Oct 2026 10:00:00 GMT</pubDate></item>`,
+      ])
+    );
+  }
+
+  if (url === STORY_URL) {
+    return respond(STORY_PAGE);
+  }
+
+  if (url.includes("openrouter.ai")) {
+    return summaryReply();
+  }
+
+  return respond(rss([]));
+};
+
+describe("reading an article page", () => {
+  it("keeps the story paragraphs and drops menus and captions", () => {
+    const text = articleText(STORY_PAGE);
+
+    expect(text).toContain("A walrus that wandered onto a beach");
+    expect(text).toContain("farther south than usual & got tired");
+    expect(text).not.toContain("Photo: credit");
+    expect(text).not.toContain("cookies");
+    expect(text.split("\n\n")).toHaveLength(4);
+  });
+
+  it("keeps the feed's description as a teaser", () => {
+    if (!GOOD_NEWS) {
+      throw new Error("Expected a good news source.");
+    }
+
+    const [headline] = parseFeed(
+      rss([
+        `<item><title>Walrus rescued</title><link>${STORY_URL}</link><description><![CDATA[<p>A walrus is back at sea.</p>]]></description></item>`,
+      ]),
+      GOOD_NEWS
+    );
+
+    expect(headline?.teaser).toBe("A walrus is back at sea.");
+  });
+});
+
+describe("news summaries", () => {
+  afterEach(() => {
+    resetFetch();
+    vi.unstubAllEnvs();
+  });
+
+  it("summarizes a listed headline once and shares it with every reader", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+    useFetch(newsServer);
+    const { backend, person } = await ownerIn(null);
+
+    await person.action(api.news.refresh, { kind: "good" });
+
+    await expect(
+      person.action(api.news.summarize, { url: STORY_URL })
+    ).resolves.toStrictEqual({ status: "ready" });
+
+    const summary = await person.query(api.news.summary, { url: STORY_URL });
+
+    expect(summary).toStrictEqual({
+      gist: "Volunteers helped a tired walrus get back to the sea in Maine.",
+      kind: "news",
+      points: [
+        "The walrus came ashore on Saturday.",
+        "Volunteers kept people away for six hours.",
+        "It swam away when the tide came in.",
+      ],
+    });
+
+    const { person: neighbour } = await signUp(backend, {
+      demo: false,
+      name: "Walt Brooks",
+      role: "owner",
+      subject: "owner-2",
+    });
+
+    const calls = fetchMock.mock.calls.length;
+
+    await expect(
+      neighbour.action(api.news.summarize, { url: STORY_URL })
+    ).resolves.toStrictEqual({ status: "ready" });
+    await expect(
+      neighbour.query(api.news.summary, { url: STORY_URL })
+    ).resolves.toStrictEqual(summary);
+    expect(fetchMock).toHaveBeenCalledTimes(calls);
+  });
+
+  it("never fetches an address that is not on a headline list", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+    useFetch(newsServer);
+    const { person } = await ownerIn(null);
+
+    await expect(
+      person.action(api.news.summarize, { url: "http://169.254.169.254/" })
+    ).resolves.toStrictEqual({ status: "unavailable" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reads articles only from the publisher's own site", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+    useFetch((url) =>
+      url === GOOD_NEWS?.feedUrl
+        ? respond(
+            rss([
+              item(
+                "Walrus rescued",
+                OFF_SITE_URL,
+                "Sat, 24 Oct 2026 10:00:00 GMT"
+              ),
+            ])
+          )
+        : newsServer(url)
+    );
+    const { person } = await ownerIn(null);
+
+    await person.action(api.news.refresh, { kind: "good" });
+
+    await expect(
+      person.action(api.news.summarize, { url: OFF_SITE_URL })
+    ).resolves.toStrictEqual({ status: "unavailable" });
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) => new Request(input).url === OFF_SITE_URL
+      )
+    ).toBeFalsy();
+  });
+
+  it("gives up quietly when the article can't be read, and waits before trying again", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+    useFetch((url) =>
+      url === STORY_URL ? respond("gone", 404) : newsServer(url)
+    );
+    const { person } = await ownerIn(null);
+
+    await person.action(api.news.refresh, { kind: "good" });
+
+    await expect(
+      person.action(api.news.summarize, { url: STORY_URL })
+    ).resolves.toStrictEqual({ status: "unavailable" });
+    await expect(
+      person.action(api.news.summarize, { url: STORY_URL })
+    ).resolves.toStrictEqual({ status: "busy" });
+    await expect(
+      person.query(api.news.summary, { url: STORY_URL })
+    ).resolves.toBeNull();
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        new Request(input).url.includes("openrouter.ai")
+      )
+    ).toBeFalsy();
   });
 });

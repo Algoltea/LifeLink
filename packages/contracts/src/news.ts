@@ -8,6 +8,8 @@ type NewsKind = "good" | "top";
 interface Headline {
   readonly publishedAt: number | null;
   readonly source: string;
+  /** The feed's own short description, shown while a summary is prepared or when none can be. */
+  readonly teaser?: string;
   readonly title: string;
   readonly url: string;
 }
