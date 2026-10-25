@@ -27,6 +27,38 @@ const BrandMark = ({ size = 32 }: { size?: number }) => (
   </svg>
 );
 
+/**
+ * Reach while LifeLink thinks, like a rail coupler: the hooks snap apart until
+ * their inner arms clear, one knuckle swings open, and they snap back together
+ * as it shuts. The knuckles take turns each loop. The pair never rotates and
+ * never rests half-coupled, because both read as a pinwheel. index.css owns
+ * the motion; the hooks reach past the box, so leave room on either side.
+ */
+const ThinkingMark = ({ size = 24 }: { size?: number }) => (
+  <svg
+    aria-hidden="true"
+    className="thinking-mark shrink-0 overflow-visible"
+    height={size}
+    viewBox="85 84 856 612"
+    width={Math.round(size * MARK_ASPECT)}
+  >
+    <g className="thinking-person">
+      <path
+        className="thinking-person-knuckle"
+        d={PERSON_HOOK}
+        fill="var(--text)"
+      />
+    </g>
+    <g className="thinking-lifelink">
+      <path
+        className="thinking-lifelink-knuckle"
+        d={LIFELINK_HOOK}
+        fill={LIFELINK_ORANGE}
+      />
+    </g>
+  </svg>
+);
+
 const BrandName = ({
   compact = false,
   subtitle,
@@ -51,4 +83,4 @@ const BrandName = ({
   </span>
 );
 
-export { BrandMark, BrandName };
+export { BrandMark, BrandName, ThinkingMark };

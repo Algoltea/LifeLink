@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { ReadAloudButton, useAutoReadAloud } from "@/components/app/bits";
-import { BrandMark } from "@/components/app/brand";
+import { BrandMark, ThinkingMark } from "@/components/app/brand";
 import {
   InlineActionReview,
   InlineSendAll,
@@ -59,12 +59,8 @@ const Thinking = () => {
   const t = useMessages().ask;
 
   return (
-    <p className="text-muted-foreground flex min-h-9 items-center gap-3 text-lg">
-      <span aria-hidden="true" className="flex gap-1.5">
-        <span className="bg-primary size-2 rounded-full motion-safe:animate-pulse" />
-        <span className="bg-primary/60 size-2 rounded-full [animation-delay:150ms] motion-safe:animate-pulse" />
-        <span className="bg-primary/30 size-2 rounded-full [animation-delay:300ms] motion-safe:animate-pulse" />
-      </span>
+    <p className="text-muted-foreground flex min-h-9 items-center gap-4 pl-1 text-lg">
+      <ThinkingMark size={22} />
       {t.thinking}
     </p>
   );

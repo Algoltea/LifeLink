@@ -183,3 +183,166 @@
     display: none;
   }
 }
+
+/*
+ * The thinking mark (ThinkingMark in brand.tsx), in viewBox units. Each
+ * 2.6 s loop the hooks snap 120 units apart, past the 85 (97 with a knuckle
+ * open) where their inner arms stop overlapping. One knuckle swings 20° on its
+ * pin, then the hooks snap together as it shuts. The person's knuckle opens in
+ * the first loop and LifeLink's in the second. The snaps are fast so the hooks
+ * never linger half-coupled. Reduced motion shows the still mark.
+ */
+:is(
+  .thinking-person,
+  .thinking-lifelink,
+  .thinking-person-knuckle,
+  .thinking-lifelink-knuckle
+) {
+  transform-box: view-box;
+  animation-duration: 5.2s;
+  animation-iteration-count: infinite;
+}
+
+.thinking-person {
+  animation-name: thinking-person-part;
+}
+
+.thinking-lifelink {
+  animation-name: thinking-lifelink-part;
+}
+
+.thinking-person-knuckle {
+  transform-origin: 200px 580px;
+  animation-name: thinking-person-knuckle;
+}
+
+.thinking-lifelink-knuckle {
+  transform-origin: 826px 200px;
+  animation-name: thinking-lifelink-knuckle;
+}
+
+@keyframes thinking-person-part {
+  0%,
+  50% {
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.15, 0.75, 0.3, 1);
+  }
+
+  4%,
+  20%,
+  54%,
+  70% {
+    translate: -120px 120px;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+
+  26%,
+  76% {
+    translate: -104px 104px;
+    animation-timing-function: cubic-bezier(0.7, 0, 1, 0.7);
+  }
+
+  29%,
+  79% {
+    translate: 6px -6px;
+    animation-timing-function: ease-out;
+  }
+
+  32%,
+  82%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes thinking-lifelink-part {
+  0%,
+  50% {
+    translate: 0 0;
+    animation-timing-function: cubic-bezier(0.15, 0.75, 0.3, 1);
+  }
+
+  4%,
+  20%,
+  54%,
+  70% {
+    translate: 120px -120px;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+
+  26%,
+  76% {
+    translate: 104px -104px;
+    animation-timing-function: cubic-bezier(0.7, 0, 1, 0.7);
+  }
+
+  29%,
+  79% {
+    translate: -6px 6px;
+    animation-timing-function: ease-out;
+  }
+
+  32%,
+  82%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes thinking-person-knuckle {
+  0%,
+  4.5% {
+    rotate: 0deg;
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+
+  10%,
+  26.5% {
+    rotate: -20deg;
+    animation-timing-function: cubic-bezier(0.7, 0, 1, 0.7);
+  }
+
+  29% {
+    rotate: 3deg;
+    animation-timing-function: ease-out;
+  }
+
+  32%,
+  100% {
+    rotate: 0deg;
+  }
+}
+
+@keyframes thinking-lifelink-knuckle {
+  0%,
+  54.5% {
+    rotate: 0deg;
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+
+  60%,
+  76.5% {
+    rotate: -20deg;
+    animation-timing-function: cubic-bezier(0.7, 0, 1, 0.7);
+  }
+
+  79% {
+    rotate: 3deg;
+    animation-timing-function: ease-out;
+  }
+
+  82%,
+  100% {
+    rotate: 0deg;
+  }
+}
+
+[data-motion="reduced"] .thinking-mark * {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-mark * {
+    animation: none;
+  }
+}
