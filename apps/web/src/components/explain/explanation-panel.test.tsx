@@ -3,11 +3,13 @@
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { interfaceLocales } from "@lifelink/contracts/locale";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { getFunctionName } from "convex/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PreferencesProvider } from "@/components/app/preferences";
 import { messagesFor, setLocale } from "@/i18n/locale";
 
 import { ExplanationPanel } from "./explanation-panel";
@@ -61,6 +63,111 @@ describe("explanation language integration", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
+
+  it("keeps presentation explanations local and sends the same request arguments", async () => {
+    const me = {
+      preferences: null,
+      profile: { demoMode: true, presentationDemo: true },
+    };
+
+    vi.spyOn(client, "watchQuery").mockImplementation((...args) => {
+      const [query] = args;
+
+      return {
+        journal: () => {},
+        localQueryResult: () =>
+          getFunctionName(query) === "profiles:me" ? me : null,
+        onUpdate: () => () => {},
+      };
+    });
+    const request = vi.spyOn(client, "mutation").mockResolvedValue(null);
+
+    act(() =>
+      root.render(
+        <ConvexProvider client={client}>
+          <PreferencesProvider>
+            <ExplanationPanel
+              onUseReply={vi.fn<(draft: string) => void>()}
+              source={{ messageId: MESSAGE_ID }}
+            />
+          </PreferencesProvider>
+        </ConvexProvider>
+      )
+    );
+
+    expect(container.textContent).not.toContain("Practice");
+    expect(container.textContent).toContain(
+      messagesFor("en").explanation.local.chosen
+    );
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+
+    const explain = [...container.querySelectorAll("button")].find(
+      (button) =>
+        button.textContent === messagesFor("en").explanation.explainThis
+    );
+
+    expect(explain).toBeDefined();
+    await act(async () => {
+      explain?.click();
+      await Promise.resolve();
+    });
+    expect(
+      request.mock.calls.map(([mutation, args]) => [
+        getFunctionName(mutation),
+        args,
+      ])
+    ).toStrictEqual([
+      [
+        "explanations:request",
+        {
+          allowCloudAnalysis: false,
+          messageId: MESSAGE_ID,
+          refresh: false,
+        },
+      ],
+    ]);
+  });
+
+  it.each([false, true])(
+    "renders a completed local explanation with account-specific copy (presentation=%s)",
+    (enabled) => {
+      const me = {
+        preferences: null,
+        profile: { demoMode: true, presentationDemo: enabled },
+      };
+
+      const explanation = { ...EXPLANATION, localReason: "practice" };
+
+      vi.spyOn(client, "watchQuery").mockImplementation((...args) => {
+        const [query] = args;
+
+        return {
+          journal: () => {},
+          localQueryResult: () =>
+            getFunctionName(query) === "profiles:me" ? me : explanation,
+          onUpdate: () => () => {},
+        };
+      });
+      act(() =>
+        root.render(
+          <ConvexProvider client={client}>
+            <PreferencesProvider>
+              <ExplanationPanel
+                onUseReply={vi.fn<(draft: string) => void>()}
+                source={{ messageId: MESSAGE_ID }}
+              />
+            </PreferencesProvider>
+          </ConvexProvider>
+        )
+      );
+
+      expect(container.textContent.includes("Practice")).toBe(!enabled);
+      expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+      expect(container.textContent).toContain(ORIGINAL);
+      expect(explanation.localReason).toBe("practice");
+      expect(explanation.mode).toBe("simulated");
+    }
+  );
 
   it.each(interfaceLocales)(
     "localizes $id controls and spoken labels while preserving English local analysis and authored replies",

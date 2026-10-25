@@ -13,10 +13,16 @@ import { currentMessages, useMessages } from "@/i18n/locale";
 import { useSpeech } from "@/lib/speech";
 
 import { usePreferences } from "./preferences";
+import { usePresentationDemo } from "./presentation-demo";
 
-/** Every simulated outcome carries this mark, so practice is never mistaken for the real thing. */
+/** Ordinary practice accounts label simulated outcomes throughout the app. */
 const SimulatedPill = ({ className }: { className?: string }) => {
   const t = useMessages();
+  const presentation = usePresentationDemo();
+
+  if (presentation) {
+    return null;
+  }
 
   return (
     <Pill className={className} title={t.common.practiceTitle} tone="simulated">

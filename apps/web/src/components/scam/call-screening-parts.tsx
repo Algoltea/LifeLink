@@ -15,13 +15,46 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { messagesFor, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 
 import type { CallState } from "./use-call-screening";
 
-const useCallScreeningMessages = (): Messages["callScreening"] =>
-  useMessages().callScreening;
+/** Presentation wording only; the call's practice state still controls execution. */
+const useCallScreeningMessages = (): Messages["callScreening"] => {
+  const messages = useMessages().callScreening;
+  const presentationDemo = usePresentationDemo();
+
+  if (!presentationDemo) {
+    return messages;
+  }
+
+  return {
+    ...messages,
+    intro: "Review a call’s words and the warning signs to look for.",
+    languageLimit:
+      "Local text checks rely on English patterns; translating the interface does not expand their detection coverage. The call’s words and spoken alert are in English. Captions and quoted words stay in their original language.",
+    notConfigured: "Live call checks are unavailable for this account.",
+    permissionDenied:
+      "Microphone access was not allowed. You can review the call below without a microphone.",
+    practiceCall: messages.phoneCall,
+    practiceCaptionSource: messages.captionsNotSaved,
+    practiceFlaggedBody: "These words include requests scammers often make.",
+    practiceHeard: messages.captions,
+    practiceMode: "Live call checks are unavailable for this account.",
+    practicePlaying: "Call screening in progress",
+    practiceSaved: messages.practicePrivacy,
+    practiceSilentBody:
+      "This check ended before any words appeared, so there was nothing to check.",
+    practiceSilentTitle: "Check stopped early",
+    practiceSummary: messages.summary,
+    practiceVoices: messages.captionsNotSaved,
+    startError: "This call check could not start. Try again.",
+    stopPractice: messages.stop,
+    tryPractice: "Review a call",
+  };
+};
 
 const callFlagReason = (
   reason: string,

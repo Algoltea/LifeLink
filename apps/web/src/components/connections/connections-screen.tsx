@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { IsoIcon, permissionIconFor } from "@/components/app/iso-icon";
 import type { PermissionIconKind } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { useLocale } from "@/i18n/locale";
 import type { ConnectionsMessages } from "@/i18n/messages/en/connections";
@@ -870,9 +871,19 @@ const ConnectionDialog = ({
 
 const ConnectionsScreen = () => {
   const words = useConnectionMessages();
+  const presentation = usePresentationDemo();
   const data = useQuery(api.connections.list);
   const [openId, setOpenId] = useState<ProviderId | null>(null);
   const [open, setOpen] = useState(false);
+
+  if (presentation) {
+    return (
+      <>
+        <PageHeader title={words.title} />
+        <EmptyNote>Connections are unavailable for this account.</EmptyNote>
+      </>
+    );
+  }
 
   const openService = (id: ProviderId): void => {
     setOpenId(id);

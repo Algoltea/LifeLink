@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale } from "@/i18n/locale";
 import { ago } from "@/lib/format";
 
@@ -445,6 +446,7 @@ const CallSummary = ({
 }) => {
   const messages = useCallScreeningMessages();
   const locale = useLocale();
+  const presentationDemo = usePresentationDemo();
   const { me } = usePreferences();
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -474,9 +476,11 @@ const CallSummary = ({
             {summary.practice ? messages.practiceSummary : messages.summary}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <Pill tone={summary.practice ? "simulated" : "neutral"}>
-              {summary.practice ? messages.practice : messages.liveCall}
-            </Pill>
+            {summary.practice && presentationDemo ? null : (
+              <Pill tone={summary.practice ? "simulated" : "neutral"}>
+                {summary.practice ? messages.practice : messages.liveCall}
+              </Pill>
+            )}
             <p className="text-muted-foreground text-lg">
               <span className="num">{callTime(summary.durationMs)}</span> ·{" "}
               {ago(

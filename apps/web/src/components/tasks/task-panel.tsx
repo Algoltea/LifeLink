@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import type { Route } from "next";
 import Link from "next/link";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
@@ -20,6 +21,7 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
   const detail = useQuery(api.tasks.detail, { taskId });
   const t = useMessages().tasks;
   const locale = useLocale();
+  const presentationDemo = usePresentationDemo();
 
   if (detail === undefined) {
     return <LoadingRows label={t.loadingRequest} layout="task-panel" />;
@@ -40,6 +42,11 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
     null;
 
   const showGauge = detail.steps.length > 1;
+
+  const sentWaiting =
+    presentationDemo && task.mode === "simulated"
+      ? "Your message is recorded in LifeLink. Nothing was sent outside LifeLink."
+      : t.sentWaiting;
 
   return (
     <section
@@ -77,7 +84,7 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
       ) : (
         <p className="text-lg">
           {task.status === "waiting_for_reply"
-            ? t.sentWaiting
+            ? sentWaiting
             : t.nothingNeedsYou}{" "}
           <Link
             className="font-semibold underline"
@@ -94,7 +101,7 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
             {t.progressAndNext}
           </summary>
           <div className="pt-4">
-            <JourneyGauge steps={detail.steps} />
+            <JourneyGauge mode={task.mode} steps={detail.steps} />
           </div>
         </details>
       ) : null}

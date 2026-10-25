@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { EmptyNote } from "@/components/app/states";
 import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
@@ -33,6 +34,11 @@ import { isRowStillShown } from "@/lib/list-beside-reader";
 import { EmailList } from "./email-list";
 import { EmailReader } from "./email-reader";
 import { InboxPaging } from "./inbox-paging";
+import {
+  MAILBOX_UNAVAILABLE,
+  PRESENTATION_CHECKS_NOTICE,
+  mailboxErrorText,
+} from "./presentation-copy";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -48,6 +54,7 @@ const MailboxStatus = () => {
   const [busy, setBusy] = useState(false);
   const locale = useLocale();
   const t = useMessages().email;
+  const presentationDemo = usePresentationDemo();
 
   if (connections === undefined) {
     return null;
@@ -63,6 +70,27 @@ const MailboxStatus = () => {
     (mailbox) => mailbox.status === "error" || mailbox.status === "expired"
   );
 
+  let mailboxSummary = t.noMailbox;
+
+  if (active.length > 0) {
+    mailboxSummary = t.connected(
+      active
+        .map((mailbox) => {
+          const accountLabel =
+            presentationDemo && mailbox.mode === "simulated"
+              ? null
+              : mailbox.accountLabel;
+
+          return `${mailbox.definition.label}${accountLabel ? ` (${accountLabel})` : ""}`;
+        })
+        .join(", ")
+    );
+  }
+
+  if (presentationDemo && connections.demoMode) {
+    mailboxSummary = MAILBOX_UNAVAILABLE;
+  }
+
   return (
     <section
       aria-label={t.mailboxes}
@@ -75,17 +103,8 @@ const MailboxStatus = () => {
             className="text-muted-foreground size-5 shrink-0"
           />
           <span>
-            {active.length === 0
-              ? t.noMailbox
-              : t.connected(
-                  active
-                    .map(
-                      (mailbox) =>
-                        `${mailbox.definition.label}${mailbox.accountLabel ? ` (${mailbox.accountLabel})` : ""}`
-                    )
-                    .join(", ")
-                )}
-            {connections.demoMode ? t.sampleEmails : ""}
+            {mailboxSummary}
+            {connections.demoMode && !presentationDemo ? t.sampleEmails : ""}
           </span>
         </p>
         {active.length === 0 ? (
@@ -109,7 +128,11 @@ const MailboxStatus = () => {
                 const result = await refresh({});
 
                 for (const problem of result.errors) {
-                  toast.error(translateServerMessage(problem));
+                  toast.error(
+                    translateServerMessage(
+                      mailboxErrorText(problem, presentationDemo)
+                    )
+                  );
                 }
 
                 toast.success(t.newEmails(result.added));
@@ -150,6 +173,7 @@ const MailboxStatus = () => {
 /** What the automatic checks do and don't do, one press away instead of always on screen. */
 const ChecksExplained = () => {
   const t = useMessages().email;
+  const presentationDemo = usePresentationDemo();
 
   return (
     <section
@@ -161,7 +185,9 @@ const ChecksExplained = () => {
         {t.checksTitle}
       </h2>
       <p>{t.checksIntro}</p>
-      <p className="text-muted-foreground text-label">{t.checksAutomatic}</p>
+      <p className="text-muted-foreground text-label">
+        {presentationDemo ? PRESENTATION_CHECKS_NOTICE : t.checksAutomatic}
+      </p>
       <Link
         className="text-foreground min-h-control inline-flex items-center self-start font-semibold underline underline-offset-4"
         href="/scam"

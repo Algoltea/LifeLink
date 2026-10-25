@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
 import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
@@ -53,7 +54,8 @@ interface Heading {
 const headingFor = (
   focus: ActionView | null,
   detail: TaskDetail,
-  locale: InterfaceLocale
+  locale: InterfaceLocale,
+  presentationDemo: boolean
 ): Heading => {
   const kind = focus?.current?.details.kind;
   const awaiting = focus?.action.status === "awaiting_approval";
@@ -82,6 +84,14 @@ const headingFor = (
   }
 
   if (detail.task.status === "waiting_for_reply") {
+    if (presentationDemo && detail.task.mode === "simulated") {
+      return {
+        subline:
+          "Your message is recorded in LifeLink. Nothing was sent outside LifeLink.",
+        title: t.waitingTitle(who),
+      };
+    }
+
     return { subline: t.waitingSubline(who), title: t.waitingTitle(who) };
   }
 
@@ -251,6 +261,7 @@ const Conversation = ({ detail }: { detail: TaskDetail }) => {
 };
 
 const TaskScreen = ({ taskId }: { taskId: string }) => {
+  const presentationDemo = usePresentationDemo();
   // SAFETY: the id comes from a LifeLink link; the query validates it and rejects anything not owned by this person.
   const detail = useQuery(api.tasks.detail, { taskId: taskId as Id<"tasks"> });
   const words = useMessages();
@@ -276,7 +287,7 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
   }
 
   const focus = focusOf(detail.actions);
-  const heading = headingFor(focus, detail, locale);
+  const heading = headingFor(focus, detail, locale, presentationDemo);
   const hue = detail.contact?.hue ?? 30;
 
   const others = detail.actions.filter(
@@ -333,7 +344,11 @@ const TaskScreen = ({ taskId }: { taskId: string }) => {
             <h2 className="text-2xl font-semibold" id="progress-heading">
               {detail.task.status === "completed" ? t.howItWent : t.stepByStep}
             </h2>
-            <JourneyGauge orientation="vertical" steps={detail.steps} />
+            <JourneyGauge
+              mode={detail.task.mode}
+              orientation="vertical"
+              steps={detail.steps}
+            />
           </section>
         </aside>
       </div>

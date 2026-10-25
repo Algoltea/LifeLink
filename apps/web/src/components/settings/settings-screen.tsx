@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { TimeZoneSelect } from "@/components/app/time-zone-select";
 import { currentMessages, setLocale, useMessages } from "@/i18n/locale";
@@ -487,6 +488,7 @@ const NotesSetting = ({ saved }: { saved: string }) => {
 /** How LifeLink explains messages, scam checks, briefings, and practice. */
 const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const { failure, save, state, value } = usePreferenceSave(stored);
+  const presentation = usePresentationDemo();
   const style = helpStyleOf(value);
   const t = useMessages().settings;
 
@@ -517,12 +519,14 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           label={t.oneStep}
           onChange={(stepByStep) => save({ stepByStep })}
         />
-        <Toggle
-          checked={value.aiEmailChecks ?? true}
-          description={t.aiEmailChecksDescription}
-          label={t.aiEmailChecks}
-          onChange={(aiEmailChecks) => save({ aiEmailChecks })}
-        />
+        {presentation ? null : (
+          <Toggle
+            checked={value.aiEmailChecks ?? true}
+            description={t.aiEmailChecksDescription}
+            label={t.aiEmailChecks}
+            onChange={(aiEmailChecks) => save({ aiEmailChecks })}
+          />
+        )}
       </fieldset>
       <SaveFeedback failure={failure} state={state} />
       {failure ? (
@@ -755,6 +759,7 @@ const DemoSettings = ({
 
 const SettingsScreen = () => {
   const { me } = usePreferences();
+  const presentation = usePresentationDemo();
   const t = useMessages().settings;
 
   if (!me?.profile || !me.preferences) {
@@ -776,7 +781,7 @@ const SettingsScreen = () => {
         <div className="flex flex-col gap-8">
           <ProfileSettings profile={me.profile} />
           {isOwner ? <HelpSettings stored={me.preferences} /> : null}
-          {isOwner ? (
+          {isOwner && !presentation ? (
             <DemoSettings allowed={me.demoModeAllowed} profile={me.profile} />
           ) : null}
           {isOwner ? (

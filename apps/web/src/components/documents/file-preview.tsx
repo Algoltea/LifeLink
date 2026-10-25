@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { IsoIcon, fileIconFor } from "@/components/app/iso-icon";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
@@ -101,10 +102,18 @@ const PreviewWindow = ({ file }: { file: DriveFile }) => {
 };
 
 /** Opens the file in Drive, or explains why it can't, without leaving a dead end. */
-const OpenInDrive = ({ file, noteId }: { file: DriveFile; noteId: string }) => {
+const OpenInDrive = ({
+  file,
+  isPractice,
+  noteId,
+}: {
+  file: DriveFile;
+  isPractice: boolean;
+  noteId: string;
+}) => {
   const t = useMessages().documents;
 
-  if (file.url !== null) {
+  if (!isPractice && file.url !== null) {
     return (
       <a
         className={buttonVariants({ size: "sm" })}
@@ -141,10 +150,11 @@ const FilePreview = ({
   timeZone: string;
 }) => {
   const locale = useLocale();
+  const presentation = usePresentationDemo();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const noteId = useId();
   const { preview } = file;
-  const hasLink = file.url !== null;
+  const hasLink = !isPractice && file.url !== null;
   const messages = useMessages();
   const t = messages.documents;
 
@@ -176,7 +186,16 @@ const FilePreview = ({
       />
     ) : null;
 
-  const openInDrive = <OpenInDrive file={file} noteId={noteId} />;
+  const openInDrive = (
+    <OpenInDrive file={file} isPractice={isPractice} noteId={noteId} />
+  );
+
+  let noLink = isPractice ? t.practiceNoLink : t.noLink;
+
+  if (isPractice && presentation) {
+    noLink =
+      "Opening this file in Google Drive is unavailable for this account.";
+  }
 
   return (
     <article
@@ -218,11 +237,7 @@ const FilePreview = ({
           {hasLink ? openInDrive : readAloud}
           {hasLink ? readAloud : openInDrive}
         </div>
-        {hasLink ? null : (
-          <InfoLine id={noteId}>
-            {isPractice ? t.practiceNoLink : t.noLink}
-          </InfoLine>
-        )}
+        {hasLink ? null : <InfoLine id={noteId}>{noLink}</InfoLine>}
       </div>
 
       <PreviewWindow file={file} />

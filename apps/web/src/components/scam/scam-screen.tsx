@@ -21,6 +21,7 @@ import { useId, useRef, useState } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
@@ -139,6 +140,7 @@ const photoAvailability = (
 
 const useCheckAvailability = () => {
   const t = useMessages().scam.photo;
+  const presentationDemo = usePresentationDemo();
   const { me } = usePreferences();
   const integrations = useQuery(api.status.integrations);
   const practice = me?.profile?.demoMode === true;
@@ -157,7 +159,7 @@ const useCheckAvailability = () => {
       practice,
       profileLoaded && integrations !== undefined,
       configured,
-      t
+      presentationDemo ? { ...t, practice: t.unavailable } : t
     ),
   };
 };
@@ -210,11 +212,17 @@ const CheckPrivacyNote = ({
   practice: boolean;
   source: Source;
 }) => {
-  const t = useMessages().scam;
+  const messages = useMessages();
+  const t = messages.scam;
+  const presentationDemo = usePresentationDemo();
 
   if (source === "email" && email?.mode === "simulated") {
     return (
-      <p className="text-muted-foreground text-label">{t.practiceEmailNote}</p>
+      <p className="text-muted-foreground text-label">
+        {presentationDemo
+          ? messages.scamResult.method.rules
+          : t.practiceEmailNote}
+      </p>
     );
   }
 
@@ -226,9 +234,11 @@ const CheckPrivacyNote = ({
     return null;
   }
 
+  const localNote = practice ? t.practiceNote : t.localNote;
+
   return (
     <p className="text-muted-foreground text-label">
-      {practice ? t.practiceNote : t.localNote}
+      {presentationDemo ? messages.scamResult.method.rules : localNote}
     </p>
   );
 };
@@ -477,6 +487,7 @@ const HistoryList = ({
 }) => {
   const locale = useLocale();
   const messages = useMessages();
+  const presentationDemo = usePresentationDemo();
   const t = messages.scam;
 
   if (reviews === undefined) {
@@ -517,7 +528,9 @@ const HistoryList = ({
                 </span>
                 <span className="text-muted-foreground text-label">
                   {kind} · {ago(review.createdAt, timeZone, undefined, locale)}
-                  {review.mode === "simulated" ? t.practiceSuffix : ""}
+                  {review.mode === "simulated" && !presentationDemo
+                    ? t.practiceSuffix
+                    : ""}
                 </span>
               </span>
               <Pill tone={review.status === "done" ? verdict.tone : "neutral"}>
@@ -609,7 +622,9 @@ const ScamPageIntro = ({ active }: { active: boolean }) => {
 };
 
 const CheckGuidance = () => {
-  const t = useMessages().scam.guidance;
+  const messages = useMessages();
+  const t = messages.scam.guidance;
+  const presentationDemo = usePresentationDemo();
 
   return (
     <details className="group border-rule rounded-xl border p-4 sm:p-5">
@@ -622,7 +637,7 @@ const CheckGuidance = () => {
       </summary>
       <div className="flex max-w-prose flex-col gap-3 pt-3 text-lg">
         <p>{t.intro}</p>
-        <p>{t.ai}</p>
+        <p>{presentationDemo ? messages.scamResult.method.rules : t.ai}</p>
         <p>{t.next}</p>
       </div>
     </details>

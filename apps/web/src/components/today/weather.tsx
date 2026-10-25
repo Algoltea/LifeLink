@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { adviceFor, degrees, weatherLabel } from "@/lib/weather";
 import type { WeatherState } from "@/lib/weather";
@@ -77,6 +78,7 @@ const WeekForecast = ({
 }) => {
   const locale = useLocale();
   const t = useMessages();
+  const presentation = usePresentationDemo();
 
   return (
     <>
@@ -115,7 +117,7 @@ const WeekForecast = ({
         })}
       </ul>
       <p className="text-muted-foreground text-sm">
-        {practice ? t.weather.practiceSample : ""}
+        {practice && !presentation ? t.weather.practiceSample : ""}
         {t.weather.dataFrom}
         <a
           className="underline"

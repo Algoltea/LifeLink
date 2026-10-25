@@ -17,6 +17,7 @@ import {
 import { IsoIcon } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
 import { currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
@@ -326,9 +327,35 @@ const DriveFiles = ({ timeZone }: { timeZone: string }) => {
   );
 };
 
+const DisconnectedDriveNotice = ({
+  demoMode,
+  needsReconnect,
+}: {
+  demoMode: boolean;
+  needsReconnect: boolean;
+}) => {
+  const presentation = usePresentationDemo();
+  const t = useMessages().documents;
+
+  if (presentation) {
+    return (
+      <DriveNotice>
+        Google Drive connections are unavailable for this account.
+      </DriveNotice>
+    );
+  }
+
+  return (
+    <DriveNotice action={needsReconnect ? t.reconnect : t.connect}>
+      {demoMode ? t.connectPracticeHint : t.connectHint}
+    </DriveNotice>
+  );
+};
+
 const DocumentsScreen = () => {
   const connections = useQuery(api.connections.list);
   const { me } = usePreferences();
+  const presentation = usePresentationDemo();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
   const t = useMessages().documents;
 
@@ -352,17 +379,20 @@ const DocumentsScreen = () => {
         />
       ) : null}
       {connections !== undefined && !isActive ? (
-        <DriveNotice action={needsReconnect ? t.reconnect : t.connect}>
-          {connections.demoMode ? t.connectPracticeHint : t.connectHint}
-        </DriveNotice>
+        <DisconnectedDriveNotice
+          demoMode={connections.demoMode}
+          needsReconnect={needsReconnect}
+        />
       ) : null}
       {connections !== undefined && isActive ? (
         <>
-          <DriveNotice>
-            {connections.demoMode
-              ? t.practiceConnected
-              : t.connected(drive.accountLabel ?? null)}
-          </DriveNotice>
+          {presentation ? null : (
+            <DriveNotice>
+              {connections.demoMode
+                ? t.practiceConnected
+                : t.connected(drive.accountLabel ?? null)}
+            </DriveNotice>
+          )}
           <DriveFiles timeZone={timeZone} />
         </>
       ) : null}

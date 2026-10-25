@@ -9,6 +9,7 @@ import type { ReactNode, Ref } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { IsoIcon } from "@/components/app/iso-icon";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 
@@ -78,6 +79,7 @@ const ContactRow = ({
 
   const messages = useMessages();
   const t = messages.circle;
+  const presentationDemo = usePresentationDemo();
 
   const status = usesIMessage
     ? imessageRowStatus(imessageContext, imessageRow, messages)
@@ -97,7 +99,9 @@ const ContactRow = ({
             {contact.name}
           </span>
           {contact.trusted ? <TrustedBadge /> : null}
-          {contact.sample ? <Pill>{t.practiceContact}</Pill> : null}
+          {contact.sample && !presentationDemo ? (
+            <Pill>{t.practiceContact}</Pill>
+          ) : null}
         </span>
         <span className="text-muted-foreground text-label">
           {contact.relationship || t.contactFallback} · {reachLine(contact, t)}

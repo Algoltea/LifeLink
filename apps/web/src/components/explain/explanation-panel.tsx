@@ -15,6 +15,7 @@ import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
@@ -29,13 +30,21 @@ const useWords = () => useMessages().explanation;
 
 const methodWords = (
   explanation: Explanation,
-  locale: InterfaceLocale
-): string =>
-  explanation.method === "cloud"
-    ? messagesFor(locale).explanation.cloud
-    : messagesFor(locale).explanation.local[
-        explanation.localReason ?? "chosen"
-      ];
+  locale: InterfaceLocale,
+  presentationDemo: boolean
+): string => {
+  const words = messagesFor(locale).explanation;
+
+  if (explanation.method === "cloud") {
+    return words.cloud;
+  }
+
+  if (presentationDemo && explanation.localReason === "practice") {
+    return words.local.chosen;
+  }
+
+  return words.local[explanation.localReason ?? "chosen"];
+};
 
 const contentLanguage = (explanation: Explanation): string =>
   explanation.method === "cloud"
@@ -358,6 +367,7 @@ const RequestForm = ({
 }) => {
   const request = useMutation(api.explanations.request);
   const words = useWords();
+  const presentationDemo = usePresentationDemo();
   const { me } = usePreferences();
   const hasNotes = (me?.preferences?.communicationNotes ?? "").length > 0;
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
@@ -379,7 +389,9 @@ const RequestForm = ({
   return (
     <div className="flex flex-col gap-3">
       {practice ? (
-        <p className="text-base">{words.practiceNote}</p>
+        <p className="text-base">
+          {presentationDemo ? words.local.chosen : words.practiceNote}
+        </p>
       ) : (
         <label
           className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
@@ -438,6 +450,7 @@ const ExplanationPanel = ({
   source: ExplainSource;
 }) => {
   const explanation = useQuery(api.explanations.forSource, source);
+  const presentationDemo = usePresentationDemo();
   const locale = useLocale();
   const words = useWords();
   const { me } = usePreferences();
@@ -469,7 +482,7 @@ const ExplanationPanel = ({
     body = (
       <>
         <p className="text-base font-semibold">
-          {methodWords(explanation, locale)}
+          {methodWords(explanation, locale, presentationDemo)}
         </p>
         {needsLanguageNotice(explanation, locale) ? (
           <p className="text-base">{words.localLanguageNotice}</p>

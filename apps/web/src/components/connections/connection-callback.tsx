@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { useLocale } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
@@ -39,6 +40,15 @@ const CallbackResult = ({
 }) => {
   const locale = useLocale();
   const words = useConnectionMessages().callback;
+  const presentation = usePresentationDemo();
+
+  if (presentation) {
+    return (
+      <p className="bg-parchment text-body rounded-xl px-5 py-4">
+        Connections are unavailable for this account.
+      </p>
+    );
+  }
 
   if (declined) {
     return <ErrorNote>{words.declined(label)}</ErrorNote>;
@@ -88,6 +98,7 @@ const ConnectionCallback = ({
   const words = useConnectionMessages().callback;
   const complete = useAction(api.connections.complete);
   const { me } = usePreferences();
+  const presentation = usePresentationDemo();
   const [outcome, setOutcome] = useState<Outcome>(null);
   const started = useRef(false);
 
@@ -96,7 +107,9 @@ const ConnectionCallback = ({
 
   const label = definition?.label ?? words.service;
   const demoMode = me?.profile?.demoMode;
-  const canComplete = me?.profile?.role === "owner" && demoMode === false;
+
+  const canComplete =
+    me?.profile?.role === "owner" && demoMode === false && !presentation;
 
   const available =
     definition?.connectStyle === "oauth" &&

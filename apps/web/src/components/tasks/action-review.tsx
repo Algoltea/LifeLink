@@ -22,11 +22,13 @@ import { toast } from "sonner";
 
 import { ModePill } from "@/components/app/bits";
 import { useOffline } from "@/components/app/offline-queue";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 
 import { DetailsView } from "./details-view";
+import { taskBlockerText, taskOutcomeText } from "./presentation-copy";
 
 type TaskDetail = NonNullable<FunctionReturnType<typeof api.tasks.detail>>;
 
@@ -161,6 +163,7 @@ const OutcomeConfirmation = ({
 };
 
 const ShoppingHistory = ({ view }: { view: ActionView }) => {
+  const presentationDemo = usePresentationDemo();
   const receipt = view.receipts.at(-1);
   const lastAttempt = view.attempts.at(-1);
   const { status } = view.action;
@@ -175,7 +178,13 @@ const ShoppingHistory = ({ view }: { view: ActionView }) => {
             {t.recordedOutcome} <ModePill mode={receipt.mode} />
           </p>
           <p className="text-lg">
-            {translateServerMessage(receipt.summary, locale)}
+            {taskOutcomeText(
+              receipt.summary,
+              view.action.kind,
+              receipt.mode,
+              presentationDemo,
+              locale
+            )}
           </p>
         </div>
       ) : null}
@@ -192,6 +201,7 @@ const ShoppingHistory = ({ view }: { view: ActionView }) => {
 };
 
 const Outcome = ({ view }: { view: ActionView }) => {
+  const presentationDemo = usePresentationDemo();
   const retry = useMutation(api.actions.retry);
   const checkOutcome = useAction(api.actions.checkOutcome);
   const markOutcome = useMutation(api.actions.markOutcome);
@@ -245,7 +255,13 @@ const Outcome = ({ view }: { view: ActionView }) => {
           {t.done} <ModePill mode={receipt.mode} />
         </span>
         <span className="text-lg">
-          {translateServerMessage(receipt.summary, locale)}
+          {taskOutcomeText(
+            receipt.summary,
+            view.action.kind,
+            receipt.mode,
+            presentationDemo,
+            locale
+          )}
         </span>
         {receipt.url ? (
           <a
@@ -571,6 +587,7 @@ const ApprovalBar = ({
   view: ActionView;
 }) => {
   const approve = useMutation(api.actions.approve);
+  const presentationDemo = usePresentationDemo();
   const cancel = useMutation(api.actions.cancel);
   const { online, queueApproval } = useOffline();
   const [pending, setPending] = useState<"approve" | "cancel" | null>(null);
@@ -673,7 +690,9 @@ const ApprovalBar = ({
         >
           <p className="text-lg leading-7">
             {blockers
-              .map((blocker) => translateServerMessage(blocker, locale))
+              .map((blocker) =>
+                taskBlockerText(blocker, presentationDemo, locale)
+              )
               .join(" ")}
           </p>
           {blockers.some((blocker) => blocker.includes("Trusted circle")) ? (
@@ -718,6 +737,7 @@ const ReviewVersion = ({
   const statusLine = useRef<HTMLParagraphElement>(null);
   const hadFocus = useRef(false);
   const t = useMessages().tasks;
+  const presentationDemo = usePresentationDemo();
 
   const previous = useRef({
     editing,
@@ -789,7 +809,7 @@ const ReviewVersion = ({
           {t.approveAgain}
         </output>
       ) : null}
-      {view.action.mode === "simulated" && !retired ? (
+      {view.action.mode === "simulated" && !retired && !presentationDemo ? (
         <p className="text-simulated flex flex-wrap items-center gap-3 text-base">
           <ModePill mode="simulated" />
           {t.practiceApproval}
