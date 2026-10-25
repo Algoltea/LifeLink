@@ -11,11 +11,13 @@ import type { ReplyClassification } from "@lifelink/contracts/model-output";
 
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { audit } from "./audit";
 import type { Mode } from "./capabilities";
+import { rideRequestDraft } from "./drafts";
 import { createAction } from "./lifecycle";
 import type { Ambiguity } from "./lifecycle";
+import { contactLocale } from "./locale";
 import { activeGrantsWithScope } from "./permissions";
 import { MINUTE, formatDay, formatTime, parseAbsoluteIso } from "./time";
 
@@ -165,20 +167,24 @@ const signOff = (owner: Doc<"profiles">): string =>
 
 // ── Ride journey ──────────────────────────────────────────────────────────
 
-const rideRequestBody = (
+/** The ride request, written in the language the contact reads. */
+const rideRequestBody = async (
+  ctx: QueryCtx,
   owner: Doc<"profiles">,
   contact: Doc<"contacts">,
   appointment: Doc<"appointments">
-): string => {
-  const place =
-    appointment.location === null ? "" : ` at ${appointment.location}`;
-
-  return [
-    `Hi ${firstName(contact.name)}, could you give me a ride to ${appointment.title}${place} on ${formatDay(appointment.startsAt, owner.timeZone)}?`,
-    `I need to be there by ${formatTime(appointment.startsAt, owner.timeZone)}.`,
-    `Thank you! ${signOff(owner)}`,
-  ].join(" ");
-};
+): Promise<string> =>
+  rideRequestDraft(
+    {
+      firstName: firstName(contact.name),
+      location: appointment.location,
+      signOff: signOff(owner),
+      startsAt: appointment.startsAt,
+      timeZone: owner.timeZone,
+      title: appointment.title,
+    },
+    await contactLocale(ctx, owner._id, contact)
+  );
 
 const RIDE_STEPS: { kind: StepKind; label: string }[] = [
   { kind: "send_message", label: "Ask for a ride" },
@@ -268,7 +274,7 @@ const startRideRequest = async (
     ambiguities,
     details: {
       address: channel.address,
-      body: rideRequestBody(input.owner, contact, appointment),
+      body: await rideRequestBody(ctx, input.owner, contact, appointment),
       channel: channel.channel,
       contactId: contact._id,
       contactName: contact.name,

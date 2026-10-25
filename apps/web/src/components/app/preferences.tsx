@@ -4,6 +4,7 @@ import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { helpStyleOf } from "@lifelink/contracts/help-style";
 import type { ExplanationDetail } from "@lifelink/contracts/help-style";
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import type { NewsKind } from "@lifelink/contracts/news";
 import type { SpeechVoice } from "@lifelink/contracts/speech";
 import { useQuery } from "convex/react";
@@ -11,6 +12,7 @@ import { useTheme } from "next-themes";
 import { createContext, use, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 
+import { setLocale } from "@/i18n/locale";
 import { saveDisplay } from "@/lib/display";
 
 interface Preferences {
@@ -70,6 +72,15 @@ const PreferencesProvider = ({ children }: { children: ReactNode }) => {
     });
     setTheme(stored.theme);
   }, [stored, setTheme]);
+
+  // Unrelated preference saves must not overwrite a language awaiting retry.
+  const supportLanguage = stored?.supportLanguage;
+
+  useEffect(() => {
+    if (supportLanguage !== undefined) {
+      setLocale(interfaceLocaleOf(supportLanguage));
+    }
+  }, [supportLanguage]);
 
   const value = useMemo<PreferencesValue>(
     () => ({

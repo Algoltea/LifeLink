@@ -237,7 +237,7 @@ const rebuildRideBody = async (
   const contact = contactId === null ? null : await ctx.db.get(contactId);
 
   if (appointment !== null && contact !== null) {
-    details.body = rideRequestBody(owner, contact, appointment);
+    details.body = await rideRequestBody(ctx, owner, contact, appointment);
   }
 };
 

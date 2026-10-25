@@ -2,8 +2,12 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-const formatWhen = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+const formatWhen = (
+  timestamp: number,
+  timeZone: string,
+  locale = "en-US"
+): string =>
+  new Intl.DateTimeFormat(locale, {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
@@ -12,16 +16,24 @@ const formatWhen = (timestamp: number, timeZone: string): string =>
     weekday: "long",
   }).format(timestamp);
 
-const formatDay = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+const formatDay = (
+  timestamp: number,
+  timeZone: string,
+  locale = "en-US"
+): string =>
+  new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     timeZone,
     weekday: "long",
   }).format(timestamp);
 
-const formatTime = (timestamp: number, timeZone: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+const formatTime = (
+  timestamp: number,
+  timeZone: string,
+  locale = "en-US"
+): string =>
+  new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
     timeZone,

@@ -10,7 +10,13 @@ import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
+import { useLocale } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
+
+import {
+  translateConnectionMessage,
+  useConnectionMessages,
+} from "./connection-messages";
 
 type Outcome = { message: string; ok: boolean } | null;
 
@@ -31,53 +37,42 @@ const CallbackResult = ({
   missing: boolean;
   outcome: Outcome;
 }) => {
+  const locale = useLocale();
+  const words = useConnectionMessages().callback;
+
   if (declined) {
-    return (
-      <ErrorNote>
-        {label} didn’t finish connecting. Nothing was changed. You can try
-        again.
-      </ErrorNote>
-    );
+    return <ErrorNote>{words.declined(label)}</ErrorNote>;
   }
 
   if (missing) {
-    return (
-      <ErrorNote>
-        This page was opened without a connection to finish. Please start again
-        from Connections.
-      </ErrorNote>
-    );
+    return <ErrorNote>{words.missing}</ErrorNote>;
   }
 
   if (demoMode) {
     return (
       <p className="bg-parchment text-body rounded-xl px-5 py-4">
-        Practice mode is on. Turn it off in Settings before finishing a real
-        connection.
+        {words.practice}
       </p>
     );
   }
 
   if (!available) {
-    return (
-      <ErrorNote>
-        This service has no connection available in LifeLink. Return to
-        Connections to review its limitations.
-      </ErrorNote>
-    );
+    return <ErrorNote>{words.unavailable}</ErrorNote>;
   }
 
   if (outcome !== null) {
     return outcome.ok ? (
       <p className="bg-parchment text-body rounded-xl px-5 py-4">
-        {outcome.message}
+        {words.connected(label)}
       </p>
     ) : (
-      <ErrorNote>{outcome.message}</ErrorNote>
+      <ErrorNote>
+        {translateConnectionMessage(outcome.message, locale)}
+      </ErrorNote>
     );
   }
 
-  return <LoadingRows label={`Checking the ${label} connection`} rows={1} />;
+  return <LoadingRows label={words.checking(label)} rows={1} />;
 };
 
 /** Finishes a connection after the provider's sign-in page sends the person back. */
@@ -90,6 +85,7 @@ const ConnectionCallback = ({
   provider: string | null;
   status: string | null;
 }) => {
+  const words = useConnectionMessages().callback;
   const complete = useAction(api.connections.complete);
   const { me } = usePreferences();
   const [outcome, setOutcome] = useState<Outcome>(null);
@@ -98,7 +94,7 @@ const ConnectionCallback = ({
   const definition =
     provider === null ? undefined : findConnectionDefinition(provider);
 
-  const label = definition?.label ?? "The service";
+  const label = definition?.label ?? words.service;
   const demoMode = me?.profile?.demoMode;
   const canComplete = me?.profile?.role === "owner" && demoMode === false;
 
@@ -150,8 +146,8 @@ const ConnectionCallback = ({
   return (
     <>
       <PageHeader
-        title={outcome?.ok ? `${label} connected` : "Connection status"}
-        subline="Return to Connections to review your services or start again."
+        title={outcome?.ok ? words.connectedTitle(label) : words.title}
+        subline={words.subline}
       />
       <div aria-live="polite" className="max-w-prose">
         <CallbackResult
@@ -167,7 +163,7 @@ const ConnectionCallback = ({
         className={buttonVariants({ className: "self-start", size: "lg" })}
         href="/connections"
       >
-        Back to Connections
+        {words.back}
       </Link>
     </>
   );

@@ -19,9 +19,10 @@ import type { ReactNode, RefObject } from "react";
 
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { formatWhen } from "@/lib/format";
 
-import { STATUS_WORDS, conversationItems } from "./message-bits";
+import { conversationItems } from "./message-bits";
 import type { ConversationItem, Message } from "./message-bits";
 
 const STATUS_ICONS: Record<Message["status"], ReactNode> = {
@@ -45,13 +46,16 @@ const STATUS_TONE: Partial<Record<Message["status"], string>> = {
   unknown: "text-warning font-medium",
 };
 
-const PhotoCount = ({ count }: { count: number }) =>
-  count > 0 ? (
+const PhotoCount = ({ count }: { count: number }) => {
+  const t = useMessages();
+
+  return count > 0 ? (
     <p className="text-muted-foreground text-label mt-2 flex items-center gap-2">
       <ImageIcon aria-hidden="true" className="size-[1.125rem] shrink-0" />
-      {count} {count === 1 ? "photo" : "photos"}
+      {t.threads.photoCount(count)}
     </p>
   ) : null;
+};
 
 const BubbleText = ({ body }: { body: string }) =>
   body.trim().length > 0 ? (
@@ -68,13 +72,15 @@ const Outgoing = ({
   timeZone: string;
 }) => {
   const { message } = item;
+  const t = useMessages().threads;
+  const locale = useLocale();
   const troubled = message.status === "failed" || message.status === "unknown";
 
   return (
     <div className="flex flex-col items-end gap-1.5 pl-10 sm:pl-24">
       <div className="bg-neutral-wash max-w-full rounded-[1.222rem] px-4 py-3 text-lg sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
         <span className="sr-only">
-          You, {formatWhen(message.createdAt, timeZone)}:{" "}
+          {t.srYou(formatWhen(message.createdAt, timeZone, locale))}
         </span>
         <BubbleText body={message.body} />
         <PhotoCount count={message.photoIds.length} />
@@ -90,7 +96,7 @@ const Outgoing = ({
           {item.showStatus ? (
             <span className="inline-flex items-center gap-1.5">
               {STATUS_ICONS[message.status]}
-              {STATUS_WORDS[message.status]}
+              {t.status[message.status]}
             </span>
           ) : null}
         </p>
@@ -101,7 +107,7 @@ const Outgoing = ({
           // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
           href={`/tasks/${message.taskId}` as Route}
         >
-          See what happened
+          {t.seeWhatHappened}
         </Link>
       ) : null}
     </div>
@@ -126,6 +132,8 @@ const Incoming = ({
   const { message } = item;
   const firstName = contact.name.split(" ")[0] ?? contact.name;
   const hasText = message.body.trim().length > 0;
+  const t = useMessages().threads;
+  const locale = useLocale();
 
   return (
     <div className="flex gap-3">
@@ -144,7 +152,10 @@ const Incoming = ({
         {/* The gap on the far side lives on the bubble, so the actions below can use the full width. */}
         <div className="border-border bg-raised contrast:border-control max-w-[calc(100%-2rem)] rounded-[1.222rem] border px-4 py-3 text-lg sm:max-w-[calc(100%-6rem)] sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
           <span className="sr-only">
-            {firstName}, {formatWhen(message.createdAt, timeZone)}:{" "}
+            {t.srThem(
+              firstName,
+              formatWhen(message.createdAt, timeZone, locale)
+            )}
           </span>
           <BubbleText body={message.body} />
           <PhotoCount count={message.photoIds.length} />
@@ -173,7 +184,7 @@ const Incoming = ({
                 variant="ghost"
               >
                 <LightbulbIcon aria-hidden="true" />
-                Help me understand
+                {t.helpMeUnderstand}
               </Button>
             ) : null}
           </div>
@@ -207,7 +218,8 @@ const ConversationList = ({
   onUseReply: (suggestion: string) => void;
   timeZone: string;
 }) => {
-  const items = conversationItems(messages, timeZone);
+  const locale = useLocale();
+  const items = conversationItems(messages, timeZone, undefined, locale);
   const modes = new Set(messages.map((message) => message.mode));
   // Practice is marked once in the header; only a mixed conversation needs it per message.
   const mixed = modes.size > 1;

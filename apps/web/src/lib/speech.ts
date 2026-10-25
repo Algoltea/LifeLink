@@ -6,6 +6,7 @@ import { useAction } from "convex/react";
 import { useCallback, useEffect, useId, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { useMessages } from "@/i18n/locale";
 
 import { messageOf } from "./errors";
 
@@ -21,7 +22,7 @@ interface SpeechSession {
   controller: AbortController;
   owner: string;
   rate: number;
-  reportError: (message: string) => void;
+  reportError: (error: Error) => void;
   resume: (() => Promise<void>) | null;
   text: string;
   update: (status: SpeechStatus) => void;
@@ -186,7 +187,7 @@ const resumeSpeech = async (
   rate: number,
   voice: SpeechVoice | null,
   update: (status: SpeechStatus) => void,
-  reportError: (message: string) => void
+  reportError: (error: Error) => void
 ): Promise<boolean> => {
   const session = currentSession;
 
@@ -251,10 +252,9 @@ const readPassage = async (
   } catch (error) {
     if (!signal.aborted) {
       session.reportError(
-        messageOf(
-          error instanceof Error ? error : null,
-          "Read-aloud is unavailable. Please try again."
-        )
+        error instanceof Error
+          ? error
+          : new Error("Read-aloud is unavailable. Please try again.")
       );
     }
   } finally {
@@ -267,6 +267,7 @@ const readPassage = async (
 
 /** Shared authenticated ElevenLabs read-aloud, with no browser-synthesis fallback. */
 const useSpeech = (voiceOverride?: SpeechVoice | null) => {
+  const t = useMessages().voice;
   const synthesize = useAction(api.voice.synthesizeSpeech);
   const { preferences } = usePreferences();
 
@@ -275,7 +276,7 @@ const useSpeech = (voiceOverride?: SpeechVoice | null) => {
 
   const owner = useId();
   const [status, setStatus] = useState<SpeechStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Error | null>(null);
   const stop = useCallback(() => stopSpeaking(owner), [owner]);
 
   // Prepared audio belongs to the voice that generated it, including before play.
@@ -289,9 +290,9 @@ const useSpeech = (voiceOverride?: SpeechVoice | null) => {
 
   const read = useCallback(
     async (text: string, rate: number): Promise<void> => {
-      setError(null);
+      setFailure(null);
 
-      if (await resumeSpeech(owner, text, rate, voice, setStatus, setError)) {
+      if (await resumeSpeech(owner, text, rate, voice, setStatus, setFailure)) {
         return;
       }
 
@@ -302,16 +303,20 @@ const useSpeech = (voiceOverride?: SpeechVoice | null) => {
       }
 
       if (text.length > MAX_PASSAGE_CHARACTERS) {
-        setError(
-          "That passage is too long to read at once. Please choose a shorter section."
+        setFailure(
+          new Error(
+            "That passage is too long to read at once. Please choose a shorter section."
+          )
         );
 
         return;
       }
 
       if (!("Audio" in globalThis)) {
-        setError(
-          "This browser cannot play audio. You can still read the text here."
+        setFailure(
+          new Error(
+            "This browser cannot play audio. You can still read the text here."
+          )
         );
 
         return;
@@ -322,7 +327,7 @@ const useSpeech = (voiceOverride?: SpeechVoice | null) => {
         controller: new AbortController(),
         owner,
         rate,
-        reportError: setError,
+        reportError: setFailure,
         resume: null,
         text,
         update: setStatus,
@@ -333,6 +338,11 @@ const useSpeech = (voiceOverride?: SpeechVoice | null) => {
     },
     [owner, synthesize, voice]
   );
+
+  // Keep the original error so changing language updates fixed failures without
+  // restarting audio or losing an unfamiliar provider's diagnostic message.
+  const error =
+    failure === null ? null : messageOf(failure, t.readAloudUnavailable);
 
   return { error, read, status, stop };
 };

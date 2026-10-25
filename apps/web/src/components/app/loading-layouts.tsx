@@ -1,8 +1,11 @@
+"use client";
+
 import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { cn } from "@lifelink/ui/lib/utils";
 
 import { CHAT_READING_COLUMN } from "@/components/assistant/chat-layout";
 import { InboxSkeleton, ReaderSkeleton } from "@/components/email/email-bits";
+import { useMessages } from "@/i18n/locale";
 
 import {
   CircleLoadingRows,
@@ -704,6 +707,8 @@ const LoadingLayoutBody = ({
   layout: LoadingLayout;
   rows: number;
 }) => {
+  const { appExtras } = useMessages();
+
   switch (layout) {
     case "messages": {
       return <MessagesLoadingRows rows={rows} />;
@@ -718,13 +723,13 @@ const LoadingLayoutBody = ({
     }
 
     case "email-list": {
-      return <InboxSkeleton label="Loading emails" rows={rows} />;
+      return <InboxSkeleton label={appExtras.loading.emails} rows={rows} />;
     }
 
     case "email-reader": {
       return (
         <div className="min-w-0 [&_div]:min-w-0">
-          <ReaderSkeleton label="Loading email" />
+          <ReaderSkeleton label={appExtras.loading.email} />
         </div>
       );
     }

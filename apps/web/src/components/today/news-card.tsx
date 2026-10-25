@@ -9,14 +9,10 @@ import { ExternalLinkIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { useMessages } from "@/i18n/locale";
 import { useRefreshWhenStale } from "@/lib/refresh";
 
 const SHOWN = 3;
-
-const KINDS = [
-  { label: "Good news", value: "good" },
-  { label: "Top news", value: "top" },
-] as const;
 
 /** Missing or old headlines are fetched again; the server decides if a fetch is due. */
 const useHeadlines = (kind: NewsKind, enabled: boolean) => {
@@ -51,6 +47,7 @@ const useHeadlines = (kind: NewsKind, enabled: boolean) => {
 /** Three headlines; the person picks gentle or ordinary news, saved to their profile. */
 const NewsCard = () => {
   const { preferences } = usePreferences();
+  const t = useMessages();
   const savePreferences = useMutation(api.profiles.updatePreferences);
   const [chosen, setChosen] = useState<NewsKind | null>(null);
   const kind = chosen ?? preferences.newsKind;
@@ -66,11 +63,11 @@ const NewsCard = () => {
     <section aria-labelledby="news-heading" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 className="text-section font-semibold" id="news-heading">
-          News
+          {t.today.news}
         </h2>
         <Segmented
           className="w-auto flex-nowrap [&>*]:px-3 [&>*]:whitespace-nowrap sm:[&>*]:px-4"
-          label="News type"
+          label={t.today.newsType}
           onValueChange={async (next) => {
             setChosen(next);
 
@@ -81,7 +78,10 @@ const NewsCard = () => {
               setChosen(null);
             }
           }}
-          options={KINDS}
+          options={[
+            { label: t.today.newsGood, value: "good" },
+            { label: t.today.newsTop, value: "top" },
+          ]}
           value={kind}
         />
       </div>
@@ -105,10 +105,10 @@ const NewsCard = () => {
                     {headline.title}
                   </span>
                   <span className="text-muted-foreground text-label flex shrink-0 items-center gap-1.5">
-                    <span className="sr-only">, from </span>
+                    <span className="sr-only">{t.today.newsSourceFrom}</span>
                     {headline.source}
                     <ExternalLinkIcon aria-hidden="true" className="size-4" />
-                    <span className="sr-only">, opens in a new tab</span>
+                    <span className="sr-only">{t.today.newsOpensNewTab}</span>
                   </span>
                 </a>
               </li>
@@ -117,7 +117,7 @@ const NewsCard = () => {
         ) : null}
         {headlines.length === 0 && failed ? (
           <output className="text-muted-foreground text-body block py-1">
-            News is not available right now. Please try again later.
+            {t.today.newsUnavailable}
           </output>
         ) : null}
       </div>
@@ -128,9 +128,9 @@ const NewsCard = () => {
           rel="noopener noreferrer"
           target="_blank"
         >
-          More from {single.label}
+          {t.today.newsMoreFrom(single.label)}
           <ExternalLinkIcon aria-hidden="true" className="size-4" />
-          <span className="sr-only">, opens in a new tab</span>
+          <span className="sr-only">{t.today.newsOpensNewTab}</span>
         </a>
       ) : null}
     </section>

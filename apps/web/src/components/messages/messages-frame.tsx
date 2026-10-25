@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote } from "@/components/app/states";
+import { useMessages } from "@/i18n/locale";
 
 import { MessagesNotice } from "./messages-notice";
 import { ThreadList } from "./thread-list";
@@ -29,6 +30,7 @@ const MessagesFrame = ({ children }: { children: ReactNode }) => {
   const { me } = usePreferences();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
   const besideOnly = open ? "hidden @3xl/content:flex" : undefined;
+  const t = useMessages().threads;
 
   return (
     <>
@@ -39,13 +41,13 @@ const MessagesFrame = ({ children }: { children: ReactNode }) => {
             href={{ pathname: "/circle", query: { add: "1" } }}
           >
             <UserPlusIcon aria-hidden="true" />
-            Add a person
+            {t.addPerson}
           </Link>
         }
         className={cn("items-center", besideOnly)}
-        title="Messages"
+        title={t.title}
       />
-      {open ? <h1 className="sr-only @3xl/content:hidden">Messages</h1> : null}
+      {open ? <h1 className="sr-only @3xl/content:hidden">{t.title}</h1> : null}
       <MessagesNotice className={besideOnly} />
       {threads?.length === 0 && !open ? (
         <EmptyNote
@@ -55,11 +57,11 @@ const MessagesFrame = ({ children }: { children: ReactNode }) => {
               className="min-h-control inline-flex items-center text-lg font-semibold underline"
               href={{ pathname: "/circle", query: { add: "1" } }}
             >
-              Add a person
+              {t.addPerson}
             </Link>
           }
         >
-          Add family or friends to your trusted circle to start writing to them.
+          {t.empty}
         </EmptyNote>
       ) : (
         <div className="grid gap-6 @3xl/content:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] @3xl/content:gap-0">

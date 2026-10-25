@@ -14,6 +14,7 @@ type Backend = ReturnType<typeof newBackend>;
 interface TelegramSender {
   first_name: string;
   id: number;
+  language_code?: string;
   username?: string;
 }
 
@@ -102,6 +103,7 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -120,6 +122,89 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
       "status",
       200
     );
+  });
+
+  it.each(["es-MX", "fr"])(
+    "uses Telegram's %s language before linking",
+    async (language) => {
+      vi.useFakeTimers();
+      const backend = newBackend();
+      const message = update("/start", 999_999, null);
+
+      message.message.from.language_code = language;
+      await post(backend, message);
+      await backend.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining(
+            language === "es-MX" ? "¡Hola Sam!" : "Hi Sam!"
+          ),
+        })
+      );
+    }
+  );
+
+  it("uses contact language for connected notices and owner language for photo placeholders", async () => {
+    vi.useFakeTimers();
+    const backend = newBackend();
+    const { contactId, owner } = await ownerWithContact(backend, false);
+
+    await backend.run(
+      async (ctx) => await ctx.db.patch(contactId, { language: "es" })
+    );
+    const code = await startCode(backend, owner, contactId);
+    await post(backend, update(`/start ${code}`));
+    await backend.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining(
+          "Su conexión está lista. Los mensajes de Ruth"
+        ),
+      })
+    );
+    await post(backend, update("/start"));
+    await post(backend, update(`/start ${"x".repeat(24)}`));
+    await backend.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining("Su conexión ya está lista"),
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining("Este enlace venció"),
+      })
+    );
+
+    const photo = update("");
+    await backend.fetch("/webhooks/telegram", {
+      body: JSON.stringify({
+        ...photo,
+        message: {
+          ...photo.message,
+          photo: [{ file_id: "test-photo", height: 20, width: 20 }],
+        },
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "X-Telegram-Bot-Api-Secret-Token": SECRET,
+      },
+      method: "POST",
+    });
+
+    const messages = await backend.run(
+      async (ctx) => await ctx.db.query("messages").collect()
+    );
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.body).toBe("(Sent a photo. Open Telegram to see it.)");
   });
 
   it("links the chat that opens the one-time link, once", async () => {

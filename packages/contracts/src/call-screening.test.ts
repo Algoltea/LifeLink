@@ -260,6 +260,147 @@ describe(callFlagsFromSigns, () => {
     ]);
   });
 
+  it("grounds a multiline quote in the trimmed transcript and anchors its first caption", () => {
+    const current = Object.freeze([
+      Object.freeze({
+        ...line("start", "  Please buy gift cards \t"),
+        timeMs: 1000,
+      }),
+      Object.freeze(line("empty", " \n\t ")),
+      Object.freeze({
+        ...line("end", " and read me their codes. \n"),
+        timeMs: 2000,
+      }),
+    ]);
+
+    const quote = "Please buy gift cards\nand read me their codes.";
+
+    expect(callTranscriptWindow(current)).toBe(quote);
+    expect(
+      callFlagsFromSigns([{ kind: "gift_cards", quote }], current)
+    ).toStrictEqual([
+      {
+        captionId: "start",
+        id: "start:gift_cards",
+        quote,
+        reason: CALL_WARNING_REASONS.gift_cards,
+        timeMs: 1000,
+      },
+    ]);
+    expect(current[0]?.text).toBe("  Please buy gift cards \t");
+    expect(current[2]?.text).toBe(" and read me their codes. \n");
+  });
+
+  it.each([
+    { captionId: "start", quote: "buy gift cards\nand read me", timeMs: 1000 },
+    { captionId: "start", quote: "gift cards", timeMs: 1000 },
+    { captionId: "end", quote: "and read me their codes.", timeMs: 2000 },
+  ])(
+    "anchors substring '$quote' to $captionId",
+    ({ captionId, quote, timeMs }) => {
+      const current = [
+        { ...line("start", "Please buy gift cards"), timeMs: 1000 },
+        { ...line("end", "and read me their codes."), timeMs: 2000 },
+      ];
+
+      expect(
+        callFlagsFromSigns([{ kind: "gift_cards", quote }], current)
+      ).toStrictEqual([
+        {
+          captionId,
+          id: `${captionId}:gift_cards`,
+          quote,
+          reason: CALL_WARNING_REASONS.gift_cards,
+          timeMs,
+        },
+      ]);
+    }
+  );
+
+  it.each(["buy gift cards", "buy gift cards\nand read me their codes."])(
+    "uses the latest occurrence of '%s'",
+    (quote) => {
+      const current = [
+        { ...line("earlier-start", "Please buy gift cards"), timeMs: 1000 },
+        { ...line("earlier-end", "and read me their codes."), timeMs: 2000 },
+        { ...line("latest-start", "Please buy gift cards"), timeMs: 3000 },
+        { ...line("latest-end", "and read me their codes."), timeMs: 4000 },
+      ];
+
+      expect(
+        callFlagsFromSigns([{ kind: "gift_cards", quote }], current)
+      ).toStrictEqual([
+        {
+          captionId: "latest-start",
+          id: "latest-start:gift_cards",
+          quote,
+          reason: CALL_WARNING_REASONS.gift_cards,
+          timeMs: 3000,
+        },
+      ]);
+    }
+  );
+
+  it.each([
+    "Please buy gift cards\nand send me your password.",
+    "and read me their codes.\nPlease buy gift cards",
+    "Please buy cards\nand read me their codes.",
+    "Please buy gift cards and read me their codes.",
+  ])("rejects text absent from the contiguous transcript: %s", (quote) => {
+    expect(
+      callFlagsFromSigns(
+        [{ kind: "gift_cards", quote }],
+        [
+          line("start", "Please buy gift cards"),
+          line("end", "and read me their codes."),
+        ]
+      )
+    ).toStrictEqual([]);
+  });
+
+  it("rejects a quote that skips an intervening nonempty caption", () => {
+    expect(
+      callFlagsFromSigns(
+        [
+          {
+            kind: "gift_cards",
+            quote: "Please buy gift cards\nand read me their codes.",
+          },
+        ],
+        [
+          line("start", "Please buy gift cards"),
+          line("interruption", "Do not share the codes."),
+          line("end", "and read me their codes."),
+        ]
+      )
+    ).toStrictEqual([]);
+  });
+
+  it.each(["start", "end"])(
+    "drops a stale multiline sign after correcting the %s caption",
+    (id) => {
+      const current = [
+        line("start", "Please buy gift cards"),
+        line("end", "and read me their codes."),
+      ];
+
+      const quote = "Please buy gift cards\nand read me their codes.";
+
+      expect(
+        callFlagsFromSigns([{ kind: "gift_cards", quote }], current)
+      ).toHaveLength(1);
+
+      const corrected = upsertCallCaption(
+        current,
+        line(id, "Keep the gift card codes private.")
+      );
+
+      expect(
+        callFlagsFromSigns([{ kind: "gift_cards", quote }], corrected)
+      ).toStrictEqual([]);
+    }
+  );
+
   it("drops a quote that no caption holds any more", () => {
     expect(
       callFlagsFromSigns([{ kind: "money", quote: "wire the money" }], captions)

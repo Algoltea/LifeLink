@@ -40,8 +40,10 @@ import {
   structuredCompletion,
 } from "./integrations/openrouter";
 import type { ChatMessage } from "./integrations/openrouter";
+import { checkRequestDraft } from "./lib/drafts";
 import { channelFor, createTask, firstName, signOff } from "./lib/journey";
 import { createAction } from "./lib/lifecycle";
+import { contactLocale } from "./lib/locale";
 import { requireOwned, requireOwner } from "./lib/session";
 
 const MAX_TEXT = 8000;
@@ -1067,8 +1069,19 @@ export const askTrustedContact = mutation({
       });
     }
 
-    const what = review.inputKind === "email" ? "an email" : "a message";
-    const body = `Hi ${firstName(contact.name)}, I got ${what} that I'm not sure about. It ${review.signals[0] ? `seems to ${review.signals[0].label.toLowerCase()}` : "looks a bit odd"}. Could you help me check whether it's real before I do anything? ${signOff(owner)}`;
+    const recipientLocale = await contactLocale(ctx, owner._id, contact);
+
+    // Saved analysis has no language provenance and may predate preference changes.
+    // Keep the recipient's draft independent of the owner's explanation text.
+    const body = checkRequestDraft(
+      {
+        email: review.inputKind === "email",
+        firstName: firstName(contact.name),
+        signOff: signOff(owner),
+      },
+      recipientLocale
+    );
+
     const mode = owner.demoMode ? "simulated" : "live";
 
     const { stepIds, taskId } = await createTask(ctx, {

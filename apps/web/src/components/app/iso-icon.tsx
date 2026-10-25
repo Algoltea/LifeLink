@@ -1,5 +1,7 @@
 import { cn } from "@lifelink/ui/lib/utils";
 
+import { currentMessages } from "@/i18n/locale";
+
 /**
  * Isometric "typewriter key" icons: what a connection can do, what kind of
  * file a document is, and who is in the trusted circle. Each object sits on
@@ -838,7 +840,7 @@ const permissionIconFor = (capabilityId: string): PermissionIconKind =>
   KIND_BY_CAPABILITY.get(capabilityId) ?? "unavailable";
 
 const permissionLabelFor = (kind: PermissionIconKind): string =>
-  PERMISSION_LABELS[kind];
+  currentMessages().common.permissions[kind];
 
 /** Keyed by the file kinds the Drive listing reports. */
 const KIND_BY_FILE_KIND = new Map<string, IsoIconKind>([

@@ -1,0 +1,81 @@
+const ask = {
+  closeHistory: "Close chat history",
+  composerLabel: "Write or speak to LifeLink",
+  conversationLabel: "Conversation with LifeLink",
+  copied: "Copied",
+  copy: "Copy",
+  copyUnavailable:
+    "Copying isn't available here. You can select the text instead.",
+  emailSummary: {
+    cloud: "Cloud summary",
+    cloudConsent:
+      "Use cloud AI for a fuller summary. This sends the available text and saved summaries of my newest 15 imported emails to the AI provider. Leave unchecked to summarize in LifeLink.",
+    count: (count: number) => `${count} recent imported emails · `,
+    empty:
+      "No imported emails yet. Check for new email on the Email page, then summarize again.",
+    emptyGroup: "No emails in this category.",
+    groups: {
+      check_first: "Check before acting",
+      low_priority: "Lower priority",
+      reply: "May need a reply",
+      review: "Worth a look",
+    },
+    howMade: "How this summary was made",
+    local: "LifeLink summary",
+    noSubject: "(No subject)",
+    offline: "Connect to summarize your imported emails.",
+    openEmail: "Open Email",
+    options: "Summary options",
+    practicePrefix: "Practice · ",
+    suggestionsOnly:
+      "Suggestions only. Review original messages before acting. Nothing was sent or changed in your mailbox.",
+    summarize: "Summarize emails",
+    summarizing: "Summarizing emails…",
+    title: "Recent email summary",
+    working: "Adding the email summary to this chat…",
+  },
+  failed: "That reply didn’t finish. Please ask again.",
+  history: "History",
+  historyDescription: "Pick up where you left off.",
+  historyEmpty: "No conversations yet. Your first chat will be saved here.",
+  historyGroups: {
+    earlier: "Earlier",
+    thisWeek: "This week",
+  },
+  historyTitle: "Chat history",
+  lifeLinkSaid: "LifeLink said: ",
+  loadEarlier: "Show earlier messages",
+  loadEarlierConversations: "Show earlier conversations",
+  loadingConversation: "Loading your conversation",
+  loadingConversations: "Loading conversations…",
+  loadingEarlier: "Loading earlier messages…",
+  loadingHistory: "Loading your chat history",
+  newChat: "New chat",
+  openNow: ", open now",
+  opening: "Opening your conversation",
+  quickActions: "Quick actions",
+  suggestions: {
+    reminder: {
+      label: "Set a reminder",
+      prompt: "Remind me to ",
+    },
+    ride: {
+      label: "Ask for a ride",
+      prompt: "Ask my family if someone can drive me to my appointment on ",
+    },
+    write: {
+      label: "Write to family",
+      prompt: "Help me write a message to ",
+    },
+  },
+  thinking: "Thinking…",
+  title: "Ask LifeLink",
+  titlePrefix: "Ask LifeLink: ",
+  waitingConnection: "Waiting for a connection. Nothing has been sent.",
+  waitingForConnection: "Messages waiting for connection",
+  whatCanIHelp: "What can I help with today?",
+  youSaid: "You said: ",
+  yourConversation: "Your conversation",
+};
+
+export { ask };

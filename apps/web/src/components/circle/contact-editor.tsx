@@ -1,8 +1,12 @@
 "use client";
 
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { UserMinusIcon } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
+
+import { usePreferences } from "@/components/app/preferences";
+import { useMessages } from "@/i18n/locale";
 
 import { ContactForm } from "./contact-form";
 import type { CircleContact } from "./contact-form";
@@ -35,7 +39,14 @@ const ContactEditor = ({
 }) => {
   const heading = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
-  const title = contact === null ? "Add a person" : `Edit ${contact.name}`;
+  const t = useMessages().circle;
+  const { me } = usePreferences();
+  const title = contact === null ? t.addPerson : t.editPerson(contact.name);
+
+  // Invitations they will read are written in their language.
+  const contactLocale =
+    contact?.language ?? interfaceLocaleOf(me?.preferences?.supportLanguage);
+
   const firstName = contact?.name.split(" ")[0] ?? "";
 
   const usesIMessage =
@@ -68,6 +79,7 @@ const ContactEditor = ({
       {contact !== null && usesIMessage ? (
         <ContactIMessageSetup
           canManage={canManage}
+          contactLocale={contactLocale}
           contactName={contact.name}
           context={imessageContext}
           row={imessageRow}
@@ -77,13 +89,14 @@ const ContactEditor = ({
         <ContactTelegramSetup
           canManage={canManage}
           contactId={contact._id}
+          contactLocale={contactLocale}
           contactName={contact.name}
         />
       )}
       {contact === null || onRemove === undefined ? null : (
         <div className="border-rule flex flex-wrap items-center justify-between gap-3 border-t pt-5">
           <p className="text-muted-foreground text-label min-w-0 flex-1 basis-64">
-            Removing {firstName} also stops anything you share with them.
+            {t.removeStopsSharing(firstName)}
           </p>
           <Button
             className="text-negative hover:text-negative"
@@ -92,7 +105,7 @@ const ContactEditor = ({
             variant="outline"
           >
             <UserMinusIcon aria-hidden="true" />
-            {firstName === "" ? "Remove this person…" : `Remove ${firstName}…`}
+            {firstName === "" ? t.removePerson : t.removeNamed(firstName)}
           </Button>
         </div>
       )}

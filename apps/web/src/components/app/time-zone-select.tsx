@@ -1,8 +1,11 @@
 "use client";
 
+import { intlLocaleOf } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
 import type { ComponentProps } from "react";
 import { useMemo } from "react";
+
+import { useLocale, useMessages } from "@/i18n/locale";
 
 /** The zones most people here pick, shown first so they don't scroll the full list. */
 const COMMON_ZONES = [
@@ -21,11 +24,11 @@ interface ZoneOption {
 }
 
 /** "America/New_York" → "New York · Eastern Time", so nobody has to know zone codes. */
-const zoneLabel = (zone: string): string => {
+const zoneLabel = (zone: string, locale: string): string => {
   const city = zone.split("/").at(-1)?.replaceAll("_", " ") ?? zone;
 
   try {
-    const generic = new Intl.DateTimeFormat("en-US", {
+    const generic = new Intl.DateTimeFormat(locale, {
       timeZone: zone,
       timeZoneName: "longGeneric",
     })
@@ -55,7 +58,11 @@ const TimeZoneSelect = ({
   current,
   ...props
 }: Omit<ComponentProps<"select">, "children"> & { current: string }) => {
+  const locale = useLocale();
+  const { timeZone: words } = useMessages().appExtras;
+
   const { common, rest } = useMemo(() => {
+    const intlLocale = intlLocaleOf(locale);
     const commonSet = new Set<string>(COMMON_ZONES);
     const others = new Set(allZones().filter((zone) => !commonSet.has(zone)));
 
@@ -64,7 +71,7 @@ const TimeZoneSelect = ({
     }
 
     const toOption = (zone: string): ZoneOption => ({
-      label: zoneLabel(zone),
+      label: zoneLabel(zone, intlLocale),
       value: zone,
     });
 
@@ -72,9 +79,9 @@ const TimeZoneSelect = ({
       common: COMMON_ZONES.map(toOption),
       rest: [...others]
         .map(toOption)
-        .toSorted((a, b) => a.label.localeCompare(b.label)),
+        .toSorted((a, b) => a.label.localeCompare(b.label, intlLocale)),
     };
-  }, [current]);
+  }, [current, locale]);
 
   return (
     <select
@@ -84,14 +91,14 @@ const TimeZoneSelect = ({
       )}
       {...props}
     >
-      <optgroup label="Common">
+      <optgroup label={words.common}>
         {common.map((zone) => (
           <option key={zone.value} value={zone.value}>
             {zone.label}
           </option>
         ))}
       </optgroup>
-      <optgroup label="All time zones">
+      <optgroup label={words.all}>
         {rest.map((zone) => (
           <option key={zone.value} value={zone.value}>
             {zone.label}

@@ -140,6 +140,16 @@ Secrets never touch the browser or a committed file. There are three places:
 - Simulated outcomes are always labelled **Practice**.
 - Errors say what happened, that nothing was lost, and what to do next.
 
+### Language support
+
+LifeLink's core app screens support English and Spanish. The device remembers the selected language before sign-in; without a saved choice, it follows the browser. Settings saves the account's help language, and onboarding carries the current screen language into the new profile. Other help languages keep English screens and fixed templates while cloud explanations can use the requested language. The newer public welcome page and Mahjong game currently retain English copy.
+
+Changing language updates labels and date/time formatting without resetting unsaved fields, keyboard focus, or the Solitaire game. A failed account save keeps the attempted selection and an explicit retry. Contact invitations and new message drafts follow the contact's language, with linked-profile or owner fallback. Saved messages, quotes, approved action details, email excerpts, and authored conversation titles remain as written. Existing daily briefings keep the language in which they were generated.
+
+Local scam checks, email checks that use local rules, local explanations, reply interpretation, and Practice request parsing still rely on English patterns. Translated controls and results do not add Spanish detection coverage. Automatic cloud AI email checks identify their method separately. Practice call audio remains English; unknown provider errors retain their original details. Spanish interface copy uses respectful **usted**; family-message drafts retain their conversational tone.
+
+See [language verification and remaining limits](docs/language-support-handoff.md#pr-16-follow-up) for the tested scope, including offline Solitaire, and what still requires live-provider or native-speaker review.
+
 ---
 
 ## Design

@@ -7,6 +7,9 @@ import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 
+import { useLocale, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
+
 const DISCLOSURE_MOTION_MS = 180;
 
 const SummaryDisclosure = ({
@@ -83,8 +86,14 @@ const SummaryDisclosure = ({
 };
 
 const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
+  const locale = useLocale();
   const headingId = useId();
   const disclosureName = useId();
+  const t = useMessages().ask.emailSummary;
+
+  // Local reasons are fixed rules; item summaries can contain original email text.
+  const reasonFor = (text: string): string =>
+    summary.method === "cloud" ? text : translateServerMessage(text, locale);
 
   return (
     <section
@@ -99,12 +108,12 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
         />
         <div className="min-w-0">
           <h3 className="text-lg font-semibold" id={headingId}>
-            Recent email summary
+            {t.title}
           </h3>
           <p className="text-muted-foreground text-label">
-            {summary.practice ? "Practice · " : ""}
-            {summary.items.length} recent imported emails ·{" "}
-            {summary.method === "cloud" ? "Cloud summary" : "LifeLink summary"}
+            {summary.practice ? t.practicePrefix : ""}
+            {t.count(summary.items.length)}
+            {summary.method === "cloud" ? t.cloud : t.local}
           </p>
         </div>
       </header>
@@ -114,10 +123,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
         </p>
       ) : null}
       {summary.items.length === 0 ? (
-        <p className="px-5 py-4">
-          No imported emails yet. Check for new email on the Email page, then
-          summarize again.
-        </p>
+        <p className="px-5 py-4">{t.empty}</p>
       ) : (
         <div className="divide-border divide-y">
           {GROUPS.map((group) => {
@@ -133,7 +139,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
               >
                 <summary className="hover:bg-parchment min-h-control flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
                   <span className="min-w-0 flex-1 font-semibold">
-                    {group.title}
+                    {t.groups[group.category]}
                   </span>
                   <span className="bg-neutral-wash text-label min-w-8 shrink-0 rounded-full px-2 py-1 text-center tabular-nums">
                     {items.length}
@@ -145,7 +151,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
                 </summary>
                 {items.length === 0 ? (
                   <p className="text-muted-foreground px-5 pb-4">
-                    No emails in this category.
+                    {t.emptyGroup}
                   </p>
                 ) : (
                   <ul className="border-border divide-border divide-y border-t">
@@ -162,7 +168,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
                               query: { id: item.id },
                             }}
                           >
-                            {item.subject || "(No subject)"}
+                            {item.subject || t.noSubject}
                           </Link>
                           <p className="text-muted-foreground text-label wrap-anywhere">
                             {item.sender}
@@ -171,7 +177,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
                         <div className="min-w-0 space-y-2 wrap-anywhere">
                           {item.summary ? <p>{item.summary}</p> : null}
                           <p className="text-muted-foreground text-label">
-                            {item.reason}
+                            {reasonFor(item.reason)}
                           </p>
                           {item.quote ? (
                             <blockquote className="border-border text-muted-foreground text-label border-l-2 pl-3">
@@ -194,19 +200,18 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
           name={disclosureName}
         >
           <summary className="min-h-control cursor-pointer content-center">
-            How this summary was made
+            {t.howMade}
           </summary>
-          <p className="pb-3 wrap-anywhere">{summary.note}</p>
+          <p className="pb-3 wrap-anywhere">
+            {translateServerMessage(summary.note, locale)}
+          </p>
         </SummaryDisclosure>
-        <p className="text-muted-foreground text-label">
-          Suggestions only. Review original messages before acting. Nothing was
-          sent or changed in your mailbox.
-        </p>
+        <p className="text-muted-foreground text-label">{t.suggestionsOnly}</p>
         <Link
           className="text-primary min-h-control inline-flex items-center font-semibold underline underline-offset-4"
           href="/email"
         >
-          Open Email
+          {t.openEmail}
         </Link>
       </footer>
     </section>

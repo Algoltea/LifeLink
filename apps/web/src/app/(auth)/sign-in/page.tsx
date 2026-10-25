@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { SignInForm } from "@/components/app/sign-in-form";
+import { auth } from "@/i18n/messages/en/auth";
 import { isAuthenticated } from "@/lib/auth-server";
 
-export const metadata: Metadata = { title: "Sign in" };
+import { SignInContent } from "./sign-in-content";
+
+export const metadata: Metadata = { title: auth.signIn };
 
 const SignInPage = async ({
   searchParams,
@@ -18,7 +20,7 @@ const SignInPage = async ({
   const { mode } = await searchParams;
   const initialMode = mode === "sign-up" ? "sign-up" : "sign-in";
 
-  return <SignInForm initialMode={initialMode} key={initialMode} />;
+  return <SignInContent initialMode={initialMode} key={initialMode} />;
 };
 
 export default SignInPage;

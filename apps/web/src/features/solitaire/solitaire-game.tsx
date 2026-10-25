@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { useMessages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 
 import { SolitaireTable } from "./solitaire-table";
@@ -20,6 +21,7 @@ const onServer = () => false;
  * and the first hydration pass show the same quiet placeholder.
  */
 export const SolitaireGame = () => {
+  const t = useMessages().solitaire;
   const isClient = useSyncExternalStore(subscribeToNothing, onClient, onServer);
   const { data: session } = authClient.useSession();
 
@@ -30,10 +32,10 @@ export const SolitaireGame = () => {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <h1 className="text-mobile-title sm:text-page-title font-semibold">
-        Solitaire
+        {t.title}
       </h1>
       <output className="bg-parchment text-body block rounded-lg px-4 py-3">
-        Shuffling the cards.
+        {t.shuffling}
       </output>
     </div>
   );
