@@ -12,6 +12,8 @@ interface DialogProps {
   finalFocus?: DialogPrimitive.Popup.Props["finalFocus"];
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  /** "top" keeps the title still while content below it changes height. */
+  placement?: "center" | "top";
   title: ReactNode;
 }
 
@@ -28,6 +30,7 @@ const Dialog = ({
   finalFocus,
   onOpenChange,
   open,
+  placement = "center",
   title: liveTitle,
 }: DialogProps) => {
   // Callers often clear the subject as they close; the last open content stays for the closing fade.
@@ -61,7 +64,10 @@ const Dialog = ({
         <DialogPrimitive.Popup
           finalFocus={finalFocus}
           className={cn(
-            "motion-pop bg-raised text-foreground fixed top-1/2 left-1/2 z-50 flex max-h-[90svh] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl p-6 shadow-[0_16px_48px_rgb(0_0_0/0.18)]"
+            "motion-pop bg-raised text-foreground fixed left-1/2 z-50 flex w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-4 overflow-y-auto rounded-xl p-6 shadow-[0_16px_48px_rgb(0_0_0/0.18)]",
+            placement === "top"
+              ? "top-[10svh] max-h-[80svh]"
+              : "top-1/2 max-h-[90svh] -translate-y-1/2"
           )}
         >
           <div className="flex items-start justify-between gap-4">

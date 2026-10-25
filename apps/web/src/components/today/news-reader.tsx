@@ -3,6 +3,7 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Headline } from "@lifelink/contracts/news";
 import { Dialog } from "@lifelink/ui/components/dialog";
+import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { useAction, useQuery } from "convex/react";
 import { ExternalLinkIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -78,36 +79,52 @@ const SummaryBody = ({ headline }: { headline: Headline }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      {summary ? (
-        <div className="motion-enter flex flex-col gap-3">
-          {kindLabel ? (
-            <p className="text-label text-warning font-semibold">{kindLabel}</p>
-          ) : null}
-          <p className="text-body font-medium">{summary.gist}</p>
-          {summary.points.length > 0 ? (
-            <ul className="text-body flex list-disc flex-col gap-2 pl-6">
-              {summary.points.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          ) : null}
-          <ReadAloudButton
-            className="self-start"
-            text={[kindLabel, summary.gist, ...summary.points]
-              .filter((line) => line !== null)
-              .join(" ")}
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {headline.teaser ? (
-            <p className="text-body">{headline.teaser}</p>
-          ) : null}
-          <output className="text-muted-foreground text-body block">
-            {failed ? t.newsSummaryUnavailable : t.newsSummarizing}
-          </output>
-        </div>
-      )}
+      {/* Placeholder, summary, and fallback share one height, so swapping them doesn't move the link below. */}
+      <div className="min-h-[13rem]">
+        {summary ? (
+          <div className="motion-appear flex flex-col gap-3">
+            {kindLabel ? (
+              <p className="text-label text-warning font-semibold">
+                {kindLabel}
+              </p>
+            ) : null}
+            <p className="text-body font-medium">{summary.gist}</p>
+            {summary.points.length > 0 ? (
+              <ul className="text-body flex list-disc flex-col gap-2 pl-6">
+                {summary.points.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            ) : null}
+            <ReadAloudButton
+              className="self-start"
+              text={[kindLabel, summary.gist, ...summary.points]
+                .filter((line) => line !== null)
+                .join(" ")}
+            />
+          </div>
+        ) : null}
+        {!summary && failed ? (
+          <div className="motion-appear flex flex-col gap-3">
+            {headline.teaser ? (
+              <p className="text-body">{headline.teaser}</p>
+            ) : null}
+            <output className="text-muted-foreground text-body block">
+              {t.newsSummaryUnavailable}
+            </output>
+          </div>
+        ) : null}
+        {/* While the saved summary loads or a new one is written, no text shows, only its outline. */}
+        {!summary && !failed ? (
+          <div className="flex flex-col gap-3">
+            <output className="sr-only">{t.newsSummarizing}</output>
+            <Skeleton className="h-6 w-11/12" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-10/12" />
+            <Skeleton className="h-6 w-9/12" />
+          </div>
+        ) : null}
+      </div>
       <a
         className="text-accent-foreground text-label min-h-control -ml-3 inline-flex items-center gap-1.5 self-start px-3 font-medium"
         href={headline.url}
@@ -138,6 +155,7 @@ const NewsReader = ({
       }
     }}
     open={headline !== null}
+    placement="top"
     title={headline?.title ?? ""}
   >
     {headline ? <SummaryBody headline={headline} key={headline.url} /> : null}
