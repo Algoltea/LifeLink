@@ -62,7 +62,12 @@ import { modelFor } from "./integrations/openrouter";
 import { assistantMessagesFor } from "./lib/assistantMessages";
 import { readEnv, readEnvOr } from "./lib/env";
 import { ownerLocale } from "./lib/locale";
-import { UPCOMING_WINDOW, applyProposal } from "./lib/proposals";
+import { proposalMessagesFor } from "./lib/proposalMessages";
+import {
+  UPCOMING_WINDOW,
+  applyProposal,
+  hasClockEvidence,
+} from "./lib/proposals";
 import type { ProposalOutcome } from "./lib/proposals";
 import { newsTool, weatherTool } from "./lib/readtools";
 import { requireOwner } from "./lib/session";
@@ -841,6 +846,7 @@ interface PlanningContext {
     name: string;
     relationship: string;
   }[];
+  groceryLists: { id: string; name: string; usual: boolean }[];
   demoMode: boolean;
   locale: InterfaceLocale;
   /** The language the owner chose for LifeLink, by name. */
@@ -892,6 +898,20 @@ export const planningContext = internalQuery({
       )
       .collect();
 
+    const groceryLists = [];
+
+    for await (const list of ctx.db
+      .query("groceryLists")
+      .withIndex("by_owner", (index) => index.eq("ownerId", owner._id))) {
+      if (list.archivedAt === undefined) {
+        groceryLists.push({
+          id: list._id,
+          name: list.name,
+          usual: list.usual === true,
+        });
+      }
+    }
+
     return {
       appointments: appointments.map((appointment) => ({
         id: appointment._id,
@@ -908,6 +928,7 @@ export const planningContext = internalQuery({
           relationship: contact.relationship,
         })),
       demoMode: owner.demoMode,
+      groceryLists,
       language: languageName(language),
       locale: interfaceLocaleOf(language),
       now: isoWithOffset(now, owner.timeZone),
@@ -926,7 +947,7 @@ const instructionsFor = (context: PlanningContext): string =>
     `Reply in ${context.language}, the language the person chose. If they write to you in another language, reply in the language they wrote in.`,
     "When the person wants something done (ask for a ride, send a message, set a reminder, add an appointment, add groceries, check a suspicious message), call propose_action once.",
     "When the person asks you to add an appointment, or tells you about one they have booked, use create_appointment with a short appointmentTitle, the appointmentLocation if they said it, and dateTimeIso for when it starts. If it is already in the upcoming appointments below, say so instead of adding it again.",
-    "When they want a ride to a place that is not in the upcoming appointments below, such as the store or church, use ride_request with rideDestination set to the place as they said it and dateTimeIso for when they need to be there. If they did not say when, ask one short question first. A ride is always ride_request, never send_message, even when they name the driver.",
+    "When they want a ride to a place that is not in the upcoming appointments below, such as the store or church, use ride_request with appointmentId null, rideDestination set to the place exactly as they said it, dateTimeIso for when they need to be there, and dateTimeAsSaid quoting that arrival time from their words. A separate explicit pickup belongs in pickupTimeIso/pickupTimeAsSaid; never treat it as arrival. Never provide both appointmentId and rideDestination. If they did not say when, ask one short question first. A ride is always ride_request, never send_message, even when they name the driver.",
     "propose_action only prepares it for review. After calling it, tell the person in one or two sentences what the tool result says. Never say anything was sent, saved, or ordered unless the tool result says so.",
     "If you are unsure who or when they mean, ask one short question instead of calling the tool.",
     context.presentationDemo
@@ -943,6 +964,8 @@ const instructionsFor = (context: PlanningContext): string =>
     "For messages to multiple people, include every named recipient. For relationship groups like my friends, my neighbors, all my kids, or grandchildren, pass the group phrase as nameAsSaid with a null contactId; the server expands saved trusted relationship categories, including singular saved labels such as Friend for my friends. Plural relationship requests mean everyone in that category, not an ambiguous choice between people. Use separate recipient entries for kids and grandkids. Never silently omit a recipient. Each person receives a separate message on their saved preferred channel, after review and approval. For a shared message, avoid a greeting addressed to only one person.",
     "Treat everyday family words as their saved relationships: dad or papa means Father, mom or mum means Mother, grandma means Grandmother, grandpa means Grandfather, and the reverse. When exactly one contact fits, use that contact's id instead of asking for a name.",
     "Copy contact and appointment ids exactly from the lists below, or use null. Never invent ids.",
+    "For groceries, preserve any explicit list name in groceryListName and copy its groceryListId only if certain. Unknown, archived, or duplicate names need clarification; never silently substitute the newest list. Use null selectors only for a generic grocery/shopping list request. The usual list is a template; target it only if explicitly requested.",
+    "For rides, dateTimeIso describes only an explicitly stated appointment clock time or arrival time at rideDestination, never a copied saved/default time or a pickup time. For day-only references such as Tuesday, keep dateTimeAsSaid but leave dateTimeIso null and choose the matching saved appointment. Copy dateTimeAsSaid exactly from the person's words; leave both null when no appointment time was stated. Keep any stated time even when it differs from saved data: the server checks conflicts. For an explicitly requested pickup, use pickupTimeIso and an exact pickupTimeAsSaid quote instead. Never invent user time intent from the saved appointment. After a time conflict, ask whether the earlier time means pickup or a changed appointment. A follow-up confirming pickup must use pickup fields and the saved appointment, without repeating the superseded appointment time. Never edit an appointment through a ride request.",
     "Give dateTimeIso only when the date and time are unambiguous, with a numeric offset.",
     "Write messageDraft in the person's own voice: short, warm, and signed with their name. Write it in the recipient's language from the contact list, unless the person asks for another language.",
     "Never put links, codes, account numbers, or requests for money into a draft.",
@@ -950,6 +973,7 @@ const instructionsFor = (context: PlanningContext): string =>
     "You cannot change permissions, sharing, spending limits, or settings. If asked, say they can do it in Settings or Trusted circle.",
     "Never ask for passwords, bank details, or one-time codes.",
     `Contacts: ${JSON.stringify(context.contacts)}`,
+    `Active grocery lists: ${JSON.stringify(context.groceryLists)}`,
     `Upcoming appointments: ${JSON.stringify(context.appointments)}`,
   ].join("\n");
 
@@ -1145,13 +1169,22 @@ const RIDE_PATTERN = /\b(?:ride|drive me|lift|pick me up|take me)\b/iu;
 const SCAM_PATTERN = /\b(?:scam|suspicious|fraud|is this real|phishing)\b/iu;
 
 const GROCERY_PATTERN =
-  /\badd (?<items>.+?) to (?:my |the )?(?:grocery|shopping) list\b/iu;
+  /\badd (?<items>.+?) to (?:my |the )?(?<target>.+?)\s*[.!?]?\s*$/iu;
 
 const MESSAGE_PATTERN =
   /\b(?:tell|text|message|write to)\s+(?<name>.+?)\s+(?:that|to|saying)\s+(?<body>.+)/iu;
 
 const QUOTED_MESSAGE_PATTERN =
   /\b(?:tell|text|message|write to)\s+(?<name>.+?)\s+["“'‘](?<body>.+)["”'’]\s*[.!?]?\s*$/iu;
+
+// The local fallback only recognizes offset-bearing ISO timestamps, not natural dates.
+const RIDE_ISO_PATTERN =
+  /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})\b/giu;
+
+// Bind an ISO to its adjacent clause. An earlier “pick me up” must not
+// change the meaning of “for my appointment at <ISO>”. Other wording clarifies.
+const PICKUP_TIME_CLAUSE = /\b(?:pick(?:up| me up)|pickup)\s*(?:on|at)?\s*$/iu;
+const APPOINTMENT_TIME_CLAUSE = /\bappointment\s*(?:on|at)?\s*$/iu;
 
 const RIDE_PERSON_PATTERN =
   /\b(?:ask|can|could|have|get)\s+(?:my\s+)?(?<person>[a-z]+)\b/iu;
@@ -1171,7 +1204,148 @@ const STOP_WORDS = new Set([
 const messageBodyFor = (body: string, quoted: boolean): string =>
   quoted ? body : `${body.charAt(0).toUpperCase()}${body.slice(1)}`;
 
-const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
+const groceryRulesPlan = (
+  text: string,
+  context: PlanningContext,
+  base: AssistantPlan
+): AssistantPlan | null => {
+  const grocery = GROCERY_PATTERN.exec(text)?.groups;
+  const groceryItems = grocery?.items;
+  const target = grocery?.target?.trim() ?? "";
+  const genericList = /^(?:grocery|shopping) list$/iu.test(target);
+
+  const directName = context.groceryLists.find(
+    (list) => list.name.toLowerCase() === target.toLowerCase()
+  )?.name;
+
+  const namedList =
+    directName ??
+    /^(?:grocery|shopping) list (?:called|named)\s+(?<name>.+)$/iu.exec(target)
+      ?.groups?.name ??
+    /^(?:list (?:called|named)\s+)(?<name>.+)$/iu.exec(target)?.groups?.name ??
+    target.replace(/\s+(?:(?:grocery|shopping)\s+)?list$/iu, "");
+
+  if (
+    groceryItems &&
+    (genericList ||
+      /\blist\b/iu.test(target) ||
+      context.groceryLists.some(
+        (list) => list.name.toLowerCase() === target.toLowerCase()
+      ))
+  ) {
+    return {
+      ...base,
+      groceryItems: groceryItems
+        .split(LIST_SPLIT)
+        .flatMap((name) =>
+          name.trim() ? [{ name: name.trim(), quantity: null, unit: null }] : []
+        ),
+      groceryListName: genericList
+        ? null
+        : namedList.replaceAll(/^["“]|["”]$/gu, ""),
+      intent: "grocery_list",
+    };
+  }
+
+  return null;
+};
+
+const unsupportedRideClock = (times: string[], text: string): boolean =>
+  times.length > 1 || (times.length === 0 && hasClockEvidence(text));
+
+const RULES_PLACE_PATTERN =
+  /\b(?:ride|lift|drive me|take me|pick me up)\b.*?\bto\s+(?<place>.+?)(?:\s+(?:on|at|by))?\s*$/iu;
+
+const rulesRideDestination = (
+  text: string,
+  context: PlanningContext
+): string | null => {
+  const withoutTime = text
+    .replaceAll(RIDE_ISO_PATTERN, "")
+    .trim()
+    .replace(/[.!?]+$/u, "");
+
+  const place = RULES_PLACE_PATTERN.exec(withoutTime)?.groups?.place?.trim();
+
+  if (
+    !place ||
+    /\bappointment\b/iu.test(place) ||
+    context.appointments.some(
+      (appointment) => appointment.title.toLowerCase() === place.toLowerCase()
+    )
+  ) {
+    return null;
+  }
+
+  return place;
+};
+
+const ambiguousRulesRideTime = (
+  time: string | null,
+  pickup: boolean,
+  appointmentTime: boolean,
+  destination: string | null
+): boolean =>
+  (destination !== null && (time === null || pickup)) ||
+  (time !== null && !pickup && !appointmentTime && destination === null);
+
+const rideRulesPlan = (
+  text: string,
+  context: PlanningContext,
+  base: AssistantPlan
+): AssistantPlan => {
+  const person = RIDE_PERSON_PATTERN.exec(text)?.groups?.person ?? "";
+  const named = STOP_WORDS.has(person.toLowerCase()) ? "" : person;
+  const times = [...text.matchAll(RIDE_ISO_PATTERN)].map((match) => match[0]);
+  const destination = rulesRideDestination(text, context);
+
+  if (unsupportedRideClock(times, text)) {
+    return {
+      ...base,
+      intent: "clarify",
+      reply:
+        destination === null
+          ? proposalMessagesFor(context.locale).whichRideTime
+          : proposalMessagesFor(context.locale).whichRideArrival,
+    };
+  }
+
+  const time = times[0] ?? null;
+  const beforeTime = time === null ? "" : text.slice(0, text.indexOf(time));
+  const pickup = PICKUP_TIME_CLAUSE.test(beforeTime);
+  const appointmentTime = APPOINTMENT_TIME_CLAUSE.test(beforeTime);
+
+  if (ambiguousRulesRideTime(time, pickup, appointmentTime, destination)) {
+    return {
+      ...base,
+      intent: "clarify",
+      reply:
+        destination === null
+          ? proposalMessagesFor(context.locale).whichRideTime
+          : proposalMessagesFor(context.locale).whichRideArrival,
+    };
+  }
+
+  return {
+    ...base,
+    appointmentId:
+      destination === null && context.appointments.length === 1
+        ? (context.appointments[0]?.id ?? null)
+        : null,
+    dateTimeAsSaid: pickup ? null : time,
+    dateTimeIso: pickup ? null : time,
+    intent: "ride_request",
+    pickupTimeAsSaid: pickup ? text : null,
+    pickupTimeIso: pickup ? time : null,
+    recipients: named ? [{ contactId: null, nameAsSaid: named }] : [],
+    rideDestination: destination,
+  };
+};
+
+export const rulesPlan = (
+  text: string,
+  context: PlanningContext
+): AssistantPlan => {
   const base: AssistantPlan = {
     appointmentId: null,
     clarificationQuestion: null,
@@ -1185,18 +1359,10 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
     reply: assistantMessagesFor(context.locale).practiceEnglishOnly,
   };
 
-  const groceryItems = GROCERY_PATTERN.exec(text)?.groups?.items;
+  const groceries = groceryRulesPlan(text, context, base);
 
-  if (groceryItems) {
-    return {
-      ...base,
-      groceryItems: groceryItems
-        .split(LIST_SPLIT)
-        .flatMap((name) =>
-          name.trim() ? [{ name: name.trim(), quantity: null, unit: null }] : []
-        ),
-      intent: "grocery_list",
-    };
+  if (groceries !== null) {
+    return groceries;
   }
 
   if (SCAM_PATTERN.test(text)) {
@@ -1204,18 +1370,7 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
   }
 
   if (RIDE_PATTERN.test(text)) {
-    const person = RIDE_PERSON_PATTERN.exec(text)?.groups?.person ?? "";
-    const named = STOP_WORDS.has(person.toLowerCase()) ? "" : person;
-
-    return {
-      ...base,
-      appointmentId:
-        context.appointments.length === 1
-          ? (context.appointments[0]?.id ?? null)
-          : null,
-      intent: "ride_request",
-      recipients: named ? [{ contactId: null, nameAsSaid: named }] : [],
-    };
+    return rideRulesPlan(text, context, base);
   }
 
   const quotedMessage = QUOTED_MESSAGE_PATTERN.exec(text)?.groups;
@@ -1235,7 +1390,7 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
   return base;
 };
 
-const toProposal = (plan: AssistantPlan): Proposal | null => {
+export const toProposal = (plan: AssistantPlan): Proposal | null => {
   const intent = proposalIntents.find((candidate) => candidate === plan.intent);
 
   if (intent === undefined) {
@@ -1249,10 +1404,15 @@ const toProposal = (plan: AssistantPlan): Proposal | null => {
     dateTimeAsSaid: plan.dateTimeAsSaid,
     dateTimeIso: plan.dateTimeIso,
     groceryItems: plan.groceryItems,
+    groceryListId: plan.groceryListId ?? null,
+    groceryListName: plan.groceryListName ?? null,
     intent,
     messageDraft: plan.messageDraft,
+    pickupTimeAsSaid: plan.pickupTimeAsSaid ?? null,
+    pickupTimeIso: plan.pickupTimeIso ?? null,
     recipients: plan.recipients,
     reminderTitle: plan.reminderTitle,
+    rideDestination: plan.rideDestination ?? null,
   };
 };
 

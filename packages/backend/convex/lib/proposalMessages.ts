@@ -9,6 +9,10 @@ interface ProposalMessages {
   appointmentPrepared: (title: string, when: string) => string;
   groceriesAdded: (items: string, list: string) => string;
   groceryListName: string;
+  rideTimeConflict: (said: string, saved: string, zone: string) => string;
+  whichGroceryList: string;
+  whichRideTime: string;
+  whichRideArrival: string;
   messagePrepared: (name: string | null) => string;
   missingContact: (name: string) => string;
   missingTrustedContact: (name: string) => string;
@@ -25,7 +29,6 @@ interface ProposalMessages {
   whichGroceries: string;
   whichRecipient: string;
   whichReminder: string;
-  whichRideTime: string;
 }
 
 /** Only LifeLink's new owner-facing words; names and authored details are interpolated unchanged. */
@@ -52,16 +55,22 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Ich kann Sie am ${when} an „${title}“ erinnern. Drücken Sie zum Speichern auf Genehmigen.`,
     ridePrepared: (name, appointment) =>
       `Ich habe eine Nachricht vorbereitet, um ${name ?? "jemanden"} um eine Fahrt zu bitten${appointment === null ? "" : `: „${appointment.title}“ am ${appointment.day}`}. ${name === null || appointment === null ? "Beantworten Sie zuerst die Frage auf dem Bildschirm. " : ""}Lesen Sie die Nachricht und drücken Sie auf Genehmigen, wenn alles stimmt. Erst dann wird sie gesendet.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Sie sagten ${said}, aber Ihr gespeicherter Termin ist am ${saved} (${zone}). Meinten Sie die Abholzeit oder hat sich der Termin geändert? Nennen Sie die Abholzeit oder bestätigen Sie die gespeicherte Terminzeit. Ändern Sie sonst zuerst den Termin.`,
     scamChecking:
       "Ich prüfe diese Nachricht. Das Ergebnis erscheint gleich unter Betrugsprüfung. Bitte klicken Sie in der Zwischenzeit auf keinen Link in der Nachricht.",
     whichAppointment:
       "Wofür ist der Termin, und wann genau? Bitte nennen Sie den Tag und die Uhrzeit.",
     whichGroceries: "Welche Artikel möchten Sie auf Ihre Liste setzen?",
+    whichGroceryList:
+      "Welche aktive Einkaufsliste meinen Sie? Wählen Sie eine gespeicherte Liste oder nennen Sie ihren genauen, eindeutigen Namen. Es wurde nichts hinzugefügt.",
     whichRecipient: "Wem möchten Sie schreiben?",
     whichReminder:
       "Woran und wann genau soll ich Sie erinnern? Bitte nennen Sie den Tag und die Uhrzeit.",
-    whichRideTime:
+    whichRideArrival:
       "Wann müssen Sie dort sein? Bitte nennen Sie den Tag und die Uhrzeit.",
+    whichRideTime:
+      "Wohin geht die Fahrt, und welche Uhrzeit meinen Sie? Ist es die Ankunftszeit oder die Abholzeit? Die Abholung muss in der Zukunft und innerhalb eines Tages vor der Ankunft liegen.",
   },
   en: {
     appointmentPrepared: (title, when) =>
@@ -83,16 +92,22 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `I can remind you "${title}" on ${when}. Press Approve to save it.`,
     ridePrepared: (name, appointment) =>
       `I've written a message asking ${name ?? "someone"} for a ride${appointment === null ? "" : ` for ${appointment.title} on ${appointment.day}`}. ${name === null || appointment === null ? "First, answer the question on screen. Then read the message and" : "Please read it, and"} press Approve when it looks right. Nothing is sent until you do.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `You said ${said}, but your saved appointment is ${saved} (${zone}). Did you mean pickup at the time you said, or is the appointment time different? If that is pickup, tell me the pickup time; otherwise confirm the saved appointment time or update the appointment first.`,
     scamChecking:
       "I'm checking that message now. The result will appear under Scam check in a moment. Please don't click any links in it while you wait.",
     whichAppointment:
       "What is the appointment for, and exactly when? Please give the day and time.",
     whichGroceries: "Which items would you like on your list?",
+    whichGroceryList:
+      "Which active grocery list do you mean? Please choose one of your saved lists or give its exact, unique name. Nothing was added.",
     whichRecipient: "Who would you like to write to?",
     whichReminder:
       "What should I remind you about, and exactly when? Please give the day and time.",
-    whichRideTime:
+    whichRideArrival:
       "When do you need to be there? Please give the day and time.",
+    whichRideTime:
+      "Where is this ride going, and what time do you mean? Please say whether it is arrival or pickup. Pickup must be in the future, before arrival, and within the preceding day.",
   },
   es: {
     appointmentPrepared: (title, when) =>
@@ -114,15 +129,21 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Puedo recordarle «${title}» el ${when}. Pulse Aprobar para guardarlo.`,
     ridePrepared: (name, appointment) =>
       `He preparado un mensaje para pedirle a ${name ?? "alguien"} que le lleve${appointment === null ? "" : ` para ${appointment.title} el ${appointment.day}`}. ${name === null || appointment === null ? "Primero, responda a la pregunta en pantalla. Después lea el mensaje y" : "Léalo y"} pulse Aprobar cuando esté bien. No se envía nada hasta que lo haga.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Dijo ${said}, pero su cita guardada es ${saved} (${zone}). ¿Se refería a la hora de recogida o ha cambiado la cita? Si es la recogida, indique esa hora; si no, confirme la hora guardada o actualice primero la cita.`,
     scamChecking:
       "Estoy revisando ese mensaje. El resultado aparecerá en Revisar estafas en un momento. No pulse ningún enlace mientras espera.",
     whichAppointment:
       "¿Para qué es la cita y cuándo exactamente? Dígame el día y la hora.",
     whichGroceries: "¿Qué productos quiere añadir a su lista?",
+    whichGroceryList:
+      "¿A qué lista de compras activa se refiere? Elija una lista guardada o diga su nombre exacto y único. No se añadió nada.",
     whichRecipient: "¿A quién le gustaría escribir?",
     whichReminder:
       "¿Qué quiere que le recuerde y cuándo exactamente? Dígame el día y la hora.",
-    whichRideTime: "¿Cuándo necesita estar allí? Dígame el día y la hora.",
+    whichRideArrival: "¿Cuándo necesita estar allí? Dígame el día y la hora.",
+    whichRideTime:
+      "¿Adónde necesita transporte y a qué hora se refiere? Indique si es la hora de llegada o de recogida. La recogida debe ser futura, antes de la llegada y dentro del día anterior.",
   },
   fr: {
     appointmentPrepared: (title, when) =>
@@ -144,16 +165,22 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Je peux vous rappeler « ${title} » le ${when}. Appuyez sur Approuver pour enregistrer ce rappel.`,
     ridePrepared: (name, appointment) =>
       `J'ai préparé un message pour demander à ${name ?? "quelqu'un"} de vous accompagner${appointment === null ? "" : ` pour « ${appointment.title} » le ${appointment.day}`}. ${name === null || appointment === null ? "Répondez d'abord à la question à l'écran. Ensuite, lisez le message et" : "Lisez-le et"} appuyez sur Approuver s'il vous convient. Rien ne sera envoyé avant votre approbation.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Vous avez dit ${said}, mais votre rendez-vous enregistré est le ${saved} (${zone}). Parlez-vous du départ ou le rendez-vous a-t-il changé ? Précisez l’heure du départ, confirmez l’heure enregistrée ou modifiez d’abord le rendez-vous.`,
     scamChecking:
       "Je vérifie ce message. Le résultat apparaîtra bientôt dans Vérifier une arnaque. En attendant, ne cliquez sur aucun lien du message.",
     whichAppointment:
       "À quoi correspond ce rendez-vous, et à quel moment ? Indiquez le jour et l'heure.",
     whichGroceries: "Quels articles souhaitez-vous ajouter à votre liste ?",
+    whichGroceryList:
+      "De quelle liste de courses active parlez-vous ? Choisissez une liste enregistrée ou donnez son nom exact et unique. Rien n’a été ajouté.",
     whichRecipient: "À qui souhaitez-vous écrire ?",
     whichReminder:
       "Que souhaitez-vous que je vous rappelle, et à quel moment ? Indiquez le jour et l'heure.",
-    whichRideTime:
+    whichRideArrival:
       "À quel moment devez-vous y être ? Indiquez le jour et l'heure.",
+    whichRideTime:
+      "Où allez-vous, et quelle heure voulez-vous dire ? Est-ce l’heure d’arrivée ou du départ ? Le départ doit être à venir, avant l’arrivée et dans les 24 heures précédentes.",
   },
   it: {
     appointmentPrepared: (title, when) =>
@@ -175,15 +202,21 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Posso ricordarle «${title}» il ${when}. Prema Approva per salvare il promemoria.`,
     ridePrepared: (name, appointment) =>
       `Ho preparato un messaggio per chiedere un passaggio a ${name ?? "qualcuno"}${appointment === null ? "" : ` per «${appointment.title}» il ${appointment.day}`}. ${name === null || appointment === null ? "Prima risponda alla domanda sullo schermo. " : ""}Legga il messaggio e prema Approva quando va bene. Non verrà inviato nulla finché non approva.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Ha detto ${said}, ma l’appuntamento salvato è il ${saved} (${zone}). Intendeva l’ora del prelievo o è cambiato l’appuntamento? Indichi l’ora del prelievo, confermi quella salvata o aggiorni prima l’appuntamento.`,
     scamChecking:
       "Sto controllando il messaggio. Il risultato apparirà tra poco in Controllo truffe. Nel frattempo, non apra alcun link nel messaggio.",
     whichAppointment:
       "Per che cosa è l'appuntamento e quando esattamente? Mi indichi il giorno e l'ora.",
     whichGroceries: "Quali prodotti desidera aggiungere alla lista?",
+    whichGroceryList:
+      "Quale lista della spesa attiva intende? Scelga una lista salvata o dica il suo nome esatto e univoco. Non è stato aggiunto nulla.",
     whichRecipient: "A chi desidera scrivere?",
     whichReminder:
       "Che cosa desidera ricordare e quando esattamente? Mi indichi il giorno e l'ora.",
-    whichRideTime: "Quando deve essere lì? Mi indichi il giorno e l'ora.",
+    whichRideArrival: "Quando deve essere lì? Mi indichi il giorno e l'ora.",
+    whichRideTime:
+      "Dove deve andare e quale ora intende? È l’ora di arrivo o del prelievo? Il prelievo deve essere futuro e nelle 24 ore prima dell’arrivo.",
   },
   ko: {
     appointmentPrepared: (title, when) =>
@@ -205,15 +238,21 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `${when}에 “${title}” 알림을 드릴 수 있습니다. 승인을 눌러 저장하세요.`,
     ridePrepared: (name, appointment) =>
       `${name === null ? "누군가" : `${name} 님`}께 차로 데려다 달라고 부탁하는 메시지를 준비했습니다.${appointment === null ? "" : ` 예약은 ${appointment.day}의 “${appointment.title}”입니다.`} ${name === null || appointment === null ? "먼저 화면의 질문에 답해 주세요. " : ""}메시지를 읽고 내용이 맞으면 승인을 눌러 주세요. 승인하기 전에는 아무것도 보내지 않습니다.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `말씀하신 시간은 ${said}이지만 저장된 예약은 ${saved} (${zone})입니다. 픽업 시간을 뜻하셨나요, 아니면 예약이 바뀌었나요? 픽업 시간을 알려 주시거나 저장된 시간을 확인하거나 먼저 예약을 수정해 주세요.`,
     scamChecking:
       "메시지를 확인하고 있습니다. 잠시 후 사기 확인에서 결과를 보실 수 있습니다. 기다리는 동안 메시지의 링크를 누르지 마세요.",
     whichAppointment:
       "어떤 약속이고 정확히 언제인가요? 날짜와 시간을 말씀해 주세요.",
     whichGroceries: "목록에 어떤 물품을 추가할까요?",
+    whichGroceryList:
+      "어느 사용 중인 장보기 목록을 뜻하시나요? 저장된 목록을 선택하거나 정확하고 중복되지 않는 이름을 알려 주세요. 아무것도 추가하지 않았습니다.",
     whichRecipient: "누구에게 메시지를 보내고 싶으세요?",
     whichReminder: "무엇을 언제 알려드릴까요? 날짜와 시간을 말씀해 주세요.",
-    whichRideTime:
+    whichRideArrival:
       "언제까지 그곳에 도착해야 하나요? 날짜와 시간을 말씀해 주세요.",
+    whichRideTime:
+      "어디로 가는 차편이며 어떤 시간을 뜻하시나요? 도착 시간인지 픽업 시간인지 알려 주세요. 픽업은 현재 이후이면서 도착 전 24시간 이내여야 합니다.",
   },
   pt: {
     appointmentPrepared: (title, when) =>
@@ -236,15 +275,21 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Posso lembrar você de «${title}» em ${when}. Toque em Aprovar para salvar.`,
     ridePrepared: (name, appointment) =>
       `Preparei uma mensagem para pedir que ${name ?? "alguém"} leve você${appointment === null ? "" : ` ao compromisso «${appointment.title}» no dia ${appointment.day}`}. ${name === null || appointment === null ? "Primeiro, responda à pergunta na tela. " : ""}Leia a mensagem e toque em Aprovar quando estiver tudo certo. Nada será enviado antes da sua aprovação.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Você disse ${said}, mas seu compromisso salvo é em ${saved} (${zone}). Esse é o horário da busca ou o compromisso mudou? Informe o horário da busca, confirme o horário salvo ou atualize o compromisso primeiro.`,
     scamChecking:
       "Estou verificando essa mensagem. O resultado aparecerá em Verificar golpes em instantes. Não toque em nenhum link da mensagem enquanto espera.",
     whichAppointment:
       "Para que é o compromisso e quando exatamente? Diga o dia e a hora.",
     whichGroceries: "Quais produtos você quer adicionar à sua lista?",
+    whichGroceryList:
+      "Qual lista de compras ativa você quer usar? Escolha uma lista salva ou diga seu nome exato e único. Nada foi adicionado.",
     whichRecipient: "Para quem você gostaria de escrever?",
     whichReminder:
       "O que você quer que eu lembre e quando exatamente? Diga o dia e a hora.",
-    whichRideTime: "Quando você precisa estar lá? Diga o dia e a hora.",
+    whichRideArrival: "Quando você precisa estar lá? Diga o dia e a hora.",
+    whichRideTime:
+      "Para onde é a carona, e qual horário você quer dizer? É o horário de chegada ou da busca? A busca deve ser futura e nas 24 horas antes da chegada.",
   },
   tl: {
     appointmentPrepared: (title, when) =>
@@ -267,17 +312,23 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Maaari ko kayong paalalahanan tungkol sa “${title}” sa ${when}. Pindutin ang Aprubahan para i-save ito.`,
     ridePrepared: (name, appointment) =>
       `Naghanda ako ng mensahe para humiling ${name === null ? "sa isang tao" : `kay ${name}`} na ihatid kayo${appointment === null ? "" : ` sa “${appointment.title}” sa ${appointment.day}`}. ${name === null || appointment === null ? "Sagutin muna ang tanong sa screen. " : ""}Basahin ang mensahe at pindutin ang Aprubahan kapag tama na ito. Walang ipapadala hangga't hindi ninyo inaaprubahan.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Sinabi mong ${said}, pero ang naka-save na appointment ay ${saved} (${zone}). Oras ba ito ng pagsundo o nagbago ang appointment? Sabihin ang oras ng pagsundo, kumpirmahin ang naka-save na oras, o baguhin muna ang appointment.`,
     scamChecking:
       "Sinusuri ko na ang mensaheng iyon. Lalabas ang resulta sa Suriin ang scam sa ilang sandali. Huwag munang pindutin ang anumang link sa mensahe habang naghihintay.",
     whichAppointment:
       "Para saan ang appointment, at kailan eksakto? Pakibigay ang araw at oras.",
     whichGroceries:
       "Anong mga bagay ang gusto ninyong idagdag sa inyong listahan?",
+    whichGroceryList:
+      "Aling aktibong listahan ng bibilhin ang ibig mong sabihin? Pumili ng naka-save na listahan o sabihin ang eksakto at natatanging pangalan nito. Walang naidagdag.",
     whichRecipient: "Sino ang gusto ninyong sulatan?",
     whichReminder:
       "Ano ang gusto ninyong ipaalala ko, at kailan? Pakibigay ang araw at oras.",
-    whichRideTime:
+    whichRideArrival:
       "Kailan mo kailangang makarating doon? Pakibigay ang araw at oras.",
+    whichRideTime:
+      "Saan ang sakay, at anong oras ang ibig mong sabihin? Oras ba ng pagdating o pagsundo? Dapat sa hinaharap ang pagsundo at sa loob ng 24 oras bago ang pagdating.",
   },
   vi: {
     appointmentPrepared: (title, when) =>
@@ -300,16 +351,22 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Tôi có thể nhắc bạn «${title}» vào ${when}. Nhấn Phê duyệt để lưu.`,
     ridePrepared: (name, appointment) =>
       `Tôi đã soạn tin nhắn nhờ ${name ?? "một người"} đưa bạn đi${appointment === null ? "" : ` đến cuộc hẹn «${appointment.title}» vào ${appointment.day}`}. ${name === null || appointment === null ? "Trước hết, hãy trả lời câu hỏi trên màn hình. " : ""}Hãy đọc tin nhắn và nhấn Phê duyệt khi thấy phù hợp. Chưa có gì được gửi cho đến khi bạn phê duyệt.`,
+    rideTimeConflict: (said, saved, zone) =>
+      `Bạn nói ${said}, nhưng cuộc hẹn đã lưu là ${saved} (${zone}). Bạn muốn nói giờ đón hay cuộc hẹn đã thay đổi? Hãy cho biết giờ đón, xác nhận giờ đã lưu hoặc cập nhật cuộc hẹn trước.`,
     scamChecking:
       "Tôi đang kiểm tra tin nhắn đó. Kết quả sẽ sớm xuất hiện trong Kiểm tra lừa đảo. Trong lúc chờ, đừng nhấn vào liên kết nào trong tin nhắn.",
     whichAppointment:
       "Cuộc hẹn này là gì và chính xác vào lúc nào? Vui lòng cho biết ngày và giờ.",
     whichGroceries: "Bạn muốn thêm những món nào vào danh sách?",
+    whichGroceryList:
+      "Bạn muốn dùng danh sách mua sắm đang hoạt động nào? Hãy chọn danh sách đã lưu hoặc nói tên chính xác, duy nhất. Chưa thêm gì.",
     whichRecipient: "Bạn muốn viết cho ai?",
     whichReminder:
       "Bạn muốn tôi nhắc việc gì và vào lúc nào? Vui lòng cho biết ngày và giờ.",
-    whichRideTime:
+    whichRideArrival:
       "Bạn cần có mặt ở đó lúc nào? Vui lòng cho biết ngày và giờ.",
+    whichRideTime:
+      "Chuyến đi này đến đâu, và bạn muốn nói giờ nào? Đó là giờ đến hay giờ đón? Giờ đón phải ở tương lai và trong vòng 24 giờ trước giờ đến.",
   },
   zh: {
     appointmentPrepared: (title, when) =>
@@ -331,13 +388,19 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `我可以在${when}提醒您“${title}”。请点击“批准”保存。`,
     ridePrepared: (name, appointment) =>
       `我已准备好一条消息，请${name ?? "他人"}接送您${appointment === null ? "" : `去参加${appointment.day}的“${appointment.title}”预约`}。${name === null || appointment === null ? "请先回答屏幕上的问题。" : ""}请阅读消息，确认无误后点击“批准”。在您批准之前，不会发送任何内容。`,
+    rideTimeConflict: (said, saved, zone) =>
+      `您说的是${said}，但已保存的预约是${saved}（${zone}）。您指的是接您的时间，还是预约时间变了？请说明接送时间，确认已保存的时间，或先修改预约。`,
     scamChecking:
       "我正在检查这条消息。结果稍后会显示在“诈骗检查”中。等待时，请不要点击消息中的任何链接。",
     whichAppointment: "这是什么预约，具体在什么时候？请告诉我日期和时间。",
     whichGroceries: "您想在清单中添加哪些物品？",
+    whichGroceryList:
+      "您指的是哪个正在使用的购物清单？请选择已保存的清单，或说出准确且唯一的名称。尚未添加任何物品。",
     whichRecipient: "您想给谁写消息？",
     whichReminder: "您希望我提醒您什么？请告诉我具体日期和时间。",
-    whichRideTime: "您需要什么时候到达那里？请告诉我日期和时间。",
+    whichRideArrival: "您需要什么时候到达那里？请告诉我日期和时间。",
+    whichRideTime:
+      "这次接送是去哪里？您说的是到达时间还是接您的时间？接送时间必须在未来，且在到达之前的24小时内。",
   },
 };
 

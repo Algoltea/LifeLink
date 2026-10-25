@@ -32,6 +32,9 @@ import { DAY, MINUTE, formatDay, formatWhen, parseAbsoluteIso } from "./time";
 const UPCOMING_WINDOW = 45 * DAY;
 const MAX_GROCERY_ITEMS = 50;
 
+const normalizeName = (name: string): string =>
+  name.normalize("NFKC").trim().replaceAll(/\s+/gu, " ").toLowerCase();
+
 interface ProposalOutcome {
   message: string;
   taskId: Id<"tasks"> | null;
@@ -82,26 +85,238 @@ const ridePreparedMessage = (
         }
   );
 
+// These recognize clock evidence, not dates or instants. Interpretation remains
+// a proposal; unrelated copied words cannot establish that a clock was stated.
+const CLOCK_EVIDENCE =
+  /(?:\p{N}{1,2}[:：]\p{N}{2}|\p{N}{1,2}\s*(?:[ap]\.?m\.?|uhr|h(?:eures?)?|giờ|시|点|點|時)|(?:at|a las|às|à|alle|um|lúc|alas)\s+\p{N}{1,2}\b|\b(?:noon|midnight|mediodía|medianoche|midi|minuit|mezzogiorno|mezzanotte|mittag|mitternacht)\b|正午|午夜|정오|자정)/iu;
+
+// A small clock-phrase vocabulary also permits ordinary voice transcripts.
+// This detects evidence only; it never derives a date, offset, or instant.
+const ENGLISH_CLOCK_EVIDENCE =
+  /\b(?:(?:at|by|around)\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)(?:\s+(?:oh\s+)?(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|(?:twenty|thirty|forty|fifty)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?))?|(?:half|quarter)\s+(?:past|to)\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve))\b/iu;
+
+const PICKUP_EVIDENCE =
+  /(?:\bpick(?:up| me up)\b|\brecog(?:ida|er|erme)\b|\babhol(?:en|ung)\b|\bchercher\b|\bprelievo\b|\bprendere\b|\bbusc(?:a|ar)\b|\bpagsundo\b|\bsunduin\b|đón|픽업|데리러|接)/iu;
+
+const hasClockEvidence = (text: string): boolean =>
+  CLOCK_EVIDENCE.test(text) || ENGLISH_CLOCK_EVIDENCE.test(text);
+
+const isQuotedTime = (
+  source: string,
+  text: string | null | undefined
+): boolean => {
+  const quote = text?.trim();
+
+  return (
+    quote !== undefined &&
+    quote.length > 0 &&
+    hasClockEvidence(quote) &&
+    source.toLocaleLowerCase().includes(quote.toLocaleLowerCase())
+  );
+};
+
+const isQuotedPickup = (
+  source: string,
+  text: string | null | undefined
+): boolean => isQuotedTime(source, text) && PICKUP_EVIDENCE.test(text ?? "");
+
+// If a quote explicitly mentions pickup, it cannot establish arrival unless
+// it also states a clock after an arrival phrase and before the next pickup.
+// Unrecognized role wording clarifies; this does not infer dates or travel time.
+const ARRIVAL_EVIDENCE =
+  /(?:\b(?:arriv(?:e|ing|al)|be there|get there|reach|llegar|llegada|estar allí|ankunft|ankommen|arriver|arrivée|être là|arrivare|arrivo|chegar|chegada|pagdating|makarating)\b|đến|có mặt|도착|到达|抵达)/iu;
+
+const isQuotedArrival = (
+  source: string,
+  text: string | null | undefined
+): boolean => {
+  if (!isQuotedTime(source, text)) {
+    return false;
+  }
+
+  const quote = text ?? "";
+
+  if (!PICKUP_EVIDENCE.test(quote)) {
+    return true;
+  }
+
+  const arrival = ARRIVAL_EVIDENCE.exec(quote);
+
+  if (arrival === null) {
+    return false;
+  }
+
+  const [arrivalClock] = quote
+    .slice(arrival.index + arrival[0].length)
+    .split(PICKUP_EVIDENCE, 1);
+
+  return hasClockEvidence(arrivalClock ?? "");
+};
+
 /**
  * A ride to a place the person named, such as the store or church, when it is
  * not one of their saved appointments. It needs a clear time to ask for.
  */
 const rideDestinationOf = (
-  proposal: Proposal,
-  proposedAppointment: Doc<"appointments"> | null,
-  now: number
+  planning: Planning
 ): RideDestination | "needs_time" | null => {
-  const place = proposal.rideDestination?.trim() ?? "";
+  const { proposal, draftSource, now } = planning;
 
-  if (proposedAppointment !== null || place.length === 0) {
+  if (
+    proposal.rideDestination === null ||
+    proposal.rideDestination === undefined
+  ) {
     return null;
   }
 
+  const place = proposal.rideDestination.trim();
   const startsAt = parseAbsoluteIso(proposal.dateTimeIso);
 
-  return startsAt === null || startsAt < now
-    ? "needs_time"
-    : { place, startsAt };
+  if (
+    place.length === 0 ||
+    !draftSource.toLocaleLowerCase().includes(place.toLocaleLowerCase()) ||
+    startsAt === null ||
+    startsAt <= now ||
+    !isQuotedArrival(draftSource, proposal.dateTimeAsSaid)
+  ) {
+    return "needs_time";
+  }
+
+  return { place, startsAt };
+};
+
+const appointmentTimeProblem = (
+  planning: Planning,
+  appointment: Doc<"appointments"> | null
+): string | null => {
+  const { locale, owner, proposal } = planning;
+  const proposedTime = parseAbsoluteIso(proposal.dateTimeIso);
+  const hasAppointmentTime = proposal.dateTimeIso !== null;
+
+  // Model dates are proposals, not evidence that the person stated a time.
+  if (
+    hasAppointmentTime &&
+    (proposedTime === null ||
+      !isQuotedTime(planning.draftSource, proposal.dateTimeAsSaid))
+  ) {
+    return proposalMessagesFor(locale).whichRideTime;
+  }
+
+  if (hasAppointmentTime && appointment === null) {
+    return proposalMessagesFor(locale).whichRideTime;
+  }
+
+  if (
+    appointment !== null &&
+    proposedTime !== null &&
+    Math.floor(proposedTime / MINUTE) !==
+      Math.floor(appointment.startsAt / MINUTE)
+  ) {
+    return proposalMessagesFor(locale).rideTimeConflict(
+      formatWhen(proposedTime, owner.timeZone, intlLocaleOf(locale)),
+      formatWhen(appointment.startsAt, owner.timeZone, intlLocaleOf(locale)),
+      owner.timeZone
+    );
+  }
+
+  return null;
+};
+
+const pickupTimeProblem = (
+  planning: Planning,
+  appointment: { startsAt: number } | null
+): string | null => {
+  const { locale, now, proposal } = planning;
+  const pickupAt = parseAbsoluteIso(proposal.pickupTimeIso ?? null);
+
+  const hasPickup =
+    (proposal.pickupTimeIso ?? proposal.pickupTimeAsSaid ?? null) !== null;
+
+  if (
+    hasPickup &&
+    (pickupAt === null ||
+      !isQuotedPickup(planning.draftSource, proposal.pickupTimeAsSaid))
+  ) {
+    return proposalMessagesFor(locale).whichRideTime;
+  }
+
+  // Resolve appointment choices first rather than attach a pickup to an unknown day.
+  if (
+    hasPickup &&
+    (appointment === null ||
+      pickupAt === null ||
+      pickupAt <= now ||
+      pickupAt >= appointment.startsAt ||
+      pickupAt < appointment.startsAt - DAY)
+  ) {
+    return proposalMessagesFor(locale).whichRideTime;
+  }
+
+  return null;
+};
+
+type RideTarget =
+  | {
+      kind: "ready";
+      appointment: Doc<"appointments"> | null;
+      destination: RideDestination | null;
+    }
+  | { kind: "clarify"; message: string };
+
+const resolveRideTarget = (
+  planning: Planning,
+  appointments: Doc<"appointments">[]
+): RideTarget => {
+  const { locale, proposal } = planning;
+
+  const proposedAppointment =
+    appointments.find(
+      (appointment) => appointment._id === proposal.appointmentId
+    ) ?? null;
+
+  if (
+    proposal.appointmentId !== null &&
+    (proposedAppointment === null ||
+      (proposal.rideDestination ?? null) !== null)
+  ) {
+    return {
+      kind: "clarify",
+      message: proposalMessagesFor(locale).whichRideTime,
+    };
+  }
+
+  const destination = rideDestinationOf(planning);
+
+  if (destination === "needs_time") {
+    return {
+      kind: "clarify",
+      message: proposalMessagesFor(locale).whichRideArrival,
+    };
+  }
+
+  if (destination === null && appointments.length === 0) {
+    return {
+      kind: "clarify",
+      message: proposalMessagesFor(locale).noAppointment,
+    };
+  }
+
+  const onlyAppointment =
+    appointments.length === 1 ? (appointments[0] ?? null) : null;
+
+  const appointment =
+    destination === null ? (proposedAppointment ?? onlyAppointment) : null;
+
+  const timeProblem =
+    (destination === null
+      ? appointmentTimeProblem(planning, appointment)
+      : null) ?? pickupTimeProblem(planning, appointment ?? destination);
+
+  if (timeProblem !== null) {
+    return { kind: "clarify", message: timeProblem };
+  }
+
+  return { appointment, destination, kind: "ready" };
 };
 
 const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
@@ -122,26 +337,14 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
     )
     .collect();
 
-  const proposedAppointment =
-    appointments.find(
-      (appointment) => appointment._id === proposal.appointmentId
-    ) ?? null;
+  const target = resolveRideTarget(planning, appointments);
 
-  const destination = rideDestinationOf(proposal, proposedAppointment, now);
-
-  if (destination === "needs_time") {
-    return outcome(proposalMessagesFor(locale).whichRideTime);
+  if (target.kind === "clarify") {
+    return outcome(target.message);
   }
 
-  if (destination === null && appointments.length === 0) {
-    return outcome(proposalMessagesFor(locale).noAppointment);
-  }
-
-  const onlyAppointment =
-    appointments.length === 1 ? (appointments[0] ?? null) : null;
-
-  const appointment =
-    destination === null ? (proposedAppointment ?? onlyAppointment) : null;
+  const { appointment, destination } = target;
+  const pickupAt = parseAbsoluteIso(proposal.pickupTimeIso ?? null);
 
   const reachable = planning.contacts.filter(
     (contact) => contact.trusted && channelFor(contact) !== null
@@ -150,7 +353,12 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   const [recipient] = proposal.recipients;
   const match = recipientMatchFor(reachable, proposal);
 
-  if (recipient !== undefined && match.kind === "none") {
+  if (
+    recipient !== undefined &&
+    (match.kind === "none" ||
+      (recipient.contactId !== null &&
+        !reachable.some((candidate) => candidate._id === recipient.contactId)))
+  ) {
     return outcome(
       proposalMessagesFor(locale).missingTrustedContact(recipient.nameAsSaid)
     );
@@ -174,6 +382,7 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
     origin: planning.origin,
     owner,
     request: planning.request,
+    requestedPickupAt: pickupAt,
   });
 
   return outcome(
@@ -384,6 +593,51 @@ const proposeAppointment = async (
   );
 };
 
+interface GroceryListResolution {
+  existing: Doc<"groceryLists"> | undefined;
+  valid: boolean;
+}
+
+const resolveGroceryList = (
+  current: Doc<"groceryLists">[],
+  proposal: Proposal
+): GroceryListResolution => {
+  const { groceryListId, groceryListName } = proposal;
+  const explicitId = groceryListId !== null && groceryListId !== undefined;
+
+  const explicitName =
+    groceryListName !== null && groceryListName !== undefined;
+
+  const named = explicitName
+    ? current.filter(
+        (list) => normalizeName(list.name) === normalizeName(groceryListName)
+      )
+    : [];
+
+  const identified = explicitId
+    ? current.find((list) => list._id === groceryListId)
+    : undefined;
+
+  if (
+    (explicitId && identified === undefined) ||
+    (explicitName &&
+      (normalizeName(groceryListName).length === 0 || named.length !== 1)) ||
+    (explicitId && explicitName && identified?._id !== named[0]?._id)
+  ) {
+    return { existing: undefined, valid: false };
+  }
+
+  let existing = current.find((list) => list.usual !== true) ?? current.at(0);
+
+  if (explicitId) {
+    existing = identified;
+  } else if (explicitName) {
+    [existing] = named;
+  }
+
+  return { existing, valid: true };
+};
+
 /** Adding items to the person's own list is reversible and spends nothing, so it needs no approval. */
 const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, now, owner } = planning;
@@ -401,7 +655,11 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
     .collect();
 
   const current = lists.filter((list) => list.archivedAt === undefined);
-  const existing = current.find((list) => list.usual !== true) ?? current.at(0);
+  const { existing, valid } = resolveGroceryList(current, planning.proposal);
+
+  if (!valid) {
+    return outcome(proposalMessagesFor(locale).whichGroceryList);
+  }
 
   const listId =
     existing?._id ??
@@ -518,6 +776,6 @@ const applyProposal = async (
   }
 };
 
-export { UPCOMING_WINDOW, applyProposal };
+export { UPCOMING_WINDOW, applyProposal, hasClockEvidence };
 
 export type { ProposalOutcome };

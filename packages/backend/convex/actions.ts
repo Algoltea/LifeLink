@@ -22,8 +22,10 @@ import {
   settleUnknownAttempt,
 } from "./lib/lifecycle";
 import type { Ambiguity } from "./lib/lifecycle";
+import { ownerLocale } from "./lib/locale";
+import { proposalMessagesFor } from "./lib/proposalMessages";
 import { requireOwned, requireOwner } from "./lib/session";
-import { MINUTE, formatDay, formatTime } from "./lib/time";
+import { DAY, MINUTE, formatDay, formatTime } from "./lib/time";
 
 const loadOwnedAction = async (
   ctx: MutationCtx,
@@ -420,7 +422,18 @@ const rebuildRideBody = async (
   const contact = contactId === null ? null : await ctx.db.get(contactId);
 
   if (ride !== null && contact !== null) {
-    details.body = await rideRequestBody(ctx, owner, contact, ride);
+    const pickupAt = task.requestedRidePickupAt ?? null;
+
+    if (
+      pickupAt !== null &&
+      (pickupAt >= ride.startsAt || pickupAt < ride.startsAt - DAY)
+    ) {
+      throw new Error(
+        proposalMessagesFor(await ownerLocale(ctx, owner._id)).whichRideTime
+      );
+    }
+
+    details.body = await rideRequestBody(ctx, owner, contact, ride, pickupAt);
   }
 };
 

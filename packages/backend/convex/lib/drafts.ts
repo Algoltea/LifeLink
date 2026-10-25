@@ -1,19 +1,21 @@
 import { intlLocaleOf } from "@lifelink/contracts/locale";
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 
-import { formatDay, formatTime } from "./time";
+import { formatDay, formatTime, formatWhen } from "./time";
 
 /** New drafts follow the recipient's language. Saved and approved words never pass through this catalog. */
 interface RideRequestDraft {
   firstName: string;
   location: string | null;
   signOff: string;
+  requestedPickupAt?: number | null;
   startsAt: number;
   timeZone: string;
   title: string;
 }
 
 interface RidePlaceDraft {
+  requestedPickupAt?: number | null;
   firstName: string;
   place: string;
   signOff: string;
@@ -116,17 +118,35 @@ const DRAFTS: Record<InterfaceLocale, DraftMessages> = {
   },
 };
 
+const PICKUP_REQUESTS: Record<InterfaceLocale, (when: string) => string> = {
+  de: (when) => `Könntest du mich am ${when} abholen?`,
+  en: (when) => `Could you pick me up on ${when}?`,
+  es: (when) => `¿Podrías recogerme el ${when}?`,
+  fr: (when) => `Pourrais-tu venir me chercher le ${when} ?`,
+  it: (when) => `Potresti venirmi a prendere il ${when}?`,
+  ko: (when) => `${when}에 저를 데리러 와 주실 수 있나요?`,
+  pt: (when) => `Você poderia me buscar em ${when}?`,
+  tl: (when) => `Maaari mo ba akong sunduin sa ${when}?`,
+  vi: (when) => `Bạn có thể đón tôi vào ${when} không?`,
+  zh: (when) => `你能在${when}来接我吗？`,
+};
+
 const rideRequestDraft = (
   draft: RideRequestDraft,
   locale: InterfaceLocale
 ): string => {
   const intl = intlLocaleOf(locale);
 
-  return DRAFTS[locale].ride(
+  const body = DRAFTS[locale].ride(
     draft,
     formatDay(draft.startsAt, draft.timeZone, intl),
     formatTime(draft.startsAt, draft.timeZone, intl)
   );
+
+  return draft.requestedPickupAt === null ||
+    draft.requestedPickupAt === undefined
+    ? body
+    : `${body} ${PICKUP_REQUESTS[locale](formatWhen(draft.requestedPickupAt, draft.timeZone, intl))}`;
 };
 
 const ridePlaceDraft = (
@@ -135,11 +155,16 @@ const ridePlaceDraft = (
 ): string => {
   const intl = intlLocaleOf(locale);
 
-  return DRAFTS[locale].ridePlace(
+  const body = DRAFTS[locale].ridePlace(
     draft,
     formatDay(draft.startsAt, draft.timeZone, intl),
     formatTime(draft.startsAt, draft.timeZone, intl)
   );
+
+  return draft.requestedPickupAt === null ||
+    draft.requestedPickupAt === undefined
+    ? body
+    : `${body} ${PICKUP_REQUESTS[locale](formatWhen(draft.requestedPickupAt, draft.timeZone, intl))}`;
 };
 
 const checkRequestDraft = (

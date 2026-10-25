@@ -46,7 +46,7 @@ const assistantPlanSchema = z.strictObject({
     "The person's own words for the date or time, or null."
   ),
   dateTimeIso: nullableString.describe(
-    "An absolute ISO 8601 date-time with offset if, and only if, it is unambiguous; otherwise null."
+    "An absolute ISO 8601 date-time with offset if, and only if, it is unambiguous; otherwise null. For ride_request only an explicitly stated appointment clock time or arrival time at rideDestination; null for day-only references or a time copied from saved context. Pickup belongs in pickupTimeIso."
   ),
   groceryItems: z
     .array(
@@ -59,10 +59,30 @@ const assistantPlanSchema = z.strictObject({
     .describe(
       "Items to add to a grocery list; empty unless the intent is grocery_list."
     ),
+  groceryListId: nullableString
+    .optional()
+    .describe(
+      "Explicit grocery list id, copied from context; null for the default list."
+    ),
+  groceryListName: nullableString
+    .optional()
+    .describe(
+      "Explicit list name exactly as requested, even if unknown; null only when no list is named. Never replace an unknown name with the default list."
+    ),
   intent: z.enum(assistantIntents),
   messageDraft: nullableString.describe(
     "The exact words to send, written in the person's voice, or null when nothing is being sent."
   ),
+  pickupTimeAsSaid: nullableString
+    .optional()
+    .describe(
+      "For a ride: an exact quote containing both the explicit pickup request and its clock time, distinct from the appointment time; otherwise null. Do not quote unrelated words or only an isolated time."
+    ),
+  pickupTimeIso: nullableString
+    .optional()
+    .describe(
+      "For a ride: absolute requested pickup time with offset, only when explicitly requested and unambiguous; otherwise null. Never use the appointment start as pickup."
+    ),
   recipients: z
     .array(
       z.strictObject({

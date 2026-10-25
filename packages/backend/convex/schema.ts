@@ -1046,6 +1046,7 @@ export default defineSchema({
     ),
     ownerId: v.id("profiles"),
     request: v.string(),
+    requestedRidePickupAt: v.optional(v.number()),
     status: v.union(
       v.literal("needs_clarification"),
       v.literal("awaiting_approval"),

@@ -265,7 +265,7 @@ const placeRide = async (
     ownerId,
     proposalJson: JSON.stringify({
       appointmentId: null,
-      dateTimeAsSaid: "Saturday at 10",
+      dateTimeAsSaid: dateTimeIso,
       dateTimeIso,
       groceryItems: [],
       intent: "ride_request",
@@ -274,7 +274,10 @@ const placeRide = async (
       reminderTitle: null,
       rideDestination: "the farmers market",
     }),
-    request: "Ask Sam if he can give me a ride to the farmers market",
+    request:
+      dateTimeIso === null
+        ? "Ask Sam if he can give me a ride to the farmers market"
+        : `Ask Sam if he can give me a ride to the farmers market at ${dateTimeIso}`,
   });
 
 describe("ride to a place that is not an appointment (demo mode)", () => {

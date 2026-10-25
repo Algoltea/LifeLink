@@ -20,7 +20,7 @@ import { createAction } from "./lifecycle";
 import type { Ambiguity } from "./lifecycle";
 import { contactLocale } from "./locale";
 import { activeGrantsWithScope } from "./permissions";
-import { MINUTE, formatDay, formatTime, parseAbsoluteIso } from "./time";
+import { DAY, MINUTE, formatDay, formatTime, parseAbsoluteIso } from "./time";
 
 type StepKind = Doc<"taskSteps">["kind"];
 
@@ -221,7 +221,8 @@ const rideRequestBody = async (
   ctx: QueryCtx,
   owner: Doc<"profiles">,
   contact: Doc<"contacts">,
-  ride: Doc<"appointments"> | RideDestination
+  ride: Doc<"appointments"> | RideDestination,
+  requestedPickupAt: number | null = null
 ): Promise<string> => {
   const locale = await contactLocale(ctx, owner._id, contact);
 
@@ -230,6 +231,7 @@ const rideRequestBody = async (
       {
         firstName: firstName(contact.name),
         place: ride.place,
+        requestedPickupAt,
         signOff: signOff(owner),
         startsAt: ride.startsAt,
         timeZone: owner.timeZone,
@@ -242,6 +244,7 @@ const rideRequestBody = async (
     {
       firstName: firstName(contact.name),
       location: ride.location,
+      requestedPickupAt,
       signOff: signOff(owner),
       startsAt: ride.startsAt,
       timeZone: owner.timeZone,
@@ -252,6 +255,9 @@ const rideRequestBody = async (
 };
 
 /** Where a ride goes: the saved appointment, else the place the person named. */
+const rideLabelOf = (ride: Doc<"appointments"> | RideDestination): string =>
+  isPlace(ride) ? ride.place : ride.title;
+
 const rideTitleOf = (
   appointment: Doc<"appointments"> | null,
   task: Doc<"tasks">
@@ -277,6 +283,7 @@ interface RideRequest {
   origin: Doc<"tasks">["origin"];
   owner: Doc<"profiles">;
   request: string;
+  requestedPickupAt?: number | null;
 }
 
 /**
@@ -339,8 +346,14 @@ const startRideRequest = async (
     ownerId: input.owner._id,
     request: input.request,
     steps: RIDE_STEPS,
-    title: `Ride to ${isPlace(ride) ? ride.place : ride.title}`,
+    title: `Ride to ${rideLabelOf(ride)}`,
   });
+
+  const requestedPickupAt = input.requestedPickupAt ?? null;
+
+  if (requestedPickupAt !== null) {
+    await ctx.db.patch(taskId, { requestedRidePickupAt: requestedPickupAt });
+  }
 
   if (ambiguities.length > 0) {
     await ctx.db.patch(taskId, { status: "needs_clarification" });
@@ -350,7 +363,13 @@ const startRideRequest = async (
     ambiguities,
     details: {
       address: channel.address,
-      body: await rideRequestBody(ctx, input.owner, contact, ride),
+      body: await rideRequestBody(
+        ctx,
+        input.owner,
+        contact,
+        ride,
+        requestedPickupAt
+      ),
       channel: channel.channel,
       contactId: contact._id,
       contactName: contact.name,
@@ -731,14 +750,35 @@ const proposeConfirmation = async (
     statedPickup < startsAt &&
     statedPickup > startsAt - 4 * 60 * MINUTE;
 
-  const pickupAt = plausiblePickup ? statedPickup : startsAt - 45 * MINUTE;
+  const requestedPickup = task.requestedRidePickupAt;
+
+  const validRequestedPickup =
+    requestedPickup !== undefined &&
+    requestedPickup > reply.now &&
+    requestedPickup < startsAt &&
+    requestedPickup >= startsAt - DAY;
+
+  const defaultPickup = validRequestedPickup
+    ? requestedPickup
+    : startsAt - 45 * MINUTE;
+
+  const pickupAt = plausiblePickup ? statedPickup : defaultPickup;
 
   const ambiguities: Ambiguity[] = plausiblePickup
     ? []
     : [
         {
           field: "pickup",
-          options: [60, 45, 30].map((minutes) => ({
+          options: [
+            ...new Set([
+              ...(validRequestedPickup
+                ? [(startsAt - requestedPickup) / MINUTE]
+                : []),
+              60,
+              45,
+              30,
+            ]),
+          ].map((minutes) => ({
             label: `${formatTime(startsAt - minutes * MINUTE, owner.timeZone)} (${minutes} minutes before)`,
             value: String(startsAt - minutes * MINUTE),
           })),
