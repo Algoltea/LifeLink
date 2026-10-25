@@ -60,6 +60,7 @@ import type * as lib_journey from "../lib/journey.js";
 import type * as lib_lifecycle from "../lib/lifecycle.js";
 import type * as lib_locale from "../lib/locale.js";
 import type * as lib_notices from "../lib/notices.js";
+import type * as lib_origins from "../lib/origins.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_proposalMessages from "../lib/proposalMessages.js";
 import type * as lib_proposals from "../lib/proposals.js";
@@ -150,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   "lib/lifecycle": typeof lib_lifecycle;
   "lib/locale": typeof lib_locale;
   "lib/notices": typeof lib_notices;
+  "lib/origins": typeof lib_origins;
   "lib/permissions": typeof lib_permissions;
   "lib/proposalMessages": typeof lib_proposalMessages;
   "lib/proposals": typeof lib_proposals;

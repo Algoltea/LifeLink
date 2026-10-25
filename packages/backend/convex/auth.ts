@@ -7,6 +7,7 @@ import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import authConfig from "./auth.config";
 import { readEnvOr } from "./lib/env";
+import { trustedOriginsFor } from "./lib/origins";
 
 const MIN_PASSWORD_LENGTH = 10;
 
@@ -25,6 +26,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       requireEmailVerification: false,
     },
     plugins: [convex({ authConfig, jwksRotateOnTokenGenerationError: true })],
-    trustedOrigins: [siteUrl],
+    trustedOrigins: trustedOriginsFor(siteUrl),
   });
 };
