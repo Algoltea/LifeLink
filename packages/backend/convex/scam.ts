@@ -34,6 +34,7 @@ import {
   query,
 } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import { queueWarningDraft } from "./emailWarnings";
 import { decodeJson } from "./integrations/http";
 import {
   openRouterConfigured,
@@ -393,7 +394,8 @@ const flaggedElsewhere = async (
 };
 
 /**
- * Local-only, atomic with ingestion. Immutable imported text and a rules
+ * Local analysis, atomic with ingestion. A likely-scam result can queue a
+ * separate mailbox warning for eligible new mail. Immutable imported text and a rules
  * version key the cache. A rules update rewrites the earlier automatic result
  * in place, so a corrected check replaces the old one everywhere it was shown.
  */
@@ -472,6 +474,8 @@ export const ensureEmailCheck = async (
     },
     suspicious: isFlagged(verdict) || keepEarlierFlag,
   });
+
+  await queueWarningDraft(ctx, email._id);
 
   return reviewId;
 };
@@ -1308,5 +1312,6 @@ export const applyEmailCheck = internalMutation({
       },
       suspicious: email.suspicious === true || isFlagged(verdict),
     });
+    await queueWarningDraft(ctx, email._id);
   },
 });

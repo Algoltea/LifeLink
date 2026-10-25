@@ -468,6 +468,21 @@ export default defineSchema({
         warningCount: v.number(),
       })
     ),
+    scamWarningDraft: v.optional(
+      v.object({
+        draftId: v.union(v.string(), v.null()),
+        status: v.union(
+          v.literal("queued"),
+          v.literal("created"),
+          v.literal("failed"),
+          v.literal("unknown"),
+          v.literal("skipped")
+        ),
+        updatedAt: v.number(),
+      })
+    ),
+    // Only new, recent mail is eligible; pin the mailbox before any delayed AI result.
+    scamWarningMailboxId: v.optional(v.string()),
     selectedForReview: v.boolean(),
     subject: v.string(),
     summary: v.union(v.string(), v.null()),
