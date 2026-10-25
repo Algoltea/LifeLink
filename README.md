@@ -88,6 +88,18 @@ Nothing slow happens at start-up: no installs, checks, or network calls beyond t
 
 Sign up at `http://localhost:3001`. During onboarding, choose **It's for me** and tick **Practice mode** to get sample family, email, and an appointment. Then try **"Can Sam drive me to my appointment on Tuesday?"**
 
+#### After pulling new backend functions
+
+Keep `bun run dev` running so Convex pushes new functions as well as Next.js updating the web app. `bun run dev:web` starts only the web app; run `bun run dev:server` alongside it to sync the backend.
+
+If Convex reports **"Could not find public function"** (for example, `markets:quotes`), the deployment serving the browser does not have that function. For a one-time sync of the configured development deployment, run:
+
+```bash
+bun run --cwd packages/backend dev --once
+```
+
+Wait for Convex to finish successfully, then reload the page. If the error persists, check that `NEXT_PUBLIC_CONVEX_URL` in `apps/web/.env.local` matches `CONVEX_URL` in `packages/backend/.env.local`, and restart the web server after changing its environment. The generated API bindings provide types; they do not deploy functions. CI validates changes but does not deploy them.
+
 ---
 
 ## Environment
