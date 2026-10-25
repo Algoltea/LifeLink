@@ -500,7 +500,6 @@ const EmailReader = ({
 
       {explaining ? (
         <ExplanationPanel
-          level={3}
           onClose={() => setExplaining(false)}
           onUseReply={(suggestion) => {
             setReply({
