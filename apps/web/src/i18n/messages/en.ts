@@ -18,6 +18,8 @@ import { greeting } from "./en/greeting";
 import { groceries } from "./en/groceries";
 import { guest } from "./en/guest";
 import { imessageSetup } from "./en/imessage-setup";
+import { landing } from "./en/landing";
+import { mahjong } from "./en/mahjong";
 import { onboarding } from "./en/onboarding";
 import { photoInput } from "./en/photo-input";
 import { recap } from "./en/recap";
@@ -57,6 +59,8 @@ const en = {
   groceries,
   guest,
   imessageSetup,
+  landing,
+  mahjong,
   onboarding,
   photoInput,
   recap,

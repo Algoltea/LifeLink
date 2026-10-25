@@ -5,7 +5,10 @@ import type { Pair } from "@lifelink/mahjong/rules";
 import { cn } from "@lifelink/ui/lib/utils";
 import type { KeyboardEvent } from "react";
 
-import { boardStyle, tileLabel, tileStyle } from "./board-model";
+import { useMessages } from "@/i18n/locale";
+
+import { boardStyle, tileStyle } from "./board-model";
+import { tileLabel } from "./localization";
 import { TileFace } from "./tile-face";
 import type { TileTone } from "./tile-face";
 
@@ -28,14 +31,6 @@ export interface BoardProps {
 const MARK_STYLES: Readonly<Record<Exclude<Mark, "none">, string>> = {
   hint: "border-warning border-dashed",
   selected: "border-primary border-solid",
-};
-
-const markSuffix = (mark: Mark): string => {
-  if (mark === "selected") {
-    return " Selected.";
-  }
-
-  return mark === "hint" ? " Suggested by the hint." : "";
 };
 
 const markFor = (board: BoardProps, index: number): Mark => {
@@ -63,18 +58,18 @@ const toneFor = (mark: Mark, free: boolean): TileTone => {
  * tiles. Enter and Space click the focused tile natively.
  */
 export const Board = (board: BoardProps) => {
+  const messages = useMessages().mahjong;
   const { state } = board;
   const layout = layoutOf(state);
 
   return (
     <section
       aria-describedby="mahjong-board-keys"
-      aria-label="Tile board"
+      aria-label={messages.board}
       className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 sm:p-6"
     >
       <p className="sr-only" id="mahjong-board-keys">
-        Use the arrow keys to move between free tiles. Press Enter to pick a
-        tile, and Escape to put it down.
+        {messages.keyboard}
       </p>
       <div className="relative mx-auto w-full" style={boardStyle(layout)}>
         {state.tiles.map((tile, index) => {
@@ -89,7 +84,7 @@ export const Board = (board: BoardProps) => {
 
           return (
             <button
-              aria-label={`${tileLabel(state, index)}${markSuffix(mark)}`}
+              aria-label={`${tileLabel(state, index, messages)}${mark === "none" ? "" : ` ${messages[mark === "selected" ? "selected" : "suggested"]}`}`}
               className={cn(
                 "[container-type:inline-size] absolute z-(--tile-layer) block touch-manipulation rounded-[10%] select-none focus-visible:z-50",
                 // Only free tiles answer the pointer; a free tile has nothing on top, so lifting it is safe.

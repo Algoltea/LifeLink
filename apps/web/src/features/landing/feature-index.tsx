@@ -3,12 +3,15 @@
 import { cn } from "@lifelink/ui/lib/utils";
 import { useEffect, useRef, useState } from "react";
 
-import { MORE_FEATURES } from "./content";
+import { useMessages } from "@/i18n/locale";
+
+import { FEATURE_IDS } from "./content";
+import type { FeatureId } from "./content";
 import { FEATURE_PREVIEWS } from "./feature-previews";
 import { HEADING, PAGE } from "./parts";
 import { Reveal } from "./reveal";
 
-const FIRST_FEATURE = MORE_FEATURES[0]?.id ?? "email";
+const [FIRST_FEATURE] = FEATURE_IDS;
 
 /** Matches Tailwind's `lg`, where the preview sits beside the list. */
 const SIDE_BY_SIDE = "(min-width: 64rem)";
@@ -16,7 +19,7 @@ const SIDE_BY_SIDE = "(min-width: 64rem)";
 /** A row takes over the preview once its middle passes this share of the viewport height, level with the sticky frame. */
 const READING_LINE = 0.5;
 
-const Preview = ({ id }: { id: string }) => {
+const Preview = ({ id }: { id: FeatureId }) => {
   const content = FEATURE_PREVIEWS.get(id);
 
   if (!content) {
@@ -35,8 +38,9 @@ const Preview = ({ id }: { id: string }) => {
  * LifeLink in one fixed frame. On phones the example opens under its row.
  */
 const FeatureIndex = () => {
-  const [activeId, setActiveId] = useState(FIRST_FEATURE);
-  const rowsRef = useRef(new Map<string, HTMLElement>());
+  const [activeId, setActiveId] = useState<FeatureId>(FIRST_FEATURE);
+  const rowsRef = useRef(new Map<FeatureId, HTMLElement>());
+  const t = useMessages().landing.features;
 
   // On wide screens the frame follows the row level with it while scrolling,
   // so each example arrives beside its row. Pointing still wins until the
@@ -45,7 +49,7 @@ const FeatureIndex = () => {
     const sideBySide = window.matchMedia(SIDE_BY_SIDE);
     const listening = new AbortController();
     let frame = 0;
-    let lastPassed = "";
+    let lastPassed: FeatureId | null = null;
 
     const follow = () => {
       frame = 0;
@@ -55,10 +59,10 @@ const FeatureIndex = () => {
       }
 
       const line = window.innerHeight * READING_LINE;
-      let passed = FIRST_FEATURE;
+      let passed: FeatureId = FIRST_FEATURE;
 
-      for (const feature of MORE_FEATURES) {
-        const row = rowsRef.current.get(feature.id);
+      for (const id of FEATURE_IDS) {
+        const row = rowsRef.current.get(id);
 
         if (!row) {
           continue;
@@ -70,7 +74,7 @@ const FeatureIndex = () => {
           break;
         }
 
-        passed = feature.id;
+        passed = id;
       }
 
       if (passed !== lastPassed) {
@@ -111,25 +115,26 @@ const FeatureIndex = () => {
         <div className="flex flex-col gap-[2.222rem]">
           <Reveal>
             <h2 className={HEADING} id="everything-else-title">
-              Everything else
+              {t.titleLine1}
               <br />
-              it does
+              {t.titleLine2}
             </h2>
           </Reveal>
           <ul className="flex flex-col gap-[0.222rem]">
-            {MORE_FEATURES.map((feature, index) => {
-              const active = feature.id === activeId;
+            {FEATURE_IDS.map((id, index) => {
+              const active = id === activeId;
+              const feature = t.items[id];
 
               return (
                 <Reveal
                   as="li"
                   delay={index * 50}
-                  key={feature.id}
+                  key={id}
                   ref={(node) => {
                     if (node) {
-                      rowsRef.current.set(feature.id, node);
+                      rowsRef.current.set(id, node);
                     } else {
-                      rowsRef.current.delete(feature.id);
+                      rowsRef.current.delete(id);
                     }
                   }}
                 >
@@ -139,11 +144,11 @@ const FeatureIndex = () => {
                       "flex w-full flex-col gap-[0.222rem] px-[1.111rem] py-[0.889rem] text-left transition-colors duration-200",
                       active ? "bg-parchment" : "hover:bg-parchment/60"
                     )}
-                    onClick={() => setActiveId(feature.id)}
-                    onFocus={() => setActiveId(feature.id)}
+                    onClick={() => setActiveId(id)}
+                    onFocus={() => setActiveId(id)}
                     onPointerEnter={(event) => {
                       if (event.pointerType === "mouse") {
-                        setActiveId(feature.id);
+                        setActiveId(id);
                       }
                     }}
                     type="button"
@@ -162,7 +167,7 @@ const FeatureIndex = () => {
                   </button>
                   {active ? (
                     <div className="bg-parchment px-[0.889rem] pb-[0.889rem] lg:hidden">
-                      <Preview id={feature.id} />
+                      <Preview id={id} />
                     </div>
                   ) : null}
                 </Reveal>
@@ -174,8 +179,7 @@ const FeatureIndex = () => {
           <Reveal className="sticky top-[2.222rem] flex flex-col gap-[0.667rem] pt-[9.333rem]">
             <Preview id={activeId} />
             <p className="text-muted-foreground text-[0.889rem] leading-[1.5]">
-              Example. Scroll or point at a row to see that part of LifeLink
-              here.
+              {t.hint}
             </p>
           </Reveal>
         </div>

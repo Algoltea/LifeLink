@@ -1,6 +1,10 @@
+"use client";
+
 import { cn } from "@lifelink/ui/lib/utils";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+
+import { useMessages } from "@/i18n/locale";
 
 import { HEADING, PAGE } from "./parts";
 import { Reveal } from "./reveal";
@@ -226,78 +230,75 @@ const Board = () => (
   </div>
 );
 
-const SOLITAIRE_CONTROLS = ["Undo", "Hint", "New game"] as const;
+const SolitairePreview = () => {
+  const t = useMessages().landing.solitaire;
 
-const SolitairePreview = () => (
-  <section
-    aria-labelledby="solitaire-title"
-    className="landing-ink py-[5.333rem] lg:py-[10rem]"
-    id="solitaire"
-  >
-    <div
-      className={`${PAGE} flex flex-col gap-[2.667rem] lg:flex-row lg:items-center lg:justify-between`}
+  return (
+    <section
+      aria-labelledby="solitaire-title"
+      className="landing-ink py-[5.333rem] lg:py-[10rem]"
+      id="solitaire"
     >
-      <div className="flex flex-col gap-[1.556rem] lg:max-w-[24.444rem]">
-        <Reveal>
-          <h2 className={HEADING} id="solitaire-title">
-            A quiet game
-            <br />
-            of solitaire
-          </h2>
-        </Reveal>
-        <Reveal delay={80}>
-          <p className="text-[1rem] leading-[1.556] md:text-[1.111rem]">
-            Klondike with large, clear cards. Tap a card to move it, or play
-            with the keyboard. Undo and a hint are always one press away, and
-            your game is saved on this device, even without the internet.
-          </p>
-        </Reveal>
-        <Reveal
-          className="flex flex-col gap-[0.889rem] sm:flex-row sm:items-center sm:gap-[1.333rem]"
-          delay={160}
-        >
-          <Link
-            className="bg-raised text-foreground hover:bg-warning-wash flex min-h-[3.111rem] items-center justify-center px-[1.444rem] text-[1rem] font-semibold no-underline transition-colors duration-150 active:scale-[0.98]"
-            href="/solitaire"
-            prefetch={false}
+      <div
+        className={`${PAGE} flex flex-col gap-[2.667rem] lg:flex-row lg:items-center lg:justify-between`}
+      >
+        <div className="flex flex-col gap-[1.556rem] lg:max-w-[24.444rem]">
+          <Reveal>
+            <h2 className={HEADING} id="solitaire-title">
+              {t.titleLine1}
+              <br />
+              {t.titleLine2}
+            </h2>
+          </Reveal>
+          <Reveal delay={80}>
+            <p className="text-[1rem] leading-[1.556] md:text-[1.111rem]">
+              {t.intro}
+            </p>
+          </Reveal>
+          <Reveal
+            className="flex flex-col gap-[0.889rem] sm:flex-row sm:items-center sm:gap-[1.333rem]"
+            delay={160}
           >
-            Play Solitaire
-          </Link>
-          <span className="text-neutral-wash text-[0.944rem]">
-            No account needed.
-          </span>
+            <Link
+              className="bg-raised text-foreground hover:bg-warning-wash flex min-h-[3.111rem] items-center justify-center px-[1.444rem] text-[1rem] font-semibold no-underline transition-colors duration-150 active:scale-[0.98]"
+              href="/solitaire"
+              prefetch={false}
+            >
+              {t.play}
+            </Link>
+            <span className="text-neutral-wash text-[0.944rem]">
+              {t.noAccount}
+            </span>
+          </Reveal>
+        </div>
+        <Reveal
+          className="flex max-w-full flex-col gap-[0.778rem] overflow-hidden"
+          delay={120}
+        >
+          <div className="max-w-full overflow-hidden rounded-[0.667rem]">
+            <p className="sr-only">{t.boardDescription}</p>
+            <Board />
+          </div>
+          <div
+            aria-hidden="true"
+            className="flex flex-wrap items-center gap-[0.444rem]"
+          >
+            {t.controls.map((control) => (
+              <span
+                className="bg-parchment text-foreground flex min-h-[2.667rem] items-center rounded-[0.444rem] px-[1rem] text-[0.889rem] font-semibold"
+                key={control}
+              >
+                {control}
+              </span>
+            ))}
+            <span className="text-neutral-wash ml-auto text-[0.889rem]">
+              {t.saved}
+            </span>
+          </div>
         </Reveal>
       </div>
-      <Reveal
-        className="flex max-w-full flex-col gap-[0.778rem] overflow-hidden"
-        delay={120}
-      >
-        <div className="max-w-full overflow-hidden rounded-[0.667rem]">
-          <p className="sr-only">
-            A game of Klondike solitaire in progress. The eight of spades moves
-            onto the nine of hearts.
-          </p>
-          <Board />
-        </div>
-        <div
-          aria-hidden="true"
-          className="flex flex-wrap items-center gap-[0.444rem]"
-        >
-          {SOLITAIRE_CONTROLS.map((control) => (
-            <span
-              className="bg-parchment text-foreground flex min-h-[2.667rem] items-center rounded-[0.444rem] px-[1rem] text-[0.889rem] font-semibold"
-              key={control}
-            >
-              {control}
-            </span>
-          ))}
-          <span className="text-neutral-wash ml-auto text-[0.889rem]">
-            Game saved on this device
-          </span>
-        </div>
-      </Reveal>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 export { SolitairePreview };

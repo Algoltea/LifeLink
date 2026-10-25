@@ -1,4 +1,10 @@
+"use client";
+
 import type { ReactNode } from "react";
+
+import { useMessages } from "@/i18n/locale";
+
+import type { FeatureId } from "./content";
 
 /** Small, real-looking pieces of each LifeLink screen, filled with sample data. */
 
@@ -41,185 +47,215 @@ const Approve = ({ children }: { children: string }) => (
   </span>
 );
 
-const EmailPreview = () => (
-  <Panel note="3 new" title="Email">
-    <Row>
-      <span className="font-semibold">Parcel Delivery Service</span>
-      <span>Action needed: your parcel is on hold</span>
-      <span className="bg-negative-wash text-negative mt-[0.333rem] px-[0.667rem] py-[0.444rem] text-[0.889rem] font-semibold">
-        This looks like a scam: it asks for payment through a link.
-      </span>
-    </Row>
-    <Row>
-      <span className="font-semibold">Ana Moreno</span>
-      <span>Lunch on Sunday? Bring the photo album!</span>
-    </Row>
-    <Row>
-      <span className="font-semibold">Reply to Ana · draft, not sent</span>
-      <span>
-        Sunday sounds lovely. I’ll bring the album. Is 12:30 all right? Love,
-        Ruth
-      </span>
-      <Approve>Approve and send</Approve>
-    </Row>
-  </Panel>
-);
+const usePreviews = () => useMessages().landing.previews;
 
-const TodayPreview = () => (
-  <Panel note="Monday" title="Good morning, Ruth">
-    <Row>
-      <Pair label="Weather" value="58°F, light rain" />
-    </Row>
-    <Row>
+const EmailPreview = () => {
+  const t = usePreviews();
+
+  return (
+    <Panel note={t.email.note} title={t.email.title}>
+      <Row>
+        <span className="font-semibold">{t.email.parcelSender}</span>
+        <span>{t.email.parcelSubject}</span>
+        <span className="bg-negative-wash text-negative mt-[0.333rem] px-[0.667rem] py-[0.444rem] text-[0.889rem] font-semibold">
+          {t.email.scamWarning}
+        </span>
+      </Row>
+      <Row>
+        <span className="font-semibold">Ana Moreno</span>
+        <span>{t.email.anaSubject}</span>
+      </Row>
+      <Row>
+        <span className="font-semibold">{t.email.draftTitle}</span>
+        <span>{t.email.draftBody}</span>
+        <Approve>{t.approveAndSend}</Approve>
+      </Row>
+    </Panel>
+  );
+};
+
+const TodayPreview = () => {
+  const t = usePreviews().today;
+
+  return (
+    <Panel note={t.note} title={t.title}>
+      <Row>
+        <Pair label={t.weather} value={t.weatherValue} />
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.waiting}
+        </span>
+        <span className="font-semibold">{t.pickup}</span>
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.goodNews}
+        </span>
+        {t.headlines.map((headline) => (
+          <span key={headline}>{headline}</span>
+        ))}
+      </Row>
+    </Panel>
+  );
+};
+
+const GroceriesPreview = () => {
+  const t = usePreviews().groceries;
+
+  return (
+    <Panel note={t.note} title={t.title}>
+      <Row>
+        {t.items.map((item) => (
+          <Pair key={item.label} label={item.label} value={item.value} />
+        ))}
+      </Row>
+      <div className="flex gap-[0.444rem]">
+        <Approve>{t.copy}</Approve>
+        <span className="bg-neutral-wash mt-[0.333rem] flex min-h-[2.667rem] items-center rounded-[0.444rem] px-[1rem] text-[0.889rem] font-semibold">
+          {t.print}
+        </span>
+      </div>
+    </Panel>
+  );
+};
+
+const DocumentsPreview = () => {
+  const t = usePreviews().documents;
+
+  return (
+    <Panel note="Google Drive" title={t.title}>
+      {t.files.map((file) => (
+        <Row key={file.name}>
+          <Pair label={file.name} value={file.date} />
+        </Row>
+      ))}
       <span className="text-muted-foreground text-[0.889rem]">
-        Waiting for you
+        {t.footnote}
       </span>
-      <span className="font-semibold">Confirm Sam’s 9:45 pickup</span>
-    </Row>
-    <Row>
+    </Panel>
+  );
+};
+
+const CirclePreview = () => {
+  const t = usePreviews().circle;
+
+  return (
+    <Panel note={t.note} title={t.title}>
+      <Row>
+        <Pair label={t.appointments} value={t.shared} />
+        <Pair label={t.rides} value={t.shared} />
+        <Pair label={t.scamAlerts} value={t.notShared} />
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">{t.code}</span>
+        <span className="num text-[1.222rem] font-semibold tracking-[0.06em]">
+          PLUM-4821
+        </span>
+      </Row>
+      <span className="text-accent-foreground text-[0.889rem] font-semibold underline">
+        {t.stop}
+      </span>
+    </Panel>
+  );
+};
+
+const FamilyPreview = () => {
+  const t = usePreviews().family;
+
+  return (
+    <Panel note={t.note} title={t.title}>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.nextAppointment}
+        </span>
+        <span className="font-semibold">{t.when}</span>
+      </Row>
+      <Row>
+        <span>{t.photos}</span>
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.replyLabel}
+        </span>
+        <span>{t.replyText}</span>
+      </Row>
       <span className="text-muted-foreground text-[0.889rem]">
-        Good news, chosen by you
+        {t.footnote}
       </span>
-      <span>Library extends Sunday opening hours</span>
-      <span>Volunteers restore the town’s rose garden</span>
-      <span>Ferry service returns for the summer</span>
-    </Row>
-  </Panel>
-);
+    </Panel>
+  );
+};
 
-const GroceriesPreview = () => (
-  <Panel note="$62 of $80 budget" title="Weekly shop">
-    <Row>
-      <Pair label="Oat milk, 2" value="$7.98" />
-      <Pair label="Whole-grain bread" value="$4.49" />
-      <Pair label="Apples, 6" value="$5.20" />
-      <Pair label="Soup ingredients for Ana’s visit" value="$18.40" />
-    </Row>
-    <div className="flex gap-[0.444rem]">
-      <Approve>Copy list</Approve>
-      <span className="bg-neutral-wash mt-[0.333rem] flex min-h-[2.667rem] items-center rounded-[0.444rem] px-[1rem] text-[0.889rem] font-semibold">
-        Print
-      </span>
-    </div>
-  </Panel>
-);
+const RecapPreview = () => {
+  const t = usePreviews().recap;
 
-const DocumentsPreview = () => (
-  <Panel note="Google Drive" title="Documents">
-    <Row>
-      <Pair label="Medicare summary.pdf" value="Oct 12" />
-    </Row>
-    <Row>
-      <Pair label="Ana’s soup recipe" value="Sep 30" />
-    </Row>
-    <Row>
-      <Pair label="Garden photos" value="Sep 14" />
-    </Row>
-    <span className="text-muted-foreground text-[0.889rem]">
-      Choose a file to preview it. Change or share it in Google Drive.
-    </span>
-  </Panel>
-);
+  return (
+    <Panel note="Sam Rivera" title={t.title}>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.agreed}
+        </span>
+        <span>{t.agreedText}</span>
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.offered}
+        </span>
+        <span>{t.offeredText}</span>
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.nextStep}
+        </span>
+        <span>{t.nextStepText}</span>
+        <Approve>{t.review}</Approve>
+      </Row>
+    </Panel>
+  );
+};
 
-const CirclePreview = () => (
-  <Panel note="Until December 31" title="Shared with Sam Rivera">
-    <Row>
-      <Pair label="Appointments" value="Shared" />
-      <Pair label="Rides" value="Shared" />
-      <Pair label="Scam alerts" value="Not shared" />
-    </Row>
-    <Row>
+const HelpPreview = () => {
+  const t = usePreviews().help;
+
+  return (
+    <Panel title={t.title}>
+      <Row>
+        <Pair label={t.answers} value={t.short} />
+      </Row>
+      <Row>
+        <Pair label={t.oneStep} value={t.on} />
+      </Row>
+      <Row>
+        <Pair label={t.language} value="Español" />
+      </Row>
+      <Row>
+        <span className="text-muted-foreground text-[0.889rem]">
+          {t.noteLabel}
+        </span>
+        <span>{t.noteText}</span>
+      </Row>
+    </Panel>
+  );
+};
+
+const ConnectionsPreview = () => {
+  const t = usePreviews().connections;
+
+  return (
+    <Panel note={t.note} title="Google Calendar">
+      <Row>
+        <Pair label={t.add} value={t.works} />
+        <Pair label={t.see} value={t.notReady} />
+      </Row>
       <span className="text-muted-foreground text-[0.889rem]">
-        One-time invitation code
+        {t.footnote}
       </span>
-      <span className="num text-[1.222rem] font-semibold tracking-[0.06em]">
-        PLUM-4821
-      </span>
-    </Row>
-    <span className="text-accent-foreground text-[0.889rem] font-semibold underline">
-      Stop sharing now
-    </span>
-  </Panel>
-);
+    </Panel>
+  );
+};
 
-const FamilyPreview = () => (
-  <Panel note="What Sam sees" title="Ruth’s updates">
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">
-        Next appointment
-      </span>
-      <span className="font-semibold">Dr. Patel, Tuesday at 10:30 AM</span>
-    </Row>
-    <Row>
-      <span>2 new photos from the garden</span>
-    </Row>
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">
-        Reply to Ruth
-      </span>
-      <span>See you Tuesday at 9:45!</span>
-    </Row>
-    <span className="text-muted-foreground text-[0.889rem]">
-      Sam can read and reply. Sam can’t send, approve or spend for Ruth.
-    </span>
-  </Panel>
-);
-
-const RecapPreview = () => (
-  <Panel note="Sam Rivera" title="Recap">
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">Agreed</span>
-      <span>Sam drives you on Tuesday, picking up at 9:45.</span>
-    </Row>
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">
-        Only offered
-      </span>
-      <span>Sam might bring Max along.</span>
-    </Row>
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">
-        Suggested next step
-      </span>
-      <span>Remind me on Monday evening.</span>
-      <Approve>Review reminder</Approve>
-    </Row>
-  </Panel>
-);
-
-const HelpPreview = () => (
-  <Panel title="How I like help">
-    <Row>
-      <Pair label="Answers" value="Short" />
-    </Row>
-    <Row>
-      <Pair label="One step at a time" value="On" />
-    </Row>
-    <Row>
-      <Pair label="Help language" value="Español" />
-    </Row>
-    <Row>
-      <span className="text-muted-foreground text-[0.889rem]">
-        Private note
-      </span>
-      <span>I don’t hear well on the phone. Suggest texting first.</span>
-    </Row>
-  </Panel>
-);
-
-const ConnectionsPreview = () => (
-  <Panel note="Connected" title="Google Calendar">
-    <Row>
-      <Pair label="Add an approved appointment" value="Works" />
-      <Pair label="See your upcoming events" value="Not ready yet" />
-    </Row>
-    <span className="text-muted-foreground text-[0.889rem]">
-      Each connection lists only what it can really do.
-    </span>
-  </Panel>
-);
-
-const FEATURE_PREVIEWS = new Map([
+const FEATURE_PREVIEWS = new Map<FeatureId, ReactNode>([
   ["circle", <CirclePreview key="circle" />],
   ["connections", <ConnectionsPreview key="connections" />],
   ["documents", <DocumentsPreview key="documents" />],

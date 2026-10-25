@@ -9,6 +9,8 @@ import type {
 } from "@lifelink/mahjong/tiles";
 import { cn } from "@lifelink/ui/lib/utils";
 
+import { useMessages } from "@/i18n/locale";
+
 /*
  * Tiles are drawn with real Chinese characters as plain text, never Unicode
  * mahjong symbols (iPhones show those as emoji) and never pictures, so every
@@ -50,13 +52,6 @@ const WIND_CHARACTERS: Readonly<Record<Wind, string>> = {
   north: "北",
   south: "南",
   west: "西",
-};
-
-const WIND_LETTERS: Readonly<Record<Wind, string>> = {
-  east: "E",
-  north: "N",
-  south: "S",
-  west: "W",
 };
 
 const DRAGON_CHARACTERS: Readonly<Record<Exclude<Dragon, "white">, string>> = {
@@ -108,6 +103,8 @@ const Large = ({
 );
 
 const Glyph = ({ tile }: { readonly tile: Tile }) => {
+  const messages = useMessages().mahjong;
+
   switch (tile.kind) {
     case "suit": {
       const ink = SUIT_INK[tile.suit];
@@ -135,7 +132,9 @@ const Glyph = ({ tile }: { readonly tile: Tile }) => {
     case "wind": {
       return (
         <>
-          <Corner className="text-foreground">{WIND_LETTERS[tile.wind]}</Corner>
+          <Corner className="text-foreground">
+            {messages.winds[tile.wind].slice(0, 1)}
+          </Corner>
           <Large className="text-foreground pt-[10cqi]">
             {WIND_CHARACTERS[tile.wind]}
           </Large>

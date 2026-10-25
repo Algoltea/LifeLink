@@ -2,11 +2,16 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
+import {
+  interfaceLocaleOf,
+  interfaceLocales,
+} from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
+  LanguagesIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -24,7 +29,7 @@ import { useState } from "react";
 import type { ComponentType, ReactNode, SVGAttributes } from "react";
 
 import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
-import { useMessages } from "@/i18n/locale";
+import { setLocale, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 
@@ -394,12 +399,37 @@ const Notices = () => {
   );
 };
 
+const GameLanguagePicker = () => {
+  const locale = useLocale();
+  const t = useMessages();
+
+  return (
+    <label className="text-muted-foreground text-label flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2">
+      <LanguagesIcon aria-hidden="true" className="size-5 shrink-0" />
+      <span className="sr-only">{t.settings.language}</span>
+      <select
+        className="text-foreground focus-visible:outline-ring min-h-11 min-w-0 flex-1 cursor-pointer rounded-md bg-transparent px-2 focus-visible:outline-2"
+        onChange={(event) => setLocale(interfaceLocaleOf(event.target.value))}
+        value={locale}
+      >
+        {interfaceLocales.map(({ id, label }) => (
+          <option key={id} lang={id} value={id}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+};
+
 const MobileMenu = ({
   account,
   groups,
+  game = false,
 }: {
   account: ReactNode;
   groups: NavGroup[];
+  game?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const t = useMessages();
@@ -434,6 +464,7 @@ const MobileMenu = ({
           <NavList groups={groups} onNavigate={() => setOpen(false)} />
           <div className="border-rule mt-auto flex flex-col gap-4 border-t pt-5">
             {account}
+            {game ? <GameLanguagePicker /> : null}
           </div>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
@@ -458,7 +489,10 @@ const ShellFrame = ({
   notices?: ReactNode;
   navigation?: ReactNode;
 }) => {
+  const pathname = usePathname();
   const t = useMessages();
+  const brandHref = pathname === "/mahjong" ? "/welcome" : homeHref;
+  const game = PUBLIC_GAMES.has(pathname);
 
   return (
     <div className="bg-background min-h-svh">
@@ -479,10 +513,18 @@ const ShellFrame = ({
         >
           {guest ? (
             <>
-              <div className="min-h-control flex items-center">
+              <Link
+                className="min-h-control flex items-center"
+                href={brandHref}
+              >
                 <BrandName />
-              </div>
+              </Link>
               <GuestPlayInvitation />
+              {game ? (
+                <div className="border-border mt-auto border-t pt-3">
+                  <GameLanguagePicker />
+                </div>
+              ) : null}
             </>
           ) : (
             <>
@@ -490,7 +532,7 @@ const ShellFrame = ({
               <div className="flex h-[4.444rem] shrink-0 items-center">
                 <Link
                   className="min-h-control hover:bg-neutral-wash flex items-center rounded-md px-4 transition-colors"
-                  href={homeHref}
+                  href={brandHref}
                 >
                   <BrandName />
                 </Link>
@@ -498,6 +540,7 @@ const ShellFrame = ({
               {navigation ?? <NavList dense groups={groups} />}
               <div className="border-border mt-auto flex flex-col gap-3 border-t pt-3 [@media(max-height:920px)]:pt-2">
                 {account}
+                {game ? <GameLanguagePicker /> : null}
               </div>
             </>
           )}
@@ -506,18 +549,28 @@ const ShellFrame = ({
           <div className="border-border bg-parchment sticky top-0 z-40 flex min-h-[3.556rem] flex-wrap items-center justify-between gap-[8px] border-b px-[16px] py-1 min-[1101px]:hidden">
             {guest ? (
               <>
-                <BrandName compact />
+                <Link
+                  className="min-h-control inline-flex items-center"
+                  href={brandHref}
+                >
+                  <BrandName compact />
+                </Link>
                 <GuestAccountLinks compact />
+                {game ? (
+                  <div className="w-full">
+                    <GameLanguagePicker />
+                  </div>
+                ) : null}
               </>
             ) : (
               <>
                 <Link
                   className="min-h-control hover:bg-neutral-wash -mx-2 inline-flex items-center rounded-md px-2 transition-colors"
-                  href={homeHref}
+                  href={brandHref}
                 >
                   <BrandName compact />
                 </Link>
-                <MobileMenu account={account} groups={groups} />
+                <MobileMenu account={account} game={game} groups={groups} />
               </>
             )}
           </div>

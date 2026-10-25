@@ -18,6 +18,8 @@ import { greeting } from "./it/greeting";
 import { groceries } from "./it/groceries";
 import { guest } from "./it/guest";
 import { imessageSetup } from "./it/imessage-setup";
+import { landing } from "./it/landing";
+import { mahjong } from "./it/mahjong";
 import { onboarding } from "./it/onboarding";
 import { photoInput } from "./it/photo-input";
 import { recap } from "./it/recap";
@@ -57,6 +59,8 @@ const it: Messages = {
   groceries,
   guest,
   imessageSetup,
+  landing,
+  mahjong,
   onboarding,
   photoInput,
   recap,

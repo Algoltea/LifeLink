@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { RUTH_MESSAGE } from "./content";
+import { useMessages } from "@/i18n/locale";
 
 const PERFORATION_DOTS = Array.from(
   { length: 24 },
@@ -12,6 +12,7 @@ const PERFORATION_DOTS = Array.from(
 /** The hero's one live thing: approving the exact version changes what happened. */
 const MessageSlip = () => {
   const [approved, setApproved] = useState(false);
+  const t = useMessages().landing.messageSlip;
 
   return (
     <div
@@ -20,14 +21,14 @@ const MessageSlip = () => {
     >
       <div className="flex items-baseline justify-between gap-4 px-[1.222rem] pt-[1.111rem]">
         <span className="text-[0.944rem] leading-[1.5] font-semibold">
-          To Sam Rivera · iMessage
+          {t.to}
         </span>
         <span className="text-muted-foreground text-[0.889rem] leading-[1.5]">
-          Version 2
+          {t.version}
         </span>
       </div>
       <p className="px-[1.222rem] pt-[0.556rem] pb-[1rem] text-[1rem] leading-[1.556]">
-        {RUTH_MESSAGE}
+        {t.message}
       </p>
       <div aria-hidden="true" className="flex justify-between px-[0.444rem]">
         {PERFORATION_DOTS.map((dot) => (
@@ -41,7 +42,7 @@ const MessageSlip = () => {
             onClick={() => setApproved(false)}
             type="button"
           >
-            Show it again
+            {t.showAgain}
           </button>
         ) : (
           <button
@@ -49,14 +50,14 @@ const MessageSlip = () => {
             onClick={() => setApproved(true)}
             type="button"
           >
-            Approve and send
+            {t.approve}
           </button>
         )}
         <span
           aria-live="polite"
           className="text-accent-foreground text-[0.889rem] leading-[1.5] font-medium"
         >
-          {approved ? "Sent 9:05 AM. Nothing else was sent." : "Not sent yet"}
+          {approved ? t.sent : t.notSent}
         </span>
       </div>
     </div>

@@ -1,0 +1,116 @@
+import type { MahjongMessages } from "../en/mahjong";
+
+const mahjong: MahjongMessages = {
+  actions: "游戏操作",
+  alreadyClear: "牌桌已经清空了。",
+  biggerScreen:
+    "麻将消消乐需要更大的屏幕，才能让牌足够大，方便轻点。请在平板电脑或电脑上打开 LifeLink 游玩。",
+  blocked: {
+    "boxed-in": "这张牌左右两侧都被挡住了。请选择左侧或右侧空着的牌。",
+    covered: "这张牌被另一张牌盖住了。请先移除上面的牌。",
+    removed: "这张牌已经配对移除了。",
+  },
+  board: "麻将牌桌",
+  clearBoard: "牌桌已清空。您可以撤销最后一对配对，或再发一局。",
+  cleared: (moves) => `您用了 ${moves} 步清空牌桌。`,
+  dealAgain: "再发一局",
+  dealt: (layout) => `已发新的一局，使用${layout}布局。`,
+  discarded: "无法打开已保存的游戏，因此已发新的一局。",
+  dragonTile: (dragon) => `${dragon}牌`,
+  dragons: { green: "发财", red: "红中", white: "白板" },
+  earlier: "较早时",
+  errors: {
+    blocked: "这张牌暂时不能选取。",
+    "cannot-shuffle": "无法洗牌。请尝试撤销，或开始新的一局。",
+    "invalid-index": "那里没有牌。",
+    "no-match": "这些牌无法配对。",
+    "nothing-to-shuffle": "没有剩余的牌可以洗了。",
+    "nothing-to-undo": "目前没有可以撤销的操作。",
+    "same-tile": "这是同一张牌。请再选另一张。",
+  },
+  flowerTile: (flower) => `${flower}花牌`,
+  flowers: { bamboo: "竹", chrysanthemum: "菊", orchid: "兰", plum: "梅" },
+  free: "可以选取。",
+  gestures:
+    "轻点一张牌选中它，再轻点与它配对的牌。再次轻点已选中的牌可将它放回。如果无法继续，提示会显示一对牌，洗牌会重新排列剩余的牌，撤销会退回上一步。每一局以及每次洗牌后的牌局都可以全部消除。",
+  groups: {
+    characters: {
+      matches: "数字为 1 到 9。将两张数字相同的万子牌配对。",
+      name: "万子（萬）",
+    },
+    dragons: {
+      matches: "红中、发财、白板。将两张相同的三元牌配对。",
+      name: "三元牌",
+    },
+    flowers: {
+      matches: "角上标有「花」字。任意两张花牌都可以配对。",
+      name: "花牌",
+    },
+    otherSuits: {
+      matches: "数字为 1 到 9，仅在经典布局中出现。",
+      name: "筒子（筒）和条子（條）",
+    },
+    seasons: {
+      matches: "角上标有「季」字。任意两张季牌都可以配对。",
+      name: "季牌",
+    },
+    winds: {
+      matches: "东、南、西、北。将两张方向相同的风牌配对。",
+      name: "风牌",
+    },
+  },
+  guestSubtitle: "安静地玩一局麻将消消乐。无需账号。",
+  hint: "提示",
+  hintPair: (pair) => `提示：将${pair}配对。`,
+  howToPlay: "怎么玩",
+  keyboard:
+    "使用方向键在可选的牌之间移动。按 Enter 选中一张牌，按 Escape 放回。",
+  layout: "布局",
+  layoutLabel: (name) => `${name}布局`,
+  layoutSetting: (next, current) =>
+    `新的一局将使用${next}布局。本局仍使用${current}布局。`,
+  layouts: { classic: "经典", easy: "简单" },
+  matched: (pair, left) => `已配对${pair}。剩余 ${left} 张牌。`,
+  mismatch: (first, second) =>
+    `${first}和${second}无法配对。已改为选中${second}。`,
+  moves: (count) => `${count} 步`,
+  newGame: "新游戏",
+  onDateAt: (date, time) => `${date} ${time}`,
+  pair: (first, second) => `${first}和${second}`,
+  picked: (name) => `已选中${name}。现在请轻点与它配对的牌。`,
+  playSolitaire: "改玩纸牌接龙",
+  preparing: "正在摆放麻将牌。",
+  putDown: "已放回牌。目前没有选中的牌。",
+  ready: "新的一局已准备好。选择一张明亮的牌开始。",
+  resumed: (when) => `已继续您的游戏，保存时间为${when}。`,
+  rules:
+    "将牌两两配对，清空牌桌。您只能选取未被挡住的牌：上面没有其他牌，且左侧或右侧空着。可以选取的牌是明亮的，暂时不能选取的牌会变暗。",
+  saveFailed: "此浏览器不允许保存游戏，关闭页面后进度会丢失。",
+  saved: "每走一步，游戏都会保存在此设备上，即使没有网络连接也一样。",
+  scroll: "如果有些牌不在视野内，请横向滚动牌桌。",
+  seasonTile: (season) => `${season}季牌`,
+  seasons: { autumn: "秋", spring: "春", summer: "夏", winter: "冬" },
+  selected: "已选中。",
+  shuffle: "洗牌",
+  shuffled: "已将剩余的牌重新洗牌。",
+  stillSelected: "您选中的牌仍处于选中状态。",
+  stuck: "目前没有可以配对的牌。请洗牌或撤销上一步。",
+  subtitle: "安静地玩一局麻将消消乐。",
+  suggested: "提示推荐的牌。",
+  suitTile: (rank, suit) => `${rank}${suit}`,
+  suits: { bamboo: "条", characters: "万", dots: "筒" },
+  tileGuide: "认识麻将牌",
+  tilePosition: (name, layer, row, column) =>
+    `${name}，第 ${layer} 层，第 ${row} 行，第 ${column} 列。`,
+  tiles: (count) => `${count} 张牌`,
+  tilesLeft: (left, total) => `共 ${total} 张牌，剩余 ${left} 张`,
+  title: "麻将消消乐",
+  todayAt: (time) => `今天 ${time}`,
+  undo: "撤销",
+  undone: "已撤销上一步。",
+  wellPlayed: "玩得真好。",
+  windTile: (wind) => `${wind}风`,
+  winds: { east: "东", north: "北", south: "南", west: "西" },
+};
+
+export { mahjong };

@@ -15,21 +15,29 @@ import type { GameState, MoveResult } from "@lifelink/mahjong/game";
 import { LAYOUT_IDS, layoutFor } from "@lifelink/mahjong/layouts";
 import type { LayoutId } from "@lifelink/mahjong/layouts";
 import type { Pair } from "@lifelink/mahjong/rules";
-import { pairName, tileName } from "@lifelink/mahjong/tiles";
 import { Button } from "@lifelink/ui/components/button";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+
+import { messagesFor, useLocale } from "@/i18n/locale";
 
 import { Board } from "./board";
 import { clampCursor, firstFreeTile, moveCursor } from "./board-model";
 import type { Direction } from "./board-model";
 import { HowToPlay } from "./how-to-play";
+import {
+  moveError,
+  openingMessage,
+  outcomeNote,
+  pairName,
+  tileName,
+} from "./localization";
+import type { Notice } from "./localization";
 import { freshGame, loadGame, saveGame } from "./storage";
-import type { LoadedGame } from "./storage";
 
 interface Announcement {
   readonly id: number;
-  readonly text: string;
+  readonly text: Notice;
 }
 
 const directionFor = (key: string): Direction | null => {
@@ -56,55 +64,10 @@ const directionFor = (key: string): Direction | null => {
   }
 };
 
-const layoutName = (layout: LayoutId): string => layoutFor(layout).name;
-
-/** When the game was saved, as it reads in a sentence: "today at 5:43 PM" or "on Oct 24 at 5:43 PM". */
-const savedWhen = (savedAt: string): string => {
-  const date = new Date(savedAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return "earlier";
-  }
-
-  const time = date.toLocaleTimeString(undefined, { timeStyle: "short" });
-
-  if (date.toDateString() === new Date().toDateString()) {
-    return `today at ${time}`;
-  }
-
-  const day = date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-  });
-
-  return `on ${day} at ${time}`;
-};
-
-const STUCK = "No pairs are free. Shuffle the tiles or undo.";
-
-const outcomeNote = (state: GameState): string => {
-  if (isWon(state)) {
-    return ` You cleared the board in ${state.moves} moves. Well played.`;
-  }
-
-  return hasMovesLeft(state) ? "" : ` ${STUCK}`;
-};
-
-const openingMessage = (loaded: LoadedGame): string => {
-  if (loaded.resumedFrom) {
-    // A finished game is never resumed, so the only note it can need is that it is stuck.
-    const stuck = hasMovesLeft(loaded.state) ? "" : ` ${STUCK}`;
-
-    return `Resumed your game from ${savedWhen(loaded.resumedFrom)}.${stuck}`;
-  }
-
-  return loaded.discarded
-    ? `Your saved game could not be opened, so a new game was dealt. ${loaded.discarded}`
-    : "A new game is ready. Choose a bright tile to begin.";
-};
-
 /** The playable board. Client-only: it reads the saved game from localStorage while it first renders. */
 export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
+  const locale = useLocale();
+  const messages = messagesFor(locale).mahjong;
   // Read once when the table mounts; the opening state never changes afterwards.
   // oxlint-disable-next-line react/hook-use-state -- Only the first value is needed.
   const [opening] = useState(() => loadGame("easy"));
@@ -128,7 +91,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
   const tileElements = useRef(new Map<number, HTMLButtonElement>());
   const boardFocusPending = useRef(false);
 
-  const announce = (text: string) => {
+  const announce = (text: Notice) => {
     setAnnouncement((previous) => ({ id: previous.id + 1, text }));
   };
 
@@ -154,21 +117,23 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     setCursor(next);
   };
 
-  const commit = (next: GameState, text: string, nextCursor = cursor) => {
+  const commit = (next: GameState, text: Notice, nextCursor = cursor) => {
     setGame(next);
     setSaveFailed(!saveGame(next));
     setSelected(null);
     setHint(null);
     // A matched tile leaves the page; focus moves to the nearest free tile.
     moveCursorTo(clampCursor(next, nextCursor));
-    announce(`${text}${outcomeNote(next)}`);
+    announce(
+      (words, language) => `${text(words, language)}${outcomeNote(next, words)}`
+    );
   };
 
-  const run = (result: MoveResult) => {
+  const run = (result: MoveResult, text: Notice) => {
     if (result.ok) {
-      commit(result.state, result.description);
+      commit(result.state, text);
     } else {
-      announce(result.error.message);
+      announce((words) => moveError(result.error, game, words));
     }
   };
 
@@ -176,15 +141,13 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     const picked = pickable(game, index);
 
     if (!picked.ok) {
-      const still =
-        selected === null ? "" : " The tile you picked is still selected.";
-
-      announce(`${picked.error.message}${still}`);
+      announce(
+        (words) =>
+          `${moveError(picked.error, game, words, index)}${selected === null ? "" : ` ${words.stillSelected}`}`
+      );
 
       return;
     }
-
-    const name = tileName(picked.tile);
 
     if (selected === null) {
       setSelected(index);
@@ -194,14 +157,14 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
         setHint(null);
       }
 
-      announce(`Picked the ${name}. Now tap the tile that matches it.`);
+      announce((words) => words.picked(tileName(picked.tile, words)));
 
       return;
     }
 
     if (selected === index) {
       setSelected(null);
-      announce("Put the tile down. Nothing is picked.");
+      announce((words) => words.putDown);
 
       return;
     }
@@ -213,7 +176,18 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     });
 
     if (result.ok) {
-      commit(result.state, result.description, index);
+      const first = game.tiles[selected];
+      commit(
+        result.state,
+        (words) =>
+          words.matched(
+            first
+              ? pairName(first, picked.tile, words)
+              : tileName(picked.tile, words),
+            tilesLeft(result.state)
+          ),
+        index
+      );
 
       return;
     }
@@ -221,22 +195,23 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     const first = game.tiles[selected];
 
     setSelected(index);
-    announce(
+    announce((words) =>
       first
-        ? `The ${tileName(first)} and the ${name} don't match. Picked the ${name} instead.`
-        : result.error.message
+        ? words.mismatch(tileName(first, words), tileName(picked.tile, words))
+        : moveError(result.error, game, words, index)
     );
   };
 
-  const requestUndo = () => run(undo(game));
+  const requestUndo = () => run(undo(game), (words) => words.undone);
 
-  const requestShuffle = () => run(applyMove(game, { type: "shuffle" }));
+  const requestShuffle = () =>
+    run(applyMove(game, { type: "shuffle" }), (words) => words.shuffled);
 
   const requestHint = () => {
     const next = findHint(game);
 
     if (!next) {
-      announce(isWon(game) ? "The board is already clear." : STUCK);
+      announce((words) => (isWon(game) ? words.alreadyClear : words.stuck));
 
       return;
     }
@@ -249,7 +224,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     setCursor(next.first);
 
     if (first && second) {
-      announce(`Hint: match ${pairName(first, second)}.`);
+      announce((words) => words.hintPair(pairName(first, second, words)));
     }
   };
 
@@ -258,7 +233,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
 
     commit(
       next,
-      `Dealt a new ${layoutName(layout)} game.`,
+      (words) => words.dealt(words.layouts[layout]),
       firstFreeTile(next)
     );
   };
@@ -272,8 +247,8 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
       return;
     }
 
-    announce(
-      `New games will use the ${layoutName(layout)} layout. This game keeps the ${layoutName(game.layout)} layout.`
+    announce((words) =>
+      words.layoutSetting(words.layouts[layout], words.layouts[game.layout])
     );
   };
 
@@ -290,7 +265,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
     if (event.key === "Escape" && selected !== null) {
       event.preventDefault();
       setSelected(null);
-      announce("Put the tile down. Nothing is picked.");
+      announce((words) => words.putDown);
     }
   };
 
@@ -319,26 +294,24 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
             className="text-mobile-title sm:text-page-title font-semibold"
             id="mahjong-title"
           >
-            Mahjong
+            {messages.title}
           </h1>
           <Button onClick={() => startNewGame()} variant="outline">
-            New game
+            {messages.newGame}
           </Button>
         </div>
         <p className="text-muted-foreground text-body">
-          {guest
-            ? "A quiet tile game. No account needed."
-            : "A quiet tile game."}
+          {guest ? messages.guestSubtitle : messages.subtitle}
         </p>
         <p className="num text-muted-foreground text-label">
-          {layoutName(game.layout)} layout
+          {messages.layoutLabel(messages.layouts[game.layout])}
           {" · "}
           <span className="whitespace-nowrap">
-            {game.moves} {game.moves === 1 ? "move" : "moves"}
+            {messages.moves(game.moves)}
           </span>
           {" · "}
           <span className="whitespace-nowrap">
-            {left} of {total} tiles left
+            {messages.tilesLeft(left, total)}
           </span>
         </p>
       </header>
@@ -347,15 +320,15 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
         aria-live="polite"
         className="bg-parchment text-body block min-h-14 rounded-lg px-4 py-3"
       >
-        <span key={announcement.id}>{announcement.text}</span>
+        <span key={announcement.id}>{announcement.text(messages, locale)}</span>
       </output>
 
       {won ? (
         <div className="bg-positive-wash text-positive flex flex-wrap items-center gap-4 rounded-lg px-4 py-4">
           <p className="text-section font-semibold">
-            You cleared the board in {game.moves} moves.
+            {messages.cleared(game.moves)}
           </p>
-          <Button onClick={() => startNewGame()}>Deal another game</Button>
+          <Button onClick={() => startNewGame()}>{messages.dealAgain}</Button>
         </div>
       ) : null}
 
@@ -364,8 +337,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
           {/* A cleared board is an empty picture; a short note keeps the page compact instead. */}
           {won ? (
             <p className="bg-parchment text-muted-foreground text-body rounded-lg px-4 py-6">
-              The board is clear. Undo takes back the last pair, or deal another
-              game.
+              {messages.clearBoard}
             </p>
           ) : (
             <Board
@@ -381,21 +353,21 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
           )}
           {game.layout === "classic" ? (
             <p className="text-muted-foreground text-label @4xl/content:hidden">
-              Scroll the board sideways if some tiles are out of view.
+              {messages.scroll}
             </p>
           ) : null}
         </div>
 
         <div className="flex flex-col gap-6 @4xl/content:sticky @4xl/content:top-6">
           <fieldset className="grid grid-cols-3 gap-2 @4xl/content:grid-cols-1">
-            <legend className="sr-only">Game actions</legend>
+            <legend className="sr-only">{messages.actions}</legend>
             <Button
               disabled={!canUndo(game)}
               onClick={requestUndo}
               size="lg"
               variant="outline"
             >
-              Undo
+              {messages.undo}
             </Button>
             <Button
               disabled={won}
@@ -403,7 +375,7 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
               size="lg"
               variant="outline"
             >
-              Hint
+              {messages.hint}
             </Button>
             <Button
               disabled={won}
@@ -411,11 +383,13 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
               size="lg"
               variant={stuck ? "default" : "outline"}
             >
-              Shuffle
+              {messages.shuffle}
             </Button>
           </fieldset>
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-label pb-2 font-medium">Layout</legend>
+            <legend className="text-label pb-2 font-medium">
+              {messages.layout}
+            </legend>
             <div className="grid grid-cols-2 gap-2 @4xl/content:grid-cols-1">
               {LAYOUT_IDS.map((layout) => (
                 <label
@@ -431,9 +405,9 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
                     value={layout}
                   />
                   <span className="flex flex-col">
-                    {layoutName(layout)}
+                    {messages.layouts[layout]}
                     <span className="num text-muted-foreground">
-                      {layoutFor(layout).slots.length} tiles
+                      {messages.tiles(layoutFor(layout).slots.length)}
                     </span>
                   </span>
                 </label>
@@ -445,14 +419,10 @@ export const MahjongTable = ({ guest = false }: { guest?: boolean }) => {
 
       {saveFailed ? (
         <p className="bg-warning-wash text-warning text-body rounded-lg px-4 py-3">
-          This browser is not letting the game save, so your progress will be
-          lost if you close this page.
+          {messages.saveFailed}
         </p>
       ) : (
-        <p className="text-muted-foreground text-label">
-          Your game saves on this device after every move, even without an
-          internet connection.
-        </p>
+        <p className="text-muted-foreground text-label">{messages.saved}</p>
       )}
 
       <HowToPlay />
