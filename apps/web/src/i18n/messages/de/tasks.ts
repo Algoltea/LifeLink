@@ -118,6 +118,24 @@ const tasks: Messages["tasks"] = {
     "Gespeichert. Da sich der Wortlaut geändert hat, stimmen Sie bitte erneut zu.",
   savingOutcome: "Das Ergebnis wird gespeichert…",
   seeDetails: "Details ansehen",
+  sendAll: {
+    back: "Zurück",
+    confirm: (count: number) => `Alle ${count} senden`,
+    finishEdits:
+      "Speichern oder verwerfen Sie Ihre Änderungen, bevor Sie alle senden.",
+    intro:
+      "Jede Person bekommt eine eigene Nachricht auf dem Weg, den sie bevorzugt.",
+    practiceConfirm: (count: number) => `Übung: alle ${count} senden`,
+    practiceReview: (count: number) => `Übung: alle ${count} prüfen und senden`,
+    recipient: (name: string, channel: string) => `${name}, per ${channel}`,
+    reconnect: "Stellen Sie die Verbindung wieder her, um alle zu senden.",
+    resolveFirst:
+      "Einige Nachrichten brauchen zuerst Ihre Antwort. Sie können fertige Nachrichten weiterhin einzeln senden.",
+    review: (count: number) => `Alle ${count} prüfen und senden`,
+    sending: "Wird gesendet…",
+    summaryHint: "Nichts wird verschickt, bis Sie auf „Alle senden“ drücken.",
+    summaryTitle: (count: number) => `Diese ${count} Nachrichten senden?`,
+  },
   sentStatus: { sent: "gesendet" },
   sentWaiting:
     "Ihre Nachricht wurde gesendet. Wir zeigen die Antwort, sobald sie eintrifft.",

@@ -42,7 +42,7 @@ import {
 import type { AssistantPlan, Proposal } from "@lifelink/contracts/model-output";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { paginationOptsValidator } from "convex/server";
-import type { FunctionReturnType, PaginationResult } from "convex/server";
+import type { PaginationResult } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { z } from "zod";
 
@@ -67,6 +67,7 @@ import type { ProposalOutcome } from "./lib/proposals";
 import { newsTool, weatherTool } from "./lib/readtools";
 import { requireOwner } from "./lib/session";
 import { formatDay, isoWithOffset } from "./lib/time";
+import type { TaskDetail } from "./tasks";
 
 const MAX_REQUEST_LENGTH = 2000;
 
@@ -666,8 +667,6 @@ export const listThreadMessages = query({
   },
 });
 
-type TaskDetail = FunctionReturnType<typeof api.tasks.detail>;
-
 /** Editing also checks the version the person read, before calling the shared revision flow. */
 export const reviseWords = mutation({
   args: { actionId: v.id("actions"), body: v.string(), version: v.number() },
@@ -707,38 +706,82 @@ interface ActionReview {
   view: TaskDetail["actions"][number];
 }
 
-/** Reactive review state, never an approval snapshot from a model tool result. */
-export const actionReview = query({
-  args: { actionId: v.string() },
-  handler: async (ctx, args): Promise<ActionReview | null> => {
+/** Current task reviews for approving several messages together. */
+export const taskReview = query({
+  args: { taskId: v.string() },
+  handler: async (ctx, args): Promise<TaskDetail | null> => {
     const owner = await requireOwner(ctx);
-    const actionId = ctx.db.normalizeId("actions", args.actionId);
-    const action = actionId === null ? null : await ctx.db.get(actionId);
-
-    if (action === null || action.ownerId !== owner._id) {
-      return null;
-    }
-
-    const task = await ctx.db.get(action.taskId);
+    const taskId = ctx.db.normalizeId("tasks", args.taskId);
+    const task = taskId === null ? null : await ctx.db.get(taskId);
 
     if (task === null || task.ownerId !== owner._id) {
       return null;
     }
 
-    const detail: TaskDetail = await ctx.runQuery(api.tasks.detail, {
-      taskId: task._id,
-    });
+    return await ctx.runQuery(api.tasks.detail, { taskId: task._id });
+  },
+});
 
-    const view = detail.actions.find((item) => item.action._id === action._id);
+const readActionReview = async (
+  ctx: QueryCtx,
+  owner: Doc<"profiles">,
+  rawActionId: string
+): Promise<ActionReview | null> => {
+  const actionId = ctx.db.normalizeId("actions", rawActionId);
+  const action = actionId === null ? null : await ctx.db.get(actionId);
 
-    return view === undefined
-      ? null
-      : {
-          hue: detail.contact?.hue ?? DEFAULT_CONTACT_HUE,
-          timeZone: detail.timeZone,
-          title: detail.task.title,
-          view,
-        };
+  if (action === null || action.ownerId !== owner._id) {
+    return null;
+  }
+
+  const task = await ctx.db.get(action.taskId);
+
+  if (task === null || task.ownerId !== owner._id) {
+    return null;
+  }
+
+  const detail: TaskDetail = await ctx.runQuery(api.tasks.detail, {
+    taskId: task._id,
+  });
+
+  const view = detail.actions.find((item) => item.action._id === action._id);
+
+  return view === undefined
+    ? null
+    : {
+        hue: detail.contact?.hue ?? DEFAULT_CONTACT_HUE,
+        timeZone: detail.timeZone,
+        title:
+          detail.task.kind === "send_message" &&
+          view.current?.details.kind === "send_message"
+            ? `Message to ${view.current.details.contactName}`
+            : detail.task.title,
+        view,
+      };
+};
+
+/** Reactive review state, never an approval snapshot from a model tool result. */
+export const actionReview = query({
+  args: { actionId: v.string() },
+  handler: async (ctx, args): Promise<ActionReview | null> =>
+    await readActionReview(ctx, await requireOwner(ctx), args.actionId),
+});
+
+const MAX_REVIEWS_TOGETHER = 20;
+
+/** Current reviews for messages one reply prepared separately, so they can be sent together. */
+export const actionReviews = query({
+  args: { actionIds: v.array(v.string()) },
+  handler: async (ctx, args): Promise<ActionReview["view"][]> => {
+    const owner = await requireOwner(ctx);
+
+    const reviews = await Promise.all(
+      [...new Set(args.actionIds)]
+        .slice(0, MAX_REVIEWS_TOGETHER)
+        .map(async (actionId) => await readActionReview(ctx, owner, actionId))
+    );
+
+    return reviews.flatMap((review) => (review === null ? [] : [review.view]));
   },
 });
 
@@ -854,12 +897,14 @@ export const planningContext = internalQuery({
         startsAt: isoWithOffset(appointment.startsAt, owner.timeZone),
         title: appointment.title,
       })),
-      contacts: contacts.map((contact) => ({
-        id: contact._id,
-        language: languageName(contact.language ?? language),
-        name: contact.name,
-        relationship: contact.relationship,
-      })),
+      contacts: contacts
+        .filter((contact) => contact.trusted)
+        .map((contact) => ({
+          id: contact._id,
+          language: languageName(contact.language ?? language),
+          name: contact.name,
+          relationship: contact.relationship,
+        })),
       demoMode: owner.demoMode,
       language: languageName(language),
       locale: interfaceLocaleOf(language),
@@ -883,6 +928,8 @@ const instructionsFor = (context: PlanningContext): string =>
     'When they ask for news, call get_news with kind "good" unless they ask for the main or serious news. Read only the headlines it returns, with their source. Never add details or invent news.',
     "get_weather and get_news only read information; they never prepare anything for review.",
     "If their updatedMinutesAgo is more than 180, say the information may be out of date.",
+    "For messages to multiple people, include every named recipient. For relationship groups like my friends, my neighbors, all my kids, or grandchildren, pass the group phrase as nameAsSaid with a null contactId; the server expands saved trusted relationship categories, including singular saved labels such as Friend for my friends. Plural relationship requests mean everyone in that category, not an ambiguous choice between people. Use separate recipient entries for kids and grandkids. Never silently omit a recipient. Each person receives a separate message on their saved preferred channel, after review and approval. For a shared message, avoid a greeting addressed to only one person.",
+    "Treat everyday family words as their saved relationships: dad or papa means Father, mom or mum means Mother, grandma means Grandmother, grandpa means Grandfather, and the reverse. When exactly one contact fits, use that contact's id instead of asking for a name.",
     "Copy contact and appointment ids exactly from the lists below, or use null. Never invent ids.",
     "Give dateTimeIso only when the date and time are unambiguous, with a numeric offset.",
     "Write messageDraft in the person's own voice: short, warm, and signed with their name. Write it in the recipient's language from the contact list, unless the person asks for another language.",
@@ -947,11 +994,14 @@ export const applyProposalForOwner = internalMutation({
         : await ctx.db
             .query("actions")
             .withIndex("by_task", (index) => index.eq("taskId", taskId))
-            .first();
+            .take(2);
 
     return {
       ...outcome,
-      actionId: action?.ownerId === owner._id ? action._id : null,
+      actionId:
+        action?.length === 1 && action[0]?.ownerId === owner._id
+          ? action[0]._id
+          : null,
     };
   },
 });
@@ -1001,7 +1051,10 @@ const GROCERY_PATTERN =
   /\badd (?<items>.+?) to (?:my |the )?(?:grocery|shopping) list\b/iu;
 
 const MESSAGE_PATTERN =
-  /\b(?:tell|text|message|write to)\s+(?:my\s+)?(?<name>[a-z]+)\b(?:\s+(?:that|to|saying)\s+(?<body>.+))?/iu;
+  /\b(?:tell|text|message|write to)\s+(?<name>.+?)\s+(?:that|to|saying)\s+(?<body>.+)/iu;
+
+const QUOTED_MESSAGE_PATTERN =
+  /\b(?:tell|text|message|write to)\s+(?<name>.+?)\s+["“'‘](?<body>.+)["”'’]\s*[.!?]?\s*$/iu;
 
 const RIDE_PERSON_PATTERN =
   /\b(?:ask|can|could|have|get)\s+(?:my\s+)?(?<person>[a-z]+)\b/iu;
@@ -1017,6 +1070,9 @@ const STOP_WORDS = new Set([
   "someone",
   "you",
 ]);
+
+const messageBodyFor = (body: string, quoted: boolean): string =>
+  quoted ? body : `${body.charAt(0).toUpperCase()}${body.slice(1)}`;
 
 const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
   const base: AssistantPlan = {
@@ -1065,14 +1121,17 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
     };
   }
 
-  const message = MESSAGE_PATTERN.exec(text)?.groups;
+  const quotedMessage = QUOTED_MESSAGE_PATTERN.exec(text)?.groups;
+  const message = quotedMessage ?? MESSAGE_PATTERN.exec(text)?.groups;
 
   if (message?.name && message.body) {
     return {
       ...base,
       intent: "send_message",
-      messageDraft: `${message.body.charAt(0).toUpperCase()}${message.body.slice(1)}`,
-      recipients: [{ contactId: null, nameAsSaid: message.name }],
+      messageDraft: messageBodyFor(message.body, quotedMessage !== undefined),
+      recipients: message.name
+        .split(LIST_SPLIT)
+        .map((name) => ({ contactId: null, nameAsSaid: name.trim() })),
     };
   }
 

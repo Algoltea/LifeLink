@@ -702,6 +702,7 @@ const ApprovalBar = ({
  * change it (which asks for a fresh approval), and approve.
  */
 const ReviewVersion = ({
+  onEditingChange,
   hue,
   timeZone,
   view,
@@ -709,6 +710,7 @@ const ReviewVersion = ({
   hue: number;
   timeZone: string;
   view: ActionView;
+  onEditingChange?: (editing: boolean) => void;
 }) => {
   const resolve = useMutation(api.actions.resolveAmbiguity);
   const [editing, setEditing] = useState(false);
@@ -801,7 +803,10 @@ const ReviewVersion = ({
               actionId={view.action._id}
               canSave={awaiting}
               initialBody={body}
-              onDone={() => setEditing(false)}
+              onDone={() => {
+                setEditing(false);
+                onEditingChange?.(false);
+              }}
               version={current.version}
             />
           ) : undefined
@@ -840,7 +845,10 @@ const ReviewVersion = ({
         <ApprovalBar
           current={current}
           editable={body !== null}
-          onEdit={() => setEditing(true)}
+          onEdit={() => {
+            setEditing(true);
+            onEditingChange?.(true);
+          }}
           questionOpen={open !== undefined}
           view={view}
         />
@@ -862,6 +870,7 @@ const ReviewVersion = ({
 
 /** Keep in-progress edits available when a newer server version arrives. */
 const ActionReview = (props: {
+  onEditingChange?: (editing: boolean) => void;
   hue: number;
   timeZone: string;
   view: ActionView;

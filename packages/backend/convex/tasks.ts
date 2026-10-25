@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { executionProblems } from "./lib/capabilities";
@@ -99,6 +99,13 @@ const actionView = async (
       ? await executionProblems(ctx, owner, current.details, action.mode)
       : [];
 
+  const contactId =
+    current?.details.kind === "send_message"
+      ? ctx.db.normalizeId("contacts", current.details.contactId)
+      : null;
+
+  const contact = contactId === null ? null : await ctx.db.get(contactId);
+
   return {
     action,
     attempts: attempts.map((attempt) => ({
@@ -133,67 +140,73 @@ const actionView = async (
             version: previous.version,
           },
     receipts,
+    recipientRelationship:
+      contact?.ownerId === owner._id ? contact.relationship : null,
     versionCount: versions.length,
   };
 };
 
 /** Everything needed to review and follow one task: steps, exact action details, approvals, attempts, receipts. */
+const readTaskDetail = async (ctx: QueryCtx, args: { taskId: Id<"tasks"> }) => {
+  const owner = await requireOwner(ctx);
+  const task = requireOwned(await ctx.db.get(args.taskId), owner, "task");
+
+  const steps = await ctx.db
+    .query("taskSteps")
+    .withIndex("by_task", (index) => index.eq("taskId", task._id))
+    .collect();
+
+  const actions = await ctx.db
+    .query("actions")
+    .withIndex("by_task", (index) => index.eq("taskId", task._id))
+    .collect();
+
+  const views = await Promise.all(
+    actions.map(async (action) => await actionView(ctx, owner, action))
+  );
+
+  const contact =
+    task.contactId === null ? null : await ctx.db.get(task.contactId);
+
+  const appointment =
+    task.appointmentId === null ? null : await ctx.db.get(task.appointmentId);
+
+  const threadMessages =
+    contact === null
+      ? []
+      : await ctx.db
+          .query("messages")
+          .withIndex("by_owner_contact", (index) =>
+            index
+              .eq("ownerId", owner._id)
+              .eq("contactId", contact._id)
+              .gte("createdAt", task.createdAt - 60_000)
+          )
+          .order("desc")
+          .take(20);
+
+  return {
+    actions: views,
+    appointment,
+    contact:
+      contact === null
+        ? null
+        : {
+            hue: contact.hue,
+            id: contact._id,
+            name: contact.name,
+            relationship: contact.relationship,
+          },
+    messages: threadMessages.toReversed(),
+    steps: steps.toSorted((left, right) => left.order - right.order),
+    task,
+    timeZone: owner.timeZone,
+  };
+};
+
+export type TaskDetail = Awaited<ReturnType<typeof readTaskDetail>>;
+
 export const detail = query({
   args: { taskId: v.id("tasks") },
-  handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
-    const task = requireOwned(await ctx.db.get(args.taskId), owner, "task");
-
-    const steps = await ctx.db
-      .query("taskSteps")
-      .withIndex("by_task", (index) => index.eq("taskId", task._id))
-      .collect();
-
-    const actions = await ctx.db
-      .query("actions")
-      .withIndex("by_task", (index) => index.eq("taskId", task._id))
-      .collect();
-
-    const views = await Promise.all(
-      actions.map(async (action) => await actionView(ctx, owner, action))
-    );
-
-    const contact =
-      task.contactId === null ? null : await ctx.db.get(task.contactId);
-
-    const appointment =
-      task.appointmentId === null ? null : await ctx.db.get(task.appointmentId);
-
-    const threadMessages =
-      contact === null
-        ? []
-        : await ctx.db
-            .query("messages")
-            .withIndex("by_owner_contact", (index) =>
-              index
-                .eq("ownerId", owner._id)
-                .eq("contactId", contact._id)
-                .gte("createdAt", task.createdAt - 60_000)
-            )
-            .order("desc")
-            .take(20);
-
-    return {
-      actions: views,
-      appointment,
-      contact:
-        contact === null
-          ? null
-          : {
-              hue: contact.hue,
-              id: contact._id,
-              name: contact.name,
-              relationship: contact.relationship,
-            },
-      messages: threadMessages.toReversed(),
-      steps: steps.toSorted((left, right) => left.order - right.order),
-      task,
-      timeZone: owner.timeZone,
-    };
-  },
+  handler: readTaskDetail,
 });

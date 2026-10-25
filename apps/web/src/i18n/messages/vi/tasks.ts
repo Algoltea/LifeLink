@@ -115,6 +115,22 @@ const tasks: Messages["tasks"] = {
   savedApproveAgain: "Đã lưu. Vì lời nhắn đã đổi, vui lòng phê duyệt lại.",
   savingOutcome: "Đang lưu kết quả…",
   seeDetails: "Xem chi tiết",
+  sendAll: {
+    back: "Quay lại",
+    confirm: (count: number) => `Gửi cả ${count}`,
+    finishEdits: "Hãy lưu hoặc hủy thay đổi trước khi gửi tất cả.",
+    intro: "Mỗi người nhận tin nhắn riêng, theo cách họ muốn được liên lạc.",
+    practiceConfirm: (count: number) => `Luyện tập: gửi cả ${count}`,
+    practiceReview: (count: number) => `Luyện tập: xem lại và gửi cả ${count}`,
+    recipient: (name: string, channel: string) => `${name}, qua ${channel}`,
+    reconnect: "Hãy kết nối lại để gửi tất cả tin nhắn.",
+    resolveFirst:
+      "Một số tin nhắn cần bạn trả lời trước. Bạn vẫn có thể gửi từng tin đã sẵn sàng.",
+    review: (count: number) => `Xem lại và gửi cả ${count}`,
+    sending: "Đang gửi…",
+    summaryHint: "Không có gì được gửi cho đến khi bạn nhấn Gửi tất cả.",
+    summaryTitle: (count: number) => `Gửi ${count} tin nhắn này?`,
+  },
   sentStatus: {
     sent: "đã gửi",
   },

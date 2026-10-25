@@ -119,6 +119,26 @@ const tasks: Messages["tasks"] = {
     "Enregistré. Le texte ayant changé, veuillez approuver à nouveau.",
   savingOutcome: "Enregistrement du résultat…",
   seeDetails: "Voir les détails",
+  sendAll: {
+    back: "Retour",
+    confirm: (count: number) => `Tout envoyer (${count})`,
+    finishEdits:
+      "Enregistrez ou annulez vos modifications avant de tout envoyer.",
+    intro:
+      "Chaque personne reçoit son propre message, par le moyen qu’elle préfère.",
+    practiceConfirm: (count: number) =>
+      `Entraînement : tout envoyer (${count})`,
+    practiceReview: (count: number) =>
+      `Entraînement : vérifier et tout envoyer (${count})`,
+    recipient: (name: string, channel: string) => `${name}, par ${channel}`,
+    reconnect: "Reconnectez-vous pour tout envoyer.",
+    resolveFirst:
+      "Certains messages attendent d’abord votre réponse. Vous pouvez encore envoyer les messages prêts un par un.",
+    review: (count: number) => `Vérifier et tout envoyer (${count})`,
+    sending: "Envoi en cours…",
+    summaryHint: "Rien ne part avant que vous appuyiez sur Tout envoyer.",
+    summaryTitle: (count: number) => `Envoyer ces ${count} messages ?`,
+  },
   sentStatus: { sent: "envoyé" },
   sentWaiting:
     "Votre message a été envoyé. La réponse apparaîtra dès son arrivée.",
