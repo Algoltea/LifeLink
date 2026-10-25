@@ -5,13 +5,15 @@ import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ChevronRightIcon, MapPinIcon } from "lucide-react";
+import { CalendarPlusIcon, ChevronRightIcon, MapPinIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { listTime } from "@/components/email/email-bits";
+import { AddAppointmentForm } from "@/components/today/appointment-form";
 import { WeatherIcon } from "@/components/today/weather";
 import { useLocale, messagesFor, useMessages } from "@/i18n/locale";
 import {
@@ -147,9 +149,36 @@ const WeekList = ({
 }) => {
   const locale = useLocale();
   const t = useMessages();
+  const [adding, setAdding] = useState(false);
+  const addButton = useRef<HTMLButtonElement>(null);
+
+  const closeForm = (): void => {
+    setAdding(false);
+    // The form unmounts first, so focus returns once the button is back.
+    requestAnimationFrame(() => addButton.current?.focus());
+  };
 
   return (
-    <TodayPanel headingId="week-heading" title={t.today.yourWeek}>
+    <TodayPanel
+      action={
+        adding ? null : (
+          <button
+            className="text-accent-foreground text-label min-h-control inline-flex items-center gap-1.5 font-medium"
+            onClick={() => setAdding(true)}
+            ref={addButton}
+            type="button"
+          >
+            <CalendarPlusIcon aria-hidden="true" className="size-5" />
+            {t.today.addAppointment}
+          </button>
+        )
+      }
+      headingId="week-heading"
+      title={t.today.yourWeek}
+    >
+      {adding ? (
+        <AddAppointmentForm onDone={closeForm} timeZone={timeZone} />
+      ) : null}
       <LocationPrompt state={weather} />
       {rows.length === 0 ? (
         <SideEmpty>{t.today.nothingBooked}</SideEmpty>
