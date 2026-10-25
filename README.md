@@ -88,6 +88,17 @@ Nothing slow happens at start-up: no installs, checks, or network calls beyond t
 
 Sign up at `http://localhost:3001`. During onboarding, choose **It's for me** and tick **Practice mode** to get sample family, email, and an appointment. Then try **"Can Sam drive me to my appointment on Tuesday?"**
 
+#### Presentation demo account
+
+For a walkthrough with populated data and the normal interface, sync the backend and create the dedicated presentation account:
+
+```bash
+bun run --cwd packages/backend dev --once --env-file .env.local
+bun run demo:create
+```
+
+The command prints the sign-in URL, email, and a randomly generated password. It saves the credentials in the git-ignored `.lifelink/demo-account.json` with owner-only permissions; rerunning reuses them. The account opens as LifeLink Demo with family contacts, messages, emails, appointments, reminders, and grocery lists. Practice banners, badges, and mode controls are hidden for this account. Actions remain simulated, and this account cannot switch to live execution or connect real accounts. Only an operator using the internal provisioning function can create a presentation account; normal sign-up cannot enable it.
+
 #### After pulling new backend functions
 
 Keep `bun run dev` running so Convex pushes new functions as well as Next.js updating the web app. `bun run dev:web` starts only the web app; run `bun run dev:server` alongside it to sync the backend.
@@ -149,7 +160,7 @@ Secrets never touch the browser or a committed file. There are three places:
 
 - Nothing consequential happens without approval of that exact version.
 - The app never claims a capability a provider doesn't have.
-- Simulated outcomes are always labelled **Practice**.
+- Simulated outcomes are labelled **Practice**, except in operator-created presentation demo accounts, which retain simulated execution with the normal interface.
 - Errors say what happened, that nothing was lost, and what to do next.
 
 ### Messaging several people from Ask

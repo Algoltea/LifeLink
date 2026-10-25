@@ -33,6 +33,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:setup": "bun ./scripts/setup/main.ts",
+    "demo:create": "bun ./scripts/setup/demo-account.ts",
     "dev:web": "turbo run dev -F web --",
     "dev:server": "turbo run dev -F @lifelink/backend --",
     "build": "turbo run build",

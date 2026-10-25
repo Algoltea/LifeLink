@@ -65,5 +65,5 @@ coverage
 tmp
 temp
 
-# dev:setup state (no secrets; records which steps finished)
+# Local setup state and generated demo-account credentials
 .lifelink/

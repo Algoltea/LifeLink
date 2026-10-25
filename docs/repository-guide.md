@@ -19,7 +19,7 @@ LifeLink was built at SBUHacks 2026 (October 23 to 25) with Claude Code and Code
 - `bun.lock` and workspace manifests are committed together to preserve dependency resolution. `skills-lock.json` files record installed skill sources.
 - Convex API bindings and AI guidelines under `packages/backend/convex/_generated` are committed because source and agent instructions depend on them. Regenerate them through the backend's `codegen` command rather than editing them manually.
 - `apps/web/src/env.ts` is generated from `.env.schema` by `bun install` or `bun run env:generate`. Next.js generates `next-env.d.ts` and `.next` route types. These generated web files are ignored.
-- Real `.env*` files are ignored. Only `.env.example`, `.env.*.example`, and `.env.schema` templates are committed. `.lifelink` contains local setup state.
+- Real `.env*` files are ignored. Only `.env.example`, `.env.*.example`, and `.env.schema` templates are committed. The ignored `.lifelink` directory contains local setup state and the generated demo-account credentials.
 - `.agents` and `.claude` contain installed skills and aliases. Root skills are installed by `bun run dev:setup`; backend skills can be restored with `bunx convex ai-files install` from `packages/backend`.
 - `.taste-skill` contains local screenshots and browser QA captures. Existing notes in `docs` refer to these local artifacts and sometimes temporary paths; the captures are not part of a fresh checkout. The notes preserve the findings and verification limits, not a guarantee that every capture is available.
 - Dependencies, build output, caches, test coverage, and logs are ignored.
