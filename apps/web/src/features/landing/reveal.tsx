@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, RefCallback } from "react";
 import { useEffect, useRef, useState } from "react";
 
 type RevealState = "idle" | "waiting" | "shown";
@@ -23,12 +23,15 @@ const Reveal = ({
   children,
   className,
   delay = 0,
+  ref: forwardedRef,
 }: {
   as?: "div" | "li" | "section";
   children: ReactNode;
   className?: string;
   /** Milliseconds to wait after the parent group starts to arrive. */
   delay?: number;
+  /** Also receives the element, for callers that measure it. */
+  ref?: RefCallback<HTMLElement>;
 }) => {
   const ref = useRef<HTMLElement | null>(null);
   const [state, setState] = useState<RevealState>("idle");
@@ -94,6 +97,7 @@ const Reveal = ({
       data-reveal={state}
       ref={(node: HTMLElement | null) => {
         ref.current = node;
+        forwardedRef?.(node);
       }}
       style={style}
     >
