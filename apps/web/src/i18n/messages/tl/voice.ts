@@ -1,13 +1,13 @@
 import type { Messages } from "../en";
 
 const voice: Messages["voice"] = {
-  captions: "Mga caption",
+  connecting: "Kumokonekta…",
   connectionProblem: "Nagkaproblema ang koneksyon sa boses.",
   dictationStopped:
     "Huminto ang pag-type gamit ang boses. Pakisubukan ulit o mag-type na lang.",
   emptyRequest: "Walang inihanda dahil walang laman ang kahilingan.",
   inputLabel: "Ano po ang gusto ninyong tulong?",
-  lifeLinkSaid: "Sabi ng LifeLink: ",
+  listening: "Nakikinig…",
   microphoneBusy:
     "May ibang app na gumagamit ng mikropono. Isara ito at subukan ulit, o mag-type na lang.",
   microphoneDenied:
@@ -24,6 +24,7 @@ const voice: Messages["voice"] = {
     "Hindi ito maihanda. Hilingin po sa kanila na subukan ulit o i-type ito.",
   prepared:
     "Handa na. Nasa screen na ito; walang mangyayari hanggang aprubahan doon.",
+  preparing: "Inihahanda ang iyong kahilingan…",
   readAloudUnavailable:
     "Hindi available ang pagbabasa nang malakas. Pakisubukan po ulit.",
   retry:
@@ -48,12 +49,9 @@ const voice: Messages["voice"] = {
   startFailed: (error) =>
     `Hindi nagsimula ang boses: ${error} Maaari kayong mag-type na lang.`,
   stop: "Ihinto",
-  talking:
-    "Nakikipag-usap sa LifeLink. Lalabas sa screen ang anumang inihanda nito para aprubahan ninyo.",
   unavailable:
     "Hindi available ang boses ngayon, kaya paki-type po. Walang ipinapadala hanggang aprubahan ninyo.",
   voiceStopped: "Itinigil ang boses.",
-  youSaid: "Sabi ninyo: ",
 };
 
 export { voice };

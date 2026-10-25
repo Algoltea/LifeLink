@@ -1,10 +1,10 @@
 const voice = {
-  captions: "Captions",
+  connecting: "Connecting…",
   connectionProblem: "The voice connection had a problem.",
   dictationStopped: "Voice typing stopped. Please try again, or type instead.",
   emptyRequest: "Nothing was prepared because the request was empty.",
   inputLabel: "What would you like help with?",
-  lifeLinkSaid: "LifeLink said: ",
+  listening: "Listening…",
   microphoneBusy:
     "Another app is using the microphone. Close it and try again, or type instead.",
   microphoneDenied:
@@ -21,6 +21,7 @@ const voice = {
     "That could not be prepared. Please ask them to try again or type it.",
   prepared:
     "Prepared. It is on the screen now; nothing happens until it is approved there.",
+  preparing: "Preparing your request…",
   readAloudUnavailable: "Read-aloud is unavailable. Please try again.",
   retry: "Your words are still in the box. Press Send to try again.",
   savedOffline: "Saved. LifeLink will look at this when you're back online.",
@@ -41,12 +42,9 @@ const voice = {
   startFailed: (error: string) =>
     `Voice didn't start: ${error} You can type instead.`,
   stop: "Stop",
-  talking:
-    "Talking with LifeLink. Anything it prepares appears on screen for you to approve.",
   unavailable:
     "Voice isn't available right now, so please type. Nothing is sent until you approve it.",
   voiceStopped: "Voice was stopped.",
-  youSaid: "You said: ",
 };
 
 export { voice };

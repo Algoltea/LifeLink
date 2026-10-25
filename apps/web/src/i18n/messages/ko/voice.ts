@@ -1,13 +1,13 @@
 import type { Messages } from "../en";
 
 const voice: Messages["voice"] = {
-  captions: "자막",
+  connecting: "연결 중…",
   connectionProblem: "음성 연결에 문제가 생겼습니다.",
   dictationStopped:
     "음성 입력이 중단되었습니다. 다시 시도하시거나 글로 입력해 주세요.",
   emptyRequest: "요청 내용이 없어 준비하지 않았습니다.",
   inputLabel: "어떤 도움을 원하시나요?",
-  lifeLinkSaid: "LifeLink의 말: ",
+  listening: "듣는 중…",
   microphoneBusy:
     "다른 앱이 마이크를 사용하고 있습니다. 해당 앱을 닫고 다시 시도하시거나 글로 입력해 주세요.",
   microphoneDenied:
@@ -24,6 +24,7 @@ const voice: Messages["voice"] = {
     "준비하지 못했습니다. 말씀하신 분께 다시 시도하거나 글로 입력해 달라고 요청해 주세요.",
   prepared:
     "준비되었습니다. 화면에서 확인하실 수 있으며, 그곳에서 승인하실 때까지 실행되지 않습니다.",
+  preparing: "요청을 준비하는 중…",
   readAloudUnavailable:
     "소리 내어 읽기를 사용할 수 없습니다. 다시 시도해 주세요.",
   retry:
@@ -47,12 +48,9 @@ const voice: Messages["voice"] = {
   startFailed: (error) =>
     `음성을 시작하지 못했습니다: ${error} 글로 입력하셔도 됩니다.`,
   stop: "중지",
-  talking:
-    "LifeLink와 대화 중입니다. 준비한 내용은 승인하실 수 있도록 화면에 표시됩니다.",
   unavailable:
     "지금은 음성을 사용할 수 없으니 글로 입력해 주세요. 승인하실 때까지 아무것도 보내지 않습니다.",
   voiceStopped: "음성이 중단되었습니다.",
-  youSaid: "내가 한 말: ",
 };
 
 export { voice };

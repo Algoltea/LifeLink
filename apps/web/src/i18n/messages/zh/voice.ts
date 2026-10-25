@@ -1,12 +1,12 @@
 import type { Messages } from "../en";
 
 const voice: Messages["voice"] = {
-  captions: "字幕",
+  connecting: "正在连接…",
   connectionProblem: "语音连接出了问题。",
   dictationStopped: "语音输入已停止。请重试，或改用文字输入。",
   emptyRequest: "请求内容为空，因此没有准备任何操作。",
   inputLabel: "您需要哪方面的帮助？",
-  lifeLinkSaid: "LifeLink 说：",
+  listening: "正在聆听…",
   microphoneBusy: "其他应用正在使用麦克风。请关闭后重试，或改用文字输入。",
   microphoneDenied:
     "LifeLink 未获准使用麦克风。请在浏览器的网站设置中允许使用，或改用文字输入。",
@@ -17,6 +17,7 @@ const voice: Messages["voice"] = {
   placeholder: "问问 LifeLink…",
   prepareFailed: "无法准备此操作。请让对方重试，或输入文字。",
   prepared: "已准备好，现已显示在屏幕上。只有在那里批准后才会执行。",
+  preparing: "正在准备您的请求…",
   readAloudUnavailable: "朗读暂时不可用。请重试。",
   retry: "您的文字仍在输入框中。请按“发送”重试。",
   savedOffline: "已保存。恢复联网后，LifeLink 会处理此请求。",
@@ -33,10 +34,8 @@ const voice: Messages["voice"] = {
   speaking: "LifeLink 正在说话…",
   startFailed: (error: string) => `语音未能启动：${error} 您可以改用文字输入。`,
   stop: "停止",
-  talking: "正在与 LifeLink 交谈。它准备的任何操作都会显示在屏幕上，供您批准。",
   unavailable: "现在无法使用语音，请输入文字。只有您批准后才会发送。",
   voiceStopped: "语音已停止。",
-  youSaid: "您说：",
 };
 
 export { voice };

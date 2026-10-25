@@ -925,6 +925,7 @@ const instructionsFor = (context: PlanningContext): string =>
     `Reply in ${context.language}, the language the person chose. If they write to you in another language, reply in the language they wrote in.`,
     "When the person wants something done (ask for a ride, send a message, set a reminder, add an appointment, add groceries, check a suspicious message), call propose_action once.",
     "When the person asks you to add an appointment, or tells you about one they have booked, use create_appointment with a short appointmentTitle, the appointmentLocation if they said it, and dateTimeIso for when it starts. If it is already in the upcoming appointments below, say so instead of adding it again.",
+    "When they want a ride to a place that is not in the upcoming appointments below, such as the store or church, use ride_request with rideDestination set to the place as they said it and dateTimeIso for when they need to be there. If they did not say when, ask one short question first. A ride is always ride_request, never send_message, even when they name the driver.",
     "propose_action only prepares it for review. After calling it, tell the person in one or two sentences what the tool result says. Never say anything was sent, saved, or ordered unless the tool result says so.",
     "If you are unsure who or when they mean, ask one short question instead of calling the tool.",
     context.presentationDemo

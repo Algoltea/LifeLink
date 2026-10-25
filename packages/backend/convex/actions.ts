@@ -407,16 +407,20 @@ const rebuildRideBody = async (
 
   const task = await ctx.db.get(taskId);
 
-  if (task?.kind !== "ride_request" || task.appointmentId === null) {
+  if (task?.kind !== "ride_request") {
     return;
   }
 
-  const appointment = await ctx.db.get(task.appointmentId);
+  const ride =
+    task.appointmentId === null
+      ? (task.destination ?? null)
+      : await ctx.db.get(task.appointmentId);
+
   const contactId = ctx.db.normalizeId("contacts", details.contactId);
   const contact = contactId === null ? null : await ctx.db.get(contactId);
 
-  if (appointment !== null && contact !== null) {
-    details.body = await rideRequestBody(ctx, owner, contact, appointment);
+  if (ride !== null && contact !== null) {
+    details.body = await rideRequestBody(ctx, owner, contact, ride);
   }
 };
 

@@ -1,13 +1,13 @@
 import type { Messages } from "../en";
 
 const voice: Messages["voice"] = {
-  captions: "Sous-titres",
+  connecting: "Connexion…",
   connectionProblem: "La connexion vocale a rencontré un problème.",
   dictationStopped:
     "La dictée s’est arrêtée. Veuillez réessayer ou saisir le texte.",
   emptyRequest: "Rien n’a été préparé car la demande était vide.",
   inputLabel: "Pour quoi souhaitez-vous de l’aide ?",
-  lifeLinkSaid: "LifeLink a dit : ",
+  listening: "À l’écoute…",
   microphoneBusy:
     "Une autre application utilise le microphone. Fermez-la et réessayez, ou saisissez le texte.",
   microphoneDenied:
@@ -24,6 +24,7 @@ const voice: Messages["voice"] = {
     "Cela n’a pas pu être préparé. Veuillez demander à la personne de réessayer ou de saisir le texte.",
   prepared:
     "C’est prêt et affiché à l’écran. Rien ne se passe avant l’approbation sur cet écran.",
+  preparing: "Préparation de votre demande…",
   readAloudUnavailable:
     "La lecture à voix haute est indisponible. Veuillez réessayer.",
   retry:
@@ -48,12 +49,9 @@ const voice: Messages["voice"] = {
   startFailed: (error) =>
     `La fonction vocale n’a pas démarré : ${error} Vous pouvez saisir le texte.`,
   stop: "Arrêter",
-  talking:
-    "Conversation avec LifeLink. Tout ce qu’il prépare apparaît à l’écran pour votre approbation.",
   unavailable:
     "La fonction vocale est indisponible pour le moment ; veuillez saisir le texte. Rien n’est envoyé sans votre approbation.",
   voiceStopped: "La fonction vocale a été arrêtée.",
-  youSaid: "Vous avez dit : ",
 };
 
 export { voice };

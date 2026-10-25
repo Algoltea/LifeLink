@@ -1,13 +1,13 @@
 import type { Messages } from "../en";
 
 const voice: Messages["voice"] = {
-  captions: "Phụ đề",
+  connecting: "Đang kết nối…",
   connectionProblem: "Kết nối giọng nói gặp sự cố.",
   dictationStopped:
     "Nhập bằng giọng nói đã dừng. Thử lại hoặc nhập bằng bàn phím.",
   emptyRequest: "Chưa chuẩn bị gì vì yêu cầu trống.",
   inputLabel: "Quý vị muốn được giúp gì?",
-  lifeLinkSaid: "LifeLink nói: ",
+  listening: "Đang nghe…",
   microphoneBusy:
     "Ứng dụng khác đang dùng micrô. Đóng ứng dụng đó rồi thử lại hoặc nhập bằng bàn phím.",
   microphoneDenied:
@@ -24,6 +24,7 @@ const voice: Messages["voice"] = {
     "Không chuẩn bị được. Vui lòng nhờ họ thử lại hoặc nhập nội dung.",
   prepared:
     "Đã chuẩn bị. Nội dung đang trên màn hình; không có gì diễn ra cho đến khi được phê duyệt tại đó.",
+  preparing: "Đang chuẩn bị yêu cầu của bạn…",
   readAloudUnavailable: "Không thể đọc thành tiếng. Vui lòng thử lại.",
   retry: "Lời của quý vị vẫn trong ô. Nhấn Gửi để thử lại.",
   savedOffline: "Đã lưu. LifeLink sẽ xem yêu cầu khi quý vị có mạng trở lại.",
@@ -44,12 +45,9 @@ const voice: Messages["voice"] = {
   startFailed: (error) =>
     `Không khởi động được giọng nói: ${error} Quý vị có thể nhập bằng bàn phím.`,
   stop: "Dừng",
-  talking:
-    "Đang trò chuyện với LifeLink. Mọi nội dung chuẩn bị sẽ hiện trên màn hình để quý vị phê duyệt.",
   unavailable:
     "Hiện không dùng được giọng nói, vui lòng nhập bằng bàn phím. Chưa gửi gì cho đến khi quý vị phê duyệt.",
   voiceStopped: "Đã dừng giọng nói.",
-  youSaid: "Quý vị nói: ",
 };
 
 export { voice };
