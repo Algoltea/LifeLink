@@ -210,7 +210,14 @@ export const composioEvent = internalMutation({
       return "ignored";
     }
 
+    if (connection.externalAccountId === null) {
+      await settle(ctx, eventId, "ignored", connection.ownerId);
+
+      return "ignored";
+    }
+
     await ctx.scheduler.runAfter(0, internal.emails.storeFromTrigger, {
+      accountId: connection.externalAccountId,
       connectionId: connection._id,
       mail: args.mail,
     });

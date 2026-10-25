@@ -1,8 +1,8 @@
 import { INBOX_PAGE_SIZE } from "@lifelink/contracts/inbox";
 /**
  * Gmail and Outlook through Composio. A requested sync imports recent inbox
- * messages; sends and drafts happen only after approval. Scam checks run locally
- * after import, without another provider request.
+ * messages; user-authored sends and drafts happen only after approval. Automatic
+ * safety-note drafts use the separate mailWarnings adapter.
  */
 import { z } from "zod";
 

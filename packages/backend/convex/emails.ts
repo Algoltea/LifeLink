@@ -3,7 +3,8 @@ import { INBOX_PAGE_SIZE, localInboxInsight } from "@lifelink/contracts/inbox";
  * Email through each person's own Gmail or Outlook connection. Summaries run
  * only on emails the person picks. New mail gets a local scam check; cloud
  * summaries and appointment extraction require explicit consent. Replies are
- * reviewed first; only an approved reply is sent or saved as a draft.
+ * reviewed first; only an approved reply is sent or saved as a draft. Automatic
+ * scam warnings are separate private mailbox drafts and are never sent.
  */
 import {
   appointmentExtractionSchema,
@@ -345,6 +346,11 @@ const upsertMail = async (
     return null;
   }
 
+  const connection =
+    connectionId === null ? null : await ctx.db.get(connectionId);
+
+  const recent = mail.receivedAt >= Date.now() - NEW_EMAIL_WINDOW_MS;
+
   const emailId = await ctx.db.insert("emails", {
     actionNeeded: null,
     bodyText: mail.bodyText.slice(0, 20_000),
@@ -358,6 +364,10 @@ const upsertMail = async (
     providerMessageId: mail.providerMessageId,
     providerThreadId: mail.providerThreadId,
     receivedAt: mail.receivedAt,
+    scamWarningMailboxId:
+      recent && connection?.mode === "live"
+        ? (connection.externalAccountId ?? undefined)
+        : undefined,
     selectedForReview: false,
     subject: mail.subject.slice(0, 1000),
     summary: null,
@@ -371,7 +381,7 @@ const upsertMail = async (
   }
 
   // Only newly arrived mail gets the AI check, once; re-syncs and old mail never do.
-  if (mail.receivedAt >= Date.now() - NEW_EMAIL_WINDOW_MS) {
+  if (recent) {
     await ctx.scheduler.runAfter(0, internal.scam.checkNewEmail, { emailId });
   }
 
@@ -597,13 +607,18 @@ export const refresh = action({
 
 /** A new-message event from Composio: store it and check it locally in one transaction. */
 export const storeFromTrigger = internalMutation({
-  args: { connectionId: v.id("connections"), mail: mailValidator },
+  args: {
+    accountId: v.string(),
+    connectionId: v.id("connections"),
+    mail: mailValidator,
+  },
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
 
     if (
       connection === null ||
       connection.status !== "active" ||
+      connection.externalAccountId !== args.accountId ||
       (connection.provider !== "gmail" && connection.provider !== "outlook")
     ) {
       return null;
