@@ -19,6 +19,7 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
@@ -79,6 +80,7 @@ const MessageComposer = ({
   const inputId = useId();
   const hintId = useId();
   const t = useMessages().threads;
+  const presentationDemo = usePresentationDemo();
 
   const addPhotos = async (files: FileList | null): Promise<void> => {
     if (files === null) {
@@ -278,7 +280,7 @@ const MessageComposer = ({
         id={hintId}
       >
         <p>
-          {practice
+          {practice && !presentationDemo
             ? t.practiceNothingSent(firstName)
             : t.nothingSentUntilApproved}
         </p>

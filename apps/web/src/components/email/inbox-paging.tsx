@@ -9,8 +9,11 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
+
+import { mailboxErrorText } from "./presentation-copy";
 
 const InboxPaging = ({
   page,
@@ -22,6 +25,7 @@ const InboxPaging = ({
   onNavigate: (next: (string | null)[]) => void;
 }) => {
   const olderAvailable = useQuery(api.emails.olderAvailable);
+  const presentationDemo = usePresentationDemo();
   const loadOlder = useAction(api.emails.refresh);
   const [busy, setBusy] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
@@ -52,7 +56,11 @@ const InboxPaging = ({
       const result = await loadOlder({ older: true });
 
       if (result.errors.length > 0) {
-        setOperationError(result.errors.join(" "));
+        setOperationError(
+          result.errors
+            .map((error) => mailboxErrorText(error, presentationDemo))
+            .join(" ")
+        );
       }
 
       if (result.added > 0) {

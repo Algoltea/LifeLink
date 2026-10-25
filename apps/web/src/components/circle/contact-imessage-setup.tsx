@@ -11,6 +11,7 @@ import { CopyIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { SimulatedPill } from "@/components/app/bits";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { messagesFor, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
@@ -327,12 +328,15 @@ const ContactIMessageSetup = ({
 }) => {
   const headingId = useId();
   const t = useMessages().imessageSetup;
+  const presentationDemo = usePresentationDemo();
   let unavailable: string | null = null;
 
   if (!context) {
     unavailable = t.loading;
   } else if (context.practiceMode) {
-    unavailable = t.practice(contactName);
+    unavailable = presentationDemo
+      ? "iMessage setup is unavailable for this account."
+      : t.practice(contactName);
   } else if (!context.configured) {
     unavailable = t.notConfigured;
   } else if (!canManage) {

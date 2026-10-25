@@ -15,10 +15,12 @@ import { useId, useRef, useState } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { ScamTrustedPeopleLoading } from "@/components/app/scam-loading-layouts";
 import type { CircleContact } from "@/components/circle/contact-form";
 import { TrustedBadge } from "@/components/circle/contact-row";
 import { messagesFor, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 interface TrustedPeopleProps {
@@ -98,6 +100,7 @@ const TrustedPersonRow = ({
   const needsDetails = channel === null;
   const callEnabled = canCall && phone !== null && !disabled;
   const messages = useMessages();
+  const presentationDemo = usePresentationDemo();
   const t = messages.trustedPeople;
 
   return (
@@ -114,7 +117,7 @@ const TrustedPersonRow = ({
             {contact.name}
           </span>
           <TrustedBadge />
-          {contact.sample ? (
+          {contact.sample && !presentationDemo ? (
             <Pill>{messages.circle.practiceContact}</Pill>
           ) : null}
         </div>
@@ -185,6 +188,20 @@ const TrustedPersonRow = ({
   );
 };
 
+const callHelpBody = (
+  practiceCall: boolean,
+  presentationDemo: boolean,
+  messages: Messages
+): string => {
+  if (practiceCall && presentationDemo) {
+    return "Could we talk about what to do if a caller asks for money or personal details?";
+  }
+
+  return practiceCall
+    ? messages.callScreening.practiceHelp
+    : messages.trustedPeople.callHelpMessage;
+};
+
 /** Trusted people for the current mode, with message drafts that open review. */
 const TrustedPeople = ({
   reviewId,
@@ -196,6 +213,7 @@ const TrustedPeople = ({
   const ask = useMutation(api.scam.askTrustedContact);
   const draft = useMutation(api.messages.draft);
   const { me } = usePreferences();
+  const presentationDemo = usePresentationDemo();
 
   const router = useRouter();
 
@@ -207,8 +225,9 @@ const TrustedPeople = ({
   const preparing = useRef(false);
   const reviewNoteId = useId();
   const t = useMessages().trustedPeople;
-  const practiceMode = me?.profile?.demoMode === true;
-  const canCall = me?.profile?.demoMode === false;
+  const profile = me?.profile;
+  const practiceMode = profile?.demoMode === true;
+  const canCall = profile?.demoMode === false && !presentationDemo;
 
   const bodyFor = (contact: CircleContact): string => {
     // Authored bodies are exact; only new templates follow the recipient’s language.
@@ -220,9 +239,7 @@ const TrustedPeople = ({
       contact.language ?? interfaceLocaleOf(me?.preferences?.supportLanguage)
     );
 
-    return practiceCall
-      ? recipientMessages.callScreening.practiceHelp
-      : recipientMessages.trustedPeople.callHelpMessage;
+    return callHelpBody(practiceCall, presentationDemo, recipientMessages);
   };
 
   const trusted = contacts?.filter(
@@ -293,10 +310,14 @@ const TrustedPeople = ({
     <div className="text-body flex min-w-0 flex-col gap-3">
       <div className="flex flex-col gap-2" id={reviewNoteId}>
         <p>{reviewId ? t.introCheck : t.introCall}</p>
-        {me?.profile?.demoMode ? (
-          <p className="text-muted-foreground">{t.callsPractice}</p>
+        {practiceMode || presentationDemo ? (
+          <p className="text-muted-foreground">
+            {presentationDemo
+              ? "Calls are unavailable for this account."
+              : t.callsPractice}
+          </p>
         ) : null}
-        {me?.profile ? null : (
+        {profile ? null : (
           <p className="text-muted-foreground">{t.callsLoading}</p>
         )}
         {disabled ? (

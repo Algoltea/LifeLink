@@ -16,6 +16,7 @@ import {
 import { useEffect, useId, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale } from "@/i18n/locale";
 import { ago } from "@/lib/format";
 
@@ -38,6 +39,7 @@ const CallLanding = ({
   start: (practice: boolean) => Promise<void>;
 }) => {
   const messages = useCallScreeningMessages();
+  const presentationDemo = usePresentationDemo();
   const { me } = usePreferences();
   const integrations = useQuery(api.status.integrations);
   const [consent, setConsent] = useState(false);
@@ -62,17 +64,23 @@ const CallLanding = ({
           {messages.intro}
         </p>
       </div>
-      <ol className="text-body marker:text-accent-ink list-decimal space-y-3 pl-6 marker:font-semibold">
-        <li>{messages.speakerStep}</li>
-        <li>{messages.startStep}</li>
-        <li>{messages.openStep}</li>
-      </ol>
-      <p className="text-muted-foreground text-label">{messages.otherDevice}</p>
+      {presentationDemo ? null : (
+        <>
+          <ol className="text-body marker:text-accent-ink list-decimal space-y-3 pl-6 marker:font-semibold">
+            <li>{messages.speakerStep}</li>
+            <li>{messages.startStep}</li>
+            <li>{messages.openStep}</li>
+          </ol>
+          <p className="text-muted-foreground text-label">
+            {messages.otherDevice}
+          </p>
+        </>
+      )}
       <p className="text-muted-foreground text-label">
         {messages.languageLimit}
       </p>
-      <CallPrivacy />
-      {!practiceMode && configured ? (
+      <CallPrivacy practice={presentationDemo} />
+      {!practiceMode && !presentationDemo && configured ? (
         <label
           className="text-label min-h-control flex cursor-pointer items-start gap-3"
           htmlFor={consentId}
@@ -89,18 +97,27 @@ const CallLanding = ({
       ) : null}
       <Button
         className="min-h-control w-full whitespace-normal"
-        disabled={!consent || practiceMode || !configured || !me?.profile}
+        disabled={
+          !consent ||
+          practiceMode ||
+          presentationDemo ||
+          !configured ||
+          !me?.profile
+        }
         onClick={() => start(false)}
       >
         <MicIcon aria-hidden="true" />
         {messages.start}
       </Button>
-      {practiceMode ? (
+      {practiceMode || presentationDemo ? (
         <p className="text-muted-foreground text-label">
           {messages.practiceMode}
         </p>
       ) : null}
-      {!practiceMode && integrations !== undefined && !configured ? (
+      {!practiceMode &&
+      !presentationDemo &&
+      integrations !== undefined &&
+      !configured ? (
         <p className="text-muted-foreground text-label">
           {messages.notConfigured}
         </p>
@@ -201,6 +218,7 @@ const CallScreening = ({
   onActiveChange: (active: boolean) => void;
 }) => {
   const messages = useCallScreeningMessages();
+  const presentationDemo = usePresentationDemo();
 
   const { state, start, finish, reset, toggleMute, retrySave } =
     useCallScreening();
@@ -239,7 +257,9 @@ const CallScreening = ({
             {listeningTitle(messages, state.status, state.practice)}
           </h2>
           <p className="text-muted-foreground text-body">
-            {state.practice ? `${messages.practice} · ` : ""}
+            {state.practice && !presentationDemo
+              ? `${messages.practice} · `
+              : ""}
             {callTime(state.durationMs)}
             {listening && !lastFlag ? messages.noWarningsYet : ""}
           </p>
@@ -281,7 +301,7 @@ const CallScreening = ({
           </div>
         </div>
       ) : null}
-      {state.practice ? (
+      {state.practice && !presentationDemo ? (
         <p className="text-body">
           <Pill tone="neutral">{messages.practice}</Pill>{" "}
           {messages.practiceExplanation}

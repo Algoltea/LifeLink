@@ -16,8 +16,11 @@ import {
 import type { ReactNode } from "react";
 
 import { GroceriesIcon } from "@/components/app/nav-icons";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
+
+import { taskOutcomeText } from "./presentation-copy";
 
 type Step = Pick<
   Doc<"taskSteps">,
@@ -117,24 +120,32 @@ const Station = ({ compact, step }: { compact: boolean; step: Step }) => {
  */
 const JourneyGauge = ({
   compact = false,
+  mode,
   orientation = "horizontal",
   steps,
 }: {
   compact?: boolean;
+  mode: Doc<"tasks">["mode"];
   orientation?: "horizontal" | "vertical";
   steps: Step[];
 }) => {
   const t = useMessages().tasks;
   const locale = useLocale();
+  const presentationDemo = usePresentationDemo();
   const STATUS_WORDS = t.steps;
 
   const label = (step: Step): string =>
     translateServerMessage(step.label, locale);
 
-  const detail = (step: Step): string | null =>
-    step.detail === null || step.detail === undefined
-      ? null
+  const detail = (step: Step): string | null => {
+    if (step.detail === null || step.detail === undefined) {
+      return null;
+    }
+
+    return step.status === "succeeded"
+      ? taskOutcomeText(step.detail, step.kind, mode, presentationDemo, locale)
       : translateServerMessage(step.detail, locale);
+  };
 
   const doneCount = steps.findIndex(
     (step) => step.status !== "succeeded" && step.status !== "skipped"

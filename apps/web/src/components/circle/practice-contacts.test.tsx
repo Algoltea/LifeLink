@@ -19,6 +19,7 @@ import { messagesFor, setLocale } from "@/i18n/locale";
 
 import { CircleScreen } from "./circle-screen";
 import type { CircleContact } from "./contact-form";
+import { ContactIMessageSetup } from "./contact-imessage-setup";
 import type { GrantRow } from "./contact-permissions";
 
 const timestamp = Date.UTC(2026, 9, 24, 12);
@@ -27,7 +28,8 @@ const timestamp = Date.UTC(2026, 9, 24, 12);
 const ownerId = "owner-test" as Id<"profiles">;
 
 const meFor = (
-  demoMode: boolean
+  demoMode: boolean,
+  presentationDemo?: boolean
 ): FunctionReturnType<typeof api.profiles.me> => ({
   demoModeAllowed: true,
   needsOnboarding: false,
@@ -43,6 +45,7 @@ const meFor = (
     displayName: "Ana Example",
     postalCode: null,
     preferredName: "Ana",
+    presentationDemo,
     role: "owner",
     signOffName: null,
     timeZone: "America/New_York",
@@ -293,6 +296,57 @@ describe("Practice contacts in the circle and trusted picker", () => {
       links: contacts.map((person) => `/messages/${person._id}`),
       sameRow: true,
     });
+    expect(backend.mutate).not.toHaveBeenCalled();
+  });
+
+  it("hides contact labels only for presentation accounts without filtering contacts", () => {
+    render(<CircleScreen />);
+    const t = messagesFor("en").circle;
+    const row = circleRow(sam);
+
+    expect(row.textContent).toContain(t.practiceContact);
+    act(() => backend.receive({ "profiles:me": meFor(true, true) }));
+
+    expect({
+      links: circleLinks(),
+      practiceLabel: container.textContent.includes(t.practiceContact),
+      sameRow: circleRow(sam) === row,
+    }).toStrictEqual({
+      links: contacts.map((person) => `/messages/${person._id}`),
+      practiceLabel: false,
+      sameRow: true,
+    });
+
+    act(() => backend.receive({ "profiles:me": meFor(true, false) }));
+    expect(row.textContent).toContain(t.practiceContact);
+    expect(backend.mutate).not.toHaveBeenCalled();
+  });
+
+  it("keeps live iMessage setup unavailable when presentation hides practice copy", () => {
+    backend.receive({ "profiles:me": meFor(true, true) });
+    render(
+      <ContactIMessageSetup
+        canManage
+        contactLocale="en"
+        contactName="Sam"
+        context={{ configured: true, practiceMode: true }}
+        row={undefined}
+      />
+    );
+
+    expect(container.textContent).toContain(
+      "iMessage setup is unavailable for this account."
+    );
+    expect({
+      practice: container.textContent.includes("Practice"),
+      setupButton: container.querySelector("button"),
+    }).toStrictEqual({ practice: false, setupButton: null });
+
+    act(() => backend.receive({ "profiles:me": meFor(true) }));
+    expect(container.textContent).toContain(
+      messagesFor("en").imessageSetup.practice("Sam")
+    );
+    expect(container.querySelector("button")).toBeNull();
     expect(backend.mutate).not.toHaveBeenCalled();
   });
 

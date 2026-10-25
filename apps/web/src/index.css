@@ -142,15 +142,15 @@
   mask-image: none;
 }
 
-.market-dab {
+.paint-dab {
   fill: #a7b8c9;
 }
 
-.market-dab[data-dab="1"] {
+.paint-dab[data-dab="1"] {
   fill: #a9bc9f;
 }
 
-.market-dab[data-dab="2"] {
+.paint-dab[data-dab="2"] {
   fill: #c4b2d2;
 }
 

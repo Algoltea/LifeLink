@@ -172,13 +172,14 @@ const practiceNotes = async (
 
 interface PracticeRequest {
   cursor: string | null;
+  presentationDemo: boolean;
   search: string | null;
   sort: Sort;
 }
 
 const practicePage = (
   notes: PracticeFile[],
-  { cursor, search, sort }: PracticeRequest
+  { cursor, presentationDemo, search, sort }: PracticeRequest
 ): Page => {
   const offset = Number(
     PRACTICE_CURSOR.exec(cursor ?? "")?.groups?.offset ?? 0
@@ -186,7 +187,10 @@ const practicePage = (
 
   const needle = search?.toLowerCase() ?? null;
 
-  const matching = [...notes, ...practiceDriveFiles(Date.now())]
+  const matching = [
+    ...notes,
+    ...practiceDriveFiles(Date.now(), presentationDemo),
+  ]
     .filter(
       (file) => needle === null || file.name.toLowerCase().includes(needle)
     )
@@ -216,6 +220,7 @@ interface DriveContext {
   demoMode: boolean;
   ownerId: Id<"profiles">;
   practiceNotes: PracticeFile[];
+  presentationDemo: boolean;
 }
 
 export const driveContext = internalQuery({
@@ -259,6 +264,7 @@ export const driveContext = internalQuery({
       demoMode: owner.demoMode,
       ownerId: owner._id,
       practiceNotes: owner.demoMode ? await practiceNotes(ctx, owner) : [],
+      presentationDemo: owner.presentationDemo === true,
     };
   },
 });
@@ -292,6 +298,7 @@ export const files = action({
     if (context.demoMode) {
       return practicePage(context.practiceNotes, {
         cursor: args.cursor,
+        presentationDemo: context.presentationDemo,
         search,
         sort: args.sort,
       });

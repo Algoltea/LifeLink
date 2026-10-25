@@ -51,6 +51,7 @@ import {
 } from "./nav-icons";
 import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
+import { usePresentationDemo } from "./presentation-demo";
 
 interface NavItem {
   href: Route;
@@ -244,6 +245,7 @@ const signOut = async (): Promise<void> => {
 /** One quiet account row; practice mode and sign out sit one deliberate step away. */
 const Account = () => {
   const { me } = usePreferences();
+  const presentation = usePresentationDemo();
   const t = useMessages();
   const profile = me?.profile;
 
@@ -256,7 +258,7 @@ const Account = () => {
 
   if (family) {
     detail = t.shell.familyMember;
-  } else if (profile.demoMode) {
+  } else if (profile.demoMode && !presentation) {
     detail = t.shell.practiceMode;
   }
 
@@ -288,7 +290,7 @@ const Account = () => {
           sideOffset={8}
         >
           <Menu.Popup className="motion-pop border-border bg-raised flex w-[var(--anchor-width)] min-w-[13.333rem] origin-[var(--transform-origin)] flex-col rounded-xl border p-1.5 shadow-[0_1px_2px_rgb(45_33_24/0.05),0_12px_32px_rgb(45_33_24/0.12)] outline-none">
-            {family ? null : (
+            {family || presentation ? null : (
               <>
                 <Menu.LinkItem
                   className={ACCOUNT_ITEM}
@@ -321,6 +323,7 @@ const Account = () => {
 
 const Notices = () => {
   const { me } = usePreferences();
+  const presentation = usePresentationDemo();
   const t = useMessages();
   const { dismissFailure, online, queue } = useOffline();
   const waiting = queue.filter((item) => !item.failure).length;
@@ -379,7 +382,7 @@ const Notices = () => {
           </div>
         </section>
       ))}
-      {demo ? (
+      {demo && !presentation ? (
         <div className="border-border bg-parchment text-muted-foreground text-label flex min-h-[4.444rem] flex-wrap items-center justify-between gap-2 border-b px-5 py-2">
           <p>
             <strong className="font-semibold">

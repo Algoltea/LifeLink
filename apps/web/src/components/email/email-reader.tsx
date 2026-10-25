@@ -20,6 +20,7 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
 import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
@@ -34,6 +35,7 @@ import { messageOf } from "@/lib/errors";
 import { formatShortDay, formatTime, formatWhen } from "@/lib/format";
 
 import { Disclosure, ReaderSkeleton, hueFor } from "./email-bits";
+import { PRESENTATION_CHECKS_NOTICE } from "./presentation-copy";
 import { EMPTY_REPLY, ReplyComposer } from "./reply-composer";
 import type { ReplyDraft } from "./reply-composer";
 
@@ -321,6 +323,7 @@ const CheckDisclosure = ({
   labelId: string;
   timeZone: string;
 }) => {
+  const presentationDemo = usePresentationDemo();
   const locale = useLocale();
   const words = useMessages();
   const t = words.email;
@@ -343,7 +346,8 @@ const CheckDisclosure = ({
     >
       <p className="font-semibold">{scanSummaryFor(email, t)}</p>
       <p className="text-muted-foreground text-label">
-        {emailCheckNotice(email, locale) || t.checksAutomatic}
+        {emailCheckNotice(email, locale) ||
+          (presentationDemo ? PRESENTATION_CHECKS_NOTICE : t.checksAutomatic)}
         {email.scamCheck === undefined
           ? t.checkManually
           : t.checkedAt(

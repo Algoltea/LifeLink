@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" role="img" aria-label="Pharmacy label">
+  <rect width="900" height="520" fill="#f3efe6"/>
+  <rect x="40" y="40" width="820" height="440" rx="18" fill="#fff" stroke="#d6cfc0" stroke-width="3"/>
+  <rect x="40" y="40" width="820" height="78" rx="18" fill="#7a3b2e"/>
+  <rect x="40" y="100" width="820" height="18" fill="#7a3b2e"/>
+  <text x="72" y="92" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#fff">Main Street Pharmacy</text>
+  <text x="828" y="92" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#f5e4dc" text-anchor="end">410 Main St · (555) 010-0123</text>
+  <g font-family="Helvetica, Arial, sans-serif" fill="#2b2a27">
+    <text x="72" y="164" font-size="20" fill="#6b665c">Rx# 2048813 · Dr. Anita Patel · Filled 10/02/2026</text>
+    <text x="72" y="214" font-size="30" font-weight="700">RUTH RIVERA</text>
+    <text x="72" y="276" font-size="40" font-weight="700" fill="#7a3b2e">ATORVASTATIN 20 MG TABLETS</text>
+    <text x="72" y="330" font-size="28">Take 1 tablet by mouth every evening</text>
+    <text x="72" y="368" font-size="28">for cholesterol.</text>
+    <line x1="72" y1="398" x2="828" y2="398" stroke="#e3ddd0" stroke-width="2"/>
+    <text x="72" y="440" font-size="22">Qty: 90</text>
+    <text x="230" y="440" font-size="22">Refills left: 3</text>
+    <text x="460" y="440" font-size="22">Discard after: 10/2027</text>
+  </g>
+</svg>

@@ -17,6 +17,7 @@ import { ModePill, ReadAloudButton } from "@/components/app/bits";
 import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
@@ -28,8 +29,21 @@ type Recap = Doc<"conversationRecaps">;
 
 type Words = Messages["recap"];
 
-const methodWords = (recap: Recap, t: Words): string =>
-  recap.method === "cloud" ? t.cloud : t.local[recap.localReason ?? "chosen"];
+const methodWords = (
+  recap: Recap,
+  t: Words,
+  presentationDemo: boolean
+): string => {
+  if (recap.method === "cloud") {
+    return t.cloud;
+  }
+
+  if (presentationDemo && recap.localReason === "practice") {
+    return t.local.chosen;
+  }
+
+  return t.local[recap.localReason ?? "chosen"];
+};
 
 /** Local recaps are written by LifeLink in English; cloud recaps already use the person's language. */
 const recapText = (
@@ -306,6 +320,7 @@ const RequestForm = ({
   upgrade: boolean;
 }) => {
   const request = useMutation(api.recaps.request);
+  const presentationDemo = usePresentationDemo();
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const [busy, setBusy] = useState(false);
   const consentId = useId();
@@ -324,7 +339,9 @@ const RequestForm = ({
   return (
     <div className="flex flex-col gap-3">
       {practice ? (
-        <p className="text-base">{t.practiceNote}</p>
+        <p className="text-base">
+          {presentationDemo ? t.local.chosen : t.practiceNote}
+        </p>
       ) : (
         <label
           className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
@@ -380,6 +397,7 @@ const RecapPanel = ({
   returnFocusRef?: RefObject<HTMLButtonElement | null>;
 }) => {
   const view = useQuery(api.recaps.forContact, { contactId });
+  const presentationDemo = usePresentationDemo();
   const { me, preferences } = usePreferences();
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);
@@ -424,7 +442,9 @@ const RecapPanel = ({
 
     body = (
       <>
-        <p className="text-base font-semibold">{methodWords(view.recap, t)}</p>
+        <p className="text-base font-semibold">
+          {methodWords(view.recap, t, presentationDemo)}
+        </p>
         {view.recap.droppedCount > 0 ? (
           <p className="text-base font-semibold">{t.changedNote}</p>
         ) : null}

@@ -846,6 +846,7 @@ interface PlanningContext {
   language: string;
   now: string;
   preferredName: string;
+  presentationDemo: boolean;
   timeZone: string;
   today: string;
 }
@@ -910,6 +911,7 @@ export const planningContext = internalQuery({
       locale: interfaceLocaleOf(language),
       now: isoWithOffset(now, owner.timeZone),
       preferredName: owner.preferredName,
+      presentationDemo: owner.presentationDemo === true,
       timeZone: owner.timeZone,
       today: formatDay(now, owner.timeZone),
     };
@@ -924,7 +926,14 @@ const instructionsFor = (context: PlanningContext): string =>
     "When the person wants something done (ask for a ride, send a message, set a reminder, add groceries, check a suspicious message), call propose_action once.",
     "propose_action only prepares it for review. After calling it, tell the person in one or two sentences what the tool result says. Never say anything was sent, saved, or ordered unless the tool result says so.",
     "If you are unsure who or when they mean, ask one short question instead of calling the tool.",
-    "For questions about the weather, call get_weather. Use Fahrenheit for people in the United States and Celsius otherwise. If it says no_location, tell them to add their postal code in Settings. Mention practice weather if it says practice.",
+    context.presentationDemo
+      ? "For questions about the weather, call get_weather. Use Fahrenheit for people in the United States and Celsius otherwise. If it says no_location, tell them to add their postal code in Settings."
+      : "For questions about the weather, call get_weather. Use Fahrenheit for people in the United States and Celsius otherwise. If it says no_location, tell them to add their postal code in Settings. Mention practice weather if it says practice.",
+    ...(context.presentationDemo
+      ? [
+          "This is an operator-created presentation account using sample data and simulated actions. Avoid proactively adding Practice or Sample labels to ordinary answers. Keep all tool provenance unchanged. Never claim a real external message was sent, a purchase was made, or a real provider was changed. If asked whether data or actions are real, clearly explain that this account uses sample data and simulated outcomes.",
+        ]
+      : []),
     'When they ask for news, call get_news with kind "good" unless they ask for the main or serious news. Read only the headlines it returns, with their source. Never add details or invent news.',
     "get_weather and get_news only read information; they never prepare anything for review.",
     "If their updatedMinutesAgo is more than 180, say the information may be out of date.",

@@ -258,7 +258,10 @@ const practicePaperwork = (now: number): PracticeFile[] =>
   ).flat();
 
 /** Every practice file, relative to `now`. */
-const practiceDriveFiles = (now: number): PracticeFile[] => [
+const practiceDriveFiles = (
+  now: number,
+  presentationDemo = false
+): PracticeFile[] => [
   ...practicePaperwork(now),
   {
     content: MEDICATION_LIST,
@@ -307,8 +310,12 @@ const practiceDriveFiles = (now: number): PracticeFile[] => [
   },
   {
     content: picture(
-      "/practice/prescription-label.svg",
-      "A practice pharmacy label for Atorvastatin 20 milligram tablets from Main Street Pharmacy, take one tablet by mouth every evening, three refills left."
+      presentationDemo
+        ? "/presentation/prescription-label.svg"
+        : "/practice/prescription-label.svg",
+      presentationDemo
+        ? "A pharmacy label for Atorvastatin 20 milligram tablets from Main Street Pharmacy, take one tablet by mouth every evening, three refills left."
+        : "A practice pharmacy label for Atorvastatin 20 milligram tablets from Main Street Pharmacy, take one tablet by mouth every evening, three refills left."
     ),
     mimeType: SVG,
     modifiedAt: now - 6 * DAY,
@@ -316,8 +323,12 @@ const practiceDriveFiles = (now: number): PracticeFile[] => [
   },
   {
     content: picture(
-      "/practice/insurance-card.svg",
-      "The front of a practice health insurance card from Harbor Mutual Health showing a member name, member ID, group number, and copay amounts."
+      presentationDemo
+        ? "/presentation/insurance-card.svg"
+        : "/practice/insurance-card.svg",
+      presentationDemo
+        ? "The front of a health insurance card from Harbor Mutual Health showing a member name, member ID, group number, and copay amounts."
+        : "The front of a practice health insurance card from Harbor Mutual Health showing a member name, member ID, group number, and copay amounts."
     ),
     mimeType: SVG,
     modifiedAt: now - 9 * DAY,

@@ -7,10 +7,17 @@ import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 const DISCLOSURE_MOTION_MS = 180;
+
+const PRACTICE_REVIEW_NOTE =
+  "Practice emails are reviewed in LifeLink and are never sent to cloud AI.";
+
+const LOCAL_REVIEW_NOTE =
+  "Showing the overview made in LifeLink. Nothing was sent to cloud AI.";
 
 const SummaryDisclosure = ({
   children,
@@ -86,10 +93,19 @@ const SummaryDisclosure = ({
 };
 
 const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
+  const presentation = usePresentationDemo();
   const locale = useLocale();
   const headingId = useId();
   const disclosureName = useId();
   const t = useMessages().ask.emailSummary;
+
+  const note =
+    presentation &&
+    summary.practice &&
+    summary.method === "local" &&
+    summary.note === PRACTICE_REVIEW_NOTE
+      ? LOCAL_REVIEW_NOTE
+      : summary.note;
 
   // Local reasons are fixed rules; item summaries can contain original email text.
   const reasonFor = (text: string): string =>
@@ -111,7 +127,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
             {t.title}
           </h3>
           <p className="text-muted-foreground text-label">
-            {summary.practice ? t.practicePrefix : ""}
+            {summary.practice && !presentation ? t.practicePrefix : ""}
             {t.count(summary.items.length)}
             {summary.method === "cloud" ? t.cloud : t.local}
           </p>
@@ -203,7 +219,7 @@ const EmailSummaryCard = ({ summary }: { summary: InboxChatSummary }) => {
             {t.howMade}
           </summary>
           <p className="pb-3 wrap-anywhere">
-            {translateServerMessage(summary.note, locale)}
+            {translateServerMessage(note, locale)}
           </p>
         </SummaryDisclosure>
         <p className="text-muted-foreground text-label">{t.suggestionsOnly}</p>

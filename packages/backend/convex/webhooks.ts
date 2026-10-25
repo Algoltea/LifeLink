@@ -92,12 +92,21 @@ const routeToContact = async (
 
   const everyone = await ctx.db.query("contacts").collect();
 
-  const contacts = everyone.filter((contact) =>
+  const matching = everyone.filter((contact) =>
     contact.channels.some(
       (item) =>
         item.channel === channel &&
         item.address.trim().toLowerCase() === normalized
     )
+  );
+
+  const owners = await Promise.all(
+    matching.map(async (contact) => await ctx.db.get(contact.ownerId))
+  );
+
+  const contacts = matching.filter(
+    (_contact, index) =>
+      owners[index] !== null && !owners[index]?.presentationDemo
   );
 
   if (contacts.length <= 1) {
@@ -371,6 +380,53 @@ interface TelegramChat {
   username: string | null;
 }
 
+/** Old presentation links must not trigger real bot notices or live incoming messages. */
+const presentationTelegramUpdate = async (
+  ctx: MutationCtx,
+  text: string,
+  chat: TelegramChat
+): Promise<boolean> => {
+  const code = START_COMMAND.test(text.trim()) ? startCodeOf(text) : null;
+
+  if (code !== null) {
+    const link = await ctx.db
+      .query("telegramLinks")
+      .withIndex("by_code", (index) => index.eq("code", code))
+      .unique();
+
+    const owner = link === null ? null : await ctx.db.get(link.ownerId);
+
+    if (link !== null) {
+      // A targeted link takes precedence over unrelated stale username/chat rows.
+      return owner?.presentationDemo === true;
+    }
+  }
+
+  const linked = await ctx.db
+    .query("telegramLinks")
+    .withIndex("by_chatId", (index) => index.eq("chatId", chat.chatId))
+    .take(100);
+
+  const waiting =
+    chat.username === null
+      ? []
+      : await ctx.db
+          .query("telegramLinks")
+          .withIndex("by_expected_username", (index) =>
+            index.eq("expectedUsername", chat.username?.toLowerCase())
+          )
+          .take(100);
+
+  const owners = await Promise.all(
+    [...linked, ...waiting].map(async (link) => await ctx.db.get(link.ownerId))
+  );
+
+  return (
+    owners.length > 0 &&
+    owners.every((owner) => owner?.presentationDemo === true)
+  );
+};
+
 /** `/start <code>`: the one contact the code was made for, or null when unknown or expired. */
 const linkByCode = async (
   ctx: MutationCtx,
@@ -499,6 +555,17 @@ const linkTelegramChat = async (
   return bound;
 };
 
+const telegramMessageBody = async (
+  ctx: MutationCtx,
+  text: string,
+  hasPhoto: boolean,
+  contact: Doc<"contacts"> | null
+): Promise<string> =>
+  text.trim() ||
+  (hasPhoto && contact !== null
+    ? noticesFor(await ownerLocale(ctx, contact.ownerId)).photoOnly
+    : "");
+
 export const telegramUpdate = internalMutation({
   args: {
     chatId: v.string(),
@@ -541,6 +608,18 @@ export const telegramUpdate = internalMutation({
       username: args.username,
     };
 
+    if (await presentationTelegramUpdate(ctx, args.text, chat)) {
+      await settle(
+        ctx,
+        eventId,
+        "ignored",
+        null,
+        "Presentation accounts cannot connect real Telegram chats."
+      );
+
+      return "ignored";
+    }
+
     const bound = await linkTelegramChat(ctx, args.text, chat);
     const contact = await routeToContact(ctx, "telegram", args.chatId);
 
@@ -575,11 +654,12 @@ export const telegramUpdate = internalMutation({
       return bound.length > 0 ? "processed" : "ignored";
     }
 
-    const body =
-      args.text.trim() ||
-      (args.hasPhoto && contact !== null
-        ? noticesFor(await ownerLocale(ctx, contact.ownerId)).photoOnly
-        : "");
+    const body = await telegramMessageBody(
+      ctx,
+      args.text,
+      args.hasPhoto,
+      contact
+    );
 
     if (contact === null || body.length === 0) {
       await settle(

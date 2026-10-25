@@ -1,18 +1,23 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
+import { ConvexError } from "convex/values";
 import { useEffect, useId, useRef, useState } from "react";
+import { z } from "zod";
 
 import { useOffline } from "@/components/app/offline-queue";
+import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 
 import { ActionReview } from "./action-review";
+import { taskBlockerText } from "./presentation-copy";
 
 type TaskReview = NonNullable<
   FunctionReturnType<typeof api.assistant.taskReview>
@@ -83,6 +88,40 @@ const contactNameOf = (view: ReviewView): string =>
     ? view.current.details.contactName
     : "";
 
+const approvalErrorData = z.object({
+  code: z.string().optional(),
+  message: z.string(),
+});
+
+/** Map known mode errors before localization; preserve normal error handling. */
+const approvalFailureText = (
+  cause: unknown,
+  presentationDemo: boolean,
+  locale: InterfaceLocale
+): string => {
+  const error = cause instanceof Error ? cause : null;
+
+  if (!presentationDemo || error === null) {
+    return messageOf(error);
+  }
+
+  let original = error.message;
+
+  if (error instanceof ConvexError) {
+    const parsed = approvalErrorData.safeParse(error.data);
+
+    if (parsed.success) {
+      original = parsed.data.message;
+    }
+  }
+
+  const presented = taskBlockerText(original, presentationDemo, locale);
+
+  return presented === translateServerMessage(original, locale)
+    ? messageOf(error)
+    : presented;
+};
+
 /**
  * Lists every waiting message in one place, then approves exactly that set in
  * a single transaction. The summary is the review; sending is one more press.
@@ -105,6 +144,8 @@ const SendAllPanel = ({
   waiting: SendableMessage[];
 }) => {
   const approveAll = useMutation(api.actions.approveMessages);
+  const presentationDemo = usePresentationDemo();
+  const locale = useLocale();
   const { online } = useOffline();
   const [reviewing, setReviewing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -116,6 +157,28 @@ const SendAllPanel = ({
   const t = messages.tasks.sendAll;
   const count = waiting.length;
   const ready = online && !blocked && !hasEdits;
+  const presentation = presentationDemo && practice;
+
+  const copy = presentation
+    ? {
+        confirm: `Approve all ${count}`,
+        finishEdits: "Save or cancel your changes before approving all.",
+        intro: "Review each person's message together.",
+        reconnect: "Reconnect to approve all messages.",
+        resolveFirst:
+          "Some messages need your answer first. You can still approve ready messages one at a time.",
+        review: `Review all ${count}`,
+        sending: "Approving…",
+        summaryHint:
+          "Approval records these messages in LifeLink. Nothing is sent outside LifeLink.",
+        summaryTitle: `Approve these ${count} messages?`,
+      }
+    : {
+        ...t,
+        confirm: (practice ? t.practiceConfirm : t.confirm)(count),
+        review: (practice ? t.practiceReview : t.review)(count),
+        summaryTitle: t.summaryTitle(count),
+      };
 
   useEffect(() => {
     if (reviewing) {
@@ -147,7 +210,7 @@ const SendAllPanel = ({
         taskId,
       });
     } catch (error) {
-      setFailure(messageOf(error instanceof Error ? error : null));
+      setFailure(approvalFailureText(error, presentationDemo, locale));
     }
 
     onBusyChange(false);
@@ -163,9 +226,9 @@ const SendAllPanel = ({
             ref={summaryHeading}
             tabIndex={-1}
           >
-            {t.summaryTitle(count)}
+            {copy.summaryTitle}
           </h3>
-          <p className="text-base">{t.summaryHint}</p>
+          <p className="text-base">{copy.summaryHint}</p>
           <ul className="flex flex-col gap-2">
             {waiting.map((view) =>
               view.current?.details.kind === "send_message" ? (
@@ -194,9 +257,7 @@ const SendAllPanel = ({
                 await sendAll(event.detail === 0 ? "keyboard" : "tap");
               }}
             >
-              {busy
-                ? t.sending
-                : (practice ? t.practiceConfirm : t.confirm)(count)}
+              {busy ? copy.sending : copy.confirm}
             </Button>
             <Button
               disabled={busy}
@@ -212,7 +273,7 @@ const SendAllPanel = ({
         </section>
       ) : (
         <>
-          <p className="text-base">{t.intro}</p>
+          <p className="text-base">{copy.intro}</p>
           <Button
             className="self-start"
             disabled={busy || !ready}
@@ -222,13 +283,13 @@ const SendAllPanel = ({
             }}
             ref={reviewButton}
           >
-            {(practice ? t.practiceReview : t.review)(count)}
+            {copy.review}
           </Button>
         </>
       )}
-      {hasEdits ? <p>{t.finishEdits}</p> : null}
-      {blocked ? <p>{t.resolveFirst}</p> : null}
-      {online ? null : <p>{t.reconnect}</p>}
+      {hasEdits ? <p>{copy.finishEdits}</p> : null}
+      {blocked ? <p>{copy.resolveFirst}</p> : null}
+      {online ? null : <p>{copy.reconnect}</p>}
       {failure ? <ErrorNote>{failure}</ErrorNote> : null}
     </div>
   );

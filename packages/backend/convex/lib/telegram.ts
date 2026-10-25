@@ -6,6 +6,15 @@ import { audit } from "./audit";
 
 type ReaderCtx = MutationCtx | QueryCtx;
 
+const requireTelegramLinkingAllowed = (owner: Doc<"profiles"> | null): void => {
+  if (owner === null || owner.presentationDemo) {
+    throw new ConvexError({
+      code: "presentation_demo_locked",
+      message: "This presentation account cannot connect a real Telegram chat.",
+    });
+  }
+};
+
 /** Telegram usernames: 5–32 letters, digits, or underscores, starting with a letter. */
 const USERNAME_PATTERN = /^[a-z]\w{4,31}$/iu;
 const USERNAME_PREFIX = /^(?:https?:\/\/)?(?:t\.me\/|telegram\.me\/)?@?/iu;
@@ -45,6 +54,14 @@ const verifiedTelegramChat = async (
 ): Promise<string | null> => {
   const link = await telegramLinkOf(ctx, contactId);
 
+  if (link !== null) {
+    const owner = await ctx.db.get(link.ownerId);
+
+    if (owner === null || owner.presentationDemo) {
+      return null;
+    }
+  }
+
   return link?.chatId ?? null;
 };
 
@@ -79,8 +96,14 @@ const bindTelegramChat = async (
   chat: { chatId: string; firstName: string | null; username: string | null }
 ): Promise<Doc<"contacts"> | null> => {
   const contact = await ctx.db.get(link.contactId);
+  const owner = await ctx.db.get(link.ownerId);
 
-  if (contact === null) {
+  if (
+    contact === null ||
+    contact.ownerId !== link.ownerId ||
+    owner === null ||
+    owner.presentationDemo
+  ) {
     return null;
   }
 
@@ -141,6 +164,8 @@ const applyTelegramChoice = async (
     return;
   }
 
+  requireTelegramLinkingAllowed(await ctx.db.get(contact.ownerId));
+
   const username =
     choice.username === null || choice.username.trim() === ""
       ? null
@@ -185,6 +210,7 @@ export {
   applyTelegramChoice,
   bindTelegramChat,
   normalizeTelegramUsername,
+  requireTelegramLinkingAllowed,
   telegramLinkOf,
   verifiedTelegramChat,
 };
