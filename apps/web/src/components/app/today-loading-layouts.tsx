@@ -69,8 +69,8 @@ const TodayLoadingNews = () => (
         <TodayLine className="h-[1.333rem] w-16" />
       </div>
     </div>
-    <div className="min-h-[11rem]">
-      {[0, 1, 2].map((key) => (
+    <div className="min-h-[18.5rem]">
+      {[0, 1, 2, 3, 4].map((key) => (
         <div className="border-rule border-t py-1 first:border-t-0" key={key}>
           <TodayLine />
           <TodayLine />
