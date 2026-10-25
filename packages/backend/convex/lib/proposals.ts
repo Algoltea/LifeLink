@@ -1,3 +1,4 @@
+import { draftProblem } from "@lifelink/contracts/draft-safety";
 import { intlLocaleOf } from "@lifelink/contracts/locale";
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 /**
@@ -12,6 +13,7 @@ import type { Proposal } from "@lifelink/contracts/model-output";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { assistantMessagesFor } from "./assistantMessages";
 import { audit } from "./audit";
 import {
   channelFor,
@@ -38,6 +40,7 @@ interface ProposalOutcome {
 interface Planning {
   contacts: Doc<"contacts">[];
   ctx: MutationCtx;
+  draftSource: string;
   locale: InterfaceLocale;
   mode: "live" | "simulated";
   now: number;
@@ -103,6 +106,11 @@ const rideDestinationOf = (
 
 const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, now, owner, proposal } = planning;
+
+  // The ride journey tracks one driver. Never silently discard extra people.
+  if (proposal.recipients.length > 1) {
+    return outcome(proposalMessagesFor(locale).whichRecipient);
+  }
 
   const appointments = await ctx.db
     .query("appointments")
@@ -189,6 +197,12 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
 
   if (body.length === 0) {
     return outcome("What would you like the message to say?");
+  }
+
+  // Model-authored words obey the same safety boundary as suggested replies.
+  // Person-authored edits still go through their separate review flow.
+  if (draftProblem(body, planning.draftSource) !== null) {
+    return outcome(assistantMessagesFor(locale).invalidProposal);
   }
 
   const resolved = resolveMessageRecipients(
@@ -445,7 +459,8 @@ const applyProposal = async (
   proposal: Proposal,
   request: string,
   origin: Doc<"tasks">["origin"],
-  model: string
+  model: string,
+  draftSource = request
 ): Promise<ProposalOutcome> => {
   const contacts = await ctx.db
     .query("contacts")
@@ -455,6 +470,7 @@ const applyProposal = async (
   const planning: Planning = {
     contacts,
     ctx,
+    draftSource,
     locale: await ownerLocale(ctx, owner._id),
     mode: owner.demoMode ? "simulated" : "live",
     now: Date.now(),

@@ -78,6 +78,7 @@ const NEW_CONVERSATION_TITLE = "New conversation";
 const MAX_CONVERSATION_TITLE_LENGTH = 80;
 const MAX_CONVERSATIONS = 100;
 const MAX_TASK_ACTIONS = 100;
+const MAX_DRAFT_SOURCE_MESSAGES = 100;
 const DEFAULT_CONTACT_HUE = 30;
 const WHITESPACE_PATTERN = /\s+/gu;
 
@@ -957,9 +958,82 @@ interface AssistantProposalOutcome extends ProposalOutcome {
   actionId: Id<"actions"> | null;
 }
 
+interface DraftContext {
+  promptMessageId: string;
+  threadId: string;
+}
+
+/** Numeric details may be copied only from this owner's user turns up to the initiating request. */
+const draftSourceFor = async (
+  ctx: MutationCtx,
+  owner: Doc<"profiles">,
+  request: string,
+  context: DraftContext | undefined
+): Promise<string> => {
+  if (context === undefined) {
+    return request;
+  }
+
+  const thread = await ctx.runQuery(agentComponent.threads.getThread, {
+    threadId: context.threadId,
+  });
+
+  if (
+    thread?.userId !== owner._id ||
+    (await readConversation(ctx, owner, context.threadId)) === null
+  ) {
+    throw conversationNotFound();
+  }
+
+  const [prompt] = await ctx.runQuery(
+    agentComponent.messages.getMessagesByIds,
+    {
+      messageIds: [context.promptMessageId],
+    }
+  );
+
+  if (
+    prompt?.threadId !== context.threadId ||
+    prompt.userId !== owner._id ||
+    prompt.message?.role !== "user" ||
+    prompt.text !== request
+  ) {
+    throw conversationNotFound();
+  }
+
+  const history = await ctx.runQuery(
+    agentComponent.messages.listMessagesByThreadId,
+    {
+      excludeToolMessages: true,
+      order: "desc",
+      paginationOpts: { cursor: null, numItems: MAX_DRAFT_SOURCE_MESSAGES },
+      statuses: ["success"],
+      threadId: context.threadId,
+      upToAndIncludingMessageId: context.promptMessageId,
+    }
+  );
+
+  return history.page
+    .filter(
+      (message) =>
+        message.userId === owner._id &&
+        message.message?.role === "user" &&
+        message.providerOptions?.lifelink?.privateInboxSummary !== true &&
+        message.message.providerOptions?.lifelink?.privateInboxSummary !== true
+    )
+    .map((message) => message.text ?? "")
+    .join("\n");
+};
+
 export const applyProposalForOwner = internalMutation({
   args: {
     channel: channelValidator,
+    draftContext: v.optional(
+      v.object({
+        promptMessageId: v.string(),
+        threadId: v.string(),
+      })
+    ),
     model: v.string(),
     ownerId: v.id("profiles"),
     proposalJson: v.string(),
@@ -988,13 +1062,21 @@ export const applyProposalForOwner = internalMutation({
       };
     }
 
+    const draftSource = await draftSourceFor(
+      ctx,
+      owner,
+      args.request,
+      args.draftContext
+    );
+
     const outcome = await applyProposal(
       ctx,
       owner,
       proposal,
       args.request,
       args.channel,
-      args.model
+      args.model,
+      draftSource
     );
 
     const { taskId } = outcome;
@@ -1027,7 +1109,7 @@ const proposalToolResult = (outcome: AssistantProposalOutcome) => ({
 const proposeTool = (
   ownerId: Id<"profiles">,
   channel: RequestChannel,
-  request: string,
+  request: DraftContext & { text: string },
   model: string
 ) =>
   createTool({
@@ -1041,10 +1123,14 @@ const proposeTool = (
         internal.assistant.applyProposalForOwner,
         {
           channel,
+          draftContext: {
+            promptMessageId: request.promptMessageId,
+            threadId: request.threadId,
+          },
           model,
           ownerId,
           proposalJson: JSON.stringify(input),
-          request,
+          request: request.text,
         }
       );
 
@@ -1230,6 +1316,10 @@ export const respond = internalAction({
         internal.assistant.applyProposalForOwner,
         {
           channel: args.channel,
+          draftContext: {
+            promptMessageId: args.promptMessageId,
+            threadId: args.threadId,
+          },
           model: "rules (demo)",
           ownerId: args.ownerId,
           proposalJson: JSON.stringify(proposal),
@@ -1302,7 +1392,11 @@ export const respond = internalAction({
         propose_action: proposeTool(
           args.ownerId,
           args.channel,
-          args.text,
+          {
+            promptMessageId: args.promptMessageId,
+            text: args.text,
+            threadId: args.threadId,
+          },
           model
         ),
       },
