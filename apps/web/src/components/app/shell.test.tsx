@@ -63,10 +63,10 @@ describe("game brand navigation", () => {
   });
 });
 
-describe("game language picker", () => {
-  it.each(["/mahjong", "/solitaire"])(
-    "switches language from the %s sidebar without replacing the game",
-    (pathname) => {
+describe("sidebar language", () => {
+  it.each(["/mahjong", "/solitaire", "/family", "/settings", "/messages"])(
+    "switches language from %s without replacing the page",
+    async (pathname) => {
       vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
       setLocale("en");
       const container = document.createElement("div");
@@ -84,26 +84,32 @@ describe("game language picker", () => {
           )
         );
         const game = container.querySelector("[data-game]");
-        const picker = container.querySelector("aside select");
+        const picker = container.querySelector('aside [role="combobox"]');
 
-        if (!(picker instanceof HTMLSelectElement)) {
+        if (!(picker instanceof HTMLButtonElement)) {
           throw new Error("Expected sidebar language picker");
         }
 
-        expect(picker.options).toHaveLength(10);
-        act(() => {
-          picker.value = "es";
-          picker.dispatchEvent(new Event("change", { bubbles: true }));
-        });
+        await act(() => picker.click());
+        const options = [...document.querySelectorAll('[role="option"]')];
+        expect(options).toHaveLength(10);
+
+        const spanish = options.find(
+          (option) => option.textContent === "Español"
+        );
+
+        if (!(spanish instanceof HTMLElement)) {
+          throw new Error("Expected Spanish language option");
+        }
+
+        await act(() => spanish.click());
         expect({
           gamePreserved: container.querySelector("[data-game]") === game,
-          label: picker.closest("label")?.textContent,
-          locale: picker.value,
+          label: picker.textContent,
           saved: localStorage.getItem(LOCALE_STORAGE_KEY),
         }).toStrictEqual({
           gamePreserved: true,
-          label: expect.stringContaining(messagesFor("es").settings.language),
-          locale: "es",
+          label: `${messagesFor("es").settings.language}Español`,
           saved: "es",
         });
       } finally {
@@ -116,7 +122,7 @@ describe("game language picker", () => {
     }
   );
 
-  it("keeps the compact picker at the bottom of the guest sidebar", () => {
+  it("puts guest language before authentication links in both layouts", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToStaticMarkup(
       <PathnameContext value="/mahjong">
@@ -125,20 +131,102 @@ describe("game language picker", () => {
         </ShellFrame>
       </PathnameContext>
     );
-    expect(
-      container.querySelector("aside > :last-child select")
-    ).not.toBeNull();
+    const pickers = [...container.querySelectorAll('[role="combobox"]')];
+
+    const signUpLinks = [
+      ...container.querySelectorAll('a[href="/sign-in?mode=sign-up"]'),
+    ];
+
+    expect(pickers).toHaveLength(2);
+    expect(signUpLinks).toHaveLength(2);
+
+    for (const [index, picker] of pickers.entries()) {
+      const signUp = signUpLinks[index];
+
+      if (!signUp) {
+        throw new Error("Expected sign-up link");
+      }
+
+      expect(picker.compareDocumentPosition(signUp)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+      expect(picker.textContent).toBe("LanguageEnglish");
+    }
   });
 
-  it("does not add a language picker outside games", () => {
+  it.each(["/", "/family", "/settings", "/solitaire"])(
+    "puts language immediately above signed-in account controls on %s",
+    (pathname) => {
+      const container = document.createElement("div");
+      container.innerHTML = renderToStaticMarkup(
+        <PathnameContext value={pathname}>
+          <ShellFrame
+            account={<button type="button">Account</button>}
+            groups={[]}
+          >
+            Page
+          </ShellFrame>
+        </PathnameContext>
+      );
+      const footer = container.querySelector("aside > :last-child");
+      const controls = [...(footer?.querySelectorAll("button") ?? [])];
+      expect(controls.map((control) => control.textContent)).toStrictEqual([
+        "LanguageEnglish",
+        "Account",
+      ]);
+    }
+  );
+
+  it("keeps language above the account inside the mobile menu", async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     const container = document.createElement("div");
-    container.innerHTML = renderToStaticMarkup(
-      <PathnameContext value="/family">
-        <ShellFrame account={null} groups={[]}>
-          Family
-        </ShellFrame>
-      </PathnameContext>
-    );
-    expect(container.querySelector("select")).toBeNull();
+    document.body.append(container);
+    const root = createRoot(container);
+
+    try {
+      act(() =>
+        root.render(
+          <PathnameContext value="/messages">
+            <ShellFrame
+              account={<button type="button">Account</button>}
+              groups={[]}
+            >
+              Messages
+            </ShellFrame>
+          </PathnameContext>
+        )
+      );
+
+      const menu = container.querySelector(
+        `button[aria-label="${messagesFor("en").shell.openMenu}"]`
+      );
+
+      if (!(menu instanceof HTMLButtonElement)) {
+        throw new Error("Expected mobile menu trigger");
+      }
+
+      await act(() => menu.click());
+      const dialog = document.querySelector('[role="dialog"]');
+      const language = dialog?.querySelector('[role="combobox"]');
+
+      const account = [...(dialog?.querySelectorAll("button") ?? [])].find(
+        (button) => button.textContent === "Account"
+      );
+
+      expect(language?.textContent).toBe("LanguageEnglish");
+      expect(account).toBeDefined();
+
+      if (!language || !account) {
+        throw new Error("Expected language and account controls");
+      }
+
+      expect(language.compareDocumentPosition(account)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+      vi.unstubAllGlobals();
+    }
   });
 });

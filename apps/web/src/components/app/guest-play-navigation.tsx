@@ -54,7 +54,6 @@ const GuestPlayInvitation = () => {
         </h2>
         <p className="text-muted-foreground text-body">{t.joinBody}</p>
       </div>
-      <GuestAccountLinks />
       <p className="text-muted-foreground text-label">
         <Link className="text-accent-foreground underline" href="/solitaire">
           {shell.nav.solitaire}

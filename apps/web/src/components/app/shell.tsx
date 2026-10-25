@@ -2,16 +2,11 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
-import {
-  interfaceLocaleOf,
-  interfaceLocales,
-} from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
-  LanguagesIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
@@ -29,7 +24,7 @@ import { useState } from "react";
 import type { ComponentType, ReactNode, SVGAttributes } from "react";
 
 import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
-import { setLocale, useLocale, useMessages } from "@/i18n/locale";
+import { useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 
@@ -52,6 +47,7 @@ import {
 import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 import { usePresentationDemo } from "./presentation-demo";
+import { SidebarLanguagePicker } from "./sidebar-language-picker";
 
 interface NavItem {
   href: Route;
@@ -164,13 +160,15 @@ const NavList = ({
       aria-label={t.shell.mainNavigation}
       className={cn(
         "flex flex-1 flex-col",
-        dense ? "gap-3 [@media(max-height:920px)]:gap-1.5" : "gap-5"
+        dense
+          ? "min-h-0 gap-3 overflow-y-auto [@media(max-height:920px)]:gap-1.5"
+          : "gap-5"
       )}
     >
       {groups.map((group) => (
         <div
           className={cn(
-            "flex flex-col",
+            "flex shrink-0 flex-col",
             dense ? "gap-0.5" : "gap-1",
             group.pinned && "mt-auto"
           )}
@@ -402,37 +400,12 @@ const Notices = () => {
   );
 };
 
-const GameLanguagePicker = () => {
-  const locale = useLocale();
-  const t = useMessages();
-
-  return (
-    <label className="text-muted-foreground text-label flex min-h-11 min-w-0 items-center gap-2 rounded-md px-2">
-      <LanguagesIcon aria-hidden="true" className="size-5 shrink-0" />
-      <span className="sr-only">{t.settings.language}</span>
-      <select
-        className="text-foreground focus-visible:outline-ring min-h-11 min-w-0 flex-1 cursor-pointer rounded-md bg-transparent px-2 focus-visible:outline-2"
-        onChange={(event) => setLocale(interfaceLocaleOf(event.target.value))}
-        value={locale}
-      >
-        {interfaceLocales.map(({ id, label }) => (
-          <option key={id} lang={id} value={id}>
-            {label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-};
-
 const MobileMenu = ({
   account,
   groups,
-  game = false,
 }: {
   account: ReactNode;
   groups: NavGroup[];
-  game?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const t = useMessages();
@@ -465,9 +438,9 @@ const MobileMenu = ({
             </DialogPrimitive.Close>
           </div>
           <NavList groups={groups} onNavigate={() => setOpen(false)} />
-          <div className="border-rule mt-auto flex flex-col gap-4 border-t pt-5">
-            {account}
-            {game ? <GameLanguagePicker /> : null}
+          <div className="mt-auto flex shrink-0 flex-col gap-2">
+            <SidebarLanguagePicker />
+            <div className="border-rule border-t pt-3">{account}</div>
           </div>
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
@@ -495,7 +468,6 @@ const ShellFrame = ({
   const pathname = usePathname();
   const t = useMessages();
   const brandHref = pathname === "/mahjong" ? "/welcome" : homeHref;
-  const game = PUBLIC_GAMES.has(pathname);
 
   return (
     <div className="bg-background min-h-svh">
@@ -523,11 +495,12 @@ const ShellFrame = ({
                 <BrandName />
               </Link>
               <GuestPlayInvitation />
-              {game ? (
-                <div className="border-border mt-auto border-t pt-3">
-                  <GameLanguagePicker />
+              <div className="mt-auto flex shrink-0 flex-col gap-2 pt-8">
+                <SidebarLanguagePicker />
+                <div className="border-border border-t pt-2">
+                  <GuestAccountLinks />
                 </div>
-              ) : null}
+              </div>
             </>
           ) : (
             <>
@@ -541,9 +514,9 @@ const ShellFrame = ({
                 </Link>
               </div>
               {navigation ?? <NavList dense groups={groups} />}
-              <div className="border-border mt-auto flex flex-col gap-3 border-t pt-3 [@media(max-height:920px)]:pt-2">
-                {account}
-                {game ? <GameLanguagePicker /> : null}
+              <div className="mt-auto flex shrink-0 flex-col gap-2">
+                <SidebarLanguagePicker />
+                <div className="border-border border-t pt-2">{account}</div>
               </div>
             </>
           )}
@@ -558,12 +531,10 @@ const ShellFrame = ({
                 >
                   <BrandName compact />
                 </Link>
-                <GuestAccountLinks compact />
-                {game ? (
-                  <div className="w-full">
-                    <GameLanguagePicker />
-                  </div>
-                ) : null}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <SidebarLanguagePicker />
+                  <GuestAccountLinks compact />
+                </div>
               </>
             ) : (
               <>
@@ -573,7 +544,7 @@ const ShellFrame = ({
                 >
                   <BrandName compact />
                 </Link>
-                <MobileMenu account={account} game={game} groups={groups} />
+                <MobileMenu account={account} groups={groups} />
               </>
             )}
           </div>
