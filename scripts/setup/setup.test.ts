@@ -6,7 +6,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { readDeployment } from "./convex";
 import { readEnvFile, updateEnvFile } from "./files";
-import { checkPhoton } from "./providers";
+import {
+  checkOpenRouter,
+  checkPhoton,
+  ensureComposioWebhook,
+} from "./providers";
 import { typeKeys } from "./ui";
 import {
   meetsMinimumVersion,
@@ -202,5 +206,68 @@ describe("Photon project validation", () => {
         "couldn't reach Spectrum Stable; the value was kept but not verified",
       status: "unreachable",
     });
+  });
+});
+
+describe("provider setup failure reporting", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([true, false])(
+    "does not report a failed webhook update as successful (stored secret: %s)",
+    async (haveSecret) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(new Response("conflict", { status: 409 }))
+        .mockResolvedValueOnce(
+          Response.json({ items: [{ id: "test-webhook" }] })
+        )
+        .mockResolvedValueOnce(new Response("unavailable", { status: 500 }))
+        .mockResolvedValue(Response.json({ secret: "test-secret" }));
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await ensureComposioWebhook(
+        "test-key",
+        "https://example.invalid",
+        haveSecret
+      );
+
+      expect(result.status).toBe("warning");
+      expect(result.secret).toBeNull();
+      expect(result.detail).toContain("500");
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    }
+  );
+
+  it.each([503, 401])(
+    "does not claim a model exists when its endpoint check answers %s",
+    async (status) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn<typeof fetch>()
+          .mockResolvedValueOnce(Response.json({}))
+          .mockResolvedValueOnce(new Response("unavailable", { status }))
+      );
+
+      const result = await checkOpenRouter("test-key", ["test/model"]);
+
+      expect(result.status).toBe("warning");
+      expect(result.detail).toContain("not verified");
+    }
+  );
+
+  it("does not claim a model exists when its check loses the connection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(Response.json({}))
+        .mockRejectedValueOnce(new Error("network unavailable"))
+    );
+
+    const result = await checkOpenRouter("test-key", ["test/model"]);
+
+    expect(result.status).toBe("warning");
   });
 });

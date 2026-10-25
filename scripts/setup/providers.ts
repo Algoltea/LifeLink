@@ -112,6 +112,7 @@ const checkOpenRouter = async (
   }
 
   const missing: string[] = [];
+  const unverified: string[] = [];
 
   await Promise.all(
     models.map(async (model) => {
@@ -122,9 +123,18 @@ const checkOpenRouter = async (
 
       if (answer !== null && answer.status === 404) {
         missing.push(model);
+      } else if (answer?.ok !== true) {
+        unverified.push(model);
       }
     })
   );
+
+  if (unverified.length > 0) {
+    return {
+      detail: `key accepted, but models ${unverified.join(", ")} were not verified${missing.length > 0 ? `; OpenRouter doesn't list ${missing.join(", ")}` : ""}`,
+      status: "warning",
+    };
+  }
 
   return missing.length === 0
     ? {
@@ -309,7 +319,7 @@ const ensureComposioWebhook = async (
     };
   }
 
-  await call({
+  const updated = await call({
     body: JSON.stringify({
       enabled_events: WEBHOOK_EVENTS,
       webhook_url: webhookUrl,
@@ -318,6 +328,14 @@ const ensureComposioWebhook = async (
     method: "PATCH",
     url: `${COMPOSIO}/webhook_subscriptions/${id}`,
   });
+
+  if (updated?.ok !== true) {
+    return {
+      detail: `couldn't update the webhook${updated === null ? " (no answer)" : ` (HTTP ${updated.status})`}`,
+      secret: null,
+      status: "warning",
+    };
+  }
 
   if (haveSecret) {
     return {
