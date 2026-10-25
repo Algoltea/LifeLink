@@ -59,8 +59,7 @@ const threads = {
   replyAdded:
     "Reply added to your message. You can change it before reviewing.",
   review: "Review",
-  reviewBeforeSending: "Review before sending",
-  reviewBeforeSendingTail: " before sending",
+  reviewAndSend: "Review and send",
   reviewIt: "Review it",
   seeWhatHappened: "See what happened",
   srThem: (firstName: string, when: string) => `${firstName}, ${when}: `,

@@ -60,8 +60,7 @@ const threads: Messages["threads"] = {
   replyAdded:
     "Naidagdag ang tugon sa inyong mensahe. Maaari ninyo itong baguhin bago suriin.",
   review: "Suriin",
-  reviewBeforeSending: "Suriin bago ipadala",
-  reviewBeforeSendingTail: " bago ipadala",
+  reviewAndSend: "Suriin at ipadala",
   reviewIt: "Suriin ito",
   seeWhatHappened: "Tingnan ang nangyari",
   srThem: (firstName, when) => `${firstName}, ${when}: `,

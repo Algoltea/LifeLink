@@ -61,8 +61,7 @@ const threads: Messages["threads"] = {
   replyAdded:
     "Antwort zu Ihrer Nachricht hinzugefügt. Sie können sie vor der Prüfung ändern.",
   review: "Prüfen",
-  reviewBeforeSending: "Vor dem Senden prüfen",
-  reviewBeforeSendingTail: " vor dem Senden",
+  reviewAndSend: "Prüfen und senden",
   reviewIt: "Jetzt prüfen",
   seeWhatHappened: "Ansehen, was geschehen ist",
   srThem: (firstName, when) => `${firstName}, ${when}: `,

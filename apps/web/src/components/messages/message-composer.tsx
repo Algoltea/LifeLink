@@ -3,24 +3,32 @@
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { Button } from "@lifelink/ui/components/button";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation } from "convex/react";
 import {
   ArrowUpIcon,
   ImageIcon,
   ImagePlusIcon,
   LoaderCircleIcon,
+  MicIcon,
+  SquareIcon,
   XIcon,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { usePresentationDemo } from "@/components/app/presentation-demo";
-import { currentMessages, useMessages } from "@/i18n/locale";
+import {
+  dictationAvailable,
+  startDictation,
+} from "@/components/voice/dictation";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
+import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
 const MAX_PHOTOS = 4;
@@ -47,10 +55,101 @@ const EMPTY_DRAFT: MessageDraft = {
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
+/** The pill buttons in the composer row; they drop their words in a narrow composer. */
+const ROW_BUTTON =
+  "border-border text-label hover:bg-parchment min-h-control min-w-control inline-flex items-center justify-center gap-2 rounded-full border px-3 font-medium transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent @lg/composer:pr-4";
+
+interface Dictation {
+  stop: () => void;
+}
+
 /**
- * Write in the same rounded composer as Ask. The Review button never sends:
- * it prepares the message and opens the review step, where the person sees
- * exactly what goes out and approves it.
+ * Speak instead of typing. The words go into the box after anything typed;
+ * nothing is sent. Listening stops when the message is being prepared.
+ */
+const SpeakButton = ({
+  draft,
+  onDraftChange,
+  preparing,
+}: {
+  draft: MessageDraft;
+  onDraftChange: (draft: MessageDraft) => void;
+  preparing: boolean;
+}) => {
+  const [listening, setListening] = useState(false);
+  const dictation = useRef<Dictation | null>(null);
+  const t = useMessages().voice;
+  const locale = useLocale();
+  const canDictate = useBrowserCapability(dictationAvailable);
+
+  useEffect(() => {
+    if (preparing) {
+      dictation.current?.stop();
+    }
+  }, [preparing]);
+
+  useEffect(() => () => dictation.current?.stop(), []);
+
+  if (!canDictate) {
+    return null;
+  }
+
+  const toggle = (): void => {
+    if (dictation.current) {
+      dictation.current.stop();
+
+      return;
+    }
+
+    const typed = draft.body.trimEnd();
+
+    dictation.current = startDictation(
+      (heard) =>
+        onDraftChange({
+          ...draft,
+          body: typed.length > 0 ? `${typed} ${heard}` : heard,
+        }),
+      (problem) => {
+        dictation.current = null;
+        setListening(false);
+
+        if (problem) {
+          toast.error(problem);
+        }
+      },
+      locale
+    );
+    setListening(dictation.current !== null);
+  };
+
+  const label = listening ? t.stop : t.speak;
+
+  return (
+    <button
+      aria-label={label}
+      aria-pressed={listening}
+      className={cn(
+        ROW_BUTTON,
+        listening &&
+          "bg-foreground text-background hover:bg-foreground/85 border-transparent"
+      )}
+      onClick={toggle}
+      type="button"
+    >
+      {listening ? (
+        <SquareIcon aria-hidden="true" className="size-4" fill="currentColor" />
+      ) : (
+        <MicIcon aria-hidden="true" className="size-5" />
+      )}
+      <span className="hidden @lg/composer:inline">{label}</span>
+    </button>
+  );
+};
+
+/**
+ * Write or speak in the same rounded composer as Ask. Speaking only fills the
+ * box. The Review button never sends: it prepares the message and opens the
+ * review step, where the person sees exactly what goes out and approves it.
  */
 const MessageComposer = ({
   canReach,
@@ -224,10 +323,16 @@ const MessageComposer = ({
           tabIndex={-1}
           type="file"
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 [&>:first-child]:-ml-2">
+          <SpeakButton
+            draft={draft}
+            onDraftChange={onDraftChange}
+            preparing={busy}
+          />
           <button
             aria-busy={uploading}
-            className="border-border text-label hover:bg-parchment min-h-control -ml-2 inline-flex items-center gap-2 rounded-full border pr-4 pl-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+            aria-label={uploading ? t.addingPhoto : t.addPhoto}
+            className={ROW_BUTTON}
             disabled={uploading || photos.length >= MAX_PHOTOS}
             onClick={() => fileInput.current?.click()}
             type="button"
@@ -240,11 +345,13 @@ const MessageComposer = ({
             ) : (
               <ImagePlusIcon aria-hidden="true" className="size-5" />
             )}
-            {uploading ? t.addingPhoto : t.addPhoto}
+            <span className="hidden @lg/composer:inline">
+              {uploading ? t.addingPhoto : t.addPhoto}
+            </span>
           </button>
           <Button
             aria-busy={busy}
-            aria-label={busy ? t.preparingMessage : t.reviewBeforeSending}
+            aria-label={busy ? t.preparingMessage : t.reviewAndSend}
             className="ml-auto rounded-full py-1 pr-1.5 pl-4 text-[0.889rem] disabled:border-transparent sm:pl-5"
             disabled={busy || uploading || empty || !canReach}
             type="submit"
@@ -252,12 +359,12 @@ const MessageComposer = ({
             {busy ? (
               t.preparing
             ) : (
-              <span>
-                {t.review}
+              <>
+                <span className="@md/composer:hidden">{t.review}</span>
                 <span className="hidden @md/composer:inline">
-                  {t.reviewBeforeSendingTail}
+                  {t.reviewAndSend}
                 </span>
-              </span>
+              </>
             )}
             <span
               aria-hidden="true"
