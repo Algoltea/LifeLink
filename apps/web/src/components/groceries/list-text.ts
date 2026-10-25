@@ -61,6 +61,37 @@ const openSections = (
   }));
 };
 
+interface ListBlock {
+  heading: string | null;
+  items: GroceryItem[];
+}
+
+/**
+ * The whole list as the checklist and receipt show it: aisle sections, then
+ * the cart once the list is sorted; otherwise one block in shopping order.
+ */
+const listBlocks = (
+  list: Doc<"groceryLists">,
+  messages: Messages["groceries"]
+): ListBlock[] => {
+  if (!isSorted(list.items)) {
+    return [{ heading: null, items: shoppingOrder(list.items) }];
+  }
+
+  const inCart = list.items.filter((item) => item.checked);
+
+  return [
+    ...openSections(list, messages),
+    ...(inCart.length > 0
+      ? [{ heading: messages.inYourCart, items: inCart }]
+      : []),
+  ].filter((block) => block.items.length > 0);
+};
+
+/** Lets a receipt row find the checklist row it should line up with. */
+const ledgerSlot = (kind: "heading" | "item", key: string): string =>
+  `${kind}:${key}`;
+
 const textLine = (item: GroceryItem, locale: InterfaceLocale): string =>
   `- ${item.name}${item.quantity === null ? "" : ` (${quantityWords(item, locale).replace("× ", "")})`}`;
 
@@ -92,13 +123,15 @@ const listAsText = (
 const itemMatches = (item: GroceryItem, query: string): boolean =>
   item.name.toLowerCase().includes(query.trim().toLowerCase());
 
-export type { GroceryItem };
+export type { GroceryItem, ListBlock };
 
 export {
   UNDO_WINDOW_MS,
   aisleHeading,
   isSorted,
   itemMatches,
+  ledgerSlot,
+  listBlocks,
   listAsText,
   openSections,
   quantityWords,

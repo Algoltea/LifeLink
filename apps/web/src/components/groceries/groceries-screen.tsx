@@ -131,6 +131,7 @@ const GroceryWorkspace = ({
   list: Doc<"groceryLists">;
 }) => {
   const receipt = useRef<HTMLElement>(null);
+  const checklist = useRef<HTMLElement>(null);
   const t = useMessages().groceries;
 
   const showReceipt = (): void => {
@@ -153,7 +154,7 @@ const GroceryWorkspace = ({
 
   return (
     <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <section aria-label={t.list} className="min-w-0">
+      <section aria-label={t.list} className="min-w-0" ref={checklist}>
         <ListEditor
           actions={actions}
           finishedOn={finishedOn}
@@ -163,9 +164,7 @@ const GroceryWorkspace = ({
         />
       </section>
       <ReceiptBar list={list} onShow={showReceipt} />
-      <div className="flex min-w-0 flex-col gap-8 xl:sticky xl:top-8">
-        <Receipt list={list} ref={receipt} />
-      </div>
+      <Receipt checklist={checklist} list={list} ref={receipt} />
       <PrintableList list={list} />
     </div>
   );
