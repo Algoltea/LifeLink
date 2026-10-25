@@ -43,6 +43,9 @@ const preparedOf = (message: UIMessage): PreparedTool[] =>
 
 const COPIED_RESET_MS = 2000;
 
+/** How long a sent message may wait for the reply to start streaming. */
+const REPLY_START_TIMEOUT_MS = 120_000;
+
 const AssistantText = ({ message }: { message: UIMessage }) => {
   const [visible] = useSmoothText(message.text, {
     startStreaming: message.status === "streaming",
@@ -65,6 +68,47 @@ const Thinking = () => {
     </p>
   );
 };
+
+/**
+ * The reply action saves its message only once streaming starts, so until
+ * then the person's message is last and nothing else says LifeLink is working.
+ */
+const useAwaitingReply = (last: UIMessage | undefined): boolean => {
+  const sentAt = last?.role === "user" ? last._creationTime : null;
+
+  // A reply that never starts must not leave the thread thinking forever.
+  const [expiredFor, setExpiredFor] = useState<number | null>(() =>
+    sentAt !== null && Date.now() - sentAt >= REPLY_START_TIMEOUT_MS
+      ? sentAt
+      : null
+  );
+
+  useEffect(() => {
+    if (sentAt === null) {
+      return;
+    }
+
+    const timer = setTimeout(
+      () => setExpiredFor(sentAt),
+      Math.max(sentAt + REPLY_START_TIMEOUT_MS - Date.now(), 0)
+    );
+
+    return () => clearTimeout(timer);
+  }, [sentAt]);
+
+  return sentAt !== null && expiredFor !== sentAt;
+};
+
+const AwaitingReply = () => (
+  <li className="flex gap-4">
+    <span className="border-border bg-parchment hidden size-9 shrink-0 items-center justify-center rounded-full border sm:flex">
+      <BrandMark size={14} />
+    </span>
+    <div className="flex min-w-0 flex-1 flex-col sm:pt-0.5">
+      <Thinking />
+    </div>
+  </li>
+);
 
 const CopyButton = ({ text }: { text: string }) => {
   const [copied, setCopied] = useState(false);
@@ -143,7 +187,10 @@ const Bubble = ({ message }: { message: UIMessage }) => {
         {!emailSummary.success && message.text ? (
           <AssistantText message={message} />
         ) : null}
-        {message.status === "pending" && !message.text ? <Thinking /> : null}
+        {(message.status === "pending" || message.status === "streaming") &&
+        !message.text ? (
+          <Thinking />
+        ) : null}
         {failed ? <p className="text-negative text-lg">{t.failed}</p> : null}
         {prepared.map((tool) => {
           if (tool.actionId) {
@@ -199,6 +246,7 @@ const AssistantThread = ({
   );
 
   useAutoReadAloud(latest?.text ?? null);
+  const awaitingReply = useAwaitingReply(messages.at(-1));
   const t = useMessages().ask;
 
   return (
@@ -218,6 +266,7 @@ const AssistantThread = ({
         {messages.map((message) => (
           <Bubble key={message.key} message={message} />
         ))}
+        {awaitingReply ? <AwaitingReply /> : null}
       </ol>
       <output aria-live="polite" className="sr-only">
         {latest?.text}
