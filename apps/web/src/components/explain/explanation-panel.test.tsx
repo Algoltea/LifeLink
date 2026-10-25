@@ -238,7 +238,8 @@ describe("explanation language integration", () => {
       const quote = container.querySelector("blockquote");
 
       const reply = [...container.querySelectorAll("button")].find(
-        (button) => button.textContent === EXPLANATION.suggestedReplies[0]?.label
+        (button) =>
+          button.textContent === EXPLANATION.suggestedReplies[0]?.label
       );
 
       if (reply === undefined) {
