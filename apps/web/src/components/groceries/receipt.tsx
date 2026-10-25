@@ -217,7 +217,7 @@ const Line = ({
   total?: boolean;
 }) => (
   <div className={cn("col-span-3 grid grid-cols-subgrid", className)}>
-    <dt className="ledger-rule col-start-2 px-3">{label}</dt>
+    <dt className="ledger-rule col-start-2 px-3 break-words">{label}</dt>
     <dd
       className={cn(
         "ledger-rule-double px-3 text-right",
@@ -347,7 +347,7 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
       data-ledger-slot={ledgerSlot("item", item.id)}
     >
       {/* The amount with its unit, like "5 lb" in a grocer's quantity column. */}
-      <span className="flex max-w-[7rem] items-center justify-end px-2 py-1 text-right break-words">
+      <span className="flex max-w-[5.5rem] min-w-[2.5rem] items-center justify-end px-2 py-1 text-right break-words">
         {quantityWords(item, locale)}
       </span>
       <span
@@ -424,7 +424,7 @@ const Receipt = ({
         aria-labelledby="receipt-heading"
         className={cn(
           LEDGER_FONTS,
-          "ledger-paper mb-[0.667rem] grid min-w-0 scroll-mt-20 grid-cols-[minmax(2.5rem,auto)_minmax(0,1fr)_auto] border-x border-t border-(--paper-edge) text-base leading-7 xl:sticky xl:top-8"
+          "ledger-paper mb-[0.667rem] grid min-w-0 scroll-mt-20 grid-cols-[auto_minmax(min(6rem,45%),1fr)_auto] border-x border-t border-(--paper-edge) text-base leading-7 xl:sticky xl:top-8"
         )}
         data-ledger-paper=""
         ref={ref}
@@ -451,7 +451,7 @@ const Receipt = ({
           </ul>
         )}
         {/* Pinned to the bottom of wide screens while rows unroll above it. */}
-        <footer className="ledger-fill ledger-banner relative col-span-3 grid grid-cols-subgrid py-2 xl:sticky xl:bottom-[0.667rem] xl:shadow-[0_-8px_12px_-8px_rgb(60_40_10/0.3)]">
+        <footer className="ledger-fill ledger-banner relative col-span-3 grid grid-cols-subgrid py-2 xl:sticky xl:bottom-[2.167rem] xl:shadow-[0_-8px_12px_-8px_rgb(60_40_10/0.3)]">
           <dl className="col-span-3 grid grid-cols-subgrid">
             <Line label={t.items} value={`${items.length}`} />
             {inCart.length > 0 ? (
@@ -486,10 +486,14 @@ const Receipt = ({
               {t.missingEstimates}
             </p>
           ) : null}
-          {/* The page shows through between the teeth, hiding rows still rolled up behind. */}
+          {/*
+           * The page shows through between the teeth, hiding rows still rolled
+           * up behind. On wide screens it runs on below them, so the pinned
+           * cut edge has a little clear page under it.
+           */}
           <div
             aria-hidden="true"
-            className="bg-background absolute -inset-x-px top-full"
+            className="bg-background absolute -inset-x-px top-full xl:pb-6"
           >
             <div className="ledger-teeth" />
           </div>
