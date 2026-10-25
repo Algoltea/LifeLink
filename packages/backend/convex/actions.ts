@@ -61,6 +61,111 @@ export const approve = mutation({
   },
 });
 
+const MAX_MESSAGES_TOGETHER = 20;
+
+/**
+ * One transaction approves the exact displayed messages, or none of them.
+ * With a task, the set must be every message still waiting in that task;
+ * without one, the messages may come from several separately prepared tasks.
+ */
+export const approveMessages = mutation({
+  args: {
+    messages: v.array(
+      v.object({
+        actionId: v.id("actions"),
+        fingerprint: v.string(),
+        version: v.number(),
+      })
+    ),
+    method: v.union(v.literal("tap"), v.literal("keyboard")),
+    taskId: v.optional(v.id("tasks")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx);
+    const requested = new Set(args.messages.map((item) => item.actionId));
+
+    if (
+      args.messages.length === 0 ||
+      args.messages.length > MAX_MESSAGES_TOGETHER
+    ) {
+      throw new ConvexError("Choose between 1 and 20 messages to send.");
+    }
+
+    if (requested.size !== args.messages.length) {
+      throw new ConvexError(
+        "The messages changed. Review the remaining messages before sending all."
+      );
+    }
+
+    if (args.taskId !== undefined) {
+      const task = requireOwned(await ctx.db.get(args.taskId), owner, "task");
+
+      if (task.kind !== "send_message") {
+        throw new ConvexError("Choose between 1 and 20 messages to send.");
+      }
+
+      const taskActions = await ctx.db
+        .query("actions")
+        .withIndex("by_task", (index) => index.eq("taskId", task._id))
+        .take(MAX_MESSAGES_TOGETHER + 1);
+
+      const waiting = taskActions.filter(
+        (item) => item.status === "awaiting_approval"
+      );
+
+      if (
+        waiting.length !== requested.size ||
+        waiting.some((item) => !requested.has(item._id))
+      ) {
+        throw new ConvexError(
+          "The messages changed. Review the remaining messages before sending all."
+        );
+      }
+    }
+
+    const actions = await Promise.all(
+      args.messages.map(async (message) =>
+        requireOwned(await ctx.db.get(message.actionId), owner, "action")
+      )
+    );
+
+    if (
+      actions.some(
+        (item) =>
+          item.kind !== "send_message" ||
+          (args.taskId !== undefined && item.taskId !== args.taskId)
+      )
+    ) {
+      throw new ConvexError("Only messages can be sent together.");
+    }
+
+    for (const [index, action] of actions.entries()) {
+      const message = args.messages[index];
+
+      if (message === undefined) {
+        continue;
+      }
+
+      // oxlint-disable-next-line eslint/no-await-in-loop -- all approvals and scheduled sends share this transaction and roll back together.
+      await approveAction(ctx, owner, action, {
+        fingerprint: message.fingerprint,
+        method: args.method,
+        version: message.version,
+      });
+      // oxlint-disable-next-line eslint/no-await-in-loop -- jobs are committed only if every approval succeeds.
+      await ctx.scheduler.runAfter(0, internal.execution.run, {
+        actionId: action._id,
+      });
+    }
+
+    const taskIds = new Set(actions.map((item) => item.taskId));
+
+    await Promise.all(
+      [...taskIds].map(async (taskId) => await settleTaskStatus(ctx, taskId))
+    );
+  },
+});
+
 /** The person edits details. Consequential edits need a fresh approval. */
 export const revise = mutation({
   args: {
@@ -340,9 +445,9 @@ export const cancel = mutation({
       .withIndex("by_task", (index) => index.eq("taskId", action.taskId))
       .collect();
 
-    const anythingDone = remaining.some((item) => item.status === "succeeded");
+    const hasOtherWork = remaining.some((item) => item.status !== "cancelled");
 
-    await (anythingDone
+    await (hasOtherWork
       ? settleTaskStatus(ctx, action.taskId)
       : ctx.db.patch(action.taskId, { status: "cancelled", updatedAt: now }));
 

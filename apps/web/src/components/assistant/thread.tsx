@@ -14,6 +14,7 @@ import { ReadAloudButton, useAutoReadAloud } from "@/components/app/bits";
 import { BrandMark } from "@/components/app/brand";
 import {
   InlineActionReview,
+  InlineSendAll,
   InlineTaskReview,
 } from "@/components/tasks/inline-action-review";
 import { useMessages } from "@/i18n/locale";
@@ -108,6 +109,7 @@ const CopyButton = ({ text }: { text: string }) => {
 
 const Bubble = ({ message }: { message: UIMessage }) => {
   const t = useMessages().ask;
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
 
   if (message.role === "user") {
     return (
@@ -121,6 +123,11 @@ const Bubble = ({ message }: { message: UIMessage }) => {
   }
 
   const prepared = preparedOf(message);
+
+  const preparedActionIds = prepared.flatMap((tool) =>
+    tool.actionId ? [tool.actionId] : []
+  );
+
   const failed = message.status === "failed";
 
   const emailSummary = z
@@ -148,6 +155,12 @@ const Bubble = ({ message }: { message: UIMessage }) => {
               <InlineActionReview
                 actionId={tool.actionId}
                 key={tool.actionId}
+                onEditingChange={(value) =>
+                  setEditing((current) => ({
+                    ...current,
+                    [tool.actionId ?? ""]: value,
+                  }))
+                }
               />
             );
           }
@@ -156,6 +169,12 @@ const Bubble = ({ message }: { message: UIMessage }) => {
             <InlineTaskReview key={tool.taskId} taskId={tool.taskId} />
           ) : null;
         })}
+        {preparedActionIds.length > 1 ? (
+          <InlineSendAll
+            actionIds={preparedActionIds}
+            editing={preparedActionIds.some((actionId) => editing[actionId])}
+          />
+        ) : null}
         {message.text && message.status !== "streaming" ? (
           <div className="-ml-4 flex flex-wrap items-center gap-1">
             <ReadAloudButton text={message.text} variant="ghost" />

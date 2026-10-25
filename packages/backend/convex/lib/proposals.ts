@@ -23,6 +23,7 @@ import {
 import type { RecipientMatch } from "./journey";
 import { createAction } from "./lifecycle";
 import { ownerLocale } from "./locale";
+import { resolveMessageRecipients } from "./messageRecipients";
 import { proposalMessagesFor } from "./proposalMessages";
 import { DAY, formatDay, formatWhen, parseAbsoluteIso } from "./time";
 
@@ -145,87 +146,77 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
 const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, owner, proposal } = planning;
 
-  const reachable = planning.contacts.filter(
-    (contact) => channelFor(contact) !== null
-  );
-
-  const [recipient] = proposal.recipients;
-  const match = recipientMatchFor(reachable, proposal);
   const body = proposal.messageDraft?.trim() ?? "";
 
-  if (match.kind === "none" || body.length === 0) {
-    return outcome(
-      recipient === undefined
-        ? proposalMessagesFor(locale).whichRecipient
-        : proposalMessagesFor(locale).missingContact(recipient.nameAsSaid)
-    );
+  if (body.length === 0) {
+    return outcome("What would you like the message to say?");
   }
 
-  const contact =
-    match.kind === "one" ? match.contact : (match.contacts[0] ?? null);
+  const resolved = resolveMessageRecipients(
+    planning.contacts,
+    proposal.recipients
+  );
 
-  const channel = contact === null ? null : channelFor(contact);
+  if (resolved.error) {
+    return outcome(resolved.error);
+  }
 
-  if (contact === null || channel === null) {
-    return outcome(proposalMessagesFor(locale).noContactRoute);
+  const { contacts } = resolved;
+
+  if (contacts.length === 0) {
+    return outcome(proposalMessagesFor(locale).whichRecipient);
   }
 
   const { stepIds, taskId } = await createTask(ctx, {
     appointmentId: null,
-    contactId: contact._id,
+    contactId: contacts.length === 1 ? (contacts[0]?._id ?? null) : null,
     kind: "send_message",
     mode: planning.mode,
     origin: planning.origin,
     ownerId: owner._id,
     request: planning.request,
-    steps: [
-      { kind: "send_message", label: `Message ${firstName(contact.name)}` },
-    ],
-    title: `Message to ${contact.name}`,
-  });
-
-  const ambiguities =
-    match.kind === "many"
-      ? [
-          {
-            field: "recipient",
-            options: match.contacts.map((option) => ({
-              label: `${option.name} (${option.relationship})`,
-              value: option._id,
-            })),
-            question: "Which person did you mean?",
-            resolvedValue: null,
-          },
-        ]
-      : [];
-
-  await createAction(ctx, {
-    ambiguities,
-    details: {
-      address: channel.address,
-      body,
-      channel: channel.channel,
-      contactId: contact._id,
-      contactName: contact.name,
+    steps: contacts.map((contact) => ({
       kind: "send_message",
-      photoIds: [],
-    },
-    mode: planning.mode,
-    ownerId: owner._id,
-    proposedBy: "model",
-    rationale: null,
-    stepId: stepIds[0] ?? null,
-    taskId,
+      label: `Message ${contact.name}`,
+    })),
+    title: `Message to ${contacts.map((contact) => contact.name).join(", ")}`,
   });
 
-  if (match.kind === "many") {
-    await ctx.db.patch(taskId, { status: "needs_clarification" });
-  }
+  await Promise.all(
+    contacts.map(async (contact, index) => {
+      const channel = channelFor(contact);
+
+      if (channel === null) {
+        throw new Error(`${contact.name} has no saved messaging channel.`);
+      }
+
+      await createAction(ctx, {
+        ambiguities: [],
+        details: {
+          address: channel.address,
+          body,
+          channel: channel.channel,
+          contactId: contact._id,
+          contactName: contact.name,
+          kind: "send_message",
+          photoIds: [],
+        },
+        mode: planning.mode,
+        ownerId: owner._id,
+        proposedBy: "model",
+        rationale: null,
+        stepId: stepIds[index] ?? null,
+        taskId,
+      });
+    })
+  );
 
   return outcome(
-    proposalMessagesFor(locale).messagePrepared(
-      match.kind === "many" ? null : firstName(contact.name)
-    ),
+    contacts.length === 1
+      ? proposalMessagesFor(locale).messagePrepared(
+          firstName(contacts[0]?.name ?? "")
+        )
+      : `I've prepared separate messages for ${contacts.map((contact) => contact.name).join(", ")}, using each person's saved communication preference. Review and approve each message below. Nothing has been sent.`,
     taskId
   );
 };

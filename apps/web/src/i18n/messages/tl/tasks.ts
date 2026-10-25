@@ -116,6 +116,26 @@ const tasks: Messages["tasks"] = {
     "Na-save. Dahil nagbago ang mga salita, pakiaprubahan po ulit.",
   savingOutcome: "Sine-save ang nangyari…",
   seeDetails: "Tingnan ang detalye",
+  sendAll: {
+    back: "Bumalik",
+    confirm: (count: number) => `Ipadala lahat ng ${count}`,
+    finishEdits:
+      "I-save o kanselahin muna ang iyong mga pagbabago bago ipadala lahat.",
+    intro:
+      "Bawat tao ay makakatanggap ng sariling mensahe, sa paraang gusto niya.",
+    practiceConfirm: (count: number) => `Pagsasanay: ipadala lahat ng ${count}`,
+    practiceReview: (count: number) =>
+      `Pagsasanay: suriin at ipadala lahat ng ${count}`,
+    recipient: (name: string, channel: string) => `${name}, sa ${channel}`,
+    reconnect: "Kumonekta muli para maipadala ang lahat ng mensahe.",
+    resolveFirst:
+      "May mga mensaheng kailangan muna ng sagot mo. Maaari mo pa ring ipadala isa-isa ang mga handa na.",
+    review: (count: number) => `Suriin at ipadala lahat ng ${count}`,
+    sending: "Ipinapadala…",
+    summaryHint:
+      "Walang ipapadala hangga’t hindi mo pinipindot ang Ipadala lahat.",
+    summaryTitle: (count: number) => `Ipadala ang ${count} mensaheng ito?`,
+  },
   sentStatus: {
     sent: "naipadala",
   },

@@ -112,6 +112,23 @@ const tasks = {
   savedApproveAgain: "Saved. Because the words changed, please approve again.",
   savingOutcome: "Saving what happened…",
   seeDetails: "See the details",
+  sendAll: {
+    back: "Go back",
+    confirm: (count: number) => `Send all ${count}`,
+    finishEdits: "Save or cancel your changes before sending all.",
+    intro:
+      "Each person gets their own message, the way they like to be reached.",
+    practiceConfirm: (count: number) => `Practice: send all ${count}`,
+    practiceReview: (count: number) => `Practice: review and send all ${count}`,
+    recipient: (name: string, channel: string) => `${name}, by ${channel}`,
+    reconnect: "Reconnect to send all messages.",
+    resolveFirst:
+      "Some messages need your answer first. You can still send ready messages one at a time.",
+    review: (count: number) => `Review and send all ${count}`,
+    sending: "Sending…",
+    summaryHint: "Nothing goes out until you press Send all.",
+    summaryTitle: (count: number) => `Send these ${count} messages?`,
+  },
   sentStatus: {
     sent: "sent",
   },

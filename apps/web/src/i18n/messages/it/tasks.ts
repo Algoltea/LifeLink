@@ -118,6 +118,23 @@ const tasks: Messages["tasks"] = {
   savedApproveAgain: "Salvato. Poiché il testo è cambiato, approvi di nuovo.",
   savingOutcome: "Salvataggio dell’esito…",
   seeDetails: "Mostra i dettagli",
+  sendAll: {
+    back: "Indietro",
+    confirm: (count: number) => `Invia tutti e ${count}`,
+    finishEdits: "Salvi o annulli le modifiche prima di inviare tutto.",
+    intro: "Ogni persona riceve il proprio messaggio, nel modo che preferisce.",
+    practiceConfirm: (count: number) => `Prova: invia tutti e ${count}`,
+    practiceReview: (count: number) =>
+      `Prova: controlla e invia tutti e ${count}`,
+    recipient: (name: string, channel: string) => `${name}, tramite ${channel}`,
+    reconnect: "Si riconnetta per inviare tutti i messaggi.",
+    resolveFirst:
+      "Alcuni messaggi richiedono prima una sua risposta. Può comunque inviare uno alla volta quelli pronti.",
+    review: (count: number) => `Controlla e invia tutti e ${count}`,
+    sending: "Invio in corso…",
+    summaryHint: "Non parte nulla finché non preme Invia tutti.",
+    summaryTitle: (count: number) => `Inviare questi ${count} messaggi?`,
+  },
   sentStatus: {
     sent: "inviato",
   },

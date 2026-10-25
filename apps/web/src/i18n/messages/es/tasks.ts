@@ -117,6 +117,23 @@ const tasks: Messages["tasks"] = {
     "Guardado. Como cambiaron las palabras, por favor apruébelo otra vez.",
   savingOutcome: "Guardando lo que pasó…",
   seeDetails: "Ver los detalles",
+  sendAll: {
+    back: "Volver",
+    confirm: (count: number) => `Enviar los ${count}`,
+    finishEdits: "Guarde o cancele sus cambios antes de enviar todo.",
+    intro: "Cada persona recibe su propio mensaje, por la vía que prefiere.",
+    practiceConfirm: (count: number) => `Práctica: enviar los ${count}`,
+    practiceReview: (count: number) =>
+      `Práctica: revisar y enviar los ${count}`,
+    recipient: (name: string, channel: string) => `${name}, por ${channel}`,
+    reconnect: "Vuelva a conectarse para enviar todos los mensajes.",
+    resolveFirst:
+      "Algunos mensajes necesitan su respuesta primero. Puede enviar los que están listos uno por uno.",
+    review: (count: number) => `Revisar y enviar los ${count}`,
+    sending: "Enviando…",
+    summaryHint: "No se envía nada hasta que pulse Enviar.",
+    summaryTitle: (count: number) => `¿Enviar estos ${count} mensajes?`,
+  },
   sentStatus: {
     sent: "enviado",
   },
