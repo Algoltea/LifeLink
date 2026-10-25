@@ -39,8 +39,9 @@ const edited = (reply: ReplyDraft, body: string): ReplyDraft => ({
 });
 
 /**
- * Reply in the same rounded composer as Ask. It only prepares a draft: the
- * person reviews it on the task page, and the draft is saved, never sent.
+ * Reply in the same rounded composer as Ask. It only prepares the reply: the
+ * person reviews it on the task page, and nothing reaches the mailbox until
+ * they approve. Then it is sent in the same conversation, or saved as a draft.
  */
 const ReplyComposer = ({
   emailId,
@@ -62,8 +63,10 @@ const ReplyComposer = ({
   to: string;
 }) => {
   const draftReply = useMutation(api.emails.draftReply);
+  const sendReply = useMutation(api.emails.sendReply);
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"draft" | "send" | null>(null);
+  const busy = pending !== null;
   const canDictate = useBrowserCapability(dictationAvailable);
   const [listening, setListening] = useState(false);
   const dictation = useRef<{ stop: () => void } | null>(null);
@@ -100,6 +103,33 @@ const ReplyComposer = ({
     setListening(dictation.current !== null);
   };
 
+  const prepare = async (delivery: "draft" | "send") => {
+    dictation.current?.stop();
+    setPending(delivery);
+
+    try {
+      const request = {
+        body: reply.body,
+        emailId,
+        startedFrom: reply.fromSuggestion ? ("suggestion" as const) : undefined,
+      };
+
+      const taskId =
+        delivery === "send"
+          ? await sendReply(request)
+          : await draftReply(request);
+
+      // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
+      router.push(`/tasks/${taskId}` as Route);
+    } catch (error) {
+      toast.error(errorText(error));
+      setPending(null);
+    }
+  };
+
+  const empty = reply.body.trim().length === 0;
+  const mailbox = provider === "gmail" ? "Gmail" : "Outlook";
+
   return (
     <form
       aria-labelledby={`${id}-label`}
@@ -107,22 +137,7 @@ const ReplyComposer = ({
       id={id}
       onSubmit={async (event) => {
         event.preventDefault();
-        dictation.current?.stop();
-        setBusy(true);
-
-        try {
-          const taskId = await draftReply({
-            body: reply.body,
-            emailId,
-            startedFrom: reply.fromSuggestion ? "suggestion" : undefined,
-          });
-
-          // SAFETY: the mutation just returned this task id, and /tasks/[taskId] is a real route.
-          router.push(`/tasks/${taskId}` as Route);
-        } catch (error) {
-          toast.error(errorText(error));
-          setBusy(false);
-        }
+        await prepare("send");
       }}
     >
       <div className="border-border bg-raised focus-within:outline-ring contrast:border-control flex flex-col gap-2 rounded-[1.444rem] border py-3 pr-3 pl-5 shadow-[0_1px_2px_rgb(45_33_24/0.04),0_8px_24px_rgb(45_33_24/0.06)] focus-within:outline-3 focus-within:outline-offset-3">
@@ -174,15 +189,27 @@ const ReplyComposer = ({
             <span />
           )}
           <Button
-            aria-busy={busy}
+            aria-busy={pending === "draft"}
+            className="ml-auto rounded-full px-4"
+            disabled={busy || empty}
+            onClick={async () => {
+              await prepare("draft");
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {pending === "draft" ? "Preparing…" : "Save as a draft instead"}
+          </Button>
+          <Button
+            aria-busy={pending === "send"}
             className={cn(
-              "ml-auto rounded-full py-1.5 pr-1.5 pl-5",
+              "rounded-full py-1.5 pr-1.5 pl-5",
               "disabled:border-transparent"
             )}
-            disabled={busy || reply.body.trim().length === 0}
+            disabled={busy || empty}
             type="submit"
           >
-            {busy ? messages.threads.preparing : t.review}
+            {pending === "send" ? "Preparing…" : "Review and send"}
             <span
               aria-hidden="true"
               className="bg-primary-foreground/20 flex size-9 items-center justify-center rounded-full"
@@ -196,7 +223,9 @@ const ReplyComposer = ({
         {reply.notice}
       </output>
       <p className="text-muted-foreground text-label text-center" id={hintId}>
-        {t.nothingSent(provider === "gmail" ? "Gmail" : "Outlook")}
+        Nothing is sent yet. You’ll review it first, then it’s sent from your{" "}
+        {mailbox} in the same conversation. Prefer to finish it in {mailbox}?
+        Save it as a draft instead.
       </p>
     </form>
   );

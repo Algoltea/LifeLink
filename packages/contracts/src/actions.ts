@@ -75,6 +75,18 @@ interface EmailDraftDetails {
   to: string;
 }
 
+/** A reply sent in the original thread, from the mailbox that received it. */
+interface EmailReplyDetails {
+  body: string;
+  connectionId: string;
+  inReplyToMessageId: string;
+  kind: "email_reply";
+  provider: "gmail" | "outlook";
+  subject: string;
+  threadId: string | null;
+  to: string;
+}
+
 interface CalendarEventDetails {
   connectionId: string;
   endsAt: number;
@@ -98,6 +110,7 @@ type ActionDetails =
   | ConfirmArrangementDetails
   | CreateReminderDetails
   | EmailDraftDetails
+  | EmailReplyDetails
   | FamilyUpdateDetails
   | GroceryHandoffDetails
   | SendMessageDetails;
@@ -171,6 +184,18 @@ const consequentialDetails = (details: ActionDetails): CanonicalValue => {
       };
     }
 
+    case "email_reply": {
+      return {
+        body: details.body,
+        connectionId: details.connectionId,
+        inReplyToMessageId: details.inReplyToMessageId,
+        kind: details.kind,
+        provider: details.provider,
+        threadId: details.threadId,
+        to: details.to.trim().toLowerCase(),
+      };
+    }
+
     case "calendar_event": {
       return {
         connectionId: details.connectionId,
@@ -202,6 +227,7 @@ const consequentialDetails = (details: ActionDetails): CanonicalValue => {
 const reachesOutside = (kind: ActionKind): boolean =>
   kind === "send_message" ||
   kind === "email_draft" ||
+  kind === "email_reply" ||
   kind === "grocery_handoff" ||
   kind === "calendar_event" ||
   kind === "drive_note";
@@ -216,6 +242,7 @@ export type {
   CreateReminderDetails,
   DriveNoteDetails,
   EmailDraftDetails,
+  EmailReplyDetails,
   FamilyUpdateDetails,
   GroceryHandoffDetails,
   GroceryItemDetails,

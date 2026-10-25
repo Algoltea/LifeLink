@@ -502,7 +502,8 @@ const EmailReader = ({
             setReply({
               body: suggestion,
               fromSuggestion: true,
-              notice: currentMessages().email.replyAdded,
+              notice:
+                "Reply added to your message. You can change it before reviewing.",
             });
             openReply();
           }}

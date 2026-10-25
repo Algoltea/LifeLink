@@ -34,6 +34,36 @@ type ActionView = TaskDetail["actions"][number];
 
 type Ambiguity = NonNullable<ActionView["current"]>["ambiguities"][number];
 
+const REVIEW_STATUS: Record<ActionView["action"]["status"], string> = {
+  approved: "Approved",
+  awaiting_approval: "Review these details",
+  cancelled: "Cancelled",
+  executing: "In progress",
+  failed: "Did not go through",
+  succeeded: "Completed",
+  unknown: "Outcome not confirmed",
+};
+
+const APPROVE_WORDS: Record<ActionDetails["kind"], string> = {
+  calendar_event: "Approve and add it",
+  confirm_arrangement: "Confirm the ride",
+  create_reminder: "Save the reminder",
+  drive_note: "Approve and save it",
+  email_draft: "Approve and save the draft",
+  email_reply: "Approve and send",
+  family_update: "Share the update",
+  grocery_handoff: "Approve request",
+  send_message: "Approve and send",
+};
+
+/** The words the person can change before approving, for actions that have them. */
+const wordsOf = (details: ActionDetails): string | null =>
+  details.kind === "send_message" ||
+  details.kind === "email_draft" ||
+  details.kind === "email_reply"
+    ? details.body
+    : null;
+
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
@@ -627,8 +657,10 @@ const ApprovalBar = ({
           onClick={onApprove}
           size="lg"
         >
-          {kind === "send_message" ? <SendIcon /> : null}
-          {pending === "approve" ? t.approving : t.approve[kind]}
+          {kind === "send_message" || kind === "email_reply" ? (
+            <SendIcon />
+          ) : null}
+          {pending === "approve" ? "Approving…" : APPROVE_WORDS[kind]}
         </Button>
         {editable ? (
           <Button disabled={busy} onClick={onEdit} size="lg" variant="outline">
@@ -744,10 +776,7 @@ const ReviewVersion = ({
   const awaiting = view.action.status === "awaiting_approval";
   const canApprove = awaiting && !retired;
 
-  const body =
-    details.kind === "send_message" || details.kind === "email_draft"
-      ? details.body
-      : null;
+  const body = wordsOf(details);
 
   const reapproval =
     canApprove &&
