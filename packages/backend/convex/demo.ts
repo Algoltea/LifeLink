@@ -10,6 +10,7 @@ import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { recordIncoming } from "./lib/incoming";
 import { channelFor, firstName } from "./lib/journey";
+import { addFullerDay } from "./lib/sampleday";
 import {
   DAY,
   HOUR,
@@ -177,6 +178,7 @@ export const seed = internalMutation({
 
     if (existing !== null) {
       await addLongList(ctx, owner._id);
+      await addFullerDay(ctx, owner);
 
       return;
     }
@@ -363,6 +365,7 @@ export const seed = internalMutation({
     });
 
     await addLongList(ctx, owner._id);
+    await addFullerDay(ctx, owner);
 
     await ctx.db.insert("spendingLimits", {
       category: "groceries",

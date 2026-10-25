@@ -51,9 +51,10 @@ const demoOwner = async (backend: Backend) => {
   const contacts = await owner.query(api.contacts.list, {});
   const sam = contacts.find((contact) => contact.name === "Sam Rivera");
 
-  const [appointment] = await owner.query(api.appointments.upcoming, {
-    days: 30,
-  });
+  const upcoming = await owner.query(api.appointments.upcoming, { days: 30 });
+
+  // Practice has several appointments; this journey is the ride to the doctor.
+  const appointment = upcoming.find(({ title }) => title === "Dr. Patel");
 
   if (sam === undefined || appointment === undefined) {
     throw new Error("demo seed did not run");

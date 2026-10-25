@@ -66,6 +66,7 @@ import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_proposalMessages from "../lib/proposalMessages.js";
 import type * as lib_proposals from "../lib/proposals.js";
 import type * as lib_readtools from "../lib/readtools.js";
+import type * as lib_sampleday from "../lib/sampleday.js";
 import type * as lib_sampledrive from "../lib/sampledrive.js";
 import type * as lib_scamWarningMessages from "../lib/scamWarningMessages.js";
 import type * as lib_session from "../lib/session.js";
@@ -159,6 +160,7 @@ declare const fullApi: ApiFromModules<{
   "lib/proposalMessages": typeof lib_proposalMessages;
   "lib/proposals": typeof lib_proposals;
   "lib/readtools": typeof lib_readtools;
+  "lib/sampleday": typeof lib_sampleday;
   "lib/sampledrive": typeof lib_sampledrive;
   "lib/scamWarningMessages": typeof lib_scamWarningMessages;
   "lib/session": typeof lib_session;
