@@ -3,15 +3,11 @@
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import { cn } from "@lifelink/ui/lib/utils";
 import { ChevronUpIcon } from "lucide-react";
-import {
-  Bodoni_Moda,
-  Old_Standard_TT,
-  Pinyon_Script,
-  UnifrakturMaguntia,
-} from "next/font/google";
+import { EB_Garamond, La_Belle_Aurore } from "next/font/google";
 import type { Ref, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
+import { PaintDab } from "@/components/app/paint-dab";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { money } from "@/lib/format";
 
@@ -20,41 +16,22 @@ import type { GroceryItem } from "./list-text";
 
 import "./receipt.css";
 
-const ledgerFont = Old_Standard_TT({
+const ledgerFont = EB_Garamond({
   display: "swap",
   style: ["normal", "italic"],
   subsets: ["latin"],
   variable: "--font-ledger",
-  weight: ["400", "700"],
+  weight: ["400", "600"],
 });
 
-const displayFont = Bodoni_Moda({
-  display: "swap",
-  subsets: ["latin"],
-  variable: "--font-ledger-display",
-  weight: ["700", "900"],
-});
-
-const handFont = Pinyon_Script({
+const handFont = La_Belle_Aurore({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-ledger-hand",
   weight: "400",
 });
 
-const blackletterFont = UnifrakturMaguntia({
-  display: "swap",
-  subsets: ["latin"],
-  variable: "--font-ledger-blackletter",
-  weight: "400",
-});
-
-const LEDGER_FONTS = cn(
-  ledgerFont.variable,
-  displayFont.variable,
-  handFont.variable,
-  blackletterFont.variable
-);
+const LEDGER_FONTS = cn(ledgerFont.variable, handFont.variable);
 
 /** How far the receipt may rise into the empty space beside the list picker to meet the checklist. */
 const MAX_RISE_PX = 96;
@@ -221,10 +198,14 @@ const Line = ({
     <dd
       className={cn(
         "ledger-rule-double px-3 text-right",
-        total && "underline decoration-double underline-offset-4"
+        total && "flex justify-end"
       )}
     >
-      {value}
+      {total ? (
+        <span className="ledger-sun ledger-total -mx-1.5 px-1.5">{value}</span>
+      ) : (
+        value
+      )}
     </dd>
   </div>
 );
@@ -256,30 +237,6 @@ const estimateFor = (list: Doc<"groceryLists">) => {
   };
 };
 
-/** The "Bought of" scroll from the bill head, without its words. */
-const Ribbon = () => (
-  <svg
-    aria-hidden="true"
-    className="h-5 w-16 shrink-0"
-    fill="currentColor"
-    viewBox="0 0 96 28"
-  >
-    <path d="M18 10H2l5 7-5 7h16z M78 10h16l-5 7 5 7H78z" />
-    <rect
-      fill="var(--paper)"
-      height="16"
-      rx="1"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      width="76"
-      x="10"
-      y="4"
-    />
-    <path d="M28 12h14 M54 12h14" stroke="currentColor" strokeWidth="1" />
-    <path d="M48 7l4 5-4 5-4-5z" />
-  </svg>
-);
-
 const BillHead = ({ list }: { list: Doc<"groceryLists"> }) => {
   const locale = useLocale();
   const t = useMessages().groceries;
@@ -301,13 +258,16 @@ const BillHead = ({ list }: { list: Doc<"groceryLists"> }) => {
   const madeOn = new Date(list._creationTime);
 
   return (
-    <header className="ledger-head col-span-3 flex flex-col gap-1 px-5 pt-3 pb-2">
+    <header className="ledger-wash col-span-3 flex flex-col gap-1 px-5 pt-4 pb-3">
       <p className="flex flex-wrap items-baseline gap-x-3">
-        <span aria-hidden="true" className="ledger-blackletter text-base">
-          LifeLink,
+        <span
+          aria-hidden="true"
+          className="ledger-caps text-muted-foreground text-label"
+        >
+          LifeLink
         </span>
         <time
-          className="ledger-hand border-foreground/40 min-w-[min(100%,8rem)] flex-1 border-b px-2 text-right text-xl leading-[1.3]"
+          className="ledger-hand ledger-fill-in min-w-[min(100%,8rem)] flex-1 px-2 text-right text-xl leading-[1.4]"
           dateTime={madeOn.toISOString()}
         >
           {new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
@@ -315,19 +275,20 @@ const BillHead = ({ list }: { list: Doc<"groceryLists"> }) => {
           )}
         </time>
       </p>
-      <p className="ledger-hand border-foreground/40 border-b px-2 text-2xl leading-[1.3] break-words">
+      <p className="ledger-hand ledger-fill-in px-2 text-2xl leading-[1.4] break-words">
         {list.name}
       </p>
-      <div className="flex flex-wrap items-center justify-center gap-x-3 pt-1">
-        <Ribbon />
+      <div className="flex flex-wrap items-center justify-center gap-x-3 pt-2">
+        <PaintDab className="size-4" index={0} />
         <h2
-          className="ledger-bodoni text-2xl leading-none font-black tracking-wide break-words uppercase"
+          className="ledger-caps text-2xl leading-tight break-words"
           id="receipt-heading"
         >
           {t.estimate}
         </h2>
+        <PaintDab className="size-4" index={2} />
       </div>
-      <p className="text-label text-center leading-snug tracking-[0.15em] break-words uppercase">
+      <p className="text-muted-foreground text-center leading-snug break-words italic">
         {dealsIn}
       </p>
     </header>
@@ -347,13 +308,13 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
       data-ledger-slot={ledgerSlot("item", item.id)}
     >
       {/* The amount with its unit, like "5 lb" in a grocer's quantity column. */}
-      <span className="flex max-w-[5.5rem] min-w-[2.5rem] items-center justify-end px-2 py-1 text-right break-words">
+      <span className="text-muted-foreground flex max-w-[5.5rem] min-w-[2.5rem] items-center justify-end px-2 py-1.5 text-right break-words italic">
         {quantityWords(item, locale)}
       </span>
       <span
         className={cn(
-          "ledger-rule flex min-w-0 items-center px-3 py-1 break-words",
-          item.checked && "line-through"
+          "ledger-rule flex min-w-0 items-center px-3 py-1.5 break-words",
+          item.checked && "ledger-strike"
         )}
       >
         <span className="min-w-0">
@@ -361,7 +322,7 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
           {item.checked ? <span className="sr-only">{t.inCartSr}</span> : null}
         </span>
       </span>
-      <span className="ledger-rule-double flex items-center justify-end px-3 py-1">
+      <span className="ledger-rule-double flex items-center justify-end px-3 py-1.5">
         {item.estimatedCents === null ? (
           <>
             <span aria-hidden="true">--</span>
@@ -375,20 +336,22 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
   );
 };
 
-const AisleLine = ({ heading }: { heading: string }) => (
+const AisleLine = ({ heading, index }: { heading: string; index: number }) => (
   <li
     className="ledger-line col-span-3 grid grid-cols-subgrid"
     data-ledger-slot={ledgerSlot("heading", heading)}
   >
-    <h3 className="ledger-bodoni ledger-rule text-label col-start-2 flex items-end px-3 pt-3 pb-1 font-bold tracking-[0.15em] break-words uppercase">
-      {heading}
+    <h3 className="ledger-caps ledger-rule text-muted-foreground text-label col-start-2 flex items-end gap-2 px-3 pt-3 pb-1 break-words">
+      <PaintDab className="mb-1.5" index={index} />
+      <span className="min-w-0">{heading}</span>
     </h3>
     <span aria-hidden="true" className="ledger-rule-double" />
   </li>
 );
 
 /**
- * The estimate against the budget, laid out like a Victorian grocer's bill,
+ * The estimate against the budget, laid out like a grocer's bill washed over
+ * like Today's market ticker,
  * in the checklist's order and aisles. On wide screens it is pinned beside
  * the checklist, then unrolls with it row for row while the totals stay at
  * the bottom of the screen until the whole bill is in view.
@@ -424,7 +387,7 @@ const Receipt = ({
         aria-labelledby="receipt-heading"
         className={cn(
           LEDGER_FONTS,
-          "ledger-paper mb-[0.667rem] grid min-w-0 scroll-mt-20 grid-cols-[auto_minmax(min(6rem,45%),1fr)_auto] border-x border-t border-(--paper-edge) text-base leading-7 xl:sticky xl:top-8"
+          "ledger-paper mb-[0.556rem] grid min-w-0 scroll-mt-20 grid-cols-[auto_minmax(min(6rem,45%),1fr)_auto] border-x border-t border-(--paper-edge) text-[1.056rem] leading-7 shadow-[0_1px_2px_rgb(45_33_24/0.06),0_10px_24px_-14px_rgb(45_33_24/0.22)] xl:sticky xl:top-8"
         )}
         data-ledger-paper=""
         ref={ref}
@@ -440,10 +403,16 @@ const Receipt = ({
             aria-label={t.itemsToBuy}
             className="ledger-banner col-span-3 grid grid-cols-subgrid"
           >
-            {listBlocks(list, t).flatMap((block) => [
+            {listBlocks(list, t).flatMap((block, index) => [
               ...(block.heading === null
                 ? []
-                : [<AisleLine heading={block.heading} key={block.heading} />]),
+                : [
+                    <AisleLine
+                      heading={block.heading}
+                      index={index}
+                      key={block.heading}
+                    />,
+                  ]),
               ...block.items.map((item) => (
                 <ItemLine item={item} key={item.id} />
               )),
@@ -451,7 +420,7 @@ const Receipt = ({
           </ul>
         )}
         {/* Pinned to the bottom of wide screens while rows unroll above it. */}
-        <footer className="ledger-fill ledger-banner relative col-span-3 grid grid-cols-subgrid py-2 xl:sticky xl:bottom-[2.167rem] xl:shadow-[0_-8px_12px_-8px_rgb(60_40_10/0.3)]">
+        <footer className="ledger-wash-light ledger-banner relative col-span-3 grid grid-cols-subgrid py-2 xl:sticky xl:bottom-[2.056rem] xl:shadow-[0_-8px_12px_-8px_rgb(45_33_24/0.22)]">
           <dl className="col-span-3 grid grid-cols-subgrid">
             <Line label={t.items} value={`${items.length}`} />
             {inCart.length > 0 ? (
@@ -461,7 +430,7 @@ const Receipt = ({
               </>
             ) : null}
             <Line
-              className="ledger-bodoni py-1 text-xl font-bold"
+              className="py-1.5 text-xl font-semibold"
               label={t.estimatedTotal}
               total
               value={money(estimate, locale)}
@@ -473,7 +442,7 @@ const Receipt = ({
             {budget === null ? null : (
               <Line
                 className={cn(
-                  "font-bold",
+                  "font-semibold",
                   overBudget ? "text-negative" : "text-positive"
                 )}
                 label={overBudget ? t.overBudget : t.leftToSpend}
@@ -487,15 +456,15 @@ const Receipt = ({
             </p>
           ) : null}
           {/*
-           * The page shows through between the teeth, hiding rows still rolled
-           * up behind. On wide screens it runs on below them, so the pinned
-           * cut edge has a little clear page under it.
+           * The page shows through the torn edge, hiding rows still rolled up
+           * behind. On wide screens it runs on below them, so the pinned edge
+           * has a little clear page under it.
            */}
           <div
             aria-hidden="true"
             className="bg-background absolute -inset-x-px top-full xl:pb-6"
           >
-            <div className="ledger-teeth" />
+            <div className="ledger-deckle" />
           </div>
         </footer>
       </section>
@@ -531,7 +500,7 @@ const ReceiptBar = ({
     <button
       className={cn(
         LEDGER_FONTS,
-        "ledger-paper min-h-control @container sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex w-full items-center justify-between gap-3 rounded-lg border border-(--paper-edge) px-5 py-2 text-left text-lg tabular-nums shadow-[0_-4px_16px_rgb(0_0_0/0.12)] transition-[filter] hover:brightness-95 xl:hidden dark:shadow-[0_-4px_20px_rgb(0_0_0/0.5)]"
+        "ledger-paper ledger-wash-light min-h-control @container sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex w-full items-center justify-between gap-3 rounded-lg border border-(--paper-edge) px-5 py-2 text-left text-lg tabular-nums shadow-[0_-4px_16px_rgb(0_0_0/0.12)] transition-[filter] hover:brightness-95 xl:hidden dark:shadow-[0_-4px_20px_rgb(0_0_0/0.5)]"
       )}
       onClick={onShow}
       type="button"

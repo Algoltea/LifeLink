@@ -17,6 +17,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { ChevronDownIcon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
+import { PaintDab } from "@/components/app/paint-dab";
 import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/messages/en";
 import {
@@ -28,13 +29,6 @@ import {
 
 /** Seconds each quote spends crossing the tape: roughly 35px a second. */
 const SECONDS_PER_QUOTE = 6.5;
-
-/** Painted dabs between quotes, cycling through three shapes and colors. */
-const DAB_PATHS = [
-  "M2.2 6.8C1.2 5.4 2.6 2.6 5.4 2.1c2.6-.5 4.9.6 4.6 2.3-.3 1.9-2.6 3.4-4.9 3.6-1.3.1-2.3-.3-2.9-1.2z",
-  "M1.8 4.6C2.3 2.7 4.8 1.6 7.3 2.2c2.3.6 3.4 2.4 2.5 3.8-1 1.5-3.6 2.2-5.6 1.7C2.6 7.3 1.5 6 1.8 4.6z",
-  "M2.4 3.4c1.3-1.6 4.3-1.9 6.2-.8 1.8 1 1.9 2.9.4 4-1.6 1.2-4.4 1.4-6 .5-1.4-.8-1.6-2.4-.6-3.7z",
-] as const;
 
 const DIRECTION_MARKS: Record<MarketDirection, string> = {
   down: "▼",
@@ -59,19 +53,6 @@ const rowsOf = (quotes: readonly MarketQuote[]): Row[] =>
 
     return instrument ? [{ instrument, quote }] : [];
   });
-
-const Dab = ({ index }: { index: number }) => (
-  <svg
-    aria-hidden="true"
-    className="market-dab shrink-0"
-    data-dab={index % DAB_PATHS.length}
-    height="10"
-    viewBox="0 0 12 10"
-    width="12"
-  >
-    <path d={DAB_PATHS[index % DAB_PATHS.length]} />
-  </svg>
-);
 
 /** The arrow is for sighted readers; screen readers hear "up", "down", or "unchanged". */
 const Change = ({ quote }: { quote: MarketQuote }) => {
@@ -128,7 +109,7 @@ const TapeQuotes = ({ copy, rows }: { copy: number; rows: Row[] }) => {
             </span>
             <Change quote={quote} />
           </span>
-          <Dab index={index} />
+          <PaintDab index={index} />
         </span>
       ))}
     </span>

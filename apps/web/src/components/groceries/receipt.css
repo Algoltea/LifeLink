@@ -1,97 +1,243 @@
 /*
- * A Victorian grocer's bill: yellowed paper, letterpress heading, and ledger
- * ruling. The paper is an object lying on the page, so it keeps its colours
- * and dark ink in every theme, like the landing page's slips.
+ * A grocer's bill painted over like Today's market ticker: warm paper, a
+ * pastel wash across the bill head and totals, ledger ruling in faded
+ * watercolor blue, and a deckled bottom edge. The paper is an object lying
+ * on the page, so it keeps its colours and dark ink in every theme, like the
+ * landing page's slips.
  */
 .ledger-paper {
-  --paper: #f5e8c7;
-  --paper-edge: #e9d4a4;
-  --ink: #2b1d12;
-  --ledger-red: #cf5f73;
-  --ledger-blue: #b9c7cf;
+  --paper: #fcf8ef;
+  --paper-edge: #ebe2cf;
+  --ink: #2d2118;
+  --ledger-column: #c3d0dc;
+  --ledger-line: rgb(167 184 201 / 0.4);
+  --ledger-banner: #a7b8c9;
+  --ledger-strike: #8e7fbf;
   --foreground: var(--ink);
-  --muted-foreground: #5f4a36;
-  --positive-ink: #2f5a3f;
+  --muted-foreground: #6c5c4c;
+  --positive-ink: #3d604b;
   --negative-ink: #8d2f28;
 
-  /* Edges darkened by handling. Horizontal only, so the pinned totals match the paper behind them. */
-  --paper-fill: linear-gradient(
-    90deg,
-    var(--paper-edge),
-    var(--paper) 7%,
-    var(--paper) 93%,
-    var(--paper-edge)
-  );
-
-  background: var(--paper-fill);
+  background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-ledger), var(--font-sans);
   font-variant-numeric: lining-nums tabular-nums;
 }
 
 [data-contrast="more"] .ledger-paper {
-  --paper: #fbf3df;
-  --paper-edge: #f1e3c0;
+  --paper: #fffaf0;
+  --paper-edge: #b9a98f;
   --ink: #120b05;
-  --ledger-red: #a3324a;
-  --ledger-blue: #6f8796;
+  --ledger-column: #6f8796;
+  --ledger-line: #8ea3b5;
+  --ledger-banner: #4f6778;
+  --ledger-strike: currentColor;
   --muted-foreground: #3b2b1d;
-}
-
-.ledger-paper .ledger-bodoni {
-  font-family: var(--font-ledger-display), var(--font-ledger), var(--font-sans);
 }
 
 .ledger-paper .ledger-hand {
   font-family: var(--font-ledger-hand), var(--font-ledger), var(--font-sans);
 }
 
-.ledger-paper .ledger-blackletter {
-  font-family:
-    var(--font-ledger-blackletter), var(--font-ledger), var(--font-sans);
-}
-
-/* The page runs a little darker at the top, where the bill was folded and held. */
-.ledger-paper .ledger-head {
-  background: linear-gradient(rgb(150 105 40 / 0.1), transparent 4rem);
-}
-
-.ledger-paper .ledger-fill {
-  background: var(--paper-fill);
-}
-
-/* Column rules: a single red line before the item, a double one before the price. */
-.ledger-paper .ledger-rule {
-  border-left: 1px solid var(--ledger-red);
-}
-
-.ledger-paper .ledger-rule-double {
-  border-left: 3px double var(--ledger-red);
-}
-
-.ledger-paper .ledger-line {
-  border-top: 1px solid var(--ledger-blue);
-}
-
-.ledger-paper .ledger-banner {
-  border-top: 3px double var(--ledger-red);
+/* Spaced capitals for the bill's title, aisles, and the shop's name. */
+.ledger-paper .ledger-caps {
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 /*
- * The cut edge, the same teeth as the landing page's ride slip: each tooth
- * 0.889rem wide and 0.667rem deep, so the opening angle is 2 × atan(0.444 / 0.667).
+ * The ticker's wash spread over two dimensions: many small, faint patches in
+ * its five pastels, so the paper reads as brushwork rather than a gradient.
  */
-.ledger-teeth {
-  --tooth-width: 0.889rem;
-  --tooth-angle: 67.4deg;
+.ledger-wash {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(
+      4rem 1rem at 4% 16%,
+      rgb(234 215 173 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      3.5rem 1rem at 24% 8%,
+      rgb(214 226 236 / 0.45),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 1rem at 46% 12%,
+      rgb(212 224 204 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      5rem 1rem at 70% 18%,
+      rgb(236 220 226 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 0.9rem at 92% 14%,
+      rgb(226 216 236 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      3.5rem 1rem at 8% 42%,
+      rgb(214 226 236 / 0.45),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 0.9rem at 30% 40%,
+      rgb(236 220 226 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      5rem 1rem at 56% 44%,
+      rgb(234 215 173 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 1rem at 84% 42%,
+      rgb(212 224 204 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 0.9rem at 4% 68%,
+      rgb(226 216 236 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 1rem at 24% 64%,
+      rgb(212 224 204 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 1rem at 46% 68%,
+      rgb(214 226 236 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 1rem at 68% 64%,
+      rgb(226 216 236 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 1rem at 96% 68%,
+      rgb(234 215 173 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 1rem at 12% 90%,
+      rgb(236 220 226 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      5rem 0.9rem at 40% 88%,
+      rgb(234 215 173 / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 0.9rem at 66% 92%,
+      rgb(212 224 204 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      3.5rem 0.9rem at 90% 88%,
+      rgb(214 226 236 / 0.4),
+      transparent 70%
+    );
+}
 
-  height: 0.667rem;
-  background: var(--paper-fill);
-  mask: conic-gradient(
-      from calc(var(--tooth-angle) / -2) at bottom,
-      #0000,
-      #000 1deg calc(var(--tooth-angle) - 1deg),
-      #0000 var(--tooth-angle)
-    )
-    50% / var(--tooth-width) 100%;
+/* The totals carry a lighter wash, so the bill is painted at both ends. */
+.ledger-wash-light {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(
+      4.5rem 1rem at 8% 20%,
+      rgb(214 226 236 / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      5rem 1rem at 38% 12%,
+      rgb(236 220 226 / 0.25),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 1rem at 72% 22%,
+      rgb(212 224 204 / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      4.5rem 1rem at 18% 78%,
+      rgb(226 216 236 / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      5rem 1rem at 56% 86%,
+      rgb(234 215 173 / 0.25),
+      transparent 70%
+    ),
+    radial-gradient(
+      4rem 1rem at 94% 74%,
+      rgb(214 226 236 / 0.3),
+      transparent 70%
+    );
+}
+
+/* A dab of sunlight under the estimated total, the one bright moment on the bill. */
+.ledger-sun {
+  background: radial-gradient(
+    55% 45% at 50% 78%,
+    rgb(240 219 151 / 0.75),
+    transparent 100%
+  );
+}
+
+[data-contrast="more"] :is(.ledger-wash, .ledger-wash-light) {
+  background-image: none;
+}
+
+[data-contrast="more"] .ledger-sun {
+  background: none;
+}
+
+/* Fill-in lines under the handwritten date and list name. */
+.ledger-paper .ledger-fill-in {
+  border-bottom: 1px solid
+    color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+}
+
+.ledger-paper .ledger-strike {
+  text-decoration-line: line-through;
+  text-decoration-color: var(--ledger-strike);
+  text-decoration-thickness: 2px;
+}
+
+/* Column rules: a single line before the item, a double one before the price. */
+.ledger-paper .ledger-rule {
+  border-left: 1px solid var(--ledger-column);
+}
+
+.ledger-paper .ledger-rule-double {
+  border-left: 3px double var(--ledger-column);
+}
+
+.ledger-paper .ledger-line {
+  border-top: 1px solid var(--ledger-line);
+}
+
+.ledger-paper .ledger-banner {
+  border-top: 3px double var(--ledger-banner);
+}
+
+.ledger-paper .ledger-total {
+  text-decoration-line: underline;
+  text-decoration-style: double;
+  text-decoration-color: var(--ledger-banner);
+  text-underline-offset: 0.25em;
+}
+
+/* A deckled edge torn from watercolor paper, tiled so it fits any width. */
+.ledger-deckle {
+  height: 0.556rem;
+  background-color: var(--paper);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 10' preserveAspectRatio='none'%3E%3Cpath d='M0 0L0.0 6.0L5.6 4.3L12.9 4.3L19.6 6.3L23.8 7.2L28.0 6.8L32.4 4.7L38.5 8.9L43.1 5.0L50.3 8.9L57.1 5.1L66.0 2.5L74.3 3.6L79.0 2.5L84.6 6.7L89.5 5.5L96.7 4.6L103.4 3.1L107.7 4.3L115.1 6.1L120.7 7.4L127.0 5.9L134.9 8.4L140.1 7.6L146.8 9.1L154.4 5.1L160.0 6.0L160 0Z'/%3E%3C/svg%3E")
+    0 0 / 8.889rem 100% repeat-x;
 }
