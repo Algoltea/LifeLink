@@ -9,6 +9,7 @@ const tasks: Messages["tasks"] = {
     create_reminder: "Guardar el recordatorio",
     drive_note: "Aprobar y guardarlo",
     email_draft: "Aprobar y guardar el borrador",
+    email_reply: "Aprobar y enviar",
     family_update: "Compartir la novedad",
     grocery_handoff: "Aprobar el pedido",
     send_message: "Aprobar y enviar",

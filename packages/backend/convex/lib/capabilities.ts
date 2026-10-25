@@ -226,6 +226,7 @@ const executionProblems = async (
     }
 
     case "email_draft":
+    case "email_reply":
     case "calendar_event":
     case "drive_note": {
       if (mode === "simulated") {

@@ -138,6 +138,16 @@ const actionDetails = v.union(
     to: v.string(),
   }),
   v.object({
+    body: v.string(),
+    connectionId: v.string(),
+    inReplyToMessageId: v.string(),
+    kind: v.literal("email_reply"),
+    provider: v.union(v.literal("gmail"), v.literal("outlook")),
+    subject: v.string(),
+    threadId: v.union(v.string(), v.null()),
+    to: v.string(),
+  }),
+  v.object({
     connectionId: v.string(),
     endsAt: v.number(),
     kind: v.literal("calendar_event"),
@@ -187,6 +197,7 @@ export default defineSchema({
       v.literal("family_update"),
       v.literal("grocery_handoff"),
       v.literal("email_draft"),
+      v.literal("email_reply"),
       v.literal("calendar_event"),
       v.literal("drive_note")
     ),
@@ -922,6 +933,7 @@ export default defineSchema({
       v.literal("family_update"),
       v.literal("grocery_handoff"),
       v.literal("email_draft"),
+      v.literal("email_reply"),
       v.literal("calendar_event"),
       v.literal("drive_note")
     ),
@@ -954,6 +966,7 @@ export default defineSchema({
       v.literal("grocery_handoff"),
       v.literal("scam_verification"),
       v.literal("email_draft"),
+      v.literal("email_reply"),
       v.literal("calendar_event"),
       v.literal("drive_note")
     ),
