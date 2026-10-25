@@ -16,6 +16,7 @@ import { Label } from "@lifelink/ui/components/label";
 import { Segmented } from "@lifelink/ui/components/segmented";
 import { Switch } from "@lifelink/ui/components/switch";
 import { Textarea } from "@lifelink/ui/components/textarea";
+import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation } from "convex/react";
 import Link from "next/link";
 import { useId, useRef, useState } from "react";
@@ -209,6 +210,26 @@ const Row = ({
   </div>
 );
 
+// Both words share one grid cell so the label is as wide as the longer one
+// in every language, and the switch never shifts when it flips.
+const SwitchState = ({ checked }: { checked: boolean }) => {
+  const t = useMessages();
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-grid text-base font-semibold whitespace-nowrap"
+    >
+      <span className={cn("[grid-area:1/1]", !checked && "invisible")}>
+        {t.common.on}
+      </span>
+      <span className={cn("[grid-area:1/1]", checked && "invisible")}>
+        {t.common.off}
+      </span>
+    </span>
+  );
+};
+
 const Toggle = ({
   checked,
   description,
@@ -221,7 +242,6 @@ const Toggle = ({
   onChange: (value: boolean) => void;
 }) => {
   const id = useId();
-  const t = useMessages();
 
   return (
     <div className="border-rule flex flex-col items-start gap-4 border-t py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -234,9 +254,7 @@ const Toggle = ({
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <span aria-hidden="true" className="w-8 text-base font-semibold">
-          {checked ? t.common.on : t.common.off}
-        </span>
+        <SwitchState checked={checked} />
         <Switch checked={checked} id={id} onCheckedChange={onChange} />
       </div>
     </div>
@@ -690,9 +708,7 @@ const DemoSettings = ({
             {t.settings.demoUse}
           </Label>
           <div className="flex items-center gap-3">
-            <span aria-hidden="true" className="w-8 text-base font-semibold">
-              {profile.demoMode ? t.common.on : t.common.off}
-            </span>
+            <SwitchState checked={profile.demoMode} />
             <Switch
               disabled={busy}
               checked={profile.demoMode}

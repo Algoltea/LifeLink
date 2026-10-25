@@ -15,6 +15,7 @@ import { useMutation } from "convex/react";
 import {
   ArchiveRestoreIcon,
   CheckCheckIcon,
+  ClipboardPasteIcon,
   CopyPlusIcon,
   PencilIcon,
   PlusIcon,
@@ -32,6 +33,7 @@ import { messageOf } from "@/lib/errors";
 
 import { centsFromDollars, dollarsFromCents } from "./amounts";
 import { GroceryItems } from "./item-list";
+import { QuickAddDialog } from "./quick-add";
 import { UnitSelect } from "./unit-select";
 
 const errorText = (cause: unknown): string =>
@@ -474,6 +476,7 @@ const ListEditor = ({
 }) => {
   const { onCopy, onDelete, onReopen, onToggleUsual } = actions;
   const [editingDetails, setEditingDetails] = useState(false);
+  const [quickAdding, setQuickAdding] = useState(false);
   const detailsTrigger = useRef<HTMLButtonElement>(null);
   const inCart = list.items.filter((item) => item.checked).length;
   const toGet = list.items.length - inCart;
@@ -481,6 +484,11 @@ const ListEditor = ({
 
   return (
     <div className="@container flex flex-col gap-5">
+      <QuickAddDialog
+        list={list}
+        onClose={() => setQuickAdding(false)}
+        open={quickAdding}
+      />
       <div className="flex flex-col gap-1">
         {/* With large text the name needs the full width, so the buttons wrap below it. */}
         <div className="flex max-w-xl flex-wrap items-start gap-2 xl:max-w-none">
@@ -497,6 +505,17 @@ const ListEditor = ({
             variant="ghost"
           >
             <StarIcon className={list.usual ? "fill-current" : undefined} />
+          </Button>
+          {/* Icon-only on phones, like Edit details, so the heading row stays uncrowded. */}
+          <Button
+            aria-haspopup="dialog"
+            className="max-sm:size-control -my-2 shrink-0 max-sm:px-0"
+            onClick={() => setQuickAdding(true)}
+            title={t.quickAdd.buttonTitle}
+            variant="outline"
+          >
+            <ClipboardPasteIcon />
+            <span className="max-sm:sr-only">{t.quickAdd.button}</span>
           </Button>
           <Button
             aria-controls="grocery-details"

@@ -186,13 +186,15 @@ const CallCaptions = ({
         aria-label={messages.captions}
         aria-live="polite"
         aria-relevant="additions text"
-        className="flex max-h-[32rem] flex-col gap-3 overflow-y-auto overscroll-contain"
+        // One shared speaker column: never narrower than its longest word, so
+        // "Anrufende Person" wraps instead of running into the caption.
+        className="grid max-h-[32rem] grid-cols-[fit-content(8rem)_minmax(0,1fr)] content-start gap-y-3 overflow-y-auto overscroll-contain"
         role="log"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard users must be able to scroll the caption log.
         tabIndex={0}
       >
         {captions.length === 0 ? (
-          <p className="text-muted-foreground py-5 text-xl">
+          <p className="text-muted-foreground col-span-full py-5 text-xl">
             {messages.captionsEmpty}
           </p>
         ) : null}
@@ -205,17 +207,22 @@ const CallCaptions = ({
           return (
             <div
               className={cn(
-                "flex gap-4 rounded-lg px-2 py-3 sm:px-4",
+                "col-span-full grid grid-cols-subgrid gap-x-4 rounded-lg px-2 py-3 sm:px-4",
                 flag && "bg-negative-wash"
               )}
               key={caption.id}
             >
               {caption.speaker === "unknown" ? null : (
-                <span className="text-muted-foreground text-body w-16 shrink-0 pt-1 font-semibold sm:w-20">
+                <span className="text-muted-foreground text-body min-w-16 pt-1 font-semibold sm:min-w-20">
                   {label}
                 </span>
               )}
-              <div className="min-w-0 flex-1">
+              <div
+                className={cn(
+                  "min-w-0",
+                  caption.speaker === "unknown" && "col-span-full"
+                )}
+              >
                 <p
                   className={cn(
                     "leading-relaxed break-words",

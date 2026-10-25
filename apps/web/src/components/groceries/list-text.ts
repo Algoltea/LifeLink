@@ -13,7 +13,10 @@ type GroceryItem = Doc<"groceryLists">["items"][number];
 /** Long enough to notice a stray tap and reach Undo without hurrying. */
 const UNDO_WINDOW_MS = 10_000;
 
-const quantityWords = (item: GroceryItem, locale: InterfaceLocale): string => {
+const quantityWords = (
+  item: Pick<GroceryItem, "quantity" | "unit">,
+  locale: InterfaceLocale
+): string => {
   if (item.quantity === null) {
     return "";
   }

@@ -32,7 +32,10 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
   ) {
     return (
       <span className="flex pt-1.5">
-        <Pill className="text-label font-semibold" tone="negative">
+        <Pill
+          className="text-label max-w-full font-semibold whitespace-normal"
+          tone="negative"
+        >
           <CircleAlertIcon aria-hidden="true" className="size-4" />
           {last.status === "failed" ? t.notSent : t.notSureSent}
         </Pill>
@@ -43,7 +46,10 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
   if (thread.waiting > 0) {
     return (
       <span className="flex pt-1.5">
-        <Pill className="text-label font-semibold" tone="warning">
+        <Pill
+          className="text-label max-w-full font-semibold whitespace-normal"
+          tone="warning"
+        >
           <ClockIcon aria-hidden="true" className="size-4" />
           {t.waitingForApproval(thread.waiting)}
         </Pill>
@@ -54,7 +60,10 @@ const RowStatus = ({ thread }: { thread: ThreadRow }) => {
   if (thread.channel === null) {
     return (
       <span className="flex pt-1.5">
-        <Pill className="text-label font-semibold" tone="warning">
+        <Pill
+          className="text-label max-w-full font-semibold whitespace-normal"
+          tone="warning"
+        >
           <TriangleAlertIcon aria-hidden="true" className="size-4" />
           {t.noWayToReach}
         </Pill>

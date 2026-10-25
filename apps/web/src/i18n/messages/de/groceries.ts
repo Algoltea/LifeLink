@@ -154,6 +154,23 @@ const groceries: Messages["groceries"] = {
     whole:
       "Verwenden Sie für einzelne Artikel oder Packungen eine ganze Zahl. Wählen Sie für eine abgemessene Menge ein Gewicht oder Volumen.",
   },
+  quickAdd: {
+    added: (count) =>
+      `${count} ${count === 1 ? "Artikel" : "Artikel"} hinzugefügt.`,
+    adding: "Wird hinzugefügt…",
+    button: "Schnell hinzufügen",
+    buttonTitle: "Eine Artikelliste einfügen",
+    description:
+      "Fügen Sie eine Liste aus einer Notiz, Nachricht oder E-Mail ein. Jede Zeile wird ein Artikel, und Mengen wie „2 lb“ oder „x3“ werden erkannt.",
+    label: "Ihre Liste",
+    none: "Fügen Sie eine Liste ein oder tippen Sie sie, um die Artikel hier zu sehen.",
+    placeholder: "Milch (1 L)\n500 g Hähnchen\nEier x12\nBananen",
+    preview: (count) => `${count} Artikel zum Hinzufügen`,
+    submit: (count) => `${count} Artikel hinzufügen`,
+    title: "Einkaufsliste einfügen",
+    tooMany: (room) =>
+      `Auf dieser Liste ist noch Platz für ${room} Artikel. Entfernen Sie einige Zeilen oder beginnen Sie eine neue Liste.`,
+  },
   receiptBar: {
     estimated: "geschätzt",
     left: (amount) => ` · ${amount} übrig`,

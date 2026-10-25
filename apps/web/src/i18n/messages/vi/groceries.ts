@@ -149,6 +149,22 @@ const groceries: Messages["groceries"] = {
     whole:
       "Dùng số nguyên cho món riêng lẻ hoặc gói. Chọn khối lượng hoặc thể tích cho lượng đo lường.",
   },
+  quickAdd: {
+    added: (count) => `Đã thêm ${count} món.`,
+    adding: "Đang thêm…",
+    button: "Thêm nhanh",
+    buttonTitle: "Dán danh sách món",
+    description:
+      "Dán danh sách từ ghi chú, tin nhắn hoặc email. Mỗi dòng thành một món, và số lượng như “2 lb” hoặc “x3” sẽ được nhận ra.",
+    label: "Danh sách của bạn",
+    none: "Dán hoặc gõ danh sách để xem các món ở đây.",
+    placeholder: "Sữa (1 L)\n500 g thịt gà\nTrứng x12\nChuối",
+    preview: (count) => `${count} món sẽ thêm`,
+    submit: (count) => `Thêm ${count} món`,
+    title: "Dán danh sách đi chợ",
+    tooMany: (room) =>
+      `Danh sách này chỉ còn chỗ cho ${room} món. Hãy bớt vài dòng hoặc bắt đầu danh sách mới.`,
+  },
   receiptBar: {
     estimated: "ước tính",
     left: (amount) => ` · còn ${amount}`,

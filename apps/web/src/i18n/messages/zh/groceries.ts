@@ -141,6 +141,22 @@ const groceries: Messages["groceries"] = {
     positive: "请输入大于 0 的数量。",
     whole: "单件或整包物品请使用整数。按量购买时，请选择重量或容量单位。",
   },
+  quickAdd: {
+    added: (count: number) => `已添加 ${count} 件物品。`,
+    adding: "正在添加…",
+    button: "快速添加",
+    buttonTitle: "粘贴物品清单",
+    description:
+      "粘贴来自笔记、短信或电子邮件的清单。每一行会成为一件物品，并能识别“2 lb”或“x3”这样的数量。",
+    label: "您的清单",
+    none: "粘贴或输入清单后，物品会显示在这里。",
+    placeholder: "牛奶 (1 L)\n500 g 鸡肉\n鸡蛋 x12\n香蕉",
+    preview: (count: number) => `将添加 ${count} 件物品`,
+    submit: (count: number) => `添加 ${count} 件物品`,
+    title: "粘贴购物清单",
+    tooMany: (room: number) =>
+      `此清单还能添加 ${room} 件物品。请删除几行，或新建一个清单。`,
+  },
   receiptBar: {
     estimated: "估算",
     left: (amount: string) => ` · 剩余 ${amount}`,

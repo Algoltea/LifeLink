@@ -147,6 +147,24 @@ const groceries = {
     whole:
       "Use a whole number for individual items or packages. Choose a weight or volume for a measured amount.",
   },
+  quickAdd: {
+    added: (count: number) =>
+      `Added ${count} ${count === 1 ? "item" : "items"}.`,
+    adding: "Adding…",
+    button: "Quick add",
+    buttonTitle: "Paste a list of items",
+    description:
+      "Paste a list from a note, text, or email. Each line becomes an item, and amounts like “2 lb” or “x3” are picked up.",
+    label: "Your list",
+    none: "Paste or type a list to see the items here.",
+    placeholder: "Milk (1 gallon)\n2 lb chicken\nEggs x12\nBananas",
+    preview: (count: number) =>
+      `${count} ${count === 1 ? "item" : "items"} to add`,
+    submit: (count: number) => `Add ${count} ${count === 1 ? "item" : "items"}`,
+    title: "Paste a grocery list",
+    tooMany: (room: number) =>
+      `This list has room for ${room} more ${room === 1 ? "item" : "items"}. Remove some lines or start a new list.`,
+  },
   receiptBar: {
     estimated: "estimated",
     left: (amount: string) => ` · ${amount} left`,
