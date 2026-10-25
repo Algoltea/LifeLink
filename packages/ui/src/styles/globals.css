@@ -325,6 +325,17 @@
   animation: arrive 200ms ease-out both;
 }
 
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Content that replaces a placeholder in place, so it fades without moving. */
+@utility motion-appear {
+  animation: appear 200ms ease-out both;
+}
+
 /* Base UI popups and backdrops: fade with a slight scale on open and close. */
 @utility motion-pop {
   transition:
