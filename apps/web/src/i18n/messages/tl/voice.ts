@@ -8,8 +8,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Walang inihanda dahil walang laman ang kahilingan.",
   inputLabel: "Ano po ang gusto ninyong tulong?",
   lifeLinkSaid: "Sabi ng LifeLink: ",
-  listening:
-    "Nakikinig. Lalabas sa kahon ang mga salita ninyo; pindutin ang Ipadala kapag tama na.",
   microphoneBusy:
     "May ibang app na gumagamit ng mikropono. Isara ito at subukan ulit, o mag-type na lang.",
   microphoneDenied:
@@ -18,10 +16,6 @@ const voice: Messages["voice"] = {
     "Hindi nagsimula ang mikropono. Pakisubukan ulit o mag-type na lang.",
   microphoneMissing:
     "Walang nakitang mikropono. Tiyaking may nakakonekta, o mag-type na lang.",
-  network:
-    "Kailangan ngayon ng internet ang pag-type gamit ang boses. Paki-type na lang po.",
-  noSpeech:
-    "Wala po akong narinig. Pindutin ang Magsalita at subukan ulit nang mas malapit sa mikropono.",
   offlineFailed:
     "Hindi ma-save ang kahilingang ito habang walang koneksyon. Nandito pa ang mga salita ninyo. Pakisubukan kapag nakakonekta na.",
   opening: "Binubuksan ang lugar para sa inyong mensahe",
@@ -47,8 +41,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "Itinigil ang pagsusuri ng tawag.",
   send: "Ipadala",
   sending: "Ipinapadala",
-  serviceDenied:
-    "Naka-off ang pag-type gamit ang boses sa browser na ito. Paki-type na lang po.",
   speak: "Magsalita",
   speakHint:
     "Pindutin ang Magsalita para magsalita sa halip na mag-type. Walang ipinapadala hanggang aprubahan ninyo.",
@@ -59,7 +51,7 @@ const voice: Messages["voice"] = {
   talking:
     "Nakikipag-usap sa LifeLink. Lalabas sa screen ang anumang inihanda nito para aprubahan ninyo.",
   unavailable:
-    "Hindi available ang boses sa browser na ito, kaya paki-type po. Walang ipinapadala hanggang aprubahan ninyo.",
+    "Hindi available ang boses ngayon, kaya paki-type po. Walang ipinapadala hanggang aprubahan ninyo.",
   voiceStopped: "Itinigil ang boses.",
   youSaid: "Sabi ninyo: ",
 };

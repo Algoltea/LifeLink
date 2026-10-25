@@ -57,9 +57,7 @@ const threads: Messages["threads"] = {
   removePhoto: (name) => `Xóa ${name}`,
   replyAdded:
     "Đã thêm câu trả lời vào tin nhắn. Quý vị có thể sửa trước khi xem lại.",
-  review: "Xem lại",
-  reviewBeforeSending: "Xem lại trước khi gửi",
-  reviewBeforeSendingTail: " trước khi gửi",
+  reviewAndSend: "Xem lại và gửi",
   reviewIt: "Xem lại",
   seeWhatHappened: "Xem điều đã xảy ra",
   srThem: (firstName, when) => `${firstName}, ${when}: `,

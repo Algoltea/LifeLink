@@ -189,11 +189,13 @@ const prepareAudio = async (signal: AbortSignal): Promise<AudioRig> => {
   }
 };
 
+/** `silent` is for voice typing: the model's audio is never played and only the person's words are captioned. */
 const startLiveSession = async (
   rig: AudioRig,
   token: string,
   model: string,
-  callbacks: LiveCallbacks
+  callbacks: LiveCallbacks,
+  { silent = false }: { silent?: boolean } = {}
 ): Promise<LiveHandle> => {
   const { capture, playback, stream } = rig;
 
@@ -232,14 +234,18 @@ const startLiveSession = async (
 
   /** Plays the model's audio and shows both sides' captions. */
   const present = (content: LiveServerMessage["serverContent"]): void => {
+    if (content?.inputTranscription?.text) {
+      callbacks.onCaption("you", content.inputTranscription.text);
+    }
+
+    if (silent) {
+      return;
+    }
+
     for (const part of content?.modelTurn?.parts ?? []) {
       if (part.inlineData?.data) {
         play(part.inlineData.data);
       }
-    }
-
-    if (content?.inputTranscription?.text) {
-      callbacks.onCaption("you", content.inputTranscription.text);
     }
 
     if (content?.outputTranscription?.text) {
@@ -751,5 +757,6 @@ export type {
   CallScreeningCallbacks,
   CallScreeningHandle,
   CallScreeningOptions,
+  LiveCallbacks,
   LiveHandle,
 };

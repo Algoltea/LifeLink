@@ -8,8 +8,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Es wurde nichts vorbereitet, weil die Anfrage leer war.",
   inputLabel: "Wobei möchten Sie Hilfe?",
   lifeLinkSaid: "LifeLink sagte: ",
-  listening:
-    "Ich höre zu. Ihre Worte erscheinen im Feld. Wählen Sie „Senden“, wenn sie richtig sind.",
   microphoneBusy:
     "Eine andere App verwendet das Mikrofon. Schließen Sie sie und versuchen Sie es erneut oder tippen Sie stattdessen.",
   microphoneDenied:
@@ -18,10 +16,6 @@ const voice: Messages["voice"] = {
     "Das Mikrofon wurde nicht gestartet. Bitte versuchen Sie es erneut oder tippen Sie stattdessen.",
   microphoneMissing:
     "Es wurde kein Mikrofon gefunden. Prüfen Sie, ob eines angeschlossen ist, oder tippen Sie stattdessen.",
-  network:
-    "Die Spracheingabe benötigt gerade eine Internetverbindung. Bitte tippen Sie stattdessen.",
-  noSpeech:
-    "Ich habe nichts gehört. Wählen Sie „Sprechen“ und versuchen Sie es noch einmal, etwas näher am Mikrofon.",
   offlineFailed:
     "Diese Anfrage konnte offline nicht gespeichert werden. Ihre Worte sind noch hier. Bitte versuchen Sie es erneut, wenn Sie verbunden sind.",
   opening: "Ein Platz für Ihre Nachricht wird geöffnet",
@@ -47,8 +41,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "Die Anrufprüfung wurde beendet.",
   send: "Senden",
   sending: "Wird gesendet",
-  serviceDenied:
-    "Die Spracheingabe ist in diesem Browser ausgeschaltet. Bitte tippen Sie stattdessen.",
   speak: "Sprechen",
   speakHint:
     "Wählen Sie „Sprechen“, um zu sprechen statt zu tippen. Nichts wird ohne Ihre Zustimmung gesendet.",
@@ -59,7 +51,7 @@ const voice: Messages["voice"] = {
   talking:
     "Sie sprechen mit LifeLink. Alles, was es vorbereitet, erscheint zur Genehmigung auf dem Bildschirm.",
   unavailable:
-    "Die Sprachfunktion ist in diesem Browser nicht verfügbar. Bitte tippen Sie. Nichts wird ohne Ihre Zustimmung gesendet.",
+    "Die Sprachfunktion ist gerade nicht verfügbar. Bitte tippen Sie. Nichts wird ohne Ihre Zustimmung gesendet.",
   voiceStopped: "Die Sprachfunktion wurde beendet.",
   youSaid: "Sie sagten: ",
 };

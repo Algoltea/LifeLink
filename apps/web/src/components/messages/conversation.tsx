@@ -264,7 +264,7 @@ const ConversationList = ({
             />
           )}
           {explaining === item.message._id ? (
-            <div className="mt-3 sm:pl-12">
+            <div className="mt-2 sm:pl-12">
               <ExplanationPanel
                 key={explaining}
                 onClose={onExplainClose}

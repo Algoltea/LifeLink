@@ -8,8 +8,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Rien n’a été préparé car la demande était vide.",
   inputLabel: "Pour quoi souhaitez-vous de l’aide ?",
   lifeLinkSaid: "LifeLink a dit : ",
-  listening:
-    "À l’écoute. Vos mots apparaîtront dans la zone de texte ; appuyez sur Envoyer lorsqu’ils vous conviennent.",
   microphoneBusy:
     "Une autre application utilise le microphone. Fermez-la et réessayez, ou saisissez le texte.",
   microphoneDenied:
@@ -18,10 +16,6 @@ const voice: Messages["voice"] = {
     "Le microphone n’a pas démarré. Veuillez réessayer ou saisir le texte.",
   microphoneMissing:
     "Aucun microphone trouvé. Vérifiez qu’un microphone est connecté ou saisissez le texte.",
-  network:
-    "La dictée nécessite actuellement une connexion Internet. Veuillez saisir le texte.",
-  noSpeech:
-    "Je n’ai rien entendu. Appuyez sur Parler et réessayez en vous rapprochant un peu du microphone.",
   offlineFailed:
     "Cette demande n’a pas pu être enregistrée hors ligne. Vos mots sont toujours ici. Veuillez réessayer une fois connecté.",
   opening: "Ouverture d’un espace pour votre message",
@@ -47,8 +41,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "La vérification d’appel a été arrêtée.",
   send: "Envoyer",
   sending: "Envoi",
-  serviceDenied:
-    "La dictée est désactivée dans ce navigateur. Veuillez saisir le texte.",
   speak: "Parler",
   speakHint:
     "Appuyez sur Parler pour dicter au lieu d’écrire. Rien n’est envoyé sans votre approbation.",
@@ -59,7 +51,7 @@ const voice: Messages["voice"] = {
   talking:
     "Conversation avec LifeLink. Tout ce qu’il prépare apparaît à l’écran pour votre approbation.",
   unavailable:
-    "La fonction vocale est indisponible dans ce navigateur ; veuillez saisir le texte. Rien n’est envoyé sans votre approbation.",
+    "La fonction vocale est indisponible pour le moment ; veuillez saisir le texte. Rien n’est envoyé sans votre approbation.",
   voiceStopped: "La fonction vocale a été arrêtée.",
   youSaid: "Vous avez dit : ",
 };

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createCallScreeningToken, createLiveToken } from "./live";
+import {
+  createCallScreeningToken,
+  createLiveToken,
+  createVoiceTypingToken,
+} from "./live";
 
 const fetchMock = vi.fn<typeof fetch>();
 const NOW = Date.parse("2026-10-24T12:00:00Z");
@@ -140,9 +144,42 @@ describe("Gemini Live token", () => {
     });
   });
 
+  it("locks voice typing to silent transcription with no tools", async () => {
+    fetchMock.mockResolvedValueOnce(
+      Response.json({ name: "auth_tokens/typing-token" })
+    );
+
+    await expect(createVoiceTypingToken()).resolves.toMatchObject({
+      ok: true,
+      token: "auth_tokens/typing-token",
+    });
+
+    const [, options] = fetchMock.mock.calls[0] ?? [];
+    const body: unknown = JSON.parse(String(options?.body));
+    expect(body).toMatchObject({
+      bidiGenerateContentSetup: {
+        generationConfig: { responseModalities: ["AUDIO"] },
+        inputAudioTranscription: {},
+        systemInstruction: {
+          parts: [
+            {
+              text: expect.stringContaining("The person is dictating"),
+            },
+          ],
+        },
+        tools: [],
+      },
+      uses: 1,
+    });
+    expect(body).not.toHaveProperty(
+      "bidiGenerateContentSetup.outputAudioTranscription"
+    );
+  });
+
   describe.each([
     { create: () => createLiveToken("Ruth"), purpose: "conversation" },
     { create: createCallScreeningToken, purpose: "call screening" },
+    { create: createVoiceTypingToken, purpose: "voice typing" },
   ])("$purpose failures", ({ create }) => {
     it("does not contact Google when the API key is missing", async () => {
       vi.stubEnv("GEMINI_API_KEY", "");

@@ -222,13 +222,12 @@ export const request = mutation({
       return latest._id;
     }
 
+    // Practice messages are made up, so they get the same cloud reading as real ones.
     const practice = owner.demoMode || source.mode === "simulated";
     let localReason: Explanation["localReason"] = null;
 
     if (!wantsCloud) {
       localReason = "chosen";
-    } else if (practice) {
-      localReason = "practice";
     } else if (!openRouterConfigured()) {
       localReason = "unavailable";
     } else if (!(await reserveCloudUse(ctx, owner._id, "explanation"))) {
@@ -240,7 +239,7 @@ export const request = mutation({
 
     const explanationId = await ctx.db.insert("messageExplanations", {
       ...local,
-      cloudRequested: wantsCloud && !practice,
+      cloudRequested: wantsCloud,
       createdAt: Date.now(),
       emailId: source.emailId,
       helpStyle,

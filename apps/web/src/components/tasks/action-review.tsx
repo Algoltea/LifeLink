@@ -72,6 +72,7 @@ const CancelActionButton = ({ view }: { view: ActionView }) => {
 
         setBusy(false);
       }}
+      className="pl-0"
       variant="ghost"
     >
       {busy ? t.cancelling : t.cancelRequest}
@@ -811,7 +812,7 @@ const ApprovalBar = ({
         ) : null}
         <Button
           aria-busy={pending === "cancel"}
-          className="underline"
+          className="pl-0 underline"
           disabled={busy}
           onClick={async () => {
             setPending("cancel");

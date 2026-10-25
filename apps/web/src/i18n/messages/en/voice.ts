@@ -5,8 +5,6 @@ const voice = {
   emptyRequest: "Nothing was prepared because the request was empty.",
   inputLabel: "What would you like help with?",
   lifeLinkSaid: "LifeLink said: ",
-  listening:
-    "Listening. Your words will appear in the box; press Send when they look right.",
   microphoneBusy:
     "Another app is using the microphone. Close it and try again, or type instead.",
   microphoneDenied:
@@ -15,10 +13,6 @@ const voice = {
     "The microphone didn't start. Please try again, or type instead.",
   microphoneMissing:
     "No microphone was found. Check that one is connected, or type instead.",
-  network:
-    "Voice typing needs an internet connection right now. Please type instead.",
-  noSpeech:
-    "I didn't hear anything. Press Speak and try again, a little closer to the microphone.",
   offlineFailed:
     "This request could not be saved offline. Your words are still here. Please try again when connected.",
   opening: "Opening a place for your message",
@@ -40,8 +34,6 @@ const voice = {
   screeningStopped: "Call screening was stopped.",
   send: "Send",
   sending: "Sending",
-  serviceDenied:
-    "Voice typing is turned off in this browser. Please type instead.",
   speak: "Speak",
   speakHint:
     "Press Speak to talk instead of typing. Nothing is sent until you approve it.",
@@ -52,7 +44,7 @@ const voice = {
   talking:
     "Talking with LifeLink. Anything it prepares appears on screen for you to approve.",
   unavailable:
-    "Voice isn't available in this browser, so please type. Nothing is sent until you approve it.",
+    "Voice isn't available right now, so please type. Nothing is sent until you approve it.",
   voiceStopped: "Voice was stopped.",
   youSaid: "You said: ",
 };

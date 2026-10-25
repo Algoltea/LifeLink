@@ -178,7 +178,7 @@ const developerIntegrations: readonly DeveloperIntegration[] = [
     id: "gemini_live",
     label: "Gemini Live (voice)",
     purpose:
-      "Two-way spoken conversation with captions. Voice requests go through the same review and approval as typed ones.",
+      "Two-way spoken conversation in Ask, call screening, and voice typing in Messages and Email. Voice requests go through the same review and approval as typed ones.",
     validation:
       "GET https://generativelanguage.googleapis.com/v1beta/models/{model} with the key (metadata only).",
   },

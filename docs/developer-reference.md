@@ -301,7 +301,7 @@ Generated from `packages/contracts/src/integrations.ts`, the same catalog the Co
 | Integration | Settings (Convex env) | Setup's validation call (read-only) | Without it |
 | --- | --- | --- | --- |
 | OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (`google/gemini-4-argon`), `OPENROUTER_FAST_MODEL` (`z-ai/glm-5.3-flash`), `OPENROUTER_TTS_MODEL` (`elevenlabs/eleven-v4-turbo`), `OPENROUTER_TTS_VOICE` (`sarah`) | `GET /api/v1/key`, plus each model's `/endpoints` | Built-in rules planner (fine for Practice mode) |
-| Gemini Live | `GEMINI_API_KEY`, `GEMINI_LIVE_MODEL` (default `gemini-3.8-live`) | `GET v1beta/models/{model}` | Browser dictation where available; typing always works |
+| Gemini Live | `GEMINI_API_KEY`, `GEMINI_LIVE_MODEL` (default `gemini-3.8-live`) | `GET v1beta/models/{model}` | Speak is off (Ask, Messages, Email); typing always works |
 | Composio | `COMPOSIO_API_KEY`, plus `COMPOSIO_AUTH_CONFIGS` and `COMPOSIO_WEBHOOK_SECRET` (provisioned) | `GET /api/v3.1/auth_configs?limit=1` | Sample email in Practice mode only |
 | Photon Spectrum Stable | `SPECTRUM_PROJECT_SECRET`, `SPECTRUM_PROJECT_ID`, plus `SPECTRUM_WEBHOOK_SECRET` (provisioned) | Basic-auth `GET https://spectrum.photon.codes/projects/{projectId}` | No iMessage |
 | Discord | `DISCORD_BOT_TOKEN`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY` | `GET /api/v10/users/@me` | No Discord |

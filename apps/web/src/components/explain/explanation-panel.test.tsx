@@ -98,6 +98,7 @@ describe("explanation language integration", () => {
       localQueryResult: () => EXPLANATION,
       onUpdate: () => () => {},
     });
+    vi.spyOn(client, "mutation").mockResolvedValue(null);
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -113,7 +114,7 @@ describe("explanation language integration", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps presentation explanations local and sends the same request arguments", async () => {
+  it("asks for a cloud explanation as soon as it opens, without any consent step", async () => {
     const me = {
       preferences: null,
       profile: {
@@ -136,7 +137,7 @@ describe("explanation language integration", () => {
     });
     const request = vi.spyOn(client, "mutation").mockResolvedValue(null);
 
-    act(() =>
+    await act(async () => {
       root.render(
         <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
           <PreferencesProvider>
@@ -146,25 +147,14 @@ describe("explanation language integration", () => {
             />
           </PreferencesProvider>
         </ConvexProviderWithAuth>
-      )
-    );
-
-    expect(container.textContent).not.toContain("Practice");
-    expect(container.textContent).toContain(
-      messagesFor("en").explanation.local.chosen
-    );
-    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-
-    const explain = [...container.querySelectorAll("button")].find(
-      (button) =>
-        button.textContent === messagesFor("en").explanation.explainThis
-    );
-
-    expect(explain).toBeDefined();
-    await act(async () => {
-      explain?.click();
+      );
       await Promise.resolve();
     });
+
+    expect(container.textContent).toContain(
+      messagesFor("en").explanation.reading
+    );
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
     expect(
       request.mock.calls.map(([mutation, args]) => [
         getFunctionName(mutation),
@@ -173,18 +163,14 @@ describe("explanation language integration", () => {
     ).toStrictEqual([
       [
         "explanations:request",
-        {
-          allowCloudAnalysis: false,
-          messageId: MESSAGE_ID,
-          refresh: false,
-        },
+        { allowCloudAnalysis: true, messageId: MESSAGE_ID },
       ],
     ]);
   });
 
   it.each([false, true])(
-    "renders a completed local explanation with account-specific copy (presentation=%s)",
-    (enabled) => {
+    "renders an older local Practice reading with account-specific copy (presentation=%s)",
+    async (enabled) => {
       const me = {
         preferences: null,
         profile: {
@@ -207,7 +193,7 @@ describe("explanation language integration", () => {
           onUpdate: () => () => {},
         };
       });
-      act(() =>
+      await act(async () => {
         root.render(
           <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
             <PreferencesProvider>
@@ -217,14 +203,13 @@ describe("explanation language integration", () => {
               />
             </PreferencesProvider>
           </ConvexProviderWithAuth>
-        )
-      );
+        );
+        await Promise.resolve();
+      });
 
       expect(container.textContent.includes("Practice")).toBe(!enabled);
       expect(container.querySelector('input[type="checkbox"]')).toBeNull();
       expect(container.textContent).toContain(ORIGINAL);
-      expect(explanation.localReason).toBe("practice");
-      expect(explanation.mode).toBe("simulated");
     }
   );
 
@@ -237,7 +222,7 @@ describe("explanation language integration", () => {
         .spyOn(client, "action")
         .mockRejectedValue(new Error("Speech unavailable in test"));
 
-      act(() => {
+      await act(async () => {
         root.render(
           <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
             <ExplanationPanel
@@ -246,6 +231,7 @@ describe("explanation language integration", () => {
             />
           </ConvexProviderWithAuth>
         );
+        await Promise.resolve();
       });
 
       const panel = container.querySelector("section");
@@ -253,7 +239,7 @@ describe("explanation language integration", () => {
 
       const reply = [...container.querySelectorAll("button")].find(
         (button) =>
-          button.textContent === messagesFor("en").explanation.useReply
+          button.textContent === EXPLANATION.suggestedReplies[0]?.label
       );
 
       if (reply === undefined) {
@@ -274,17 +260,17 @@ describe("explanation language integration", () => {
         localNotice: container.textContent.includes(words.localLanguageNotice),
         method: container.textContent.includes(words.local.chosen),
         original: quote?.textContent,
-        reply: container.textContent.includes(REPLY),
+        reply: reply.getAttribute("aria-label"),
         samePanel: container.querySelector("section") === panel,
         sameQuote: container.querySelector("blockquote") === quote,
-        title: container.querySelector("h2")?.textContent,
+        title: container.querySelector("section")?.getAttribute("aria-label"),
       }).toStrictEqual({
         focus: true,
         localLanguage: "en",
         localNotice: id !== "en",
         method: true,
         original: `“${ORIGINAL}”`,
-        reply: true,
+        reply: words.replyLabelFor("Thanks"),
         samePanel: true,
         sameQuote: true,
         title: words.title,
@@ -301,7 +287,7 @@ describe("explanation language integration", () => {
       expect(useReply).toHaveBeenCalledExactlyOnceWith(REPLY);
 
       const read = [...container.querySelectorAll("button")].find(
-        (button) => button.textContent === words.readAloud
+        (button) => button.textContent === messagesFor(id).common.readAloud
       );
 
       if (read === undefined) {

@@ -7,8 +7,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Nada foi preparado porque o pedido estava vazio.",
   inputLabel: "Com o que você gostaria de ajuda?",
   lifeLinkSaid: "O LifeLink disse: ",
-  listening:
-    "Ouvindo. Suas palavras aparecerão no campo; pressione Enviar quando estiverem corretas.",
   microphoneBusy:
     "Outro aplicativo está usando o microfone. Feche-o e tente novamente ou digite.",
   microphoneDenied:
@@ -16,10 +14,6 @@ const voice: Messages["voice"] = {
   microphoneFailed: "O microfone não iniciou. Tente novamente ou digite.",
   microphoneMissing:
     "Nenhum microfone foi encontrado. Confira se há um conectado ou digite.",
-  network:
-    "O ditado por voz precisa de conexão com a internet agora. Por favor, digite.",
-  noSpeech:
-    "Não ouvi nada. Pressione Falar e tente novamente um pouco mais perto do microfone.",
   offlineFailed:
     "Não foi possível salvar este pedido sem conexão. Suas palavras continuam aqui. Tente novamente quando a conexão voltar.",
   opening: "Abrindo um espaço para sua mensagem",
@@ -45,8 +39,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "A verificação de chamada foi interrompida.",
   send: "Enviar",
   sending: "Enviando",
-  serviceDenied:
-    "O ditado por voz está desativado neste navegador. Por favor, digite.",
   speak: "Falar",
   speakHint:
     "Pressione Falar para falar em vez de digitar. Nada é enviado até você aprovar.",
@@ -56,7 +48,7 @@ const voice: Messages["voice"] = {
   talking:
     "Você está conversando com o LifeLink. Tudo o que ele preparar aparecerá na tela para você aprovar.",
   unavailable:
-    "A voz não está disponível neste navegador, então digite. Nada é enviado até você aprovar.",
+    "A voz não está disponível agora, então digite. Nada é enviado até você aprovar.",
   voiceStopped: "A voz foi interrompida.",
   youSaid: "Você disse: ",
 };

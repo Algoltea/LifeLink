@@ -1,5 +1,5 @@
 import type { MessageExplanation } from "@lifelink/contracts/model-output";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { api, internal } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
@@ -132,7 +132,8 @@ describe("explaining a received message", () => {
     });
   });
 
-  it("never sends Practice messages to the cloud", async () => {
+  it("reads Practice messages with the cloud assistant too", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
     const backend = newBackend();
 
     const { contactId, owner, ownerId } = await ownerWithContact(backend, true);
@@ -140,11 +141,13 @@ describe("explaining a received message", () => {
     const messageId = await received(backend, ownerId, contactId, "simulated");
     const explanation = await explain(owner, messageId, true);
 
+    vi.unstubAllEnvs();
     expect(explanation).toMatchObject({
-      cloudRequested: false,
-      localReason: "practice",
-      method: "local",
+      cloudRequested: true,
+      localReason: null,
+      method: "cloud",
       mode: "simulated",
+      status: "explaining",
     });
   });
 

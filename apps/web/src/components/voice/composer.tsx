@@ -17,12 +17,10 @@ import { toast } from "sonner";
 import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
-import { useLocale, useMessages } from "@/i18n/locale";
+import { useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
-import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
-import { dictationAvailable, startDictation } from "./dictation";
 import {
   MicrophoneError,
   prepareAudio,
@@ -36,7 +34,7 @@ interface Caption {
   who: "assistant" | "you";
 }
 
-type VoiceState = "connecting" | "dictating" | "idle" | "live";
+type VoiceState = "connecting" | "idle" | "live";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -48,10 +46,6 @@ const voiceHintFor = (
 ): string => {
   if (!available) {
     return t.unavailable;
-  }
-
-  if (voice === "dictating") {
-    return t.listening;
   }
 
   if (voice === "live" || voice === "connecting") {
@@ -113,7 +107,6 @@ const ComposerSession = ({
   onSubmitted,
   threadId,
 }: ComposerProps & { threadId: string }) => {
-  const locale = useLocale();
   const t = useMessages().voice;
   const submit = useMutation(api.assistant.submitRequest);
   const createLive = useAction(api.voice.createLiveSession);
@@ -129,13 +122,11 @@ const ComposerSession = ({
   const [voice, setVoice] = useState<VoiceState>("idle");
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [speaking, setSpeaking] = useState(false);
-  const canDictate = useBrowserCapability(dictationAvailable);
   const live = useRef<LiveHandle | null>(null);
   // The microphone while a live session is still connecting; Stop and unmount release it.
   const pendingRig = useRef<AudioRig | null>(null);
   // Ends a microphone request still waiting on the browser's permission prompt.
   const voiceAbort = useRef<AbortController | null>(null);
-  const dictation = useRef<{ stop: () => void } | null>(null);
   const captionId = useRef(0);
   const inputId = useId();
   const hintId = useId();
@@ -157,7 +148,6 @@ const ComposerSession = ({
       voiceAbort.current?.abort();
       pendingRig.current?.release();
       live.current?.stop();
-      dictation.current?.stop();
     };
   }, []);
 
@@ -233,8 +223,6 @@ const ComposerSession = ({
     pendingRig.current = null;
     live.current?.stop();
     live.current = null;
-    dictation.current?.stop();
-    dictation.current = null;
     setVoice("idle");
     setSpeaking(false);
   };
@@ -341,28 +329,10 @@ const ComposerSession = ({
             : t.startFailed(errorText(error))
         );
       }
-
-      return;
-    }
-
-    if (canDictate) {
-      dictation.current = startDictation(
-        (heard) => setText(heard),
-        (problem) => {
-          dictation.current = null;
-          setVoice("idle");
-
-          if (problem) {
-            setVoiceError(problem);
-          }
-        },
-        locale
-      );
-      setVoice(dictation.current === null ? "idle" : "dictating");
     }
   };
 
-  const voiceAvailable = (liveConfigured && online) || canDictate;
+  const voiceAvailable = liveConfigured && online;
   const listening = voice !== "idle";
 
   const voiceHint = voiceHintFor(voice, voiceAvailable, t);
