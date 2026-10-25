@@ -184,6 +184,8 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
             <form
               aria-describedby={error ? errorId : undefined}
               className="flex flex-col gap-[1.444rem]"
+              // Before hydration, native submission must keep credentials out of the URL.
+              method="post"
               onSubmit={(event) => {
                 event.preventDefault();
                 void submit(new FormData(event.currentTarget));

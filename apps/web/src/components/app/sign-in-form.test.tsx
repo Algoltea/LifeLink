@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { messagesFor, setLocale } from "@/i18n/locale";
@@ -45,6 +46,27 @@ describe("split sign-in form language changes", () => {
     localStorage.clear();
     vi.unstubAllGlobals();
   });
+
+  it.each(["sign-in", "sign-up"] as const)(
+    "keeps %s credentials out of the URL before hydration",
+    (mode) => {
+      container.innerHTML = renderToStaticMarkup(
+        <SignInForm initialMode={mode} />
+      );
+
+      const form = required<HTMLFormElement>("form");
+      expect(form.method).toBe("post");
+      expect(required<HTMLInputElement>('input[name="password"]').form).toBe(
+        form
+      );
+      expect(
+        required<HTMLButtonElement>('button[type="submit"]').hasAttribute(
+          "formmethod"
+        )
+      ).toBeFalsy();
+      expect(fetch).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     {
