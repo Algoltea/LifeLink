@@ -59,7 +59,6 @@ const threads: Messages["threads"] = {
   removePhoto: (name) => `Alisin ang ${name}`,
   replyAdded:
     "Naidagdag ang tugon sa inyong mensahe. Maaari ninyo itong baguhin bago suriin.",
-  review: "Suriin",
   reviewAndSend: "Suriin at ipadala",
   reviewIt: "Suriin ito",
   seeWhatHappened: "Tingnan ang nangyari",

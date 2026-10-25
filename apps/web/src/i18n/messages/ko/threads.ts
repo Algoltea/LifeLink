@@ -59,7 +59,6 @@ const threads: Messages["threads"] = {
   recapThis: " — 이 대화",
   removePhoto: (name) => `${name} 삭제`,
   replyAdded: "답장을 메시지에 추가했습니다. 검토 전에 수정하실 수 있습니다.",
-  review: "검토",
   reviewAndSend: "검토하고 보내기",
   reviewIt: "검토하기",
   seeWhatHappened: "결과 보기",

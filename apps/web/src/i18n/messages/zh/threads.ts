@@ -55,7 +55,6 @@ const threads: Messages["threads"] = {
   recapThis: "这段对话",
   removePhoto: (name: string) => `移除 ${name}`,
   replyAdded: "回复已添加到您的消息中。查看并核对前，您可以修改。",
-  review: "查看并核对",
   reviewAndSend: "核对并发送",
   reviewIt: "查看并核对",
   seeWhatHappened: "查看结果",

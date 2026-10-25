@@ -57,7 +57,7 @@ const errorText = (cause: unknown): string =>
 
 /** The pill buttons in the composer row; they drop their words in a narrow composer. */
 const ROW_BUTTON =
-  "border-border text-label hover:bg-parchment min-h-control min-w-control inline-flex items-center justify-center gap-2 rounded-full border px-3 font-medium transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent @lg/composer:pr-4";
+  "border-border text-label hover:bg-parchment min-h-control min-w-control inline-flex items-center justify-center gap-2 rounded-full border px-3 font-medium transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent @md/composer:pr-4";
 
 interface Dictation {
   stop: () => void;
@@ -142,7 +142,7 @@ const SpeakButton = ({
       ) : (
         <MicIcon aria-hidden="true" className="size-5" />
       )}
-      <span className="hidden @lg/composer:inline">{label}</span>
+      <span className="hidden @md/composer:inline">{label}</span>
     </button>
   );
 };
@@ -346,37 +346,26 @@ const MessageComposer = ({
             ) : (
               <ImagePlusIcon aria-hidden="true" className="size-5" />
             )}
-            <span className="hidden @lg/composer:inline">
+            <span className="hidden @md/composer:inline">
               {uploading ? t.addingPhoto : t.addPhoto}
             </span>
           </button>
           <Button
             aria-busy={busy}
             aria-label={busy ? t.preparingMessage : t.reviewAndSend}
-            className="ml-auto rounded-full py-1 pr-1.5 pl-4 text-[0.889rem] disabled:border-transparent sm:pl-5"
+            className="ml-auto rounded-full disabled:border-transparent"
             disabled={busy || uploading || empty || !canReach}
+            size="icon"
             type="submit"
           >
             {busy ? (
-              t.preparing
+              <LoaderCircleIcon
+                aria-hidden="true"
+                className="motion-safe:animate-spin"
+              />
             ) : (
-              <>
-                <span className="@md/composer:hidden">{t.review}</span>
-                <span className="hidden @md/composer:inline">
-                  {t.reviewAndSend}
-                </span>
-              </>
+              <ArrowUpIcon aria-hidden="true" />
             )}
-            <span
-              aria-hidden="true"
-              className="bg-primary-foreground/20 flex size-8 items-center justify-center rounded-full"
-            >
-              {busy ? (
-                <LoaderCircleIcon className="size-[1.125rem] motion-safe:animate-spin" />
-              ) : (
-                <ArrowUpIcon className="size-[1.125rem]" />
-              )}
-            </span>
           </Button>
         </div>
       </div>

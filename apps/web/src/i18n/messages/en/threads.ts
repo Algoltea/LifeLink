@@ -58,7 +58,6 @@ const threads = {
   removePhoto: (name: string) => `Remove ${name}`,
   replyAdded:
     "Reply added to your message. You can change it before reviewing.",
-  review: "Review",
   reviewAndSend: "Review and send",
   reviewIt: "Review it",
   seeWhatHappened: "See what happened",

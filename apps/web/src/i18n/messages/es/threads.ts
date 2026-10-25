@@ -59,7 +59,6 @@ const threads: Messages["threads"] = {
   removePhoto: (name) => `Quitar ${name}`,
   replyAdded:
     "Se agregó la respuesta a su mensaje. Puede cambiarla antes de revisarla.",
-  review: "Revisar",
   reviewAndSend: "Revisar y enviar",
   reviewIt: "Revisarlo",
   seeWhatHappened: "Ver qué pasó",
