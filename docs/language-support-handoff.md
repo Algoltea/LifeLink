@@ -1,5 +1,19 @@
 # Language support handoff — October 24, 2026
 
+## Additional language follow-up
+
+PR #16 was merged at `c575d0b`. The follow-up adds French, German, Italian, Brazilian Portuguese, Simplified Chinese, Vietnamese, Korean, and Tagalog, matching all ten cloud-help choices. It uses the same core-screen coverage as English and Spanish, including translated fixed messages and new recipient-language templates. Canonical artwork credits, original quotes/transcripts, authored content, approved bodies, and fingerprints remain unchanged.
+
+Locale selection follows stored account/device choices or the browser. `fil` maps to Tagalog, Portuguese uses `pt-BR`, and explicit Traditional Chinese tags fall back to English unless Simplified script is explicitly selected. Browser speech recognition is requested in the selected locale; actual provider and device language availability still needs live verification.
+
+The public welcome page, Mahjong, static browser-tab metadata, and standalone offline fallback remain in English. Local detection and Practice request parsing remain English-only, cached briefings keep their original language, and unknown provider diagnostics pass through verbatim. Translations have not received native-speaker review. The Vercel preview still requires its own configured `NEXT_PUBLIC_CONVEX_URL`; this work does not change deployment settings or send real messages.
+
+Integrated main at `6a1fad9`, including its approved email-reply flow. All ten languages distinguish review-and-send from saving a draft; approval identity and original reply content remain intact. Catalogs match the English typed fields and Spanish dynamic dictionaries, including 219 fixed server messages and 21 bounded recognizers per translated locale. Review corrected Chinese empty-column numbering and dictation recovery text after an interface-language change.
+
+**Verification:** `bun run check`, `bun run check-types`, `bun run test` (**1,285 tests**), and `bun run build` pass on the integrated follow-up. The build uses local public endpoint URLs without deploying functions. Production browser checks use a read-only signed-out auth fixture: all eight new languages render sign-in at desktop and 390px widths, account creation at 390px, and Solitaire at 390px without page-level horizontal overflow or console errors. Korean Solitaire restores the exact game and undo history after an offline reload. Browser defaults, saved-choice precedence, `fil-PH`, Simplified-script precedence, Traditional-Chinese/unsupported fallback, and blocked storage are verified. Visual review found and corrected wrapping within Chinese/Korean password-toggle labels; final 320px sign-in checks keep all eight labels on one line with usable inputs and no page overflow. Local screenshots and results are in ignored `.taste-skill/languages/`.
+
+Signed-in backend journeys, real messaging, live microphones/speech synthesis, and cloud language quality remain outside browser verification; automated tests cover locale persistence, settings drafts/focus, template selection, source preservation, and exact approval replay. The PR #16 evidence below applies to that earlier merged checkpoint.
+
 ## PR 16 follow-up
 
 This section supersedes the packaging checkpoint and historical resume checklist below.

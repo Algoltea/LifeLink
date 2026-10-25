@@ -19,7 +19,7 @@ const supportLanguages = [
   { id: "de", label: "Deutsch", name: "German" },
   { id: "it", label: "Italiano", name: "Italian" },
   { id: "pt", label: "Português", name: "Portuguese" },
-  { id: "zh", label: "中文", name: "Chinese (Simplified)" },
+  { id: "zh", label: "中文（简体）", name: "Chinese (Simplified)" },
   { id: "vi", label: "Tiếng Việt", name: "Vietnamese" },
   { id: "ko", label: "한국어", name: "Korean" },
   { id: "tl", label: "Tagalog", name: "Tagalog" },

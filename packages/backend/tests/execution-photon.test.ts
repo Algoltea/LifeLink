@@ -421,83 +421,90 @@ describe("Photon execution uses the approved contact's shared-line route", () =>
     ]);
   });
 
-  it("replays the captured Spanish introduction without changing approved words or fingerprints", async () => {
-    const backend = newBackend();
+  it.each(["es", "fr", "de", "it", "pt", "zh", "vi", "ko", "tl"] as const)(
+    "replays the captured %s introduction without changing approved words or fingerprints",
+    async (language) => {
+      const backend = newBackend();
 
-    const { contactId, owner, ownerId } = await ownerWithContact(
-      backend,
-      false
-    );
+      const { contactId, owner, ownerId } = await ownerWithContact(
+        backend,
+        false
+      );
 
-    await enroll(backend, ownerId, contactId, ROUTE);
-    await owner.mutation(api.profiles.updatePreferences, {
-      supportLanguage: "es",
-    });
+      await enroll(backend, ownerId, contactId, ROUTE);
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: "en",
+      });
 
-    const approvedBody =
-      "Hola, Sam.\n¿Puedes llevarme a Clínica Central? — Ruth";
+      await backend.run(
+        async (ctx) => await ctx.db.patch(contactId, { language })
+      );
 
-    const actionId = await approveMessage(owner, contactId, [], approvedBody);
+      const approvedBody =
+        "Hola, Sam.\n¿Puedes llevarme a Clínica Central? — Ruth";
 
-    const approved = await backend.run(async (ctx) => ({
-      approvals: await ctx.db.query("approvals").collect(),
-      versions: await ctx.db.query("actionVersions").collect(),
-    }));
+      const actionId = await approveMessage(owner, contactId, [], approvedBody);
 
-    const start = await backend.mutation(internal.execution.begin, {
-      actionId,
-    });
+      const approved = await backend.run(async (ctx) => ({
+        approvals: await ctx.db.query("approvals").collect(),
+        versions: await ctx.db.query("actionVersions").collect(),
+      }));
 
-    if (!start.ok) {
-      throw new Error(start.reason);
+      const start = await backend.mutation(internal.execution.begin, {
+        actionId,
+      });
+
+      if (!start.ok) {
+        throw new Error(start.reason);
+      }
+
+      expect(start.imessageIntroduction).toBe(
+        imessageIntroduction("Ruth Alvarez", language)
+      );
+      await backend.mutation(internal.execution.complete, {
+        attemptId: start.attemptId,
+        handleCache: null,
+        result: { error: "Provider response timed out.", kind: "unknown" },
+      });
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: "de",
+      });
+      await backend.run(
+        async (ctx) => await ctx.db.patch(contactId, { language: "en" })
+      );
+      sdk.sendText.mockResolvedValue({
+        guid: "localized-replay",
+        sendErrorCode: 0,
+      });
+
+      await expect(
+        backend.action(internal.execution.reconcile, { actionId })
+      ).resolves.toBe("went_through");
+      expect(sdk.sendText).toHaveBeenCalledExactlyOnceWith(
+        ROUTE.spaceId,
+        withIntroduction(
+          imessageIntroduction("Ruth Alvarez", language),
+          approvedBody
+        ),
+        { clientMessageId: start.idempotencyKey }
+      );
+
+      const after = await backend.run(async (ctx) => ({
+        approvals: await ctx.db.query("approvals").collect(),
+        versions: await ctx.db.query("actionVersions").collect(),
+      }));
+
+      expect(after).toStrictEqual(approved);
+
+      const outgoing = await backend.run(
+        async (ctx) => await ctx.db.query("messages").collect()
+      );
+
+      expect(outgoing).toMatchObject([
+        { body: approvedBody, direction: "outgoing" },
+      ]);
     }
-
-    expect(start.imessageIntroduction).toBe(
-      imessageIntroduction("Ruth Alvarez", "es")
-    );
-    await backend.mutation(internal.execution.complete, {
-      attemptId: start.attemptId,
-      handleCache: null,
-      result: { error: "Provider response timed out.", kind: "unknown" },
-    });
-    await owner.mutation(api.profiles.updatePreferences, {
-      supportLanguage: "en",
-    });
-    await backend.run(
-      async (ctx) => await ctx.db.patch(contactId, { language: "en" })
-    );
-    sdk.sendText.mockResolvedValue({
-      guid: "spanish-replay",
-      sendErrorCode: 0,
-    });
-
-    await expect(
-      backend.action(internal.execution.reconcile, { actionId })
-    ).resolves.toBe("went_through");
-    expect(sdk.sendText).toHaveBeenCalledExactlyOnceWith(
-      ROUTE.spaceId,
-      withIntroduction(
-        imessageIntroduction("Ruth Alvarez", "es"),
-        approvedBody
-      ),
-      { clientMessageId: start.idempotencyKey }
-    );
-
-    const after = await backend.run(async (ctx) => ({
-      approvals: await ctx.db.query("approvals").collect(),
-      versions: await ctx.db.query("actionVersions").collect(),
-    }));
-
-    expect(after).toStrictEqual(approved);
-
-    const outgoing = await backend.run(
-      async (ctx) => await ctx.db.query("messages").collect()
-    );
-
-    expect(outgoing).toMatchObject([
-      { body: approvedBody, direction: "outgoing" },
-    ]);
-  });
+  );
 
   it("reconciles with the captured sender, space and original idempotency key", async () => {
     const { actionId, backend, start } = await unknownAttempt();

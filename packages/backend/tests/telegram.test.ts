@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../convex/_generated/api";
 import { sendTelegramMessage } from "../convex/integrations/telegram";
+import { additionalLanguageCases } from "./additional-language-cases";
 import { newBackend, ownerWithContact } from "./harness";
 
 const TOKEN = "123456:test-token-never-shown";
@@ -124,9 +125,14 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
     );
   });
 
-  it.each(["es-MX", "fr"])(
-    "uses Telegram's %s language before linking",
-    async (language) => {
+  it.each([
+    { greeting: "¡Hola Sam!", language: "es-MX" },
+    ...additionalLanguageCases,
+    { greeting: "Kumusta, Sam", language: "fil-PH" },
+    { greeting: "Hi Sam!", language: "xx" },
+  ])(
+    "uses Telegram's $language language before linking",
+    async ({ language, greeting }) => {
       vi.useFakeTimers();
       const backend = newBackend();
       const message = update("/start", 999_999, null);
@@ -138,9 +144,7 @@ describe("Telegram linking and replies", { timeout: 30_000 }, () => {
       expect(fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          body: expect.stringContaining(
-            language === "es-MX" ? "¡Hola Sam!" : "Hi Sam!"
-          ),
+          body: expect.stringContaining(greeting),
         })
       );
     }

@@ -1,0 +1,76 @@
+import type { Messages } from "../en";
+
+const today: Messages["today"] = {
+  addPostalCode: "우편번호 추가",
+  allEmail: "모든 이메일",
+  allMessages: "모든 메시지",
+  appointment: "약속",
+  check: "확인",
+  checkPostalCode: "우편번호 확인",
+  connect: "연결",
+  connectMailbox:
+    "새 이메일을 여기서 보시려면 Gmail 또는 Outlook을 연결해 주세요.",
+  couldNotFindTown: "지역을 찾지 못했습니다",
+  dismissFailed: (error) => `${error} 다시 시도하시려면 완료를 눌러 주세요.`,
+  fromFamily: "가족과 친구의 소식",
+  gettingStarted: "시작하기",
+  gettingStartedHint: "각 단계를 마치시면 완료로 표시됩니다.",
+  hideSteps: "이 단계 숨기기",
+  latestEmail: "최근 이메일",
+  loadingBriefing: "하루 요약을 불러오는 중",
+  loadingToday: "오늘 화면을 불러오는 중",
+  messages: "메시지",
+  messagesFrom: (names) => `지난 이틀 동안 ${names}에게서 메시지가 왔습니다.`,
+  newMessage: "새 메시지",
+  news: "뉴스",
+  newsGood: "좋은 소식",
+  newsMoreFrom: (source) => `${source}의 다른 기사`,
+  newsOpensNewTab: ", 새 탭에서 열림",
+  newsSourceFrom: ", 출처: ",
+  newsTop: "주요 뉴스",
+  newsType: "뉴스 종류",
+  newsUnavailable:
+    "지금은 뉴스를 불러올 수 없습니다. 나중에 다시 시도해 주세요.",
+  nextAppointment: (title, when, time) =>
+    `다음 약속은 ${when} ${time}, ${title}입니다.`,
+  noAppointments: "이번 주에 예정된 약속이 없습니다.",
+  noEmail: "새 이메일이 없습니다.",
+  noMessages: "지난 이틀 동안 새 메시지가 없습니다.",
+  noSubject: "제목 없음",
+  nothingBooked: "이번 주에 예약된 일정이 없습니다.",
+  onDay: (day) => `${day}`,
+  openForDetails: "열어서 자세히 보기",
+  possibleScam: "사기일 수 있음",
+  readMyDay: "오늘 일정 소리 내어 읽기",
+  reminder: "알림",
+  remindersDue: (count) => `알림 ${count}건의 시간이 되었습니다.`,
+  rideConfirmed: (name) => `${name} 님과 함께 가는 차편이 확정되었습니다`,
+  seeWeather: "약속 날짜의 날씨 보기",
+  steps: {
+    askAction: "LifeLink에 물어보기",
+    askDescription:
+      "“다섯 시에 화분에 물 주라고 알려 주세요”처럼 요청해 보세요. 실행하기 전에 내용을 검토하실 수 있습니다.",
+    askTitle: "도움 요청하기",
+    emailAction: "이메일 연결",
+    emailDescription:
+      "LifeLink가 함께 읽고 사기로 의심되는 부분을 알려드립니다.",
+    emailTitle: "이메일 연결하기",
+    locationAction: "우편번호 추가",
+    locationDescription:
+      "LifeLink가 오늘 화면과 각 약속 옆에 날씨를 보여드립니다.",
+    locationTitle: "우편번호 추가하기",
+    trustedAction: "사람 추가",
+    trustedDescription:
+      "차편을 도와줄 사람과 그 사람이 볼 수 있는 내용을 직접 정하세요. 결정은 언제나 본인이 하십니다.",
+    trustedTitle: "믿을 수 있는 사람 추가하기",
+  },
+  title: "오늘",
+  titlePrefix: "오늘: ",
+  todayLower: "오늘",
+  tomorrowLower: "내일",
+  weatherHigh: ", 최고 ",
+  weatherPrefix: ", 날씨: ",
+  yourWeek: "이번 주 일정",
+};
+
+export { today };

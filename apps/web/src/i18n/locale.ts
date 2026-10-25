@@ -7,9 +7,17 @@ import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { useSyncExternalStore } from "react";
 
 import { LOCALE_STORAGE_KEY } from "./boot";
+import { de } from "./messages/de";
 import { en } from "./messages/en";
 import type { Messages } from "./messages/en";
 import { es } from "./messages/es";
+import { fr } from "./messages/fr";
+import { it } from "./messages/it";
+import { ko } from "./messages/ko";
+import { pt } from "./messages/pt";
+import { tl } from "./messages/tl";
+import { vi } from "./messages/vi";
+import { zh } from "./messages/zh";
 
 /**
  * The language LifeLink's screens are written in. The signed-in choice is
@@ -17,7 +25,18 @@ import { es } from "./messages/es";
  * the same language before the account loads. Without a saved choice, the
  * browser's language decides.
  */
-const CATALOGS: Record<InterfaceLocale, Messages> = { en, es };
+const CATALOGS: Record<InterfaceLocale, Messages> = {
+  de,
+  en,
+  es,
+  fr,
+  it,
+  ko,
+  pt,
+  tl,
+  vi,
+  zh,
+};
 
 const readStoredLocale = (): InterfaceLocale => {
   let saved: string | null = null;

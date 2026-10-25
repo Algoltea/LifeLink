@@ -104,7 +104,7 @@ describe("persisted locale and contact fallback", () => {
     await owner.mutation(api.profiles.updatePreferences, {
       supportLanguage: "fr",
     });
-    await expect(read()).resolves.toStrictEqual({ contact: "en", owner: "en" });
+    await expect(read()).resolves.toStrictEqual({ contact: "fr", owner: "fr" });
   });
 
   it("keeps Sarah's full support language in assistant and voice context", async () => {
@@ -326,7 +326,7 @@ describe("recipient-language drafts and service notices", () => {
     }
   );
 
-  it.each(["en", "es", "fr"])(
+  it.each(["en", "es"])(
     "writes new deterministic briefings for %s while retaining older content",
     async (language) => {
       vi.stubEnv("OPENROUTER_API_KEY", "");

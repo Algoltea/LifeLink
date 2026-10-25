@@ -2,6 +2,7 @@ import { register } from "@convex-dev/agent/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, internal } from "../convex/_generated/api";
+import { additionalLanguageCases } from "./additional-language-cases";
 import { newBackend, ownerWithContact } from "./harness";
 import type { Backend, Person } from "./harness";
 
@@ -34,7 +35,7 @@ describe("assistant language and deterministic fallbacks", () => {
   it.each([
     { expected: "Puede escribir a su familia desde Mensajes.", language: "es" },
     { expected: "The assistant is not set up yet", language: "en" },
-    { expected: "The assistant is not set up yet", language: "fr" },
+    { expected: "L'assistant n'est pas encore configuré", language: "fr" },
   ])(
     "uses the $language fixed fallback without cloud support",
     async ({ language, expected }) => {
@@ -165,4 +166,127 @@ describe("assistant language and deterministic fallbacks", () => {
       taskId: null,
     });
   });
+
+  it.each(additionalLanguageCases)(
+    "uses $language for missing configuration, Practice limitations and invalid proposals",
+    async ({ language, noAssistant, englishOnly, invalid }) => {
+      const backend = newBackend();
+      register(backend);
+      const { owner, ownerId } = await ownerWithContact(backend, false);
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: language,
+      });
+      const original = "¿Puede ayudarme? 原文";
+      const first = await submit(backend, owner, original);
+
+      const firstReply = first.page.find(
+        (message) => message.role === "assistant"
+      );
+
+      expect(first.page).toMatchObject(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: "assistant",
+            text: expect.stringContaining(noAssistant),
+          }),
+          expect.objectContaining({ role: "user", text: original }),
+        ])
+      );
+      await backend.run(
+        async (ctx) => await ctx.db.patch(ownerId, { demoMode: true })
+      );
+      const second = await submit(backend, owner, original);
+      expect(
+        second.page
+          .filter((message) => message.role === "assistant")
+          .map((message) => message.text)
+      ).toContain(firstReply?.text);
+      expect(
+        second.page.some(
+          (message) =>
+            message.role === "assistant" && message.text.includes(englishOnly)
+        )
+      ).toBeTruthy();
+      await expect(
+        backend.run(async (ctx) => await ctx.db.query("actions").collect())
+      ).resolves.toStrictEqual([]);
+
+      const result = await backend.mutation(
+        internal.assistant.applyProposalForOwner,
+        {
+          channel: "text",
+          model: "test",
+          ownerId,
+          proposalJson: "{}",
+          request: original,
+        }
+      );
+
+      expect(result).toStrictEqual({
+        actionId: null,
+        message: expect.stringContaining(invalid),
+        taskId: null,
+      });
+    }
+  );
+
+  it.each(
+    additionalLanguageCases.flatMap((language) => [
+      { ...language, transport: "HTTP 400" },
+      { ...language, transport: "SSE" },
+    ])
+  )(
+    "keeps original $transport provider diagnostics inside a $language response",
+    async ({ language, name, failed, transport }) => {
+      vi.stubEnv("OPENROUTER_API_KEY", "test-only-key");
+      const detail = "Original provider diagnostic — 原文: request_id=abc123";
+      const error = { code: 429, message: detail };
+
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          transport === "HTTP 400"
+            ? Response.json({ error }, { status: 400 })
+            : new Response(
+                `data: ${JSON.stringify({ error })}\n\ndata: [DONE]\n\n`,
+                { headers: { "Content-Type": "text/event-stream" } }
+              )
+        );
+
+      vi.stubGlobal("fetch", fetchMock);
+      const backend = newBackend();
+      register(backend);
+      const { owner, contactId } = await ownerWithContact(backend, false);
+      await owner.mutation(api.profiles.updatePreferences, {
+        supportLanguage: language,
+      });
+      await backend.run(
+        async (ctx) => await ctx.db.patch(contactId, { language: "es" })
+      );
+
+      const transcript = await submit(
+        backend,
+        owner,
+        "Original user request — 原文"
+      );
+
+      const reply = transcript.page.find(
+        (message) =>
+          message.role === "assistant" && message.text.includes(detail)
+      );
+
+      expect(reply?.text).toContain(failed);
+      expect(reply?.text).toContain(detail);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const requestBody = fetchMock.mock.calls[0]?.[1]?.body;
+
+      for (const part of [
+        `Reply in ${name}`,
+        "recipient's language",
+        "Spanish",
+      ]) {
+        expect(requestBody).toContain(part);
+      }
+    }
+  );
 });

@@ -3,7 +3,10 @@
  * only fills the text box; the person still presses Ask.
  */
 
-import { currentIntlLocale, currentMessages } from "@/i18n/locale";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
+
+import { getLocale, messagesFor } from "@/i18n/locale";
 
 interface RecognitionResult {
   0: { transcript: string };
@@ -63,7 +66,7 @@ interface DictationHandle {
 
 /** Plain words for the browser's dictation error codes; null when nothing went wrong. */
 const dictationProblem = (error: string): string => {
-  const t = currentMessages().voice;
+  const t = messagesFor(getLocale()).voice;
 
   const problems = new Map([
     ["audio-capture", t.microphoneMissing],
@@ -79,7 +82,8 @@ const dictationProblem = (error: string): string => {
 /** onEnd receives a plain explanation when dictation stopped because of a problem. */
 const startDictation = (
   onText: (text: string, final: boolean) => void,
-  onEnd: (problem: string | null) => void
+  onEnd: (problem: string | null) => void,
+  locale: InterfaceLocale = getLocale()
 ): DictationHandle | null => {
   const Constructor = recognitionConstructor();
 
@@ -90,7 +94,7 @@ const startDictation = (
   const recognition = new Constructor();
   let problem: string | null = null;
 
-  recognition.lang = currentIntlLocale();
+  recognition.lang = intlLocaleOf(locale);
   recognition.interimResults = true;
   recognition.continuous = false;
   recognition.addEventListener("result", (event: RecognitionEvent) => {
@@ -113,7 +117,7 @@ const startDictation = (
   try {
     recognition.start();
   } catch {
-    onEnd(currentMessages().voice.dictationStopped);
+    onEnd(messagesFor(getLocale()).voice.dictationStopped);
 
     return null;
   }

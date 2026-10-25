@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { api } from "../convex/_generated/api";
+import { additionalLanguageCases } from "./additional-language-cases";
 import { newBackend, signUp } from "./harness";
 
 const SPANISH_REQUEST =
@@ -29,7 +30,11 @@ const localReview = async (text: string, supportLanguage: string) => {
 };
 
 describe("English-only local scam rule limitations", () => {
-  it.each(["en", "es"])(
+  it.each([
+    "en",
+    "es",
+    ...additionalLanguageCases.map(({ language }) => language),
+  ])(
     "misses the Spanish request even with %s preferences, without calling it safe",
     async (supportLanguage) => {
       // This records a known detection gap, not evidence that the request is safe.

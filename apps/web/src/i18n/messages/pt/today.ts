@@ -1,0 +1,78 @@
+import type { Messages } from "../en";
+
+const today: Messages["today"] = {
+  addPostalCode: "Adicione seu código postal",
+  allEmail: "Todos os e-mails",
+  allMessages: "Todas as mensagens",
+  appointment: "Compromisso",
+  check: "Verificar",
+  checkPostalCode: "Confira seu código postal",
+  connect: "Conectar",
+  connectMailbox: "Conecte o Gmail ou o Outlook para ver novos e-mails aqui.",
+  couldNotFindTown: "Não encontramos sua cidade",
+  dismissFailed: (error) =>
+    `${error} Pressione Concluído para tentar novamente.`,
+  fromFamily: "Da família e dos amigos",
+  gettingStarted: "Primeiros passos",
+  gettingStartedHint:
+    "Cada passo é marcado como concluído quando você termina.",
+  hideSteps: "Ocultar estes passos",
+  latestEmail: "E-mails mais recentes",
+  loadingBriefing: "Carregando seu resumo",
+  loadingToday: "Carregando Hoje",
+  messages: "Mensagens",
+  messagesFrom: (names) =>
+    `Você recebeu mensagens de ${names} nos últimos dois dias.`,
+  newMessage: "Nova mensagem",
+  news: "Notícias",
+  newsGood: "Boas notícias",
+  newsMoreFrom: (source) => `Mais de ${source}`,
+  newsOpensNewTab: ", abre em uma nova aba",
+  newsSourceFrom: ", de ",
+  newsTop: "Principais notícias",
+  newsType: "Tipo de notícias",
+  newsUnavailable:
+    "As notícias não estão disponíveis agora. Tente novamente mais tarde.",
+  nextAppointment: (title, when, time) =>
+    `Seu próximo compromisso é ${title} ${when} às ${time}.`,
+  noAppointments: "Você não tem compromissos agendados nesta semana.",
+  noEmail: "Nenhum e-mail novo.",
+  noMessages: "Nenhuma mensagem nova nos últimos dois dias.",
+  noSubject: "Sem assunto",
+  nothingBooked: "Nada agendado nesta semana.",
+  onDay: (day) => `em ${day}`,
+  openForDetails: "Abrir para ver detalhes",
+  possibleScam: "Possível golpe",
+  readMyDay: "Ler meu dia em voz alta",
+  reminder: "Lembrete",
+  remindersDue: (count) =>
+    `${count} ${count === 1 ? "lembrete para agora" : "lembretes para agora"}.`,
+  rideConfirmed: (name) => `Carona com ${name}, confirmada`,
+  seeWeather: "Veja o tempo para seus compromissos",
+  steps: {
+    askAction: "Perguntar ao LifeLink",
+    askDescription:
+      "Experimente “Lembre-me de regar as plantas às cinco”. Você revisará tudo antes que aconteça.",
+    askTitle: "Peça uma ajuda",
+    emailAction: "Conectar e-mail",
+    emailDescription: "O LifeLink lê com você e aponta o que parece um golpe.",
+    emailTitle: "Conecte seu e-mail",
+    locationAction: "Adicionar código postal",
+    locationDescription:
+      "O LifeLink mostra o tempo em Hoje e ao lado de cada compromisso.",
+    locationTitle: "Adicione seu código postal",
+    trustedAction: "Adicionar uma pessoa",
+    trustedDescription:
+      "Escolha quem pode ajudar com caronas e o que cada pessoa pode ver. Você continua no controle.",
+    trustedTitle: "Adicione alguém de confiança",
+  },
+  title: "Hoje",
+  titlePrefix: "Hoje: ",
+  todayLower: "hoje",
+  tomorrowLower: "amanhã",
+  weatherHigh: ", máxima ",
+  weatherPrefix: ", tempo: ",
+  yourWeek: "Sua semana",
+};
+
+export { today };

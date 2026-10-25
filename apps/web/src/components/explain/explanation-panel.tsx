@@ -16,9 +16,7 @@ import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
-import { useLocale } from "@/i18n/locale";
-import { explanation as en } from "@/i18n/messages/en/explanation";
-import { explanation as es } from "@/i18n/messages/es/explanation";
+import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 type Explanation = Doc<"messageExplanations">;
@@ -27,17 +25,17 @@ type ExplainSource = { emailId: Id<"emails"> } | { messageId: Id<"messages"> };
 
 type HeadingLevel = 2 | 3;
 
-const catalogs = { en, es };
-
-const useWords = () => catalogs[useLocale()];
+const useWords = () => useMessages().explanation;
 
 const methodWords = (
   explanation: Explanation,
   locale: InterfaceLocale
 ): string =>
   explanation.method === "cloud"
-    ? catalogs[locale].cloud
-    : catalogs[locale].local[explanation.localReason ?? "chosen"];
+    ? messagesFor(locale).explanation.cloud
+    : messagesFor(locale).explanation.local[
+        explanation.localReason ?? "chosen"
+      ];
 
 const contentLanguage = (explanation: Explanation): string =>
   explanation.method === "cloud"
@@ -116,7 +114,7 @@ const spokenText = (
   explanation: Explanation,
   locale: InterfaceLocale
 ): string => {
-  const words = catalogs[locale];
+  const words = messagesFor(locale).explanation;
 
   return [
     explanation.method === "local" ? words.localLanguageNotice : "",
@@ -145,7 +143,7 @@ const sectionsOf = (
   onUseReply: (draft: string) => void,
   locale: InterfaceLocale
 ): Step[] => {
-  const words = catalogs[locale];
+  const words = messagesFor(locale).explanation;
   const language = contentLanguage(explanation);
 
   const steps: Step[] = [
@@ -321,7 +319,7 @@ const ExplanationBody = ({
 }) => {
   const { preferences } = usePreferences();
   const locale = useLocale();
-  const words = catalogs[locale];
+  const words = useWords();
   const steps = sectionsOf(explanation, level, onUseReply, locale);
 
   return (
@@ -435,7 +433,7 @@ const ExplanationPanel = ({
 }) => {
   const explanation = useQuery(api.explanations.forSource, source);
   const locale = useLocale();
-  const words = catalogs[locale];
+  const words = useWords();
   const { me } = usePreferences();
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);

@@ -40,7 +40,7 @@ const settings = {
   helpTitle: "How I like help",
   language: "Language",
   languageDescription:
-    "Choose the language for LifeLink’s screens and cloud help. Core screens are available in English and Spanish; other choices use English screens. Cloud help can use other languages when available. Scam and email checks that use local rules cover only English and can miss scams in other languages. Quotes and messages keep their original words.",
+    "Choose the language for LifeLink’s core screens and cloud help. All ten language choices have translated core screens; a few newer pages still use English. Scam and email checks that use local rules cover only English and can miss scams in other languages. Quotes and messages keep their original words.",
   lessMovement: "Less movement",
   lessMovementDescription: "Turns off sliding and fading.",
   loading: "Loading settings",

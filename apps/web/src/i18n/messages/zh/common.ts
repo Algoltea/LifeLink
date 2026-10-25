@@ -1,0 +1,46 @@
+import type { Messages } from "../en";
+
+const common: Messages["common"] = {
+  back: "返回",
+  cancel: "取消",
+  close: "关闭",
+  done: "完成",
+  edit: "编辑",
+  genericError: "出了点问题。请重试。",
+  genericErrorShort: "出了点问题。",
+  loading: "正在加载",
+  next: "下一步",
+  no: "否",
+  off: "关闭",
+  on: "开启",
+  permissions: {
+    add: "添加",
+    calendar: "查找日期",
+    draft: "草稿",
+    message: "消息",
+    money: "款项",
+    notice: "提醒",
+    post: "发布",
+    read: "阅读",
+    replies: "回复",
+    send: "发送",
+    unavailable: "暂无",
+  },
+  practice: "练习",
+  practiceTitle:
+    "练习模式：没有向外部实际发送任何内容，也没有在 LifeLink 以外保存任何内容。",
+  previous: "上一步",
+  readAloud: "朗读",
+  readAloudPlay: "播放音频",
+  readAloudPreparing: "正在准备音频 · 停止",
+  readAloudReady: "音频已准备好。请按“朗读”收听。",
+  readAloudStop: "停止朗读",
+  remove: "移除",
+  save: "保存",
+  saved: "已保存",
+  saving: "正在保存…",
+  tryAgain: "重试",
+  yes: "是",
+};
+
+export { common };

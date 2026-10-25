@@ -9,10 +9,21 @@ import { PwaRegistration } from "@/components/pwa-registration";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ENV } from "@/env";
 
-// One self-hosted face for headings and body, with an explicit system fallback.
+// Keep the self-hosted face; installed fonts cover Vietnamese accents and CJK
+// without downloading additional font families or requiring a network connection.
 const bodyFont = IBM_Plex_Sans({
   display: "swap",
-  fallback: ["Arial", "sans-serif"],
+  fallback: [
+    "Arial",
+    "Noto Sans",
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    "Noto Sans CJK KR",
+    "sans-serif",
+  ],
   subsets: ["latin"],
   variable: "--font-ibm-plex-sans",
 });

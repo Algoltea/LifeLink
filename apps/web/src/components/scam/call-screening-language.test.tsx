@@ -5,6 +5,7 @@ import {
   callWarningKinds,
 } from "@lifelink/contracts/call-screening";
 import type { CallCaption, CallFlag } from "@lifelink/contracts/call-screening";
+import { interfaceLocales } from "@lifelink/contracts/locale";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { act } from "react";
@@ -127,43 +128,47 @@ describe("call-screening language integration", () => {
     ]).toStrictEqual([es.moneyReason, es.secrecyReason, ORIGINAL_WORDS]);
   });
 
-  it("updates captions and privacy labels without replacing captions, focus, or size choices", () => {
-    render(
-      <>
-        <CallCaptions captions={[caption]} flags={[flag]} practice={false} />
-        <CallPrivacy />
-      </>
-    );
+  it.each(interfaceLocales)(
+    "updates $id captions and privacy labels without replacing captions, focus, or size choices",
+    ({ id }) => {
+      const words = messagesFor(id).callScreening;
+      render(
+        <>
+          <CallCaptions captions={[caption]} flags={[flag]} practice={false} />
+          <CallPrivacy />
+        </>
+      );
 
-    const smaller = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent === en.smaller
-    );
+      const smaller = [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === en.smaller
+      );
 
-    if (smaller === undefined) {
-      throw new Error("Missing smaller captions control");
+      if (smaller === undefined) {
+        throw new Error("Missing smaller captions control");
+      }
+
+      act(() => smaller.click());
+      smaller.focus();
+      const log = container.querySelector('[role="log"]');
+      act(() => setLocale(id));
+
+      expect({
+        focus: document.activeElement === smaller,
+        log: container.querySelector('[role="log"]') === log,
+        original: log?.textContent?.includes(ORIGINAL_WORDS),
+        selected: smaller.getAttribute("aria-pressed"),
+        translated: smaller.textContent,
+      }).toStrictEqual({
+        focus: true,
+        log: true,
+        original: true,
+        selected: "true",
+        translated: words.smaller,
+      });
+      expect(container.textContent).toContain(words.privacy);
+      expect(container.textContent).toContain(words.languageLimit);
     }
-
-    act(() => smaller.click());
-    smaller.focus();
-    const log = container.querySelector('[role="log"]');
-    act(() => setLocale("es"));
-
-    expect({
-      focus: document.activeElement === smaller,
-      log: container.querySelector('[role="log"]') === log,
-      original: log?.textContent?.includes(ORIGINAL_WORDS),
-      selected: smaller.getAttribute("aria-pressed"),
-      translated: smaller.textContent,
-    }).toStrictEqual({
-      focus: true,
-      log: true,
-      original: true,
-      selected: "true",
-      translated: es.smaller,
-    });
-    expect(container.textContent).toContain(es.privacy);
-    expect(container.textContent).toContain(es.languageLimit);
-  });
+  );
 
   it("keeps summary quotes and expanded captions while localizing warnings and read-aloud text", async () => {
     const synthesize = vi

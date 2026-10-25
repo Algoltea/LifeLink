@@ -1,0 +1,51 @@
+import type { Messages } from "../en";
+
+const weather: Messages["weather"] = {
+  closeWeek: "关闭",
+  conditions: {
+    Clear: "晴",
+    Cloudy: "阴",
+    Drizzle: "毛毛雨",
+    Fog: "雾",
+    "Freezing drizzle": "冻毛毛雨",
+    "Freezing rain": "冻雨",
+    "Freezing, watch for ice": "气温低于冰点，请注意结冰",
+    "Heavy drizzle": "较强毛毛雨",
+    "Heavy rain": "大雨",
+    "Heavy showers": "强阵雨",
+    "Heavy snow": "大雪",
+    "Heavy snow showers": "强阵雪",
+    "Icy fog": "冰雾",
+    "Light drizzle": "轻微毛毛雨",
+    "Light rain": "小雨",
+    "Light showers": "小阵雨",
+    "Light snow": "小雪",
+    "Mixed weather": "天气多变",
+    "Mostly clear": "大部晴朗",
+    "Partly cloudy": "局部多云",
+    Rain: "雨",
+    "Rain likely, take a coat": "可能下雨，请带外套",
+    Showers: "阵雨",
+    Snow: "雪",
+    "Snow grains": "米雪",
+    "Snow likely, take care outside": "可能下雪，外出请小心",
+    "Snow showers": "阵雪",
+    "Storms likely": "可能有风暴",
+    Thunderstorms: "雷暴",
+    "Thunderstorms with hail": "雷暴伴冰雹",
+    "Very hot, drink water": "天气炎热，请及时喝水",
+  },
+  dataFrom: "天气数据来自 ",
+  high: "最高 ",
+  highLow: (high: string, low: string) => `· 最高 ${high} 最低 ${low}`,
+  low: "最低 ",
+  practiceSample: "练习用的示例天气。",
+  showWeek: "。显示本周天气",
+  spoken: (temperature: number, now: string) =>
+    `现在 ${temperature} 度，${now}。`,
+  spokenRange: (high: number, low: number) =>
+    `今天最高 ${high} 度，最低 ${low} 度。`,
+  weatherIn: (place: string) => `${place} 的天气`,
+};
+
+export { weather };

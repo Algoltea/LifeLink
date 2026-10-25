@@ -23,6 +23,7 @@ import {
 import type { RecipientMatch } from "./journey";
 import { createAction } from "./lifecycle";
 import { ownerLocale } from "./locale";
+import { proposalMessagesFor } from "./proposal-messages";
 import { DAY, formatDay, formatWhen, parseAbsoluteIso } from "./time";
 
 const UPCOMING_WINDOW = 45 * DAY;
@@ -66,37 +67,16 @@ const ridePreparedMessage = (
   contact: Doc<"contacts"> | null,
   timeZone: string,
   locale: InterfaceLocale
-): string => {
-  if (locale === "es") {
-    const who = contact === null ? "alguien" : firstName(contact.name);
-
-    const when =
-      appointment === null
-        ? ""
-        : ` para ${appointment.title} el ${formatDay(appointment.startsAt, timeZone, intlLocaleOf(locale))}`;
-
-    const next =
-      contact === null || appointment === null
-        ? "Primero, responda a la pregunta en pantalla. Después lea el mensaje y"
-        : "Léalo y";
-
-    return `He preparado un mensaje para pedirle a ${who} que le lleve${when}. ${next} pulse Aprobar cuando esté bien. No se envía nada hasta que lo haga.`;
-  }
-
-  const chosen =
+): string =>
+  proposalMessagesFor(locale).ridePrepared(
+    contact === null ? null : firstName(contact.name),
     appointment === null
-      ? ""
-      : ` for ${appointment.title} on ${formatDay(appointment.startsAt, timeZone)}`;
-
-  const who = contact === null ? "someone" : firstName(contact.name);
-
-  const next =
-    contact === null || appointment === null
-      ? "First, answer the question on screen. Then read the message and"
-      : "Please read it, and";
-
-  return `I've written a message asking ${who} for a ride${chosen}. ${next} press Approve when it looks right. Nothing is sent until you do.`;
-};
+      ? null
+      : {
+          day: formatDay(appointment.startsAt, timeZone, intlLocaleOf(locale)),
+          title: appointment.title,
+        }
+  );
 
 const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, now, owner, proposal } = planning;
@@ -112,11 +92,7 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
     .collect();
 
   if (appointments.length === 0) {
-    return outcome(
-      locale === "es"
-        ? "No veo una cita próxima. Añádala en Hoy o abra un correo sobre ella, y puedo pedirle a alguien que le lleve."
-        : "I don't see an appointment coming up. Add it on Today first, or open an email about it, and I can ask someone for a ride."
-    );
+    return outcome(proposalMessagesFor(locale).noAppointment);
   }
 
   const proposedAppointment =
@@ -138,18 +114,12 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
 
   if (recipient !== undefined && match.kind === "none") {
     return outcome(
-      locale === "es"
-        ? `No encontré a ${recipient.nameAsSaid} entre las personas de confianza a quienes puede escribir. Puede añadirla en Círculo de confianza.`
-        : `I couldn't find ${recipient.nameAsSaid} among the trusted people you can message. You can add them under Trusted circle.`
+      proposalMessagesFor(locale).missingTrustedContact(recipient.nameAsSaid)
     );
   }
 
   if (reachable.length === 0) {
-    return outcome(
-      locale === "es"
-        ? "Aún no puede escribir a nadie de su círculo. Añada una forma de contacto en Círculo de confianza."
-        : "Nobody in your trusted circle can be messaged yet. Add a way to reach them under Trusted circle."
-    );
+    return outcome(proposalMessagesFor(locale).noTrustedRoute);
   }
 
   const contact = match.kind === "one" ? match.contact : null;
@@ -184,18 +154,10 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
   const body = proposal.messageDraft?.trim() ?? "";
 
   if (match.kind === "none" || body.length === 0) {
-    if (locale === "es") {
-      return outcome(
-        recipient === undefined
-          ? "¿A quién le gustaría escribir?"
-          : `No encontré a ${recipient.nameAsSaid} en sus contactos.`
-      );
-    }
-
     return outcome(
       recipient === undefined
-        ? "Who would you like to write to?"
-        : `I couldn't find ${recipient.nameAsSaid} in your contacts.`
+        ? proposalMessagesFor(locale).whichRecipient
+        : proposalMessagesFor(locale).missingContact(recipient.nameAsSaid)
     );
   }
 
@@ -205,11 +167,7 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
   const channel = contact === null ? null : channelFor(contact);
 
   if (contact === null || channel === null) {
-    return outcome(
-      locale === "es"
-        ? "No encontré una forma de contactar con esa persona."
-        : "I couldn't find a way to reach them."
-    );
+    return outcome(proposalMessagesFor(locale).noContactRoute);
   }
 
   const { stepIds, taskId } = await createTask(ctx, {
@@ -264,16 +222,10 @@ const proposeMessage = async (planning: Planning): Promise<ProposalOutcome> => {
     await ctx.db.patch(taskId, { status: "needs_clarification" });
   }
 
-  let name = firstName(contact.name);
-
-  if (match.kind === "many") {
-    name = locale === "es" ? "esa persona" : "them";
-  }
-
   return outcome(
-    locale === "es"
-      ? `He preparado un mensaje para ${name}. Léalo, cambie lo que quiera y pulse Aprobar para enviarlo.`
-      : `I've drafted a message to ${name}. Read it, change anything you like, and press Approve to send it.`,
+    proposalMessagesFor(locale).messagePrepared(
+      match.kind === "many" ? null : firstName(contact.name)
+    ),
     taskId
   );
 };
@@ -286,11 +238,7 @@ const proposeReminder = async (
   const title = proposal.reminderTitle?.trim() ?? "";
 
   if (remindAt === null || remindAt < planning.now || title.length === 0) {
-    return outcome(
-      locale === "es"
-        ? "¿Qué quiere que le recuerde y cuándo exactamente? Dígame el día y la hora."
-        : "What should I remind you about, and exactly when? Please give the day and time."
-    );
+    return outcome(proposalMessagesFor(locale).whichReminder);
   }
 
   const { stepIds, taskId } = await createTask(ctx, {
@@ -322,9 +270,10 @@ const proposeReminder = async (
   });
 
   return outcome(
-    locale === "es"
-      ? `Puedo recordarle «${title}» el ${formatWhen(remindAt, owner.timeZone, intlLocaleOf(locale))}. Pulse Aprobar para guardarlo.`
-      : `I can remind you "${title}" on ${formatWhen(remindAt, owner.timeZone)}. Press Approve to save it.`,
+    proposalMessagesFor(locale).reminderPrepared(
+      title,
+      formatWhen(remindAt, owner.timeZone, intlLocaleOf(locale))
+    ),
     taskId
   );
 };
@@ -335,11 +284,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   const items = planning.proposal.groceryItems.slice(0, MAX_GROCERY_ITEMS);
 
   if (items.length === 0) {
-    return outcome(
-      locale === "es"
-        ? "¿Qué productos quiere añadir a su lista?"
-        : "Which items would you like on your list?"
-    );
+    return outcome(proposalMessagesFor(locale).whichGroceries);
   }
 
   // The newest current list is this week's; the usual list is the template.
@@ -358,7 +303,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
       budgetCents: null,
       items: [],
       lastHandoff: null,
-      name: locale === "es" ? "Compras" : "Groceries",
+      name: proposalMessagesFor(locale).groceryListName,
       ownerId: owner._id,
       preferences: [],
       updatedAt: now,
@@ -367,11 +312,7 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   const list = await ctx.db.get(listId);
 
   if (list === null) {
-    return outcome(
-      locale === "es"
-        ? "¿Qué productos quiere añadir a su lista?"
-        : "Which items would you like on your list?"
-    );
+    return outcome(proposalMessagesFor(locale).whichGroceries);
   }
 
   await ctx.db.patch(list._id, {
@@ -390,9 +331,10 @@ const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   });
 
   return outcome(
-    locale === "es"
-      ? `Añadí ${items.map((item) => item.name).join(", ")} a su lista ${list.name}. No se ha hecho ningún pedido.`
-      : `I added ${items.map((item) => item.name).join(", ")} to your ${list.name} list. Nothing has been ordered.`
+    proposalMessagesFor(locale).groceriesAdded(
+      items.map((item) => item.name).join(", "),
+      list.name
+    )
   );
 };
 
@@ -402,11 +344,7 @@ const startScamCheck = async (planning: Planning): Promise<ProposalOutcome> => {
     text: planning.request,
   });
 
-  return outcome(
-    planning.locale === "es"
-      ? "Estoy revisando ese mensaje. El resultado aparecerá en Revisar estafas en un momento. No pulse ningún enlace mientras espera."
-      : "I'm checking that message now. The result will appear under Scam check in a moment. Please don't click any links in it while you wait."
-  );
+  return outcome(proposalMessagesFor(planning.locale).scamChecking);
 };
 
 const applyProposal = async (

@@ -1,0 +1,51 @@
+import type { Messages } from "../en";
+
+const weather: Messages["weather"] = {
+  closeWeek: "Fechar",
+  conditions: {
+    Clear: "céu limpo",
+    Cloudy: "nublado",
+    Drizzle: "garoa",
+    Fog: "neblina",
+    "Freezing drizzle": "garoa congelante",
+    "Freezing rain": "chuva congelante",
+    "Freezing, watch for ice": "congelando, cuidado com o gelo",
+    "Heavy drizzle": "garoa forte",
+    "Heavy rain": "chuva forte",
+    "Heavy showers": "pancadas fortes de chuva",
+    "Heavy snow": "neve forte",
+    "Heavy snow showers": "pancadas fortes de neve",
+    "Icy fog": "neblina congelante",
+    "Light drizzle": "garoa leve",
+    "Light rain": "chuva leve",
+    "Light showers": "pancadas leves de chuva",
+    "Light snow": "neve leve",
+    "Mixed weather": "tempo variável",
+    "Mostly clear": "céu predominantemente limpo",
+    "Partly cloudy": "parcialmente nublado",
+    Rain: "chuva",
+    "Rain likely, take a coat": "chuva provável, leve um casaco",
+    Showers: "pancadas de chuva",
+    Snow: "neve",
+    "Snow grains": "grãos de neve",
+    "Snow likely, take care outside": "neve provável, tenha cuidado ao sair",
+    "Snow showers": "pancadas de neve",
+    "Storms likely": "tempestades prováveis",
+    Thunderstorms: "tempestades com raios",
+    "Thunderstorms with hail": "tempestades com granizo",
+    "Very hot, drink water": "muito quente, beba água",
+  },
+  dataFrom: "Dados do tempo de ",
+  high: "Máxima ",
+  highLow: (high, low) => `· Máx. ${high} Mín. ${low}`,
+  low: "mínima ",
+  practiceSample: "Previsão do tempo de exemplo para praticar. ",
+  showWeek: ". Mostrar o tempo da semana",
+  spoken: (temperature, now) =>
+    `A temperatura é de ${temperature} graus e o tempo está ${now}.`,
+  spokenRange: (high, low) =>
+    ` A máxima de hoje é ${high} e a mínima é ${low}.`,
+  weatherIn: (place) => `Tempo em ${place}`,
+};
+
+export { weather };
