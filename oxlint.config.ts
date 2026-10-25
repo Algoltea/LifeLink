@@ -29,6 +29,15 @@ export default defineConfig({
   jsPlugins: [
     { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },
   ],
+  overrides: [
+    {
+      files: ["packages/backend/convex/**/*.ts"],
+      rules: {
+        // Convex module paths reject the hyphens in kebab-case filenames.
+        "unicorn/filename-case": ["error", { case: "camelCase" }],
+      },
+    },
+  ],
   rules: {
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-chained-type-assertions": "error",

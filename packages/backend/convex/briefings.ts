@@ -19,7 +19,7 @@ import {
   openRouterConfigured,
   structuredCompletion,
 } from "./integrations/openrouter";
-import { briefingMessagesFor } from "./lib/briefing-messages";
+import { briefingMessagesFor } from "./lib/briefingMessages";
 import { requireOwner } from "./lib/session";
 import {
   DAY,
