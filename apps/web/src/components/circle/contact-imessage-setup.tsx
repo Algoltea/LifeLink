@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { Dialog } from "@lifelink/ui/components/dialog";
 import { Pill } from "@lifelink/ui/components/pill";
@@ -10,6 +11,8 @@ import { CopyIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { SimulatedPill } from "@/components/app/bits";
+import { messagesFor, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 type IMessageData = FunctionReturnType<typeof api.imessage.list>;
@@ -32,30 +35,39 @@ const currentErrorMessage = (
     ? error.message
     : null;
 
-const STATUS_WORDS: Record<
+const STATUS_TONES: Record<
   IMessageContact["status"],
-  { label: string; tone: "negative" | "neutral" | "positive" | "warning" }
+  "negative" | "neutral" | "positive" | "warning"
 > = {
-  failed: { label: "Setup needs attention", tone: "negative" },
-  not_registered: { label: "Not linked", tone: "neutral" },
-  ready: { label: "Ready for iMessage", tone: "positive" },
-  registering: { label: "Linking", tone: "warning" },
-  waiting: { label: "Waiting for their first message", tone: "warning" },
+  failed: "negative",
+  not_registered: "neutral",
+  ready: "positive",
+  registering: "warning",
+  waiting: "warning",
 };
 
 const FirstMessageInstructions = ({
   assignedNumber,
+  contactLocale,
   contactName,
   handle,
 }: {
   assignedNumber: string;
+  contactLocale: InterfaceLocale;
   contactName: string;
   handle: string;
 }) => {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  const instructions = `${contactName}: To start using iMessage with LifeLink, you must first send an iMessage (such as “Hello”) to ${assignedNumber} from your exact registered address: ${handle}. In Messages, make sure your conversation starts from ${handle}. A phone number and an Apple ID email are different identities, even on the same phone. A message from another address will not activate this one. You do not need a LifeLink account or a dashboard invitation.`;
+  const t = useMessages().imessageSetup;
+
+  // Written for the contact, so in their language.
+  const instructions = messagesFor(contactLocale).imessageSetup.instructions(
+    contactName,
+    assignedNumber,
+    handle
+  );
 
   const copy = async (): Promise<void> => {
     setCopying(true);
@@ -66,9 +78,7 @@ const FirstMessageInstructions = ({
       await navigator.clipboard.writeText(instructions);
       setCopied(true);
     } catch {
-      setCopyError(
-        "Couldn’t copy the instructions. Select and copy the text above, or try Copy instructions again."
-      );
+      setCopyError(t.copyFailed);
     }
 
     setCopying(false);
@@ -77,10 +87,12 @@ const FirstMessageInstructions = ({
   return (
     <div className="bg-surface flex flex-col gap-3 rounded-lg px-4 py-4">
       <p className="text-lg">
-        Assigned iMessage number:{" "}
+        {t.assignedNumber}
         <span className="num font-semibold break-all">{assignedNumber}</span>
       </p>
-      <p className="text-lg leading-7 break-words">{instructions}</p>
+      <p className="text-lg leading-7 break-words" lang={contactLocale}>
+        {instructions}
+      </p>
       <Button
         aria-busy={copying}
         className="max-w-full self-start whitespace-normal"
@@ -90,12 +102,10 @@ const FirstMessageInstructions = ({
         variant="outline"
       >
         <CopyIcon aria-hidden="true" />
-        Copy instructions
+        {t.copy}
       </Button>
       <output aria-live="polite" className="text-base">
-        {copied
-          ? `Instructions copied. Send them to ${contactName} yourself.`
-          : null}
+        {copied ? t.copied(contactName) : null}
       </output>
       {copyError ? (
         <p className="text-negative text-lg leading-7" role="alert">
@@ -107,12 +117,16 @@ const FirstMessageInstructions = ({
 };
 
 const IMessageEnrollment = ({
+  contactLocale,
   contactName,
   row,
 }: {
+  contactLocale: InterfaceLocale;
   contactName: string;
   row: IMessageContact;
 }) => {
+  const messages = useMessages();
+  const t = messages.imessageSetup;
   const register = useAction(api.imessage.register);
   const refresh = useAction(api.imessage.refresh);
   const [confirming, setConfirming] = useState(false);
@@ -128,16 +142,13 @@ const IMessageEnrollment = ({
     row.assignedNumber === null &&
     (row.status === "not_registered" || row.status === "failed");
 
-  const state = STATUS_WORDS[row.status];
+  const state = { label: t.status[row.status], tone: STATUS_TONES[row.status] };
 
   const currentActionError = currentErrorMessage(actionError, row);
 
   const displayError = currentActionError ?? row.error;
 
-  const pendingMessage =
-    pending === "refresh"
-      ? "Checking for their first message…"
-      : "Looking up this existing contact in Photon…";
+  const pendingMessage = pending === "refresh" ? t.checking : t.lookingUp;
 
   const run = async (operation: "refresh" | "register"): Promise<void> => {
     if (inFlight.current || busy) {
@@ -173,9 +184,7 @@ const IMessageEnrollment = ({
         assignedNumber: row.assignedNumber,
         message: messageOf(
           error instanceof Error ? error : null,
-          operation === "register"
-            ? "Couldn’t link this contact. Check that this exact address is registered in the Photon dashboard, then try again."
-            : "Couldn’t check for their first message. Please try again."
+          operation === "register" ? t.linkFailed : t.checkFailed
         ),
         status: row.status,
       });
@@ -193,13 +202,12 @@ const IMessageEnrollment = ({
         </Pill>
       </output>
       <p className="text-lg leading-7 break-words">
-        Exact contact address: <strong>{row.handle}</strong>
+        {t.exactAddress}
+        <strong>{row.handle}</strong>
       </p>
       <output aria-live="polite" className="text-base">
         {busy ? pendingMessage : null}
-        {!busy && checked
-          ? "Check complete. The current status is shown above."
-          : null}
+        {!busy && checked ? t.checkComplete : null}
       </output>
       {displayError ? (
         <p className="text-negative text-lg leading-7 break-words" role="alert">
@@ -207,21 +215,16 @@ const IMessageEnrollment = ({
         </p>
       ) : null}
       {row.status === "ready" ? (
-        <p className="text-lg leading-7">
-          Their first message has been confirmed. LifeLink can now message this
-          registered address.
-        </p>
+        <p className="text-lg leading-7">{t.firstMessageConfirmed}</p>
       ) : null}
       {row.assignedNumber === null ? null : (
         <>
           {row.status === "ready" ? null : (
-            <p className="text-lg leading-7">
-              {contactName} must send the first message from their address shown
-              above. Your own message will not activate their setup.
-            </p>
+            <p className="text-lg leading-7">{t.mustSendFirst(contactName)}</p>
           )}
           <FirstMessageInstructions
             assignedNumber={row.assignedNumber}
+            contactLocale={contactLocale}
             contactName={contactName}
             handle={row.handle}
             key={row.assignedNumber}
@@ -235,18 +238,14 @@ const IMessageEnrollment = ({
               size="sm"
               variant="outline"
             >
-              Check for first message
+              {t.checkFirstMessage}
             </Button>
           )}
         </>
       )}
       {canRegister ? (
         <>
-          <p className="text-lg leading-7">
-            Link the person already registered with this exact address in
-            Photon. If they are not there, add them in the Photon dashboard
-            first, then try again. LifeLink does not create new people.
-          </p>
+          <p className="text-lg leading-7">{t.linkExplanation}</p>
           <Button
             aria-busy={pending === "register"}
             className="max-w-full self-start whitespace-normal"
@@ -256,46 +255,38 @@ const IMessageEnrollment = ({
             variant="outline"
           >
             {row.status === "failed" || currentActionError
-              ? "Retry linking iMessage"
-              : "Link iMessage"}
+              ? t.retryLink
+              : t.link}
           </Button>
         </>
       ) : null}
       <Dialog
-        description="Review the exact address and how it will be used before you continue."
+        description={t.confirmDescription}
         onOpenChange={setConfirming}
         open={confirming && canRegister && !busy}
-        title={`Link iMessage for ${contactName}?`}
+        title={t.confirmTitle(contactName)}
       >
         <p className="text-lg break-words">
-          Link the existing Photon contact at <strong>{row.handle}</strong> to{" "}
+          {t.confirmLink}
+          <strong>{row.handle}</strong>
+          {t.confirmTo}
           <strong>{contactName}</strong>.
         </p>
-        <p className="text-lg leading-7">
-          Continuing looks up this exact address in Photon, our iMessage
-          provider, and reuses the existing contact. LifeLink does not register
-          new people or use new seat capacity.
-        </p>
+        <p className="text-lg leading-7">{t.confirmLookup}</p>
         <p className="text-lg leading-7 break-words">
-          No invitation message is sent. You’ll see the assigned number to share
-          with {contactName}. They must text it first from {row.handle}. A phone
-          number and an Apple ID email are different identities, even on the
-          same phone.
+          {t.confirmInvitation(contactName, row.handle)}
         </p>
-        <p className="text-lg leading-7">
-          {contactName} does not need a LifeLink account or a dashboard
-          invitation. This does not grant access to anything in your account.
-        </p>
+        <p className="text-lg leading-7">{t.confirmNoAccount(contactName)}</p>
         <div className="flex flex-wrap gap-3">
           <Button
             className="max-w-full whitespace-normal"
             disabled={busy}
             onClick={() => run("register")}
           >
-            Agree and link this contact
+            {t.agreeAndLink}
           </Button>
           <Button onClick={() => setConfirming(false)} variant="ghost">
-            Cancel
+            {messages.common.cancel}
           </Button>
         </div>
       </Dialog>
@@ -304,55 +295,50 @@ const IMessageEnrollment = ({
 };
 
 /** The one status a person's row shows for live iMessage, or null when nothing needs doing. */
-const ROW_WORDS: Record<
-  Exclude<IMessageContact["status"], "ready">,
-  { label: string; tone: "negative" | "neutral" | "warning" }
-> = {
-  failed: { label: "iMessage needs attention", tone: "negative" },
-  not_registered: { label: "iMessage not linked yet", tone: "neutral" },
-  registering: { label: "Linking iMessage", tone: "warning" },
-  waiting: { label: "Waiting for their first iMessage", tone: "warning" },
-};
-
 const imessageRowStatus = (
   context: IMessageContext | undefined,
-  row: IMessageContact | undefined
+  row: IMessageContact | undefined,
+  messages: Messages
 ): { label: string; tone: "negative" | "neutral" | "warning" } | null => {
   if (!context?.configured || context.practiceMode || !row) {
     return null;
   }
 
-  return row.status === "ready" ? null : ROW_WORDS[row.status];
+  const tone = STATUS_TONES[row.status];
+
+  return row.status === "ready" || tone === "positive"
+    ? null
+    : { label: messages.imessageSetup.row[row.status], tone };
 };
 
 /** Live iMessage setup for one saved person, shown inside their edit panel. */
 const ContactIMessageSetup = ({
   canManage,
+  contactLocale,
   contactName,
   context,
   row,
 }: {
   canManage: boolean;
+  contactLocale: InterfaceLocale;
   contactName: string;
   context: IMessageContext | undefined;
   row: IMessageContact | undefined;
 }) => {
   const headingId = useId();
+  const t = useMessages().imessageSetup;
   let unavailable: string | null = null;
 
   if (!context) {
-    unavailable = "Loading iMessage setup…";
+    unavailable = t.loading;
   } else if (context.practiceMode) {
-    unavailable = `Practice messages stay in LifeLink, so there is nothing to set up here. When you switch to real iMessage, you can link ${contactName} here.`;
+    unavailable = t.practice(contactName);
   } else if (!context.configured) {
-    unavailable =
-      "App setup needed. Whoever runs LifeLink must connect Photon before you can set up iMessage for this contact.";
+    unavailable = t.notConfigured;
   } else if (!canManage) {
-    unavailable =
-      "Only the account owner can set up or check iMessage for their contacts.";
+    unavailable = t.ownerOnly;
   } else if (!row) {
-    unavailable =
-      "An iMessage address is needed. Add their phone number or Apple ID email above, then save.";
+    unavailable = t.needsAddress;
   }
 
   return (
@@ -364,7 +350,7 @@ const ContactIMessageSetup = ({
         className="flex flex-wrap items-center gap-3 text-lg leading-7 font-semibold"
         id={headingId}
       >
-        iMessage setup
+        {t.heading}
         {context?.practiceMode ? <SimulatedPill /> : null}
       </h3>
       {unavailable ? (
@@ -374,6 +360,7 @@ const ContactIMessageSetup = ({
       ) : null}
       {unavailable === null && row ? (
         <IMessageEnrollment
+          contactLocale={contactLocale}
           contactName={contactName}
           key={`${row.contactId}:${row.handle}`}
           row={row}

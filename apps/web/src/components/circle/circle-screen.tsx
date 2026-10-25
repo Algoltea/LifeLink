@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 import { ContactEditor } from "./contact-editor";
@@ -35,6 +36,8 @@ const RemovePersonDialog = ({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [shownFor, setShownFor] = useState<CircleContact | null>(removing);
+  const messages = useMessages();
+  const t = messages.circle;
 
   // A new confirmation starts without the last one's error.
   if (shownFor !== removing) {
@@ -44,18 +47,14 @@ const RemovePersonDialog = ({
 
   return (
     <Dialog
-      description={
-        removing
-          ? `${removing.name} will be removed, and anything you share with them stops right away.`
-          : undefined
-      }
+      description={removing ? t.removeDescription(removing.name) : undefined}
       onOpenChange={(open) => {
         if (!open && !busy) {
           onClose();
         }
       }}
       open={removing !== null}
-      title={removing ? `Remove ${removing.name}?` : "Remove"}
+      title={removing ? t.removeTitle(removing.name) : t.removeFallback}
     >
       {failure ? (
         <p className="text-destructive text-base" role="alert">
@@ -76,22 +75,22 @@ const RemovePersonDialog = ({
 
             try {
               await remove({ contactId: removing._id });
-              toast.success(`${removing.name} was removed.`);
+              toast.success(t.removed(removing.name));
               onRemoved();
             } catch (error) {
-              setFailure(
-                `The person couldn’t be removed. ${errorText(error)} Try Remove again.`
-              );
+              setFailure(t.removeFailed(errorText(error)));
             }
 
             setBusy(false);
           }}
           variant="destructive"
         >
-          {busy ? "Removing…" : `Remove ${removing?.name.split(" ")[0] ?? ""}`}
+          {busy
+            ? t.removing
+            : t.removeConfirm(removing?.name.split(" ")[0] ?? "")}
         </Button>
         <Button disabled={busy} onClick={onClose} variant="ghost">
-          Keep
+          {t.keep}
         </Button>
       </div>
     </Dialog>
@@ -122,6 +121,8 @@ const CircleScreen = ({
         );
 
   const { me } = usePreferences();
+  const messages = useMessages();
+  const t = messages.circle;
 
   const [editing, setEditing] = useState<CircleContact | "new" | null>(() =>
     initiallyAdding ? "new" : null
@@ -160,12 +161,12 @@ const CircleScreen = ({
           editing === "new" ? null : (
             <Button onClick={() => setEditing("new")} ref={addButton} size="lg">
               <UserPlusIcon />
-              Add a person
+              {t.addPerson}
             </Button>
           )
         }
-        subline="The people you trust, how to reach them, and exactly what each one can see."
-        title="Trusted circle"
+        subline={t.subline}
+        title={t.title}
       />
       <div className="flex min-w-0 flex-col gap-8">
         <section
@@ -179,18 +180,16 @@ const CircleScreen = ({
               ref={peopleHeading}
               tabIndex={-1}
             >
-              People
+              {t.people}
             </h2>
             {contacts !== undefined && contacts.length > 0 ? (
               <span className="text-muted-foreground text-label">
-                {contacts.length === 1
-                  ? "1 person"
-                  : `${contacts.length} people`}
+                {t.peopleCount(contacts.length)}
               </span>
             ) : null}
           </div>
           {contacts === undefined ? (
-            <LoadingRows layout="contacts" label="Loading people" rows={3} />
+            <LoadingRows layout="contacts" label={t.loadingPeople} rows={3} />
           ) : null}
           {editing === "new" ? (
             <ContactEditor
@@ -204,10 +203,7 @@ const CircleScreen = ({
           {contacts !== undefined &&
           contacts.length === 0 &&
           editing === null ? (
-            <EmptyNote>
-              Add someone you trust. You can message them and choose what they
-              can see in LifeLink. Nothing is shared just by adding a person.
-            </EmptyNote>
+            <EmptyNote>{t.empty}</EmptyNote>
           ) : null}
           {contacts !== undefined && contacts.length > 0 ? (
             <ul className="flex flex-col gap-4">
@@ -250,7 +246,10 @@ const CircleScreen = ({
                     }
                     permissionsOpen={permissionsFor === contact._id}
                     sharingSummary={sharingSummary(
-                      grants?.filter((grant) => grant.contactId === contact._id)
+                      grants?.filter(
+                        (grant) => grant.contactId === contact._id
+                      ),
+                      messages.sharing
                     )}
                     permissions={
                       <ContactPermissions

@@ -1,34 +1,28 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { Pill } from "@lifelink/ui/components/pill";
 import { useQuery } from "convex/react";
 import type { Route } from "next";
 import Link from "next/link";
 
 import { LoadingRows } from "@/components/app/states";
-import { formatDay, formatTime } from "@/lib/format";
+import { useLocale, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
+import { formatWhen } from "@/lib/format";
 
 import { ActionReview } from "./action-review";
 import { JourneyGauge } from "./journey-gauge";
 
-type TaskStatusWords = Partial<Record<Doc<"tasks">["status"], string>>;
-
-const STATUS_PILL: TaskStatusWords = {
-  awaiting_approval: "Your turn",
-  in_progress: "Working on it",
-  needs_attention: "Needs a look",
-  needs_clarification: "A question for you",
-  waiting_for_reply: "Waiting for a reply",
-};
-
 /** One task on Today: what it is, the journey gauge, and the decision in place. */
 const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
   const detail = useQuery(api.tasks.detail, { taskId });
+  const t = useMessages().tasks;
+  const locale = useLocale();
 
   if (detail === undefined) {
-    return <LoadingRows label="Loading request details" layout="task-panel" />;
+    return <LoadingRows label={t.loadingRequest} layout="task-panel" />;
   }
 
   if (detail === null) {
@@ -60,19 +54,18 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
               // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
               href={`/tasks/${task._id}` as Route}
             >
-              {task.title}
+              {translateServerMessage(task.title, locale)}
             </Link>
           </h2>
           {appointment ? (
             <p className="text-muted-foreground text-lg">
-              {formatDay(appointment.startsAt, timeZone)} at{" "}
-              {formatTime(appointment.startsAt, timeZone)}
+              {formatWhen(appointment.startsAt, timeZone, locale)}
               {appointment.location ? ` · ${appointment.location}` : ""}
             </p>
           ) : null}
         </div>
         <Pill className="bg-primary text-primary-foreground">
-          {STATUS_PILL[task.status] ?? "In progress"}
+          {t.status[task.status] ?? t.inProgress}
         </Pill>
       </div>
       {focus ? (
@@ -84,21 +77,21 @@ const TaskPanel = ({ taskId }: { taskId: Id<"tasks"> }) => {
       ) : (
         <p className="text-lg">
           {task.status === "waiting_for_reply"
-            ? "Your message was sent. We'll show the answer as soon as it arrives."
-            : "Nothing needs you right now."}{" "}
+            ? t.sentWaiting
+            : t.nothingNeedsYou}{" "}
           <Link
             className="font-semibold underline"
             // SAFETY: a stored task id, and /tasks/[taskId] is a real route.
             href={`/tasks/${task._id}` as Route}
           >
-            See the details
+            {t.seeDetails}
           </Link>
         </p>
       )}
       {showGauge ? (
         <details className="border-rule border-t pt-2" open={!focus}>
           <summary className="min-h-control cursor-pointer content-center text-base font-semibold">
-            Progress and next steps
+            {t.progressAndNext}
           </summary>
           <div className="pt-4">
             <JourneyGauge steps={detail.steps} />

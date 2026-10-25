@@ -11,6 +11,7 @@ import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
+import { useLocale, useMessages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 import { messageOf } from "@/lib/errors";
 
@@ -27,18 +28,15 @@ type Lookup =
 
 const lookupKey = (code: string, zone: string): string => `${zone}|${code}`;
 
-const LOOKUP_WORDS: Record<Exclude<Lookup["kind"], "found">, string> = {
-  checking: "Looking up your town…",
-  idle: "For the weather on Today. You can leave it blank.",
-  missing: "We could not find that code. Check it, or leave it blank.",
-};
-
-const ROLES = [
-  { label: "It's for me", value: "owner" },
-  { label: "A family member invited me", value: "family" },
-] as const;
-
 const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
+  const t = useMessages().onboarding;
+  const locale = useLocale();
+
+  const roles = [
+    { label: t.owner, value: "owner" },
+    { label: t.family, value: "family" },
+  ] as const;
+
   const complete = useMutation(api.profiles.completeOnboarding);
   const lookupPlace = useAction(api.weather.lookupPlace);
   const [lookup, setLookup] = useState<Lookup>({ kind: "idle" });
@@ -141,6 +139,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
         role,
         signOffName: text("signOff") || null,
         startInDemoMode: role === "owner" && demo,
+        supportLanguage: locale,
         timeZone: text("timeZone") || timeZone,
       });
       router.replace(role === "family" ? "/family" : "/");
@@ -160,12 +159,9 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
       </div>
       <div className="flex flex-col gap-3">
         <h1 className="text-mobile-title sm:text-page-title font-semibold tracking-tight">
-          Let’s get you set up
+          {t.title}
         </h1>
-        <p className="text-muted-foreground text-body">
-          A few details so messages sound like you and times are right. You can
-          change any of this later in Settings.
-        </p>
+        <p className="text-muted-foreground text-body">{t.intro}</p>
       </div>
       <form
         className="flex flex-col gap-6"
@@ -178,19 +174,17 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
         <fieldset className="contents" disabled={busy}>
           <fieldset className="flex flex-col gap-3">
             <legend className="text-section pb-2 font-semibold">
-              Who is LifeLink for?
+              {t.whoFor}
             </legend>
             <Segmented
               disabled={busy}
-              label="Who is LifeLink for?"
+              label={t.whoFor}
               onValueChange={setRole}
-              options={ROLES}
+              options={roles}
               value={role}
             />
             <p className="text-muted-foreground text-base">
-              {role === "owner"
-                ? "You'll use LifeLink every day. Family members see only what you choose to share."
-                : "You'll see only what your family member shares with you. You'll enter the invitation code they give you on the next screen."}
+              {role === "owner" ? t.ownerHint : t.familyHint}
             </p>
           </fieldset>
           <fieldset
@@ -198,18 +192,16 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
             key={accountName}
           >
             <legend className="text-section pr-3 font-semibold">
-              About you
+              {t.aboutYou}
             </legend>
             {accountName || sessionPending ? null : (
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <Label htmlFor={ids.name}>Your full name</Label>
+                <Label htmlFor={ids.name}>{t.fullName}</Label>
                 <Input autoComplete="name" id={ids.name} name="name" required />
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.preferred}>
-                What should LifeLink call you?
-              </Label>
+              <Label htmlFor={ids.preferred}>{t.preferredName}</Label>
               <Input
                 autoComplete="given-name"
                 defaultValue={accountName.split(" ")[0]}
@@ -220,9 +212,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
             </div>
             {role === "owner" ? (
               <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.signOff}>
-                  How you sign your messages (optional)
-                </Label>
+                <Label htmlFor={ids.signOff}>{t.signOff}</Label>
                 <Input
                   aria-describedby={ids.signOffHint}
                   id={ids.signOff}
@@ -232,14 +222,13 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
                   className="text-muted-foreground text-label"
                   id={ids.signOffHint}
                 >
-                  For example, Mom or Grandma Ruth. If you leave it blank,
-                  messages end with the name above.
+                  {t.signOffHint}
                 </p>
               </div>
             ) : null}
             {role === "owner" ? (
               <div className="flex flex-col gap-2">
-                <Label htmlFor={ids.postal}>Postal code (optional)</Label>
+                <Label htmlFor={ids.postal}>{t.postalCode}</Label>
                 <Input
                   aria-describedby={ids.postalHint}
                   autoComplete="postal-code"
@@ -267,13 +256,13 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
                       </span>
                     </>
                   ) : (
-                    LOOKUP_WORDS[lookup.kind]
+                    t.lookup[lookup.kind]
                   )}
                 </p>
               </div>
             ) : null}
             <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.timeZone}>Time zone</Label>
+              <Label htmlFor={ids.timeZone}>{t.timeZone}</Label>
               <TimeZoneSelect
                 current={timeZone}
                 id={ids.timeZone}
@@ -299,12 +288,10 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
                 />
                 <div className="flex flex-col gap-1">
                   <Label className="cursor-pointer" htmlFor={ids.demo}>
-                    Start in practice mode
+                    {t.practice}
                   </Label>
                   <p className="text-muted-foreground text-label">
-                    Adds sample family members, an appointment email, and
-                    practice replies. Nothing is really sent. Every practice
-                    result is marked Practice. You can turn it off in Settings.
+                    {t.practiceHint}
                   </p>
                 </div>
               </div>
@@ -326,7 +313,7 @@ const Onboarding = ({ demoModeAllowed }: { demoModeAllowed: boolean }) => {
           size="lg"
           type="submit"
         >
-          {busy ? "Setting up…" : "Continue"}
+          {busy ? t.settingUp : t.continue}
         </Button>
       </form>
     </main>

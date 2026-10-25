@@ -85,6 +85,33 @@ interface CallWarningSign {
 
 const MAX_TRANSCRIPT_CHARS = 6000;
 
+interface CallTranscriptLine {
+  caption: CallCaption;
+  start: number;
+  text: string;
+}
+
+/** Caption offsets in the same trimmed, newline-joined text sent for checking. */
+const callTranscriptLines = (
+  captions: readonly CallCaption[]
+): CallTranscriptLine[] => {
+  const lines: CallTranscriptLine[] = [];
+  let start = 0;
+
+  for (const caption of captions) {
+    const text = caption.text.trim();
+
+    if (text.length === 0) {
+      continue;
+    }
+
+    lines.push({ caption, start, text });
+    start += text.length + 1;
+  }
+
+  return lines;
+};
+
 /** The newest captions that fit, oldest first, one segment per line. */
 const callTranscriptWindow = (
   captions: readonly CallCaption[],
@@ -93,13 +120,7 @@ const callTranscriptWindow = (
   const lines: string[] = [];
   let length = 0;
 
-  for (const caption of captions.toReversed()) {
-    const line = caption.text.trim();
-
-    if (line.length === 0) {
-      continue;
-    }
-
+  for (const { text: line } of callTranscriptLines(captions).toReversed()) {
     if (length + line.length + 1 > maxChars) {
       // One very long segment still contributes its newest words.
       if (lines.length === 0) {
@@ -117,9 +138,10 @@ const callTranscriptWindow = (
 };
 
 /**
- * Turns checked warning signs into flags on the caption that holds each quote.
- * A quote no caption holds any more (the words were corrected) is dropped, and
- * a kind already flagged in this call is not repeated.
+ * Matches each quote contiguously in the current transcript, across captions
+ * when needed. The latest occurrence is anchored to the caption where it starts
+ * for both its ID and timing. Corrected-away quotes and already flagged kinds
+ * are dropped.
  */
 const callFlagsFromSigns = (
   signs: readonly CallWarningSign[],
@@ -128,22 +150,34 @@ const callFlagsFromSigns = (
 ): CallFlag[] => {
   const flags: CallFlag[] = [];
   const seen = new Set(existing.map((flag) => flag.reason));
+  const lines = callTranscriptLines(captions);
+  const transcript = lines.map((line) => line.text).join("\n");
 
   for (const sign of signs) {
     const reason = CALL_WARNING_REASONS[sign.kind];
     const quote = sign.quote.trim();
 
-    const caption = captions.findLast((item) => item.text.includes(quote));
-
-    if (seen.has(reason) || quote.length === 0 || caption === undefined) {
+    if (seen.has(reason) || quote.length === 0) {
       continue;
     }
+
+    const start = transcript.lastIndexOf(quote);
+
+    const line = lines.findLast(
+      (item) => item.start <= start && start < item.start + item.text.length
+    );
+
+    if (line === undefined) {
+      continue;
+    }
+
+    const { caption } = line;
 
     seen.add(reason);
     flags.push({
       captionId: caption.id,
       id: `${caption.id}:${sign.kind}`,
-      quote,
+      quote: transcript.slice(start, start + quote.length),
       reason,
       timeMs: caption.timeMs,
     });

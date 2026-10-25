@@ -1,5 +1,8 @@
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 
+import { getLocale, messagesFor } from "@/i18n/locale";
 import {
   DAY,
   HOUR,
@@ -9,17 +12,6 @@ import {
 } from "@/lib/format";
 
 type Message = Doc<"messages">;
-
-const STATUS_WORDS: Record<Message["status"], string> = {
-  delivered: "Delivered",
-  draft: "Draft, not sent",
-  failed: "Not sent",
-  read: "Read",
-  received: "Received",
-  sending: "Sending…",
-  sent: "Sent",
-  unknown: "Not sure it was sent",
-};
 
 /** Statuses worth repeating under every bubble, not just the latest one. */
 const NEEDS_ATTENTION = new Set<Message["status"]>([
@@ -38,25 +30,27 @@ const GROUP_GAP = HOUR;
 const dividerLabel = (
   timestamp: number,
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): string => {
-  const time = formatTime(timestamp, timeZone);
-  const day = relativeDay(timestamp, timeZone, now);
+  const time = formatTime(timestamp, timeZone, locale);
+  const day = relativeDay(timestamp, timeZone, now, locale);
+  const { format, threads } = messagesFor(locale);
 
-  if (day === "Today" || day === "Yesterday") {
-    return `${day} at ${time}`;
+  if (day === format.today || day === format.yesterday) {
+    return threads.dividerAt(day, time);
   }
 
   if (now - timestamp < RECENT_DAYS * DAY && timestamp <= now) {
-    const weekday = new Intl.DateTimeFormat("en-US", {
+    const weekday = new Intl.DateTimeFormat(intlLocaleOf(locale), {
       timeZone,
       weekday: "long",
     }).format(timestamp);
 
-    return `${weekday} at ${time}`;
+    return threads.dividerAt(weekday, time);
   }
 
-  return `${formatShortDay(timestamp, timeZone)} at ${time}`;
+  return threads.dividerAt(formatShortDay(timestamp, timeZone, locale), time);
 };
 
 interface ConversationItem {
@@ -117,7 +111,8 @@ const receivedMessageActions = (
 const conversationItems = (
   messages: Message[],
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): ConversationItem[] => {
   const latestOutgoing = messages.findLast(
     (message) => message.direction === "outgoing"
@@ -130,15 +125,17 @@ const conversationItems = (
 
     const newDay =
       previous === undefined ||
-      relativeDay(previous.createdAt, timeZone, now) !==
-        relativeDay(message.createdAt, timeZone, now);
+      relativeDay(previous.createdAt, timeZone, now, locale) !==
+        relativeDay(message.createdAt, timeZone, now, locale);
 
     const paused =
       previous !== undefined &&
       message.createdAt - previous.createdAt > GROUP_GAP;
 
     const divider =
-      newDay || paused ? dividerLabel(message.createdAt, timeZone, now) : null;
+      newDay || paused
+        ? dividerLabel(message.createdAt, timeZone, now, locale)
+        : null;
 
     return {
       divider,
@@ -155,20 +152,21 @@ const conversationItems = (
 };
 
 /** One line for the list: who spoke last and what they said. */
-const previewOf = (message: Message): string => {
+const previewOf = (
+  message: Message,
+  locale: InterfaceLocale = getLocale()
+): string => {
   const photos = message.photoIds.length;
-  const photoWords = photos === 1 ? "A photo" : `${photos} photos`;
+  const { threads } = messagesFor(locale);
+
+  const photoWords =
+    photos === 1 ? threads.previewOnePhoto : threads.previewManyPhotos(photos);
+
   const words = message.body.trim() || (photos > 0 ? photoWords : "");
 
-  return message.direction === "outgoing" ? `You: ${words}` : words;
+  return message.direction === "outgoing" ? threads.previewYou(words) : words;
 };
 
-export {
-  STATUS_WORDS,
-  conversationItems,
-  dividerLabel,
-  previewOf,
-  receivedMessageActions,
-};
+export { conversationItems, dividerLabel, previewOf, receivedMessageActions };
 
 export type { ConversationItem, Message, ReceivedMessageActions };

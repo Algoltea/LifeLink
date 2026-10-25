@@ -1,11 +1,14 @@
 "use client";
 
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { cn } from "@lifelink/ui/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { getLocale, messagesFor } from "@/i18n/locale";
 import { DAY, formatTime, relativeDay } from "@/lib/format";
 
 const RECENT_DAYS = 6;
@@ -15,22 +18,24 @@ const HUE_TURN = 360;
 const listTime = (
   timestamp: number,
   timeZone: string,
-  now = Date.now()
+  now = Date.now(),
+  locale: InterfaceLocale = getLocale()
 ): string => {
-  const day = relativeDay(timestamp, timeZone, now);
+  const day = relativeDay(timestamp, timeZone, now, locale);
+  const words = messagesFor(locale).format;
 
-  if (day === "Today") {
-    return formatTime(timestamp, timeZone);
+  if (day === words.today) {
+    return formatTime(timestamp, timeZone, locale);
   }
 
-  if (day === "Yesterday") {
+  if (day === words.yesterday) {
     return day;
   }
 
   const recent = now - timestamp < RECENT_DAYS * DAY && timestamp <= now;
 
   return new Intl.DateTimeFormat(
-    "en-US",
+    intlLocaleOf(locale),
     recent
       ? { timeZone, weekday: "short" }
       : { day: "numeric", month: "short", timeZone }

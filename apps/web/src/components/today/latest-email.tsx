@@ -10,6 +10,7 @@ import Link from "next/link";
 
 import { listTime } from "@/components/email/email-bits";
 import { AllLink, PANEL_ROW, PanelPart } from "@/components/today/side-lists";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { hasEmailWarning } from "@/lib/email-warning";
 import { formatWhen } from "@/lib/format";
 
@@ -23,6 +24,8 @@ const newestEmails = (emails: EmailRow[]): EmailRow[] => emails.slice(0, SHOWN);
 
 /** One clear warning and destination; the full explanation stays in the email. */
 const EmailWarning = ({ email }: { email: EmailRow }) => {
+  const t = useMessages();
+
   if (!hasEmailWarning(email)) {
     return null;
   }
@@ -31,10 +34,10 @@ const EmailWarning = ({ email }: { email: EmailRow }) => {
     <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
       <Pill className="text-label font-semibold" tone="warning">
         <TriangleAlertIcon aria-hidden="true" className="size-4" />
-        Possible scam
+        {t.today.possibleScam}
       </Pill>{" "}
       <span className="text-accent-foreground text-label inline-flex items-center gap-1 font-medium">
-        Open for details
+        {t.today.openForDetails}
         <ChevronRightIcon aria-hidden="true" className="size-4" />
       </span>
     </span>
@@ -43,7 +46,9 @@ const EmailWarning = ({ email }: { email: EmailRow }) => {
 
 /** The three newest emails, with a simple hint on messages that need care. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
+  const locale = useLocale();
   const emails = useQuery(api.emails.list);
+  const t = useMessages();
   const connections = useQuery(api.connections.list);
 
   if (emails === undefined || connections === undefined) {
@@ -61,24 +66,26 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   return (
     <PanelPart
       action={
-        newest.length > 0 ? <AllLink href="/email">All email</AllLink> : null
+        newest.length > 0 ? (
+          <AllLink href="/email">{t.today.allEmail}</AllLink>
+        ) : null
       }
       className="border-rule mt-2 border-t pt-2"
       headingId="latest-email-heading"
-      title="Latest email"
+      title={t.today.latestEmail}
     >
       {newest.length === 0 ? (
         <p className="text-muted-foreground text-body flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1">
           {connected || connections.demoMode ? (
-            "No new email."
+            t.today.noEmail
           ) : (
             <>
-              Connect Gmail or Outlook to see new email here.
+              {t.today.connectMailbox}
               <Link
                 className="text-accent-foreground min-h-control inline-flex items-center gap-1 font-medium"
                 href="/connections"
               >
-                Connect
+                {t.today.connect}
                 <ChevronRightIcon aria-hidden="true" className="size-5" />
               </Link>
             </>
@@ -101,16 +108,16 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
                     <time
                       className="text-muted-foreground shrink-0 text-sm whitespace-nowrap"
                       dateTime={new Date(email.receivedAt).toISOString()}
-                      title={formatWhen(email.receivedAt, timeZone)}
+                      title={formatWhen(email.receivedAt, timeZone, locale)}
                     >
                       <span className="sr-only">, </span>
-                      {listTime(email.receivedAt, timeZone)}
+                      {listTime(email.receivedAt, timeZone, undefined, locale)}
                     </time>
                   </span>
                   <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
                     <span className="truncate">
                       <span className="sr-only">, </span>
-                      {email.subject || "No subject"}
+                      {email.subject || t.today.noSubject}
                     </span>
                   </span>{" "}
                   <EmailWarning email={email} />

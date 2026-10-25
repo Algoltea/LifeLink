@@ -20,9 +20,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { usePreferences } from "@/components/app/preferences";
+import { useLocale } from "@/i18n/locale";
 import { ago } from "@/lib/format";
 
-import { callTime } from "./call-screening-parts";
+import {
+  callTime,
+  callFlagReason,
+  useCallScreeningMessages,
+} from "./call-screening-parts";
 import { TrustedPeople } from "./trusted-people";
 
 interface CallSummaryValue {
@@ -41,14 +46,7 @@ interface CallSummaryValue {
 
 type Outcome = "flagged" | "clear" | "silent" | "unchecked";
 
-const PRACTICE_HELP_MESSAGE =
-  "I tried LifeLink’s practice scam call. Could we talk about what to do if a call like that happens?";
-
-const CALL_HELP_MESSAGE =
-  "I just had a phone call that I’m not sure about. Could you help me check whether it was real before I share anything or send money?";
-
-const CALLBACK_ADVICE =
-  "If anything felt off, hang up and call back on a number you trust.";
+type CallMessages = ReturnType<typeof useCallScreeningMessages>;
 
 const outcomeOf = (summary: CallSummaryValue): Outcome => {
   if (summary.flags.length > 0) {
@@ -63,94 +61,61 @@ const outcomeOf = (summary: CallSummaryValue): Outcome => {
   return summary.checkIncomplete === true ? "unchecked" : "clear";
 };
 
-const OUTCOME_LABELS: Record<Outcome, string> = {
-  clear: "No warning signs picked up",
-  flagged: "Warning signs picked up",
-  silent: "Nothing was heard",
-  unchecked: "Not fully checked",
-};
-
-const UNCHECKED_TEXT =
-  "Some of what was said couldn’t be checked for warning signs, so this summary may miss them.";
-
-const PARTLY_CHECKED_TEXT =
-  "Part of this call couldn’t be checked, so there may be more warning signs.";
-
-const INTERRUPTED_TEXT =
-  "The connection stopped during this check. Only the parts LifeLink heard were checked.";
-
-const RETRY_STEPS = [
-  "Put the phone call on speakerphone.",
-  "Keep the phone close to this device.",
-  "Start call screening again before you answer.",
-] as const;
-
-const silentCopy = (practice: boolean): { body: string; title: string } =>
+const silentCopy = (
+  messages: CallMessages,
+  practice: boolean
+): { body: string; title: string } =>
   practice
-    ? {
-        body: "The practice call ended before any words played, so there was nothing to check.",
-        title: "Practice stopped early",
-      }
-    : {
-        body: "No speech reached LifeLink, so it couldn’t check this call for warning signs.",
-        title: "LifeLink didn’t hear the call",
-      };
-
-const heardText = (heardWords: number | undefined): string => {
-  if (heardWords === undefined) {
-    return "Nothing LifeLink heard matched a request scammers commonly make.";
-  }
-
-  const words = heardWords === 1 ? "1 word" : `about ${heardWords} words`;
-
-  return `LifeLink heard ${words}. None of them matched a request scammers commonly make.`;
-};
-
-const flaggedTitle = (count: number): string =>
-  count === 1 ? "1 warning sign heard" : `${count} warning signs heard`;
+    ? { body: messages.practiceSilentBody, title: messages.practiceSilentTitle }
+    : { body: messages.silentBody, title: messages.silentTitle };
 
 const outcomeSpeech = (
+  messages: CallMessages,
   summary: CallSummaryValue,
   outcome: Outcome
 ): string[] => {
   if (outcome === "flagged") {
     return [
-      `Potential scam. ${flaggedTitle(summary.flags.length)}.`,
-      ...summary.flags.map((flag) => flag.reason),
-      "Don’t share codes or send money. Hang up and call back on a number you already trust.",
+      `${messages.potentialScam} ${messages.flaggedTitle(summary.flags.length)}.`,
+      ...summary.flags.map((flag) => callFlagReason(flag.reason, messages)),
+      messages.flaggedAdvice,
     ];
   }
 
   if (outcome === "silent") {
-    const { body, title } = silentCopy(summary.practice);
+    const { body, title } = silentCopy(messages, summary.practice);
 
     return summary.practice
       ? [`${title}.`, body]
-      : [`${title}.`, body, "To try again:", ...RETRY_STEPS];
+      : [`${title}.`, body, `${messages.retryTitle}:`, ...messages.retrySteps];
   }
 
   if (outcome === "unchecked") {
     return [
-      "LifeLink couldn’t fully check this call.",
-      UNCHECKED_TEXT,
-      CALLBACK_ADVICE,
+      `${messages.uncheckedTitle}.`,
+      messages.uncheckedBody,
+      messages.callbackAdvice,
     ];
   }
 
   return [
-    "No warning signs heard.",
-    heardText(summary.heardWords),
-    `This can’t confirm who called. ${CALLBACK_ADVICE}`,
+    `${messages.clearTitle}.`,
+    messages.heardText(summary.heardWords),
+    `${messages.cannotConfirm} ${messages.callbackAdvice}`,
   ];
 };
 
-const spokenSummary = (summary: CallSummaryValue, outcome: Outcome): string =>
+const spokenSummary = (
+  messages: CallMessages,
+  summary: CallSummaryValue,
+  outcome: Outcome
+): string =>
   [
-    summary.practice ? "Practice call." : "",
-    ...outcomeSpeech(summary, outcome),
-    summary.interrupted ? INTERRUPTED_TEXT : "",
+    summary.practice ? `${messages.practiceCall}.` : "",
+    ...outcomeSpeech(messages, summary, outcome),
+    summary.interrupted ? messages.interrupted : "",
     outcome === "flagged" && summary.checkIncomplete === true
-      ? PARTLY_CHECKED_TEXT
+      ? messages.partlyChecked
       : "",
   ]
     .filter(Boolean)
@@ -167,6 +132,8 @@ const ResultPanel = ({
   saving: boolean;
   summary: CallSummaryValue;
 }) => {
+  const messages = useCallScreeningMessages();
+
   const icon = {
     clear: (
       <ShieldCheckIcon
@@ -209,70 +176,69 @@ const ResultPanel = ({
           {outcome === "flagged" ? (
             <>
               <h3 className="text-section font-semibold">
-                {flaggedTitle(summary.flags.length)}
+                {messages.flaggedTitle(summary.flags.length)}
               </h3>
               <p className="max-w-prose text-lg">
                 {summary.practice
-                  ? "The practice caller asked for things scammers often ask for."
-                  : "The caller asked for things scammers often ask for."}
+                  ? messages.practiceFlaggedBody
+                  : messages.flaggedBody}
               </p>
               <p className="max-w-prose text-lg font-semibold">
-                Don’t share codes or send money. Hang up and call back on a
-                number you already trust.
+                {messages.flaggedAdvice}
               </p>
             </>
           ) : null}
           {outcome === "clear" ? (
             <>
               <h3 className="text-section font-semibold">
-                No warning signs heard
+                {messages.clearTitle}
               </h3>
               <p className="max-w-prose text-lg">
-                {heardText(summary.heardWords)}
+                {messages.heardText(summary.heardWords)}
               </p>
               <p className="text-muted-foreground max-w-prose text-lg">
-                This can’t confirm who called. {CALLBACK_ADVICE}
+                {messages.cannotConfirm} {messages.callbackAdvice}
               </p>
             </>
           ) : null}
           {outcome === "unchecked" ? (
             <>
               <h3 className="text-section font-semibold">
-                LifeLink couldn’t fully check this call
+                {messages.uncheckedTitle}
               </h3>
-              <p className="max-w-prose text-lg">{UNCHECKED_TEXT}</p>
+              <p className="max-w-prose text-lg">{messages.uncheckedBody}</p>
               <p className="text-muted-foreground max-w-prose text-lg">
-                {CALLBACK_ADVICE}
+                {messages.callbackAdvice}
               </p>
             </>
           ) : null}
           {outcome === "flagged" && summary.checkIncomplete === true ? (
             <p className="text-warning max-w-prose text-lg">
-              {PARTLY_CHECKED_TEXT}
+              {messages.partlyChecked}
             </p>
           ) : null}
           {outcome === "silent" ? (
             <>
               <h3 className="text-section font-semibold">
-                {silentCopy(summary.practice).title}
+                {silentCopy(messages, summary.practice).title}
               </h3>
               <p className="max-w-prose text-lg">
-                {silentCopy(summary.practice).body}
+                {silentCopy(messages, summary.practice).body}
               </p>
             </>
           ) : null}
           {summary.interrupted ? (
             <p className="text-warning max-w-prose text-lg">
-              {INTERRUPTED_TEXT}
+              {messages.interrupted}
             </p>
           ) : null}
         </div>
       </div>
       {outcome === "silent" && !summary.practice ? (
         <div className="flex flex-col gap-2 sm:pl-[2.6rem]">
-          <h4 className="text-xl font-semibold">To try again</h4>
+          <h4 className="text-xl font-semibold">{messages.retryTitle}</h4>
           <ol className="flex list-decimal flex-col gap-2 pl-6 text-lg">
-            {RETRY_STEPS.map((step) => (
+            {messages.retrySteps.map((step) => (
               <li key={step}>{step}</li>
             ))}
           </ol>
@@ -281,12 +247,12 @@ const ResultPanel = ({
       <div className="flex flex-wrap items-center gap-3">
         {outcome === "silent" && onScreenAgain ? (
           <Button disabled={saving} onClick={onScreenAgain} size="lg">
-            Screen another call
+            {messages.screenAnotherCall}
           </Button>
         ) : null}
         <ReadAloudButton
-          label="Read the result aloud"
-          text={spokenSummary(summary, outcome)}
+          label={messages.readResult}
+          text={spokenSummary(messages, summary, outcome)}
           variant="ghost"
         />
       </div>
@@ -294,30 +260,36 @@ const ResultPanel = ({
   );
 };
 
-const FlagList = ({ flags }: { flags: CallFlag[] }) => (
-  <section className="bg-parchment flex min-w-0 flex-col gap-3 rounded-xl p-5 sm:p-6">
-    <h3 className="text-section font-semibold">What LifeLink flagged</h3>
-    <p className="text-muted-foreground text-body">
-      Quotes may have mistakes. Long numbers are hidden.
-    </p>
-    <ul>
-      {flags.map((flag) => (
-        <li
-          className="border-rule grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 border-t py-4"
-          key={flag.id}
-        >
-          <span className="text-accent-ink num font-semibold">
-            {callTime(flag.timeMs)}
-          </span>
-          <div className="min-w-0 space-y-1.5">
-            <h4 className="text-xl font-semibold">{flag.reason}</h4>
-            <blockquote className="pl-3 break-words">“{flag.quote}”</blockquote>
-          </div>
-        </li>
-      ))}
-    </ul>
-  </section>
-);
+const FlagList = ({ flags }: { flags: CallFlag[] }) => {
+  const messages = useCallScreeningMessages();
+
+  return (
+    <section className="bg-parchment flex min-w-0 flex-col gap-3 rounded-xl p-5 sm:p-6">
+      <h3 className="text-section font-semibold">{messages.flagged}</h3>
+      <p className="text-muted-foreground text-body">{messages.quoteNotice}</p>
+      <ul>
+        {flags.map((flag) => (
+          <li
+            className="border-rule grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 border-t py-4"
+            key={flag.id}
+          >
+            <span className="text-accent-ink num font-semibold">
+              {callTime(flag.timeMs)}
+            </span>
+            <div className="min-w-0 space-y-1.5">
+              <h4 className="text-xl font-semibold">
+                {callFlagReason(flag.reason, messages)}
+              </h4>
+              <blockquote className="pl-3 break-words">
+                “{flag.quote}”
+              </blockquote>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
 
 const HeardCaptions = ({
   captions,
@@ -325,52 +297,57 @@ const HeardCaptions = ({
 }: {
   captions: CallCaption[];
   practice: boolean;
-}) => (
-  <details className="group border-rule border-t pt-4">
-    <summary className="min-h-control flex list-none flex-wrap items-center gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden">
-      <ChevronDownIcon
-        aria-hidden="true"
-        className="size-5 shrink-0 -rotate-90 transition-transform group-open:rotate-0"
-      />
-      <span className="font-semibold">What LifeLink heard</span>
-      <span className="text-muted-foreground text-body">
-        Shown until you leave this page. Not saved.
-      </span>
-    </summary>
-    <p className="text-muted-foreground text-body mt-2">
-      {practice
-        ? "These are the practice call’s scripted words."
-        : "Both voices are mixed together and may have mistakes."}
-    </p>
-    <section
-      aria-label="What LifeLink heard"
-      className="mt-3 flex max-h-[28rem] flex-col gap-3 overflow-y-auto overscroll-contain pr-2"
-      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard users must be able to scroll the captions.
-      tabIndex={0}
-    >
-      {captions.map((caption) => (
-        <div className="flex gap-4" key={caption.id}>
-          <span className="text-muted-foreground num w-14 shrink-0 font-semibold">
-            {callTime(caption.timeMs)}
-          </span>
-          <p
-            className={cn(
-              "min-w-0 break-words",
-              caption.flagId !== undefined && "font-semibold"
-            )}
-          >
-            {caption.speaker === "unknown" ? null : (
-              <span className="text-muted-foreground font-semibold">
-                {caption.speaker === "caller" ? "Caller: " : "You: "}
-              </span>
-            )}
-            {caption.text}
-          </p>
-        </div>
-      ))}
-    </section>
-  </details>
-);
+}) => {
+  const messages = useCallScreeningMessages();
+
+  return (
+    <details className="group border-rule border-t pt-4">
+      <summary className="min-h-control flex list-none flex-wrap items-center gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden">
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-5 shrink-0 -rotate-90 transition-transform group-open:rotate-0"
+        />
+        <span className="font-semibold">{messages.heard}</span>
+        <span className="text-muted-foreground text-body">
+          {messages.captionsNotSaved}
+        </span>
+      </summary>
+      <p className="text-muted-foreground text-body mt-2">
+        {practice ? messages.practiceCaptionSource : messages.mixedVoices}
+      </p>
+      <section
+        aria-label={messages.heard}
+        className="mt-3 flex max-h-[28rem] flex-col gap-3 overflow-y-auto overscroll-contain pr-2"
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard users must be able to scroll the captions.
+        tabIndex={0}
+      >
+        {captions.map((caption) => (
+          <div className="flex gap-4" key={caption.id}>
+            <span className="text-muted-foreground num w-14 shrink-0 font-semibold">
+              {callTime(caption.timeMs)}
+            </span>
+            <p
+              className={cn(
+                "min-w-0 break-words",
+                caption.flagId !== undefined && "font-semibold"
+              )}
+            >
+              {caption.speaker === "unknown" ? null : (
+                <span className="text-muted-foreground font-semibold">
+                  {caption.speaker === "caller"
+                    ? messages.caller
+                    : messages.you}
+                  :{" "}
+                </span>
+              )}
+              {caption.text}
+            </p>
+          </div>
+        ))}
+      </section>
+    </details>
+  );
+};
 
 /** Saving and deleting stay beside the privacy note, out of the way of the result. */
 const SummaryFooter = ({
@@ -386,31 +363,28 @@ const SummaryFooter = ({
   saving: boolean;
   summaryId: Id<"scamCallSummaries"> | null;
 }) => {
+  const messages = useCallScreeningMessages();
   const remove = useMutation(api.callscreening.remove);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
 
   const deleteLabel =
-    summaryId === null && !saving ? "Discard summary" : "Delete summary";
+    summaryId === null && !saving ? messages.discard : messages.delete;
 
   return (
     <footer className="border-rule flex flex-col gap-3 border-t pt-5">
-      {saving ? (
-        <output className="text-body">Saving your summary…</output>
-      ) : null}
+      {saving ? <output className="text-body">{messages.saving}</output> : null}
       {saveError ? (
         <div className="text-negative text-body space-y-3" role="alert">
-          <p>
-            The summary could not be saved. Keep this page open and try again.
-          </p>
+          <p>{messages.saveError}</p>
           <Button onClick={onRetry} variant="outline">
-            Try saving again
+            {messages.retrySave}
           </Button>
         </div>
       ) : null}
       {deleteError ? (
         <p className="text-negative text-body" role="alert">
-          The summary could not be deleted. Try again.
+          {messages.deleteError}
         </p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -419,9 +393,7 @@ const SummaryFooter = ({
             aria-hidden="true"
             className="mt-1 size-4 shrink-0"
           />
-          {summaryId === null
-            ? "Only a short summary is saved to Earlier checks. No audio or captions are kept."
-            : "Saved in Earlier checks as a short summary. No audio or captions are kept."}
+          {summaryId === null ? messages.summaryStorage : messages.summarySaved}
         </p>
         <Button
           disabled={saving || deleting}
@@ -446,7 +418,7 @@ const SummaryFooter = ({
           variant="ghost"
         >
           <Trash2Icon aria-hidden="true" />
-          {deleting ? "Deleting…" : deleteLabel}
+          {deleting ? messages.deleting : deleteLabel}
         </Button>
       </div>
     </footer>
@@ -471,6 +443,8 @@ const CallSummary = ({
   /** Without a label, leaving the summary starts another screening. */
   backLabel?: string;
 }) => {
+  const messages = useCallScreeningMessages();
+  const locale = useLocale();
   const { me } = usePreferences();
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -483,10 +457,8 @@ const CallSummary = ({
 
   const trusted = (
     <section className="flex min-w-0 flex-col gap-3">
-      <h3 className="text-section font-semibold">Ask someone you trust</h3>
-      <TrustedPeople
-        message={summary.practice ? PRACTICE_HELP_MESSAGE : CALL_HELP_MESSAGE}
-      />
+      <h3 className="text-section font-semibold">{messages.askTrusted}</h3>
+      <TrustedPeople practiceCall={summary.practice} />
     </section>
   );
 
@@ -499,27 +471,32 @@ const CallSummary = ({
             ref={title}
             tabIndex={-1}
           >
-            {summary.practice ? "Practice call summary" : "Call summary"}
+            {summary.practice ? messages.practiceSummary : messages.summary}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <Pill tone={summary.practice ? "simulated" : "neutral"}>
-              {summary.practice ? "Practice" : "Live call"}
+              {summary.practice ? messages.practice : messages.liveCall}
             </Pill>
             <p className="text-muted-foreground text-lg">
               <span className="num">{callTime(summary.durationMs)}</span> ·{" "}
               {ago(
                 summary.startedAt,
-                me?.profile?.timeZone ?? "America/New_York"
+                me?.profile?.timeZone ?? "America/New_York",
+                undefined,
+                locale
               )}
             </p>
           </div>
         </div>
         {outcome === "silent" && screensAgain ? null : (
           <Button disabled={saving} onClick={onBack} variant="outline">
-            {backLabel ?? "Screen another call"}
+            {backLabel ?? messages.screenAnotherCall}
           </Button>
         )}
       </header>
+      <p className="text-muted-foreground text-body">
+        {messages.languageLimit}
+      </p>
       <ResultPanel
         onScreenAgain={screensAgain ? onBack : undefined}
         outcome={outcome}
@@ -549,4 +526,4 @@ const CallSummary = ({
   );
 };
 
-export { CallSummary, OUTCOME_LABELS, outcomeOf };
+export { CallSummary, outcomeOf };

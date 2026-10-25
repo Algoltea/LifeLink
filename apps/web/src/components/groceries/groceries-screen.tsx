@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, LoadingRows } from "@/components/app/states";
+import { useLocale, currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay } from "@/lib/format";
 
@@ -48,35 +49,39 @@ const PRINT_STYLES = `@media print {
   #grocery-print { position: absolute; inset: 0; display: block !important; padding: 2rem; font-size: 20pt; }
 }`;
 
-const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => (
-  <div aria-hidden="true" className="hidden" id="grocery-print">
-    <h2 className="pb-4 text-3xl">{list.name}</h2>
-    {openSections(list).map((section) => (
-      <section
-        className="pb-4"
-        key={`${section.heading}-${section.items[0]?.id}`}
-      >
-        {section.heading === null ? null : (
-          <h3 className="pb-2 font-semibold">{section.heading}</h3>
-        )}
-        <ul className="flex flex-col gap-3">
-          {section.items.map((item) => (
-            <li key={item.id}>
-              <SquareIcon aria-hidden="true" className="mr-3 inline size-5" />
-              {item.name} {quantityWords(item)}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
-    {list.preferences.length > 0 ? (
-      <p className="pt-6">Notes: {list.preferences.join("; ")}</p>
-    ) : null}
-  </div>
-);
+const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const locale = useLocale();
+  const t = useMessages().groceries;
+
+  return (
+    <div aria-hidden="true" className="hidden" id="grocery-print">
+      <h2 className="pb-4 text-3xl">{list.name}</h2>
+      {openSections(list, t).map((section) => (
+        <section className="pb-4" key={section.items[0]?.id}>
+          {section.heading === null ? null : (
+            <h3 className="pb-2 font-semibold">{section.heading}</h3>
+          )}
+          <ul className="flex flex-col gap-3">
+            {section.items.map((item) => (
+              <li key={item.id}>
+                <SquareIcon aria-hidden="true" className="mr-3 inline size-5" />
+                {item.name} {quantityWords(item, locale)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {list.preferences.length > 0 ? (
+        <p className="pt-6">{t.notes(list.preferences.join("; "))}</p>
+      ) : null}
+    </div>
+  );
+};
 
 const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const locale = useLocale();
   const hasOpenItems = list.items.some((item) => !item.checked);
+  const t = useMessages().groceries;
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -88,30 +93,28 @@ const ListTools = ({ list }: { list: Doc<"groceryLists"> }) => {
           variant="outline"
         >
           <PrinterIcon />
-          Print the list
+          {t.printList}
         </Button>
         <Button
           className="max-w-full py-3 whitespace-normal"
           disabled={!hasOpenItems}
           onClick={async () => {
             try {
-              await navigator.clipboard.writeText(listAsText(list));
-              toast.success("List copied. You can paste it into a message.");
+              await navigator.clipboard.writeText(listAsText(list, locale));
+              toast.success(t.copied);
             } catch {
-              toast.error(
-                "Copying didn't work in this browser. Try printing instead."
-              );
+              toast.error(t.copyFailed);
             }
           }}
           variant="outline"
         >
           <CopyIcon />
-          Copy as text
+          {t.copyAsText}
         </Button>
       </div>
       {hasOpenItems ? null : (
         <p className="text-muted-foreground text-lg leading-7">
-          Add an item or untick one before printing or copying.
+          {t.openItemsHint}
         </p>
       )}
     </div>
@@ -128,6 +131,7 @@ const GroceryWorkspace = ({
   list: Doc<"groceryLists">;
 }) => {
   const receipt = useRef<HTMLElement>(null);
+  const t = useMessages().groceries;
 
   const showReceipt = (): void => {
     const target = receipt.current;
@@ -149,7 +153,7 @@ const GroceryWorkspace = ({
 
   return (
     <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <section aria-label="List" className="min-w-0">
+      <section aria-label={t.list} className="min-w-0">
         <ListEditor
           actions={actions}
           finishedOn={finishedOn}
@@ -196,17 +200,18 @@ const useListActions = (setChosen: SetChosen) => {
     copyOf: (source: Doc<"groceryLists">) =>
       attempt(async () => {
         setChosen(await copyList({ listId: source._id }));
-        toast.success(
-          `Started a new list from “${source.name}”. The original is unchanged.`
-        );
+        toast.success(currentMessages().groceries.startedFrom(source.name));
       }),
     /** Moving a list to past lists is undoable, so it needs no confirmation. */
     finish: (target: Doc<"groceryLists">) =>
       attempt(async () => {
         await archiveList({ listId: target._id });
         setChosen((selected) => (selected === target._id ? null : selected));
-        toast(`Moved “${target.name}” to past lists.`, {
-          action: { label: "Undo", onClick: () => reopen(target) },
+        toast(currentMessages().groceries.movedToPast(target.name), {
+          action: {
+            label: currentMessages().groceries.undo,
+            onClick: () => reopen(target),
+          },
           duration: UNDO_WINDOW_MS,
         });
       }),
@@ -214,7 +219,10 @@ const useListActions = (setChosen: SetChosen) => {
       attempt(async () => {
         setChosen(
           await createList({
-            name: currentCount > 0 ? `List ${currentCount + 1}` : "Groceries",
+            name:
+              currentCount > 0
+                ? currentMessages().groceries.listNumber(currentCount + 1)
+                : currentMessages().groceries.defaultName,
           })
         );
       }),
@@ -223,10 +231,9 @@ const useListActions = (setChosen: SetChosen) => {
       attempt(async () => {
         const making = target.usual !== true;
         await setUsual({ listId: target._id, usual: making });
+        const t = currentMessages().groceries;
         toast.success(
-          making
-            ? `“${target.name}” is now your usual list.`
-            : `“${target.name}” is no longer your usual list.`
+          making ? t.usualNow(target.name) : t.usualNoLonger(target.name)
         );
       }),
   };
@@ -243,24 +250,28 @@ const StartButtons = ({
   onNewList: () => void;
   onStartFromUsual: () => void;
   usual: Doc<"groceryLists"> | null;
-}) => (
-  <div className="flex flex-wrap gap-3">
-    {usual === null ? null : (
-      <Button onClick={onStartFromUsual}>
-        <StarIcon className="fill-current" />
-        Start from your usual list
+}) => {
+  const t = useMessages().groceries;
+
+  return (
+    <div className="flex flex-wrap gap-3">
+      {usual === null ? null : (
+        <Button onClick={onStartFromUsual}>
+          <StarIcon className="fill-current" />
+          {t.startFromUsual}
+        </Button>
+      )}
+      <Button
+        onClick={onNewList}
+        ref={newListButton}
+        variant={usual === null ? "default" : "outline"}
+      >
+        <PlusIcon />
+        {usual === null ? t.newList : t.newEmptyList}
       </Button>
-    )}
-    <Button
-      onClick={onNewList}
-      ref={newListButton}
-      variant={usual === null ? "default" : "outline"}
-    >
-      <PlusIcon />
-      {usual === null ? "New list" : "New empty list"}
-    </Button>
-  </div>
-);
+    </div>
+  );
+};
 
 /** Current lists in the order they were made; past lists newest first. */
 const sortLists = (lists: Doc<"groceryLists">[]) => ({
@@ -277,9 +288,11 @@ const GroceriesScreen = ({
 }: {
   initialListId?: string | null;
 }) => {
+  const locale = useLocale();
   const data = useQuery(api.groceries.lists);
   const { me } = usePreferences();
   const newListButton = useRef<HTMLButtonElement>(null);
+  const t = useMessages().groceries;
 
   const [deleteTarget, setDeleteTarget] = useState<Doc<"groceryLists"> | null>(
     null
@@ -314,11 +327,7 @@ const GroceriesScreen = ({
   return (
     <>
       <style>{PRINT_STYLES}</style>
-      <PageHeader
-        actions={startButtons}
-        subline="Your shopping lists and budget."
-        title="Groceries"
-      />
+      <PageHeader actions={startButtons} subline={t.subline} title={t.title} />
       <DeleteListDialog
         finalFocus={newListButton}
         onClose={() => setDeleteTarget(null)}
@@ -328,18 +337,16 @@ const GroceriesScreen = ({
         target={deleteTarget}
       />
       <section
-        aria-label="Grocery lists and budgets"
+        aria-label={t.lists}
         className="flex scroll-mt-24 flex-col gap-6"
         id="budget"
       >
         {data === undefined ? (
-          <LoadingRows layout="groceries" label="Loading your lists" rows={4} />
+          <LoadingRows layout="groceries" label={t.loading} rows={4} />
         ) : null}
         {data !== undefined && current.length === 0 ? (
           <EmptyNote action={startButtons}>
-            {past.length > 0
-              ? "No current lists. Start a new one, or open a past list below."
-              : "No grocery lists yet."}
+            {past.length > 0 ? t.emptyWithPast : t.empty}
           </EmptyNote>
         ) : null}
         <ListPicker
@@ -362,7 +369,7 @@ const GroceriesScreen = ({
             finishedOn={
               list.archivedAt === undefined
                 ? null
-                : formatShortDay(list.archivedAt, timeZone)
+                : formatShortDay(list.archivedAt, timeZone, locale)
             }
             list={list}
           />

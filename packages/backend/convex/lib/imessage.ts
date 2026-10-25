@@ -1,3 +1,4 @@
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { v } from "convex/values";
 
 import type { Doc, Id } from "../_generated/dataModel";
@@ -157,17 +158,30 @@ const acceptImessageConversation = async (
   return enrollment;
 };
 
+const INTRODUCTIONS: Record<InterfaceLocale, (ownerName: string) => string[]> =
+  {
+    en: (ownerName) => [
+      `LifeLink: This conversation is connected to ${ownerName}'s LifeLink account. Messages from this number are sent on ${ownerName}'s behalf, and your replies go directly to ${ownerName}. Save this number as "LifeLink" to recognize future messages.`,
+      "",
+      `Message from ${ownerName}:`,
+    ],
+    es: (ownerName) => [
+      `LifeLink: Esta conversación está conectada a la cuenta de LifeLink de ${ownerName}. Los mensajes de este número se envían en nombre de ${ownerName}, y sus respuestas le llegan directamente a ${ownerName}. Guarde este número como "LifeLink" para reconocer los próximos mensajes.`,
+      "",
+      `Mensaje de ${ownerName}:`,
+    ],
+  };
+
 /**
  * Sent once, above the first message in a new iMessage conversation, so the
  * recipient knows who this number is (and iOS can suggest saving it). Only the
  * recipient sees it: LifeLink's own thread and review show the message alone.
+ * Written in the recipient's language; the approved message is never translated.
  */
-const imessageIntroduction = (ownerName: string): string =>
-  [
-    `LifeLink: This conversation is connected to ${ownerName}'s LifeLink account. Messages from this number are sent on ${ownerName}'s behalf, and your replies go directly to ${ownerName}. Save this number as "LifeLink" to recognize future messages.`,
-    "",
-    `Message from ${ownerName}:`,
-  ].join("\n");
+const imessageIntroduction = (
+  ownerName: string,
+  locale: InterfaceLocale = "en"
+): string => INTRODUCTIONS[locale](ownerName).join("\n");
 
 /** What actually goes out: the introduction, when there is one, then the approved words unchanged. */
 const withIntroduction = (introduction: string | null, body: string): string =>

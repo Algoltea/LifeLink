@@ -18,6 +18,7 @@ import { IsoIcon } from "@/components/app/iso-icon";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote, ErrorNote, LoadingRows } from "@/components/app/states";
+import { currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { isRowStillShown } from "@/lib/list-beside-reader";
 
@@ -43,12 +44,16 @@ const searchTermOf = (input: string): string | null => {
 };
 
 /** Nothing chosen yet: a quiet hint where the preview will appear. */
-const NoPreview = () => (
-  <div className="text-muted-foreground hidden flex-col items-center gap-4 pt-16 pl-10 text-center @3xl/content:flex">
-    <IsoIcon kind="file" size={72} />
-    <p className="max-w-xs">Choose a file to see a preview of it here.</p>
-  </div>
-);
+const NoPreview = () => {
+  const t = useMessages().documents;
+
+  return (
+    <div className="text-muted-foreground hidden flex-col items-center gap-4 pt-16 pl-10 text-center @3xl/content:flex">
+      <IsoIcon kind="file" size={72} />
+      <p className="max-w-xs">{t.chooseFile}</p>
+    </div>
+  );
+};
 
 /** One search-and-sort view of the Drive, growing as the person scrolls. */
 const FileBrowser = ({
@@ -70,6 +75,7 @@ const FileBrowser = ({
   const [browse, setBrowse] = useState<Browse>({ kind: "loading" });
   const loadingMore = useRef(false);
   const openedNote = useRef<HTMLOutputElement>(null);
+  const t = useMessages().documents;
 
   const listStaysBeside = (): boolean =>
     selectedId !== null &&
@@ -87,7 +93,7 @@ const FileBrowser = ({
     if (openedNote.current !== null) {
       openedNote.current.textContent =
         opened !== undefined && listStaysBeside()
-          ? `Opened: ${opened.name}`
+          ? currentMessages().documents.opened(opened.name)
           : "";
     }
   });
@@ -168,13 +174,7 @@ const FileBrowser = ({
   }, [cursor, listFiles, search, sort]);
 
   if (browse.kind === "loading") {
-    return (
-      <LoadingRows
-        layout="documents"
-        label="Loading your Drive files"
-        rows={6}
-      />
-    );
+    return <LoadingRows layout="documents" label={t.loadingFiles} rows={6} />;
   }
 
   if (browse.kind === "error") {
@@ -199,14 +199,10 @@ const FileBrowser = ({
           id={FILES_HEADING_ID}
           tabIndex={-1}
         >
-          {search === null ? "Your files" : "Files found"}
+          {search === null ? t.yourFiles : t.filesFound}
         </h2>
         {browse.files.length === 0 ? (
-          <EmptyNote>
-            {search === null
-              ? "Your Google Drive has no files yet."
-              : `No file names contain “${search}”.`}
-          </EmptyNote>
+          <EmptyNote>{search === null ? t.empty : t.noMatch(search)}</EmptyNote>
         ) : (
           <>
             <VirtualFileList
@@ -231,7 +227,7 @@ const FileBrowser = ({
             variant="ghost"
           >
             <ChevronLeftIcon aria-hidden="true" />
-            Back to your files
+            {t.backToFiles}
           </Button>
           <FilePreview
             file={selected}
@@ -334,6 +330,7 @@ const DocumentsScreen = () => {
   const connections = useQuery(api.connections.list);
   const { me } = usePreferences();
   const timeZone = me?.profile?.timeZone ?? "America/New_York";
+  const t = useMessages().documents;
 
   const drive = connections?.providers.find(
     (provider) => provider.definition.id === "google_drive"
@@ -346,31 +343,25 @@ const DocumentsScreen = () => {
 
   return (
     <>
-      <PageHeader title="Documents" />
+      <PageHeader title={t.title} />
       {connections === undefined ? (
         <LoadingRows
-          layout="note"
-          label="Checking your Google Drive connection"
+          layout="documents-notice"
+          label={t.checkingConnection}
           rows={2}
         />
       ) : null}
       {connections !== undefined && !isActive ? (
-        <DriveNotice
-          action={
-            needsReconnect ? "Reconnect Google Drive" : "Connect Google Drive"
-          }
-        >
-          {connections.demoMode
-            ? "Connect the practice Google Drive to try this with sample files."
-            : "Connect Google Drive to see your files here."}
+        <DriveNotice action={needsReconnect ? t.reconnect : t.connect}>
+          {connections.demoMode ? t.connectPracticeHint : t.connectHint}
         </DriveNotice>
       ) : null}
       {connections !== undefined && isActive ? (
         <>
           <DriveNotice>
             {connections.demoMode
-              ? "Practice Drive with sample files, plus notes you save in Practice mode. Nothing here comes from a real Google account."
-              : `Connected: Google Drive${drive.accountLabel ? ` (${drive.accountLabel})` : ""}. Open a file in Google Drive to change or share it.`}
+              ? t.practiceConnected
+              : t.connected(drive.accountLabel ?? null)}
           </DriveNotice>
           <DriveFiles timeZone={timeZone} />
         </>

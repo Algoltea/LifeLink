@@ -15,6 +15,7 @@ import {
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
+import { currentMessages } from "@/i18n/locale";
 import { codeOf, messageOf } from "@/lib/errors";
 import {
   enqueue,
@@ -107,7 +108,9 @@ const OfflineQueueProvider = ({ children }: { children: ReactNode }) => {
             }));
 
         if (item.kind === "approve" && activeProfile.current === profileId) {
-          toast.success(`Approval recorded: ${item.label}`);
+          toast.success(
+            currentMessages().appExtras.approvalRecorded(item.label)
+          );
         }
       } catch (error) {
         if (activeProfile.current !== profileId) {

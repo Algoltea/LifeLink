@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
+import { useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
@@ -38,20 +40,24 @@ type VoiceState = "connecting" | "dictating" | "idle" | "live";
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const voiceHintFor = (voice: VoiceState, available: boolean): string => {
+const voiceHintFor = (
+  voice: VoiceState,
+  available: boolean,
+  t: Messages["voice"]
+): string => {
   if (!available) {
-    return "Voice isn't available in this browser, so please type. Nothing is sent until you approve it.";
+    return t.unavailable;
   }
 
   if (voice === "dictating") {
-    return "Listening. Your words will appear in the box; press Send when they look right.";
+    return t.listening;
   }
 
   if (voice === "live" || voice === "connecting") {
-    return "Talking with LifeLink. Anything it prepares appears on screen for you to approve.";
+    return t.talking;
   }
 
-  return "Press Speak to talk instead of typing. Nothing is sent until you approve it.";
+  return t.speakHint;
 };
 
 /**
@@ -73,6 +79,7 @@ const ComposerSession = ({
   onSubmitted,
   threadId,
 }: ComposerProps & { threadId: string }) => {
+  const t = useMessages().voice;
   const submit = useMutation(api.assistant.submitRequest);
   const createLive = useAction(api.voice.createLiveSession);
   const status = useQuery(api.status.integrations);
@@ -133,14 +140,12 @@ const ComposerSession = ({
 
     if (!online) {
       if (!queueRequest(trimmed, threadId)) {
-        setSubmissionError(
-          "This request could not be saved offline. Your words are still here. Please try again when connected."
-        );
+        setSubmissionError(t.offlineFailed);
 
         return false;
       }
 
-      toast("Saved. LifeLink will look at this when you're back online.");
+      toast(t.savedOffline);
       onSubmitted?.();
 
       return true;
@@ -259,9 +264,7 @@ const ComposerSession = ({
               stopVoice();
             },
             onRequest: async (request) =>
-              (await send(request, "voice"))
-                ? "Prepared. It is on the screen now; nothing happens until it is approved there."
-                : "That could not be prepared. Please ask them to try again or type it.",
+              (await send(request, "voice")) ? t.prepared : t.prepareFailed,
             onSpeaking: (now) => {
               if (!cancelled()) {
                 setSpeaking(now);
@@ -300,7 +303,7 @@ const ComposerSession = ({
         setVoiceError(
           error instanceof MicrophoneError
             ? error.message
-            : `Voice didn't start: ${errorText(error)} You can type instead.`
+            : t.startFailed(errorText(error))
         );
       }
 
@@ -326,7 +329,7 @@ const ComposerSession = ({
   const voiceAvailable = (liveConfigured && online) || canDictate;
   const listening = voice !== "idle";
 
-  const voiceHint = voiceHintFor(voice, voiceAvailable);
+  const voiceHint = voiceHintFor(voice, voiceAvailable, t);
 
   return (
     <div className={cn("@container/composer flex flex-col gap-4", className)}>
@@ -341,7 +344,7 @@ const ComposerSession = ({
         }}
       >
         <label className="sr-only" htmlFor={inputId}>
-          What would you like help with?
+          {t.inputLabel}
         </label>
         <textarea
           aria-describedby={hintId}
@@ -359,7 +362,7 @@ const ComposerSession = ({
               event.currentTarget.form?.requestSubmit();
             }
           }}
-          placeholder="Ask LifeLink…"
+          placeholder={t.placeholder}
           rows={1}
           value={text}
         />
@@ -390,11 +393,11 @@ const ComposerSession = ({
             ) : (
               <MicIcon aria-hidden="true" className="size-5" />
             )}
-            {listening ? "Stop" : "Speak"}
+            {listening ? t.stop : t.speak}
           </button>
           <Button
             aria-busy={submitting}
-            aria-label={submitting ? "Sending" : "Send"}
+            aria-label={submitting ? t.sending : t.send}
             className="ml-auto rounded-full disabled:border-transparent"
             disabled={submitting || text.trim().length === 0}
             size="icon"
@@ -419,14 +422,13 @@ const ComposerSession = ({
       </p>
       {submissionError ? (
         <ErrorNote>
-          {submissionError} Your words are still in the box. Press Send to try
-          again.
+          {submissionError} {t.retry}
         </ErrorNote>
       ) : null}
       {voiceError ? <ErrorNote>{voiceError}</ErrorNote> : null}
       {listening && preferences.captions && captions.length > 0 ? (
         <section
-          aria-label="Captions"
+          aria-label={t.captions}
           aria-live="polite"
           className="bg-surface flex max-h-40 flex-col gap-2 overflow-y-auto rounded-xl px-5 py-4"
         >
@@ -441,15 +443,13 @@ const ComposerSession = ({
               key={caption.id}
             >
               <span className="sr-only">
-                {caption.who === "you" ? "You said: " : "LifeLink said: "}
+                {caption.who === "you" ? t.youSaid : t.lifeLinkSaid}
               </span>
               {caption.text}
             </p>
           ))}
           {speaking ? (
-            <p className="text-muted-foreground text-base">
-              LifeLink is speaking…
-            </p>
+            <p className="text-muted-foreground text-base">{t.speaking}</p>
           ) : null}
         </section>
       ) : null}
@@ -459,6 +459,8 @@ const ComposerSession = ({
 
 /** Prepare a stable, owned thread before typing or starting a voice session. */
 const Composer = (props: ComposerProps) => {
+  const t = useMessages().voice;
+
   const selectedThread = useQuery(
     api.assistant.myThread,
     props.threadId ? "skip" : {}
@@ -505,13 +507,7 @@ const Composer = (props: ComposerProps) => {
   }
 
   if (!threadId || !profileId) {
-    return (
-      <LoadingRows
-        layout="composer"
-        label="Opening a place for your message"
-        rows={1}
-      />
-    );
+    return <LoadingRows layout="composer" label={t.opening} rows={1} />;
   }
 
   return (

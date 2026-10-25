@@ -6,6 +6,7 @@ import { ChevronUpIcon } from "lucide-react";
 import type { Ref } from "react";
 import { useCallback, useState } from "react";
 
+import { useLocale, useMessages } from "@/i18n/locale";
 import { money } from "@/lib/format";
 
 import { quantityWords, shoppingOrder } from "./list-text";
@@ -110,6 +111,8 @@ const Receipt = ({
   list: Doc<"groceryLists">;
   ref?: Ref<HTMLElement>;
 }) => {
+  const locale = useLocale();
+
   const {
     budget,
     estimate,
@@ -122,6 +125,7 @@ const Receipt = ({
   } = estimateFor(list);
 
   const { itemList, scrollable } = useScrollable();
+  const t = useMessages().groceries;
 
   return (
     <section
@@ -135,18 +139,16 @@ const Receipt = ({
           className="text-xl font-semibold tracking-widest uppercase"
           id="receipt-heading"
         >
-          Estimate
+          {t.estimate}
         </h2>
         <p className="text-muted-foreground break-words">{list.name}</p>
       </header>
       <Rule />
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-center">
-          Nothing on this list yet.
-        </p>
+        <p className="text-muted-foreground text-center">{t.nothingOnList}</p>
       ) : (
         <ul
-          aria-label="Items to buy"
+          aria-label={t.itemsToBuy}
           className="flex flex-col gap-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain"
           ref={itemList}
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll a long list inside the sticky receipt.
@@ -163,12 +165,12 @@ const Receipt = ({
               <span className="min-w-0 break-words">
                 {item.name}
                 {item.checked ? (
-                  <span className="sr-only"> (in cart)</span>
+                  <span className="sr-only">{t.inCartSr}</span>
                 ) : null}
                 {item.quantity === null ? null : (
                   <span className="text-muted-foreground">
                     {" "}
-                    {quantityWords(item)}
+                    {quantityWords(item, locale)}
                   </span>
                 )}
               </span>
@@ -176,10 +178,10 @@ const Receipt = ({
                 {item.estimatedCents === null ? (
                   <>
                     <span aria-hidden="true">--</span>
-                    <span className="sr-only">no guess</span>
+                    <span className="sr-only">{t.noGuess}</span>
                   </>
                 ) : (
-                  money(item.estimatedCents)
+                  money(item.estimatedCents, locale)
                 )}
               </span>
             </li>
@@ -187,27 +189,25 @@ const Receipt = ({
         </ul>
       )}
       {scrollable ? (
-        <p className="text-muted-foreground text-center">
-          Scroll the list to see every item.
-        </p>
+        <p className="text-muted-foreground text-center">{t.scrollList}</p>
       ) : null}
       <Rule />
       <dl className="flex flex-col gap-2">
-        <Line label="Items" value={`${items.length}`} />
+        <Line label={t.items} value={`${items.length}`} />
         {inCart.length > 0 ? (
           <>
-            <Line label="In your cart" value={money(inCartCents)} />
-            <Line label="Still to get" value={money(toGetCents)} />
+            <Line label={t.inYourCart} value={money(inCartCents, locale)} />
+            <Line label={t.stillToGet} value={money(toGetCents, locale)} />
           </>
         ) : null}
         <Line
           className="text-lg font-semibold"
-          label="Estimated total"
-          value={money(estimate)}
+          label={t.estimatedTotal}
+          value={money(estimate, locale)}
         />
         <Line
-          label="Budget"
-          value={budget === null ? "Not set" : money(budget)}
+          label={t.budget}
+          value={budget === null ? t.notSet : money(budget, locale)}
         />
         {budget === null ? null : (
           <Line
@@ -215,8 +215,8 @@ const Receipt = ({
               "font-semibold",
               overBudget ? "text-negative" : "text-positive"
             )}
-            label={overBudget ? "Over budget" : "Left to spend"}
-            value={money(Math.abs(budget - estimate))}
+            label={overBudget ? t.overBudget : t.leftToSpend}
+            value={money(Math.abs(budget - estimate), locale)}
           />
         )}
       </dl>
@@ -224,7 +224,7 @@ const Receipt = ({
         <>
           <Rule />
           <p className="text-muted-foreground text-center">
-            Some items have no price guess, so the real total may be higher.
+            {t.missingEstimates}
           </p>
         </>
       ) : null}
@@ -244,14 +244,16 @@ const ReceiptBar = ({
   list: Doc<"groceryLists">;
   onShow: () => void;
 }) => {
+  const locale = useLocale();
   const { budget, estimate, items, overBudget } = estimateFor(list);
+  const t = useMessages().groceries.receiptBar;
 
   if (items.length === 0) {
     return null;
   }
 
   // Money only: the item count is in the list header, and a short bar covers less of the list.
-  const total = `${money(estimate)} ${budget === null ? "estimated" : "total"}`;
+  const total = `${money(estimate, locale)} ${budget === null ? t.estimated : t.total}`;
 
   return (
     <button
@@ -262,19 +264,18 @@ const ReceiptBar = ({
       <span className="min-w-0">
         {total}
         {budget !== null && !overBudget
-          ? ` · ${money(budget - estimate)} left`
+          ? t.left(money(budget - estimate, locale))
           : null}
         {budget !== null && overBudget ? (
           <span className="text-negative font-semibold">
-            {" "}
-            · {money(estimate - budget)} over
+            {t.over(money(estimate - budget, locale))}
           </span>
         ) : null}
       </span>
       <span className="flex shrink-0 items-center gap-1 text-base font-medium">
         {/* rem-based, so the words drop out only when large text leaves no room. */}
         <span className="underline underline-offset-4 @max-[14rem]:sr-only">
-          See estimate
+          {t.see}
         </span>
         <ChevronUpIcon aria-hidden="true" className="size-5" />
       </span>

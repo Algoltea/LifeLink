@@ -56,6 +56,7 @@ import {
   settleUnknownAttempt,
 } from "./lib/lifecycle";
 import type { AttemptResult } from "./lib/lifecycle";
+import { contactLocale } from "./lib/locale";
 
 const attemptResultValidator = v.union(
   v.object({ error: v.string(), kind: v.literal("failed_safe") }),
@@ -280,7 +281,16 @@ const introduceIfFirst = async (
     return null;
   }
 
-  const text = imessageIntroduction(started.owner.displayName);
+  const contact = await ctx.db.normalizeId("contacts", details.contactId);
+
+  const text = imessageIntroduction(
+    started.owner.displayName,
+    await contactLocale(
+      ctx,
+      started.owner._id,
+      contact === null ? null : await ctx.db.get(contact)
+    )
+  );
 
   await ctx.db.patch(started.attemptId, {
     imessageIntroduction: { enrollmentId: enrollment._id, text },

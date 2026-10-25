@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { useLocale, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
+
 type Step = Pick<
   Doc<"taskSteps">,
   "_id" | "detail" | "kind" | "label" | "status"
@@ -65,17 +68,6 @@ const markFor = (kind: Step["kind"], className: string): ReactNode => {
       return kind satisfies never;
     }
   }
-};
-
-const STATUS_WORDS: Record<Step["status"], string> = {
-  awaiting_approval: "Needs you",
-  failed: "Didn't work",
-  pending: "Later",
-  running: "Working on it",
-  skipped: "Not needed",
-  succeeded: "Done",
-  unknown: "Not sure it went through",
-  waiting: "Waiting",
 };
 
 const isCurrent = (status: Step["status"]): boolean =>
@@ -132,6 +124,18 @@ const JourneyGauge = ({
   orientation?: "horizontal" | "vertical";
   steps: Step[];
 }) => {
+  const t = useMessages().tasks;
+  const locale = useLocale();
+  const STATUS_WORDS = t.steps;
+
+  const label = (step: Step): string =>
+    translateServerMessage(step.label, locale);
+
+  const detail = (step: Step): string | null =>
+    step.detail === null || step.detail === undefined
+      ? null
+      : translateServerMessage(step.detail, locale);
+
   const doneCount = steps.findIndex(
     (step) => step.status !== "succeeded" && step.status !== "skipped"
   );
@@ -146,7 +150,7 @@ const JourneyGauge = ({
 
   if (orientation === "vertical") {
     return (
-      <ol aria-label="Progress" className="relative flex flex-col">
+      <ol aria-label={t.progress} className="relative flex flex-col">
         <span
           aria-hidden="true"
           className="bg-brass/50 absolute top-7 bottom-7 left-[1.375rem] w-0.5"
@@ -158,9 +162,9 @@ const JourneyGauge = ({
           >
             <Station compact step={step} />
             <span className="flex flex-col">
-              <span className="text-lg">{step.label}</span>
+              <span className="text-lg">{label(step)}</span>
               <span className="text-muted-foreground text-base">
-                {step.detail ?? STATUS_WORDS[step.status]}
+                {detail(step) ?? STATUS_WORDS[step.status]}
               </span>
             </span>
           </li>
@@ -171,7 +175,7 @@ const JourneyGauge = ({
 
   return (
     <ol
-      aria-label="Progress"
+      aria-label={t.progress}
       className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-3"
     >
       <span
@@ -206,7 +210,7 @@ const JourneyGauge = ({
                   compact ? "text-sm font-semibold" : "text-base font-bold"
                 )}
               >
-                {step.label}
+                {label(step)}
               </span>
               {compact ? null : (
                 <span
@@ -218,11 +222,11 @@ const JourneyGauge = ({
                   )}
                 >
                   {step.status === "succeeded" || step.status === "skipped"
-                    ? (step.detail ?? STATUS_WORDS[step.status])
+                    ? (detail(step) ?? STATUS_WORDS[step.status])
                     : STATUS_WORDS[step.status]}
                 </span>
               )}
-              <span className="sr-only">{`${step.label}: ${STATUS_WORDS[step.status]}.`}</span>
+              <span className="sr-only">{`${label(step)}: ${STATUS_WORDS[step.status]}.`}</span>
             </div>
           </li>
         );
@@ -231,6 +235,6 @@ const JourneyGauge = ({
   );
 };
 
-export { JourneyGauge, STATUS_WORDS };
+export { JourneyGauge };
 
 export type { Step };

@@ -1,4 +1,8 @@
-import type { CallFlag } from "@lifelink/contracts/call-screening";
+import {
+  callFlagsFromSigns,
+  callTranscriptWindow,
+} from "@lifelink/contracts/call-screening";
+import type { CallCaption, CallFlag } from "@lifelink/contracts/call-screening";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../convex/_generated/api";
@@ -488,6 +492,61 @@ describe("live call AI check", () => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     fetchMock.mockReset();
+  });
+
+  it("retains a backend-verified warning spanning captions in the saved summary", async () => {
+    const backend = newBackend();
+    const { person } = await owner(backend);
+
+    const captions: CallCaption[] = [
+      {
+        final: true,
+        id: "request",
+        speaker: "unknown",
+        text: "Please buy gift cards",
+        timeMs: 1000,
+      },
+      {
+        final: true,
+        id: "codes",
+        speaker: "unknown",
+        text: "and read me their codes.",
+        timeMs: 2000,
+      },
+    ];
+
+    const transcript = callTranscriptWindow(captions);
+    fetchMock.mockResolvedValueOnce(
+      modelReply([
+        { kind: "gift_cards", quote: transcript },
+        { kind: "threats", quote: "You will be arrested" },
+      ])
+    );
+
+    const result = await person.action(api.callscreening.analyze, {
+      transcript,
+    });
+
+    const flags = callFlagsFromSigns(result.signs, captions);
+
+    expect(result).toStrictEqual({
+      signs: [{ kind: "gift_cards", quote: transcript }],
+      status: "checked",
+    });
+    expect(flags).toMatchObject([
+      { captionId: "request", quote: transcript, timeMs: 1000 },
+    ]);
+
+    const summaryId = await person.mutation(
+      api.callscreening.save,
+      summary({ flags })
+    );
+
+    await expect(
+      person.query(api.callscreening.get, { summaryId })
+    ).resolves.toMatchObject({
+      flags: [{ captionId: "request", quote: transcript, timeMs: 1000 }],
+    });
   });
 
   it("keeps only signs whose quotes are word for word in the transcript", async () => {

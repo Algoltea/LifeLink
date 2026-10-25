@@ -1,3 +1,4 @@
+import { helpStyleOf, languageName } from "@lifelink/contracts/help-style";
 import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { ConvexError, v } from "convex/values";
 
@@ -14,7 +15,9 @@ import { requireOwner } from "./lib/session";
 
 export const nameForVoice = internalQuery({
   args: {},
-  handler: async (ctx): Promise<string | null> => {
+  handler: async (
+    ctx
+  ): Promise<{ language: string; preferredName: string } | null> => {
     const identity = await ctx.auth.getUserIdentity();
 
     if (identity === null) {
@@ -28,7 +31,19 @@ export const nameForVoice = internalQuery({
       )
       .unique();
 
-    return profile?.role === "owner" ? profile.preferredName : null;
+    if (profile?.role !== "owner") {
+      return null;
+    }
+
+    const preferences = await ctx.db
+      .query("preferences")
+      .withIndex("by_profile", (index) => index.eq("profileId", profile._id))
+      .unique();
+
+    return {
+      language: languageName(helpStyleOf(preferences).language),
+      preferredName: profile.preferredName,
+    };
   },
 });
 
@@ -41,16 +56,16 @@ export const createLiveSession = action({
   handler: async (
     ctx
   ): Promise<{ expiresAt: number; model: string; token: string }> => {
-    const preferredName = await ctx.runQuery(internal.voice.nameForVoice, {});
+    const person = await ctx.runQuery(internal.voice.nameForVoice, {});
 
-    if (preferredName === null) {
+    if (person === null) {
       throw new ConvexError({
         code: "not_signed_in",
         message: "Please sign in again.",
       });
     }
 
-    const result = await createLiveToken(preferredName);
+    const result = await createLiveToken(person.preferredName, person.language);
 
     if (!result.ok) {
       throw new ConvexError({

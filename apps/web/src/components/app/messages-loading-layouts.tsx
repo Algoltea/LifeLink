@@ -12,6 +12,7 @@ import {
   MESSAGES_WORKSPACE,
 } from "@/components/messages/chat-layout";
 import { MessagesNotice } from "@/components/messages/messages-notice";
+import { useMessages } from "@/i18n/locale";
 
 import { LoadingButton } from "./loading-button";
 import { PageHeader } from "./page-header";
@@ -50,75 +51,88 @@ const MessagesLoadingRows = ({ rows }: { rows: number }) => (
   </div>
 );
 
-const MessagesLoadingTranscript = () => (
-  <div className={cn(MESSAGES_READING_COLUMN, "flex min-h-full flex-col pb-4")}>
-    <div className="flex h-[2.083rem] justify-center pb-3">
-      <MessageLine className="h-6 w-32" />
-    </div>
-    <div className="flex flex-col items-end gap-1.5 pl-10 sm:pl-24">
-      <div className="bg-neutral-wash w-4/5 rounded-[1.222rem] px-4 py-3 sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
-        <MessageLine />
-        <MessageLine className="w-3/4" />
-      </div>
-      <MessageLine className="h-[1.333rem] w-24" />
-    </div>
-    <div className="mt-5 flex gap-3">
-      <Skeleton className="hidden size-[2rem] shrink-0 rounded-full sm:block" />
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-        <div className="border-border bg-raised w-4/5 max-w-[calc(100%-2rem)] rounded-[1.222rem] border px-4 py-3 sm:max-w-[calc(100%-6rem)] sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
-          <MessageLine />
-        </div>
-        <div className="-ml-1 flex flex-wrap items-center gap-1">
-          <LoadingButton
-            className="px-2 text-[0.889rem] sm:px-3"
-            icon
-            variant="ghost"
-          >
-            Read aloud
-          </LoadingButton>
-          <LoadingButton
-            className="px-2 text-[0.889rem] sm:px-3"
-            icon
-            variant="ghost"
-          >
-            Help me understand
-          </LoadingButton>
-        </div>
-      </div>
-    </div>
-  </div>
-);
+const MessagesLoadingTranscript = () => {
+  const { appExtras } = useMessages();
 
-const MessagesLoadingComposer = () => (
-  <div
-    className={cn(
-      MESSAGES_READING_COLUMN,
-      "@container/composer flex shrink-0 flex-col gap-2.5"
-    )}
-    data-chat-composer=""
-    data-loading-part="message-composer"
-  >
-    <div className="border-border bg-raised flex flex-col gap-1.5 rounded-[1.333rem] border py-2.5 pr-2.5 pl-4 sm:gap-2 sm:py-3 sm:pr-3 sm:pl-5">
-      <MessageLine className="h-[1.778rem]" />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <LoadingButton className="-ml-2 rounded-full pr-4 pl-3" icon>
-          Add a photo
-        </LoadingButton>
-        <Skeleton className="text-label min-h-control ml-auto inline-flex items-center justify-center gap-2 rounded-full border border-transparent py-1 pr-1.5 pl-4 font-medium sm:pl-5">
-          <span className="invisible">
-            Review
-            <span className="hidden @md/composer:inline"> before sending</span>
-          </span>
-          <span className="invisible size-8 shrink-0" />
-        </Skeleton>
+  return (
+    <div
+      className={cn(MESSAGES_READING_COLUMN, "flex min-h-full flex-col pb-4")}
+    >
+      <div className="flex h-[2.083rem] justify-center pb-3">
+        <MessageLine className="h-6 w-32" />
+      </div>
+      <div className="flex flex-col items-end gap-1.5 pl-10 sm:pl-24">
+        <div className="bg-neutral-wash w-4/5 rounded-[1.222rem] px-4 py-3 sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
+          <MessageLine />
+          <MessageLine className="w-3/4" />
+        </div>
+        <MessageLine className="h-[1.333rem] w-24" />
+      </div>
+      <div className="mt-5 flex gap-3">
+        <Skeleton className="hidden size-[2rem] shrink-0 rounded-full sm:block" />
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          <div className="border-border bg-raised w-4/5 max-w-[calc(100%-2rem)] rounded-[1.222rem] border px-4 py-3 sm:max-w-[calc(100%-6rem)] sm:rounded-[1.333rem] sm:px-5 sm:py-3.5">
+            <MessageLine />
+          </div>
+          <div className="-ml-1 flex flex-wrap items-center gap-1">
+            <LoadingButton
+              className="px-2 text-[0.889rem] sm:px-3"
+              icon
+              variant="ghost"
+            >
+              {appExtras.loading.readAloud}
+            </LoadingButton>
+            <LoadingButton
+              className="px-2 text-[0.889rem] sm:px-3"
+              icon
+              variant="ghost"
+            >
+              {appExtras.loading.helpUnderstand}
+            </LoadingButton>
+          </div>
+        </div>
       </div>
     </div>
-    <div className="text-label relative text-center">
-      <p className="invisible">Practice: nothing will be sent to them.</p>
-      <Skeleton className="absolute inset-x-0 top-1 mx-auto h-3.5 w-3/4" />
+  );
+};
+
+const MessagesLoadingComposer = () => {
+  const { appExtras } = useMessages();
+
+  return (
+    <div
+      className={cn(
+        MESSAGES_READING_COLUMN,
+        "@container/composer flex shrink-0 flex-col gap-2.5"
+      )}
+      data-chat-composer=""
+      data-loading-part="message-composer"
+    >
+      <div className="border-border bg-raised flex flex-col gap-1.5 rounded-[1.333rem] border py-2.5 pr-2.5 pl-4 sm:gap-2 sm:py-3 sm:pr-3 sm:pl-5">
+        <MessageLine className="h-[1.778rem]" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <LoadingButton className="-ml-2 rounded-full pr-4 pl-3" icon>
+            {appExtras.loading.addPhoto}
+          </LoadingButton>
+          <Skeleton className="text-label min-h-control ml-auto inline-flex items-center justify-center gap-2 rounded-full border border-transparent py-1 pr-1.5 pl-4 font-medium sm:pl-5">
+            <span className="invisible">
+              {appExtras.loading.review}
+              <span className="hidden @md/composer:inline">
+                {" "}
+                {appExtras.loading.beforeSending}
+              </span>
+            </span>
+            <span className="invisible size-8 shrink-0" />
+          </Skeleton>
+        </div>
+      </div>
+      <div className="text-label relative text-center">
+        <p className="invisible">{appExtras.loading.practiceMessage}</p>
+        <Skeleton className="absolute inset-x-0 top-1 mx-auto h-3.5 w-3/4" />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** A block status root stays directly in main so the shared viewport fitter sees its gutters. */
 const MessagesLoadingWorkspace = ({
@@ -128,6 +142,8 @@ const MessagesLoadingWorkspace = ({
   label: string;
   className?: string;
 }) => {
+  const { appExtras } = useMessages();
+
   const workspace = useChatViewport(undefined, true);
 
   return (
@@ -145,7 +161,9 @@ const MessagesLoadingWorkspace = ({
       <header aria-hidden="true" className={MESSAGES_HEADER}>
         <Skeleton className="min-h-control min-w-control inline-flex items-center gap-2 border border-transparent px-2 py-2 text-[0.889rem] font-medium sm:pr-4 @3xl/content:hidden">
           <span className="invisible size-6 shrink-0 sm:size-5" />
-          <span className="invisible hidden sm:inline">Messages</span>
+          <span className="invisible hidden sm:inline">
+            {appExtras.loading.messagesTitle}
+          </span>
         </Skeleton>
         <Skeleton className="size-[2.222rem] shrink-0 rounded-full sm:size-[2.667rem]" />
         <div className="min-w-0 flex-1">
@@ -153,7 +171,7 @@ const MessagesLoadingWorkspace = ({
           <MessageLine className="h-[1.333rem]" />
         </div>
         <LoadingButton className="px-3 text-[0.889rem] sm:px-4" icon>
-          Recap
+          {appExtras.loading.recap}
         </LoadingButton>
       </header>
       <section
@@ -172,6 +190,7 @@ const MessagesLoadingWorkspace = ({
 
 /** The real frame's header, notice, and panes, so a hard refresh lands where the page will be. */
 const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
+  const { appExtras } = useMessages();
   const besideOnly = open ? "hidden @3xl/content:flex" : undefined;
 
   return (
@@ -179,11 +198,11 @@ const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
       <PageHeader
         actions={
           <LoadingButton icon size="default">
-            Add a person
+            {appExtras.loading.addPerson}
           </LoadingButton>
         }
         className={cn("items-center", besideOnly)}
-        title="Messages"
+        title={appExtras.loading.messagesTitle}
       />
       <MessagesNotice className={besideOnly} />
       <div className="grid gap-6 @3xl/content:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] @3xl/content:gap-0">
@@ -193,12 +212,14 @@ const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
             besideOnly ?? "flex"
           )}
         >
-          <p className="text-section px-3 pb-3 font-semibold">Conversations</p>
+          <p className="text-section px-3 pb-3 font-semibold">
+            {appExtras.loading.conversationsTitle}
+          </p>
           <MessagesLoadingRows rows={3} />
         </div>
         {open ? (
           <div className="flex min-w-0 flex-col @3xl/content:pl-10">
-            <MessagesLoadingWorkspace label="Loading conversation" />
+            <MessagesLoadingWorkspace label={appExtras.loading.conversation} />
           </div>
         ) : null}
       </div>
@@ -207,31 +228,29 @@ const MessagesLoadingFrame = ({ open }: { open: boolean }) => {
 };
 
 /** This occupies only the existing recap card's body, without adding another frame. */
-const RecapLoadingBody = () => (
-  <div className="flex flex-col gap-4">
-    <div className="relative text-lg">
-      <p className="invisible">
-        LifeLink can sum up what you and your family agreed, what was only
-        offered, and what is still open.
-      </p>
-      <Skeleton className="absolute inset-x-0 top-1 h-4" />
-      <Skeleton className="absolute bottom-1 left-0 h-4 w-3/4" />
-    </div>
-    <div className="flex flex-col gap-3">
-      <div className="relative text-base">
-        <p className="invisible">
-          In Practice mode, LifeLink makes the recap itself. Practice messages
-          are never sent to an AI provider.
-        </p>
+const RecapLoadingBody = () => {
+  const { appExtras } = useMessages();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="relative text-lg">
+        <p className="invisible">{appExtras.loading.recapBody}</p>
         <Skeleton className="absolute inset-x-0 top-1 h-4" />
         <Skeleton className="absolute bottom-1 left-0 h-4 w-3/4" />
       </div>
-      <LoadingButton className="self-start" size="default">
-        Recap this conversation
-      </LoadingButton>
+      <div className="flex flex-col gap-3">
+        <div className="relative text-base">
+          <p className="invisible">{appExtras.loading.recapPractice}</p>
+          <Skeleton className="absolute inset-x-0 top-1 h-4" />
+          <Skeleton className="absolute bottom-1 left-0 h-4 w-3/4" />
+        </div>
+        <LoadingButton className="self-start" size="default">
+          {appExtras.loading.recapConversation}
+        </LoadingButton>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export {
   MessagesLoadingFrame,

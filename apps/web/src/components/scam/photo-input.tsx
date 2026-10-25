@@ -6,17 +6,21 @@ import { CameraIcon, ImageIcon, LightbulbIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 
+import { currentMessages, useMessages } from "@/i18n/locale";
+
 const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp";
 
 const photoError = (file: File): string | null => {
+  const t = currentMessages().photoInput;
+
   if (!PHOTO_TYPES.has(file.type)) {
-    return "Choose a JPEG, PNG or WebP photo. You can also type the words instead.";
+    return t.wrongType;
   }
 
   if (file.size === 0 || file.size > MAX_PHOTO_BYTES) {
-    return "Choose a photo up to 6 MB. This photo is empty or too large.";
+    return t.tooLarge;
   }
 
   return null;
@@ -52,12 +56,12 @@ const PhotoInput = ({
   const [cameraReady, setCameraReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const guidanceId = useId();
+  const t = useMessages().photoInput;
 
   useEffect(() => {
     const capture = captureRef.current;
 
-    const cancelled = () =>
-      setError("No photo was taken. Try again or choose a photo.");
+    const cancelled = () => setError(currentMessages().photoInput.noPhotoTaken);
 
     capture?.addEventListener("cancel", cancelled);
 
@@ -136,7 +140,7 @@ const PhotoInput = ({
 
     if (!navigator.mediaDevices?.getUserMedia) {
       captureRef.current?.click();
-      setError("If the camera doesn’t open, use Choose a photo instead.");
+      setError(t.cameraFallback);
 
       return;
     }
@@ -161,9 +165,7 @@ const PhotoInput = ({
       setCameraOpen(true);
     } catch {
       if (cameraRequest.current === request) {
-        setError(
-          "The camera couldn’t open. Allow camera access in your browser, or use Choose a photo instead."
-        );
+        setError(t.cameraFailed);
       }
     }
 
@@ -186,7 +188,7 @@ const PhotoInput = ({
 
     if (!context) {
       closeCamera();
-      setError("The photo couldn’t be taken. Choose a photo instead.");
+      setError(t.cannotTake);
 
       return;
     }
@@ -201,14 +203,12 @@ const PhotoInput = ({
 
         if (blob === null) {
           closeCamera();
-          setError("The photo couldn’t be taken. Choose a photo instead.");
+          setError(t.cannotTake);
 
           return;
         }
 
-        choose(
-          new File([blob], "Photo of your message.jpg", { type: blob.type })
-        );
+        choose(new File([blob], t.fileName, { type: blob.type }));
       },
       "image/jpeg",
       0.9
@@ -219,7 +219,7 @@ const PhotoInput = ({
     <div className="flex min-w-0 flex-col gap-4">
       <input
         accept={PHOTO_ACCEPT}
-        aria-label="Choose a photo or screenshot"
+        aria-label={t.chooseAria}
         className="hidden"
         disabled={disabled}
         onChange={(event) => {
@@ -231,7 +231,7 @@ const PhotoInput = ({
       />
       <input
         accept="image/*"
-        aria-label="Take a photo with your camera"
+        aria-label={t.takeAria}
         capture="environment"
         className="hidden"
         disabled={disabled}
@@ -246,7 +246,7 @@ const PhotoInput = ({
       {cameraOpen ? (
         <div className="flex flex-col gap-3">
           <video
-            aria-label="Camera preview of your message"
+            aria-label={t.cameraAria}
             autoPlay
             className="bg-parchment h-59 w-full rounded-xl object-contain"
             muted
@@ -257,10 +257,10 @@ const PhotoInput = ({
           <div className="flex flex-wrap gap-3">
             <Button disabled={!cameraReady} onClick={takePhoto} type="button">
               <CameraIcon aria-hidden="true" />
-              Take this photo
+              {t.takeThis}
             </Button>
             <Button onClick={closeCamera} type="button" variant="outline">
-              Cancel camera
+              {t.cancelCamera}
             </Button>
           </div>
         </div>
@@ -288,9 +288,7 @@ const PhotoInput = ({
                 setDragging(false);
 
                 if (event.dataTransfer.files.length > 1) {
-                  setError(
-                    "Choose one photo at a time so it’s clear what is being checked."
-                  );
+                  setError(t.oneAtATime);
 
                   return;
                 }
@@ -302,7 +300,7 @@ const PhotoInput = ({
               variant="outline"
             >
               <ImageIcon aria-hidden="true" />
-              {file ? "Change photo" : "Choose a photo"}
+              {file ? t.change : t.choose}
             </Button>
             <Button
               aria-busy={cameraPending}
@@ -314,19 +312,17 @@ const PhotoInput = ({
               variant="outline"
             >
               <CameraIcon aria-hidden="true" />
-              {cameraPending ? "Opening camera…" : "Take a photo"}
+              {cameraPending ? t.opening : t.take}
             </Button>
           </div>
           {file && preview ? (
             <div className="bg-parchment relative h-59 overflow-hidden rounded-xl">
               <Image
-                alt="Your selected photo, ready for you to check"
+                alt={t.previewAlt}
                 className="object-contain"
                 fill
                 onError={() => {
-                  setError(
-                    "This photo can’t be opened. Choose another JPEG, PNG or WebP photo, or type the words instead."
-                  );
+                  setError(t.cannotOpen);
                   onFile(null);
                 }}
                 sizes="(max-width: 768px) 100vw, 700px"
@@ -349,13 +345,13 @@ const PhotoInput = ({
             variant="ghost"
           >
             <XIcon aria-hidden="true" />
-            Remove
+            {t.remove}
           </Button>
         </div>
       ) : null}
       <p className="text-label flex items-start gap-2" id={guidanceId}>
         <LightbulbIcon aria-hidden="true" className="mt-1 size-4 shrink-0" />
-        A letter, text message, or screenshot. Keep all the words in view.
+        {t.guidance}
       </p>
       {error ? (
         <p className="text-negative text-lg" role="alert">
@@ -364,7 +360,7 @@ const PhotoInput = ({
       ) : null}
       {cameraPending ? (
         <Button onClick={closeCamera} type="button" variant="ghost">
-          Cancel camera
+          {t.cancelCamera}
         </Button>
       ) : null}
     </div>

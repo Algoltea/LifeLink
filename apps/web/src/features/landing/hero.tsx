@@ -13,7 +13,7 @@ const NAV_LINKS = [
 ] as const;
 
 const Hero = () => (
-  <header className="landing-ink">
+  <header className="landing-ink flex flex-col lg:min-h-svh">
     <nav
       aria-label="LifeLink"
       className={`${PAGE} flex min-h-[5rem] items-center justify-between gap-6 pt-[0.889rem]`}
@@ -45,14 +45,14 @@ const Hero = () => (
     </nav>
 
     <div
-      className={`${PAGE} grid gap-[1.333rem] pt-[2.222rem] pb-[2.222rem] lg:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] lg:gap-[3rem] lg:pt-[3.556rem] lg:pb-[1.778rem]`}
+      className={`${PAGE} grid gap-[1.333rem] pt-[2.222rem] pb-[2.222rem] lg:pt-[3.556rem] lg:pb-[1.778rem] xl:grid-cols-[minmax(0,40rem)_minmax(0,1fr)] xl:gap-[3rem]`}
     >
       <h1 className="text-[2.667rem] leading-[1.05] font-semibold tracking-[-0.04em] md:text-[4.667rem] md:leading-none">
         Nothing is sent
         <br />
         until you say so.
       </h1>
-      <div className="flex flex-col gap-[1.333rem] lg:pt-[0.556rem]">
+      <div className="flex flex-col gap-[1.333rem] xl:pt-[0.556rem]">
         <p className="max-w-[30rem] text-[1rem] leading-[1.556] md:text-[1.111rem]">
           LifeLink helps you write to family, keep track of appointments, and
           check texts or letters that seem suspicious. You read each message in
@@ -73,7 +73,7 @@ const Hero = () => (
       </div>
     </div>
 
-    <div className="relative h-[40rem] overflow-hidden lg:h-[31.111rem]">
+    <div className="relative h-[40rem] overflow-hidden lg:h-auto lg:min-h-[17rem] lg:flex-1">
       <Image
         alt="Claude Monet, Cliff Walk at Pourville: two figures on a flowered clifftop above a bright sea with sailboats."
         className="landing-drift object-cover object-[78%_center] lg:object-[center_38%]"
