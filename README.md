@@ -1,3 +1,5 @@
+![LifeLink](docs/assets/lifelink-banner.png)
+
 # LifeLink
 
 LifeLink is a calm, accessible assistant that helps older adults stay close to family, keep track of the day, and check messages that look wrong. You speak or type what you need, review exactly what will happen, approve it, and then follow its progress until it's done.
