@@ -15,7 +15,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { money } from "@/lib/format";
 
-import { ledgerSlot, listBlocks } from "./list-text";
+import { ledgerSlot, listBlocks, quantityWords } from "./list-text";
 import type { GroceryItem } from "./list-text";
 
 import "./receipt.css";
@@ -338,9 +338,6 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
   const locale = useLocale();
   const t = useMessages().groceries;
 
-  const unit =
-    item.unit === null ? null : (t.units[item.unit]?.short ?? item.unit);
-
   return (
     <li
       className={cn(
@@ -349,19 +346,20 @@ const ItemLine = ({ item }: { item: GroceryItem }) => {
       )}
       data-ledger-slot={ledgerSlot("item", item.id)}
     >
-      <span className="flex items-center justify-end px-2 py-1">
-        {item.quantity}
+      {/* The amount with its unit, like "5 lb" in a grocer's quantity column. */}
+      <span className="flex max-w-[7rem] items-center justify-end px-2 py-1 text-right break-words">
+        {quantityWords(item, locale)}
       </span>
-      <span className="ledger-rule flex min-w-0 flex-wrap content-center items-baseline gap-x-2 px-3 py-1">
-        <span
-          className={cn("min-w-0 break-words", item.checked && "line-through")}
-        >
+      <span
+        className={cn(
+          "ledger-rule flex min-w-0 items-center px-3 py-1 break-words",
+          item.checked && "line-through"
+        )}
+      >
+        <span className="min-w-0">
           {item.name}
           {item.checked ? <span className="sr-only">{t.inCartSr}</span> : null}
         </span>
-        {item.quantity === null || unit === null ? null : (
-          <span className="text-muted-foreground italic">{unit}</span>
-        )}
       </span>
       <span className="ledger-rule-double flex items-center justify-end px-3 py-1">
         {item.estimatedCents === null ? (
