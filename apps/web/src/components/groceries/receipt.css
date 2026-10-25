@@ -1,0 +1,97 @@
+/*
+ * A Victorian grocer's bill: yellowed paper, letterpress heading, and ledger
+ * ruling. The paper is an object lying on the page, so it keeps its colours
+ * and dark ink in every theme, like the landing page's slips.
+ */
+.ledger-paper {
+  --paper: #f5e8c7;
+  --paper-edge: #e9d4a4;
+  --ink: #2b1d12;
+  --ledger-red: #cf5f73;
+  --ledger-blue: #b9c7cf;
+  --foreground: var(--ink);
+  --muted-foreground: #5f4a36;
+  --positive-ink: #2f5a3f;
+  --negative-ink: #8d2f28;
+
+  /* Edges darkened by handling. Horizontal only, so the pinned totals match the paper behind them. */
+  --paper-fill: linear-gradient(
+    90deg,
+    var(--paper-edge),
+    var(--paper) 7%,
+    var(--paper) 93%,
+    var(--paper-edge)
+  );
+
+  background: var(--paper-fill);
+  color: var(--ink);
+  font-family: var(--font-ledger), var(--font-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-contrast="more"] .ledger-paper {
+  --paper: #fbf3df;
+  --paper-edge: #f1e3c0;
+  --ink: #120b05;
+  --ledger-red: #a3324a;
+  --ledger-blue: #6f8796;
+  --muted-foreground: #3b2b1d;
+}
+
+.ledger-paper .ledger-bodoni {
+  font-family: var(--font-ledger-display), var(--font-ledger), var(--font-sans);
+}
+
+.ledger-paper .ledger-hand {
+  font-family: var(--font-ledger-hand), var(--font-ledger), var(--font-sans);
+}
+
+.ledger-paper .ledger-blackletter {
+  font-family:
+    var(--font-ledger-blackletter), var(--font-ledger), var(--font-sans);
+}
+
+/* The page runs a little darker at the top, where the bill was folded and held. */
+.ledger-paper .ledger-head {
+  background: linear-gradient(rgb(150 105 40 / 0.1), transparent 4rem);
+}
+
+.ledger-paper .ledger-fill {
+  background: var(--paper-fill);
+}
+
+/* Column rules: a single red line before the item, a double one before the price. */
+.ledger-paper .ledger-rule {
+  border-left: 1px solid var(--ledger-red);
+}
+
+.ledger-paper .ledger-rule-double {
+  border-left: 3px double var(--ledger-red);
+}
+
+.ledger-paper .ledger-line {
+  border-top: 1px solid var(--ledger-blue);
+}
+
+.ledger-paper .ledger-banner {
+  border-top: 3px double var(--ledger-red);
+}
+
+/*
+ * The cut edge, the same teeth as the landing page's ride slip: each tooth
+ * 0.889rem wide and 0.667rem deep, so the opening angle is 2 × atan(0.444 / 0.667).
+ */
+.ledger-teeth {
+  --tooth-width: 0.889rem;
+  --tooth-angle: 67.4deg;
+
+  height: 0.667rem;
+  background: var(--paper-fill);
+  mask: conic-gradient(
+      from calc(var(--tooth-angle) / -2) at bottom,
+      #0000,
+      #000 1deg calc(var(--tooth-angle) - 1deg),
+      #0000 var(--tooth-angle)
+    )
+    50% / var(--tooth-width) 100%;
+}

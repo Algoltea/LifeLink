@@ -431,7 +431,7 @@ const ProfileSettingsLayout = () => (
 );
 
 const SettingsLayout = () => (
-  <div className="grid items-start gap-8 xl:grid-cols-2">
+  <div className="grid items-start gap-8 @4xl/content:grid-cols-2">
     <DisplaySettingsLayout />
     <div className="flex min-w-0 flex-col gap-8">
       <ProfileSettingsLayout />

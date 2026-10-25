@@ -31,11 +31,12 @@ import {
   aisleHeading,
   isSorted,
   itemMatches,
-  openSections,
+  ledgerSlot,
+  listBlocks,
   quantityWords,
   shoppingOrder,
 } from "./list-text";
-import type { GroceryItem } from "./list-text";
+import type { GroceryItem, ListBlock } from "./list-text";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
@@ -158,7 +159,10 @@ const ItemRow = ({
   };
 
   return (
-    <li className="border-rule flex items-center gap-3 border-t py-1">
+    <li
+      className="border-rule flex items-center gap-3 border-t py-1"
+      data-ledger-slot={ledgerSlot("item", item.id)}
+    >
       <Checkbox
         checked={item.checked}
         id={checkboxId}
@@ -329,41 +333,22 @@ const ItemSearch = ({
   );
 };
 
-interface Block {
-  heading: string | null;
-  items: GroceryItem[];
-}
-
 /** What to show: matches while searching, otherwise sections then the cart. */
 const blocksFor = (
   list: Doc<"groceryLists">,
   query: string,
   messages: Messages["groceries"]
-): Block[] => {
-  const ordered = shoppingOrder(list.items);
-
-  if (query.trim().length > 0) {
-    return [
-      {
-        heading: null,
-        items: ordered.filter((item) => itemMatches(item, query)),
-      },
-    ];
-  }
-
-  if (!isSorted(list.items)) {
-    return [{ heading: null, items: ordered }];
-  }
-
-  const inCart = list.items.filter((item) => item.checked);
-
-  return [
-    ...openSections(list, messages),
-    ...(inCart.length > 0
-      ? [{ heading: messages.inYourCart, items: inCart }]
-      : []),
-  ];
-};
+): ListBlock[] =>
+  query.trim().length > 0
+    ? [
+        {
+          heading: null,
+          items: shoppingOrder(list.items).filter((item) =>
+            itemMatches(item, query)
+          ),
+        },
+      ]
+    : listBlocks(list, messages);
 
 /** Moves are applied at once on screen; the server's answer follows. */
 const useMoveItem = () =>
@@ -554,7 +539,10 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
             key={block.items[0]?.id}
           >
             {block.heading === null ? null : (
-              <h3 className="pt-3 pb-1 text-lg leading-7 font-semibold">
+              <h3
+                className="pt-3 pb-1 text-lg leading-7 font-semibold"
+                data-ledger-slot={ledgerSlot("heading", block.heading)}
+              >
                 {block.heading}
               </h3>
             )}
