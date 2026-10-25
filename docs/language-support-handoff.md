@@ -1,5 +1,15 @@
 # Language support handoff — October 24, 2026
 
+## Additional language follow-up
+
+PR #16 was merged at `c575d0b`. The follow-up adds French, German, Italian, Brazilian Portuguese, Simplified Chinese, Vietnamese, Korean, and Tagalog, matching all ten cloud-help choices. It uses the same core-screen coverage as English and Spanish, including translated fixed messages and new recipient-language templates. Canonical artwork credits, original quotes/transcripts, authored content, approved bodies, and fingerprints remain unchanged.
+
+Locale selection follows stored account/device choices or the browser. `fil` maps to Tagalog, Portuguese uses `pt-BR`, and explicit Traditional Chinese tags fall back to English unless Simplified script is explicitly selected. Browser speech recognition is requested in the selected locale; actual provider and device language availability still needs live verification.
+
+The public welcome page, Mahjong, static browser-tab metadata, and standalone offline fallback remain in English. Local detection and Practice request parsing remain English-only, cached briefings keep their original language, and unknown provider diagnostics pass through verbatim. Translations have not received native-speaker review. The Vercel preview still requires its own configured `NEXT_PUBLIC_CONVEX_URL`; this work does not change deployment settings or send real messages.
+
+The initial follow-up checkpoint passes `bun run check`, `bun run check-types`, `bun run test` (1,268 tests), and the production build. Browser validation and integration of main's newly added email-reply flow are in progress; the PR #16 evidence below applies to that earlier merged checkpoint.
+
 ## PR 16 follow-up
 
 This section supersedes the packaging checkpoint and historical resume checklist below.

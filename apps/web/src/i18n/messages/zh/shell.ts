@@ -1,0 +1,48 @@
+import type { Messages } from "../en";
+
+const shell: Messages["shell"] = {
+  accountMenuFor: "账号菜单：",
+  closeMenu: "关闭菜单",
+  dismissNotice: "关闭提示",
+  familyMember: "家人",
+  groupGames: "游戏",
+  groupHelpWith: "可以帮您",
+  groupSetup: "您的设置",
+  mainNavigation: "主导航",
+  menu: "菜单",
+  nav: {
+    ask: "问问 LifeLink",
+    circle: "信任圈",
+    connections: "连接",
+    documents: "文档",
+    email: "邮件",
+    family: "家人",
+    groceries: "购物清单",
+    mahjong: "麻将接龙",
+    messages: "消息",
+    scam: "诈骗检查",
+    settings: "设置",
+    solitaire: "纸牌接龙",
+    today: "今日",
+  },
+  needsReview: (label: string) => `${label} 需要您核对。`,
+  notTriedAgain: "不会自动重试。",
+  offline:
+    "您目前处于离线状态。可以继续写；您批准的内容将在恢复联网后重新检查并发送。",
+  offlineReview: "离线操作需要您核对",
+  offlineWaiting: (count: number) => ` ${count} 项等待中。`,
+  openAsk: "打开问问 LifeLink",
+  openMenu: "打开菜单",
+  originalRequest: "您的原始请求",
+  playAccount: "游戏保存在此设备上，离线也能玩。",
+  practiceBannerOn: "练习模式已开启。",
+  practiceBannerRest: "不会实际发送消息。",
+  practiceMode: "练习模式",
+  reviewOnToday: "在今日页面核对",
+  signOut: "退出登录",
+  skipToMain: "跳转到主要内容",
+  turnOffPractice: "关闭练习模式",
+  yourOfflineRequest: "您的离线请求",
+};
+
+export { shell };

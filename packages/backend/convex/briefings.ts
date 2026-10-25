@@ -19,6 +19,7 @@ import {
   openRouterConfigured,
   structuredCompletion,
 } from "./integrations/openrouter";
+import { briefingMessagesFor } from "./lib/briefing-messages";
 import { requireOwner } from "./lib/session";
 import {
   DAY,
@@ -140,59 +141,29 @@ const maxLines = (detail: ExplanationDetail): number =>
 const rulesBriefing = (input: Facts): Briefing => {
   const [next] = input.appointments;
 
-  if (input.language === "es") {
-    const lines: string[] = [];
-
-    if (next?.ride === "none") {
-      lines.push("Aún no tiene transporte para esa cita.");
-    }
-
-    if (next?.ride === "confirmed") {
-      lines.push("Su transporte está confirmado.");
-    }
-
-    for (const reminder of input.reminders.slice(0, 2)) {
-      lines.push(`Recordatorio a las ${reminder.time}: ${reminder.title}.`);
-    }
-
-    if (input.waitingCount > 0) {
-      lines.push(
-        `${input.waitingCount} ${input.waitingCount === 1 ? "cosa espera" : "cosas esperan"} su aprobación.`
-      );
-    }
-
-    return {
-      greetingFact:
-        next === undefined
-          ? "No hay nada programado para los próximos días."
-          : `${next.title} es el ${next.day} a las ${next.time}.`,
-      lines: lines.slice(0, maxLines(input.detail)),
-    };
-  }
+  const messages = briefingMessagesFor(interfaceLocaleOf(input.language));
 
   const greetingFact =
     next === undefined
-      ? "Nothing is booked for the next few days."
-      : `${next.title} is on ${next.day} at ${next.time}.`;
+      ? messages.noAppointments
+      : messages.appointment(next.title, next.day, next.time);
 
   const lines: string[] = [];
 
-  if (next !== undefined && next.ride === "none") {
-    lines.push("You don't have a ride arranged for it yet.");
+  if (next?.ride === "none") {
+    lines.push(messages.rideNeeded);
   }
 
-  if (next !== undefined && next.ride === "confirmed") {
-    lines.push("Your ride is confirmed.");
+  if (next?.ride === "confirmed") {
+    lines.push(messages.rideConfirmed);
   }
 
   for (const reminder of input.reminders.slice(0, 2)) {
-    lines.push(`Reminder at ${reminder.time}: ${reminder.title}.`);
+    lines.push(messages.reminder(reminder.title, reminder.time));
   }
 
   if (input.waitingCount > 0) {
-    lines.push(
-      `${input.waitingCount} ${input.waitingCount === 1 ? "thing is" : "things are"} waiting for your approval.`
-    );
+    lines.push(messages.waiting(input.waitingCount));
   }
 
   return { greetingFact, lines: lines.slice(0, maxLines(input.detail)) };

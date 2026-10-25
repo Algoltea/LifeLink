@@ -1,0 +1,46 @@
+import type { Messages } from "../en";
+
+const common: Messages["common"] = {
+  back: "Quay lại",
+  cancel: "Hủy",
+  close: "Đóng",
+  done: "Xong",
+  edit: "Chỉnh sửa",
+  genericError: "Đã xảy ra lỗi. Vui lòng thử lại.",
+  genericErrorShort: "Đã xảy ra lỗi.",
+  loading: "Đang tải",
+  next: "Tiếp theo",
+  no: "Không",
+  off: "Tắt",
+  on: "Bật",
+  permissions: {
+    add: "Thêm",
+    calendar: "Tìm ngày",
+    draft: "Soạn nháp",
+    message: "Nhắn tin",
+    money: "Tiền",
+    notice: "Thông báo",
+    post: "Đăng",
+    read: "Đọc",
+    replies: "Phản hồi",
+    send: "Gửi",
+    unavailable: "Chưa có",
+  },
+  practice: "Thực hành",
+  practiceTitle:
+    "Chế độ thực hành: không có gì thực sự được gửi hoặc lưu bên ngoài LifeLink.",
+  previous: "Trước",
+  readAloud: "Đọc thành tiếng",
+  readAloudPlay: "Phát âm thanh",
+  readAloudPreparing: "Đang chuẩn bị âm thanh · Dừng",
+  readAloudReady: "Âm thanh đã sẵn sàng. Nhấn Đọc thành tiếng để nghe.",
+  readAloudStop: "Dừng đọc",
+  remove: "Xóa",
+  save: "Lưu",
+  saved: "Đã lưu",
+  saving: "Đang lưu…",
+  tryAgain: "Thử lại",
+  yes: "Có",
+};
+
+export { common };

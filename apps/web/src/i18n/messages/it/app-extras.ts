@@ -1,0 +1,131 @@
+import type { Messages } from "../en";
+
+const appExtras: Messages["appExtras"] = {
+  approvalRecorded: (label) => `Approvazione registrata: ${label}`,
+  loading: {
+    addPerson: "Aggiungi una persona",
+    addPhoto: "Aggiungi una foto",
+    app: "Caricamento di LifeLink",
+    beforeSending: "prima dell’invio",
+    call: "Chiama",
+    checkPhoto: "Controlla questa foto",
+    checks: "Caricamento dei Suoi controlli",
+    chooseFile: "Scelga un file per vederne l’anteprima qui.",
+    choosePhoto: "Scegli una foto",
+    circle: "Caricamento della Sua cerchia di fiducia",
+    circleBody:
+      "Le persone di cui si fida, come contattarle e cosa può vedere ciascuna.",
+    circleTitle: "Cerchia di fiducia",
+    connectEmail: "Collega Gmail o Outlook",
+    connections: "Caricamento dei collegamenti",
+    connectionsBody:
+      "Scelga per cosa desidera aiuto. Apra una scheda per vedere tutte le funzioni prima di collegarsi.",
+    connectionsTitle: "Collegamenti",
+    conversation: "Caricamento della conversazione",
+    conversations: "Caricamento delle conversazioni",
+    conversationsTitle: "Conversazioni",
+    documentsTitle: "Documenti",
+    drive: "Caricamento dei Suoi file Drive",
+    driveNotice:
+      "Drive di prova con file di esempio e le note che salva in modalità di prova. Nulla qui proviene da un account Google reale.",
+    earlierChecks: "Controlli precedenti",
+    edit: "Modifica",
+    email: "Caricamento email",
+    emailTitle: "Email",
+    emails: "Caricamento delle email",
+    familyBody:
+      "Veda solo ciò che ogni persona sceglie di condividere. Può guardare, ma non può mai inviare, approvare o spendere nulla per loro.",
+    familyTitle: "Famiglia",
+    groceriesBody:
+      "Conservi una lista della spesa, pianifichi un limite di spesa e copi o stampi ciò che Le serve.",
+    groceriesTitle: "Spesa",
+    helpUnderstand: "Mi aiuti a capire",
+    inbox: "Posta in arrivo",
+    listenCall: "Ascolta una chiamata",
+    lists: "Caricamento delle Sue liste",
+    message: "Messaggi",
+    messagesBody:
+      "Scriva alle persone della Sua cerchia di fiducia. Vedrà ogni messaggio prima dell’invio.",
+    messagesTitle: "Messaggi",
+    notSharing: "Non sta condividendo nulla con nessuno.",
+    page: "Caricamento della Sua pagina",
+    permissions: "Permessi",
+    photo: "Foto",
+    practiceCall: "Prova una chiamata simulata",
+    practiceMessage: "Prova: non verrà inviato nulla alla persona.",
+    readAloud: "Leggi ad alta voce",
+    readDay: "Leggi la mia giornata ad alta voce",
+    recap: "Riepilogo",
+    recapBody:
+      "LifeLink può riassumere ciò che Lei e la Sua famiglia avete concordato, ciò che è stato solo offerto e ciò che è ancora in sospeso.",
+    recapConversation: "Riassumi questa conversazione",
+    recapPractice:
+      "In modalità di prova, LifeLink crea direttamente il riepilogo. I messaggi di prova non vengono mai inviati a un fornitore di IA.",
+    review: "Verifica",
+    scamBody:
+      "Ha dubbi su un messaggio o una chiamata? LifeLink cerca segnali di allarme prima che Lei agisca.",
+    scamTitle: "Controllo truffe",
+    settings: "Caricamento delle impostazioni",
+    settingsBody: "Renda LifeLink comodo da leggere e ascoltare.",
+    settingsTitle: "Impostazioni",
+    shared: "Caricamento delle informazioni condivise",
+    startListening: "Inizia ascolto",
+    takePhoto: "Scatta una foto",
+    task: "Caricamento dei dettagli dell’attività",
+    text: "Testo",
+    thisConversation: "questa conversazione",
+    today: "Caricamento di Oggi",
+    yourFiles: "I Suoi file",
+  },
+  openingFamily: "Apertura della vista famiglia",
+  phone: {
+    allCountries: "Tutti i Paesi",
+    common: "Più comuni",
+    countryCode: "Prefisso internazionale",
+    other: "Altro: inserisca il prefisso con +",
+  },
+  signIn: {
+    backHome: "Torna alla pagina iniziale",
+    body: "Acceda per vedere i messaggi e gli appuntamenti di oggi. Nulla viene inviato senza il Suo consenso.",
+    breakPrompt: "Si concede una pausa?",
+    busy: "Un momento…",
+    connectionError:
+      "Non è stato possibile collegarsi. Controlli la connessione a Internet e riprovi.",
+    createAccount: "Crea account",
+    createBody: "Serve circa un minuto. La famiglia si aggiunge dopo.",
+    createError: "Non è stato possibile creare l’account. Riprovi.",
+    createOption: "Crea un account",
+    createTitle: "Per iniziare.",
+    email: "Email",
+    friend: "Persona amica",
+    hide: "Nascondi",
+    hidePassword: "Nascondi password",
+    mismatch:
+      "L’indirizzo email e la password non corrispondono. Li controlli e riprovi.",
+    modeLabel: "Accedi o crea un account",
+    name: "Il Suo nome completo",
+    or: ", oppure ",
+    paintingAlt: {
+      "sign-in":
+        "Claude Monet, Woman with a Parasol: una donna con un parasole verde è in piedi su una collina ventosa sotto un cielo luminoso; il figlio piccolo è nell’erba accanto a lei.",
+      "sign-up":
+        "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte: persone riposano su un prato soleggiato lungo il fiume; una coppia sotto un parasole è accanto a un cagnolino e a una scimmietta domestica.",
+    },
+    password: "Password",
+    passwordHint: (count) => `Almeno ${count} caratteri.`,
+    passwordMinimum: (count) =>
+      `Scelga una password di almeno ${count} caratteri.`,
+    play: "Gioca a Solitario senza accedere",
+    playMahjong: "gioca a Mahjong",
+    show: "Mostra",
+    showPassword: "Mostra password",
+    signIn: "Accedi",
+    welcome: "È un piacere ritrovarLa.",
+  },
+  timeZone: {
+    all: "Tutti i fusi orari",
+    common: "Più comuni",
+  },
+};
+
+export { appExtras };

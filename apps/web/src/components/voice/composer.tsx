@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
-import { useMessages } from "@/i18n/locale";
+import { useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
@@ -79,6 +79,7 @@ const ComposerSession = ({
   onSubmitted,
   threadId,
 }: ComposerProps & { threadId: string }) => {
+  const locale = useLocale();
   const t = useMessages().voice;
   const submit = useMutation(api.assistant.submitRequest);
   const createLive = useAction(api.voice.createLiveSession);
@@ -320,7 +321,8 @@ const ComposerSession = ({
           if (problem) {
             setVoiceError(problem);
           }
-        }
+        },
+        locale
       );
       setVoice(dictation.current === null ? "idle" : "dictating");
     }

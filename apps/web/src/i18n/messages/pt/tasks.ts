@@ -1,0 +1,158 @@
+import type { Messages } from "../en";
+
+const tasks: Messages["tasks"] = {
+  alsoWaiting: "Também aguardando você",
+  answerFirst: "Responda primeiro à pergunta acima.",
+  approve: {
+    calendar_event: "Aprovar e adicionar",
+    confirm_arrangement: "Confirmar a carona",
+    create_reminder: "Salvar o lembrete",
+    drive_note: "Aprovar e salvar",
+    email_draft: "Aprovar e salvar o rascunho",
+    family_update: "Compartilhar a atualização",
+    grocery_handoff: "Aprovar pedido",
+    send_message: "Aprovar e enviar",
+  },
+  approveAgain:
+    "Algo mudou depois da sua aprovação. Confira e aprove novamente.",
+  approvedWaiting: "Aprovado. Aguardando o início…",
+  approving: "Aprovando…",
+  askAgainIfChanged:
+    "Se algo mudar depois da sua aprovação, como o horário ou o destinatário, o LifeLink perguntará novamente.",
+  backToToday: "Voltar para Hoje",
+  breadcrumb: "Caminho de navegação",
+  cancelEditing: "Cancelar edição",
+  cancelRequest: "Cancelar este pedido",
+  cancelled: "Você cancelou este pedido. Nada foi enviado.",
+  cancelling: "Cancelando…",
+  changeWords: "Alterar as palavras",
+  changesSaved:
+    "Alterações salvas. Revise a mensagem atualizada antes de aprovar.",
+  checkNow: "Verificar agora",
+  checkedForYou: "Verificado para você",
+  checking: "Verificando…",
+  checks: {
+    appointment: (title, day, time) =>
+      `O dia e o horário correspondem a ${title} em ${day} às ${time}.`,
+    contact: (name, relationship) =>
+      `${name} está nos seus contatos (${relationship}).`,
+    hasLink: "Esta mensagem contém um link. Confira se você queria incluí-lo.",
+    noLinks: "Nenhum link na mensagem.",
+    nothingUnclear: "Não há dúvidas sobre quem ou quando.",
+    trusted: "de confiança",
+  },
+  couldNotTell:
+    "Não conseguimos saber por aqui. Verifique, por exemplo perguntando à pessoa, e nos diga:",
+  detailsChanged:
+    "Os detalhes mudaram enquanto você editava. Suas alterações continuam aqui. Compare com o texto mais recente antes de salvar.",
+  detailsGone: "Estes detalhes não estão mais disponíveis.",
+  didNotGoThrough: "Esta operação não foi concluída.",
+  done: "Concluído",
+  earlierVersionHide: "Ocultar a versão anterior",
+  earlierVersionShow: "Mostrar a versão anterior",
+  goToCircle: "Ir para o Círculo de confiança",
+  heading: {
+    approveSubline: "Nada acontece até você aprovar.",
+    approveTitle: "Confira e depois aprove",
+    completedSubline: "Tudo deste pedido foi concluído.",
+    confirmSubline: (who) => `${who} respondeu. Confira o horário e confirme.`,
+    confirmTitle: "Confirmar a carona",
+    sendSubline: (who) =>
+      `Nada é enviado a ${who} até você pressionar Aprovar. Você pode alterar as palavras antes.`,
+    sendTitle: "Leia antes do envio",
+    standsSubline: "Veja como está o andamento.",
+    waitingSubline: (who) =>
+      `Sua mensagem foi enviada. Mostraremos a resposta de ${who} aqui assim que chegar.`,
+    waitingTitle: (who) => `Aguardando ${who}`,
+  },
+  howItWent: "Como foi",
+  inProgress: "Em andamento",
+  itArrived: "Chegou",
+  itDidNotArrive: "Não chegou",
+  keepMyEdits: "Manter minhas alterações",
+  latestWording: "Ver o texto mais recente",
+  loadingDetails: "Carregando detalhes da tarefa",
+  loadingLatest: "Carregando os detalhes mais recentes",
+  loadingRequest: "Carregando detalhes do pedido",
+  messageText: "Texto da mensagem",
+  messages: "Mensagens",
+  noLongerEditable:
+    "Este pedido não pode mais ser editado. Suas palavras não salvas continuam aqui para você copiar.",
+  notFound: "Não foi possível encontrar.",
+  notSure: "Não temos certeza de que a operação foi concluída.",
+  notSureDetail:
+    "O serviço não confirmou o que aconteceu. O LifeLink mantém o resultado como incerto para que não seja confundido com uma tentativa segura de repetir.",
+  nothingNeedsYou: "Nada precisa da sua atenção agora.",
+  nothingToApprove: "Não há nada para aprovar aqui.",
+  nothingToApproveRequest: "Não há nada para aprovar neste pedido.",
+  nothingWasSent: "Nada foi enviado, então é seguro tentar novamente.",
+  offlineApprovalFailed:
+    "Não foi possível salvar esta aprovação sem conexão. Aprove novamente quando a conexão voltar.",
+  offlineApprovalSaved:
+    "Salvo para quando sua conexão voltar. O LifeLink verificará tudo novamente antes do envio.",
+  openReceipt: "Abrir o comprovante",
+  outcomeError: (error) => `${error} Tente novamente.`,
+  practiceApproval:
+    " Modo de prática: aprovar mostra o que aconteceria; nada é enviado de verdade.",
+  progress: "Andamento",
+  progressAndNext: "Andamento e próximos passos",
+  recordedOutcome: "Resultado registrado",
+  reminderShare: "Permitir que meu círculo de confiança veja este lembrete",
+  reminderShareAria: "Compartilhar este lembrete com meu círculo de confiança",
+  reminderShareHint: "Só as pessoas com quem você compartilha lembretes.",
+  replied: (who) => `${who} respondeu`,
+  reviewStatus: {
+    approved: "Aprovado",
+    awaiting_approval: "Revise estes detalhes",
+    cancelled: "Cancelado",
+    executing: "Em andamento",
+    failed: "Não foi concluído",
+    succeeded: "Concluído",
+    unknown: "Resultado não confirmado",
+  },
+  savedApproveAgain: "Salvo. Como as palavras mudaram, aprove novamente.",
+  savingOutcome: "Salvando o que aconteceu…",
+  seeDetails: "Ver os detalhes",
+  sentStatus: {
+    sent: "enviado",
+  },
+  sentWaiting:
+    "Sua mensagem foi enviada. Mostraremos a resposta assim que chegar.",
+  shoppingRetired: "Os pedidos de compras não podem mais ser aprovados.",
+  spectrumUnknown:
+    "Ainda não podemos confirmar esta mensagem. Pergunte à pessoa se ela chegou. Se ainda não chegou, pode chegar mais tarde; o LifeLink manterá o estado como incerto.",
+  status: {
+    awaiting_approval: "Sua vez",
+    cancelled: "Cancelado",
+    completed: "Concluído",
+    in_progress: "Em execução",
+    needs_attention: "Precisa de atenção",
+    needs_clarification: "Uma pergunta para você",
+    waiting_for_reply: "Aguardando resposta",
+  },
+  stepByStep: "Passo a passo",
+  steps: {
+    awaiting_approval: "Precisa de você",
+    failed: "Não funcionou",
+    pending: "Depois",
+    running: "Em execução",
+    skipped: "Não necessário",
+    succeeded: "Concluído",
+    unknown: "Não se sabe se foi concluído",
+    waiting: "Aguardando",
+  },
+  them: "essa pessoa",
+  they: "Essa pessoa",
+  unclearReply: (who) =>
+    `Não conseguimos saber com certeza o que ${who} quis dizer. ${who} disse sim?`,
+  useLatestWords: "Usar o texto mais recente",
+  version: (version, status) => `Versão ${version} · ${status}`,
+  wentNotThrough: "A operação não foi concluída. Você pode tentar novamente.",
+  wentThrough: "A operação foi concluída.",
+  whoCan: (who) => `Sim, ${who} pode`,
+  whoCannot: (who) => `Não, ${who} não pode`,
+  workingNow: "Em execução agora…",
+  youSent: "Você enviou",
+};
+
+export { tasks };

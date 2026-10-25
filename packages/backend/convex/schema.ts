@@ -2,6 +2,8 @@ import { SPEECH_VOICES } from "@lifelink/contracts/speech";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { localeValidator } from "./lib/locale";
+
 /**
  * Data model. Gemini proposes; these tables hold what Convex validated,
  * what the person approved, and what actually happened.
@@ -359,7 +361,7 @@ export default defineSchema({
     createdAt: v.number(),
     hue: v.number(),
     // The language LifeLink's own words to them use; unset or null follows the owner's language.
-    language: v.optional(v.union(v.literal("en"), v.literal("es"), v.null())),
+    language: v.optional(v.union(localeValidator, v.null())),
     linkedProfileId: v.union(v.id("profiles"), v.null()),
     name: v.string(),
     ownerId: v.id("profiles"),

@@ -6,7 +6,18 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 
 /** A language LifeLink writes its own fixed words in. */
-const localeValidator = v.union(v.literal("en"), v.literal("es"));
+const localeValidator = v.union(
+  v.literal("en"),
+  v.literal("es"),
+  v.literal("fr"),
+  v.literal("de"),
+  v.literal("it"),
+  v.literal("pt"),
+  v.literal("zh"),
+  v.literal("vi"),
+  v.literal("ko"),
+  v.literal("tl")
+);
 
 /** The language the owner chose for LifeLink, or English when they have not chosen. */
 const ownerLocale = async (

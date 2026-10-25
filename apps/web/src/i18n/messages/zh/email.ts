@@ -1,0 +1,114 @@
+import type { Messages } from "../en";
+
+const email: Messages["email"] = {
+  aboutChecks: "关于诈骗检查",
+  appointmentAdded: "已添加到“今日”页面的“本周安排”。",
+  appointmentFound: "发现预约安排",
+  backToInbox: "返回收件箱",
+  checkAnother: "检查另一条消息",
+  checkCouldNotFinish: (error: string) => `诈骗检查未能完成。${error}`,
+  checkFirst: "采取行动前，请先检查常见的警示信号。",
+  checkForNew: "检查新邮件",
+  checkManually: "您可以在下方手动检查。",
+  checkThis: "检查这封邮件",
+  checked: (when: string) => `检查时间：${when}`,
+  checkedAt: (when: string) => `检查时间：${when}。`,
+  checking: "正在检查…",
+  checksAutomatic:
+    "在设置中开启 AI 邮件检查后，新收到的真实邮件可能会发送给云端 AI 服务提供方。练习邮件保留在 LifeLink 内。云端 AI 关闭、不可用或未能完成检查时，会使用仅适用于英语的本地规则。即使云端请求失败，邮件仍可能已发送给服务提供方。两种方法都无法核实发件人身份，也无法证明邮件安全。",
+  checksIntro:
+    "LifeLink 会检查新邮件中是否有常见诈骗迹象。选择邮件，阅读内容并查看发现的问题。",
+  checksTitle: "邮件检查如何进行",
+  chooseEmail: "选择一封邮件，阅读内容并查看诈骗检查结果。",
+  cloudCheckNotice:
+    "云端 AI 参与了这封邮件的检查。它可能出错，也无法核实发件人身份。没有警示信号并不代表邮件安全。",
+  cloudConsent:
+    "将这封邮件发送给云端 AI 服务，以生成摘要并查找其中的预约安排。不勾选则由 LifeLink 生成简短预览。",
+  concern: "这封邮件有值得警惕的地方。采取行动前，请先核实其中的要求。",
+  connectMailbox: "连接 Gmail 或 Outlook",
+  connected: (list: string) => `已连接：${list}。`,
+  countEmails: (count: number) => `${count} 封邮件`,
+  empty: "这里还没有邮件。请连接邮箱，然后选择“检查新邮件”来导入近期邮件。",
+  from: "发件人：",
+  helpMeUnderstand: "帮我理解",
+  inbox: "收件箱",
+  linksNotOpened:
+    "LifeLink 不会打开邮件中的链接。如果邮件索要钱款或私人信息，请先核实。",
+  loadingEmail: "正在加载邮件",
+  loadingEmails: "正在加载邮件",
+  localLanguageNotice:
+    "此次邮件检查使用了仅为英语设计的本地规则，可能遗漏西班牙语和其他语言中的诈骗。没有警示信号并不代表邮件安全。",
+  lowerPriority: "优先级较低",
+  mailboxes: "您的邮箱",
+  mayNeedReply: "可能需要回复",
+  needsAttention: (label: string, error: string | null) =>
+    `${label} 需要您处理${error ? `：${error}` : "。"}`,
+  newEmails: (count: number) =>
+    count === 0 ? "没有新邮件。" : `${count} 封新邮件。`,
+  noMailbox: "尚未连接邮箱。",
+  noSigns: "未发现警示信号。发件人身份未确认。",
+  noSubject: "（无主题）",
+  noSubjectSpoken: "无主题",
+  noText: "这封邮件没有文字内容。",
+  notChecked: "尚未检查",
+  notCheckedEmail: "这封邮件尚未检查。",
+  notCheckedNote: "尚未检查",
+  nowTheEmail: "接下来是邮件内容。",
+  openManualCheck: "打开手动诈骗检查",
+  opened: (subject: string) => `已打开：${subject}`,
+  paging: {
+    loadOlder: "加载更早的邮件",
+    loading: "正在加载…",
+    newer: "较新",
+    noMoreImported: "没有导入更多邮件。如果还有更早的邮件，请尝试下一批。",
+    noOlder: "没有更早的邮件。",
+    older: "更早的邮件",
+    page: (page: number) => `第 ${page} 页 · 每次最多 15 封邮件`,
+  },
+  preview: "显示简短预览",
+  readSummary: "朗读摘要",
+  readingNow: "正在阅读…",
+  readyToRead: "可以阅读了",
+  reconnect: "重新连接",
+  reply: "回复",
+  replyAdded: "回复已添加到草稿。查看并核对前，您可以修改。",
+  replyComposer: {
+    nothingSent: (provider: string) =>
+      `不会发送任何内容。您会先查看并核对，然后将其保存为您的 ${provider} 草稿。`,
+    placeholder: "写下您的回复…",
+    replyTo: (to: string) => `回复 ${to}`,
+    review: "查看并核对草稿",
+    speak: "说话",
+    stopListening: "停止收听",
+  },
+  ride: {
+    asked: "您已请人接送。",
+    confirmed: "您的接送安排已确认。",
+    declined: "接送请求已被婉拒。",
+  },
+  sampleEmails: "这些是示例邮件，您可以安心练习。",
+  scamCheck: "诈骗检查",
+  scamCheckNotDone: "尚未完成诈骗检查",
+  scamSigns: "这有诈骗迹象。在按其中的要求行动前，请先核实。",
+  spokenFrom: (subject: string, from: string, body: string) =>
+    `${subject}。发件人：${from}。${body}`,
+  summarizeCloud: "用云端 AI 生成摘要",
+  summary: "摘要",
+  summaryNote: "由 LifeLink 生成简短预览，或选择云端 AI",
+  summarySpoken: "邮件摘要。",
+  theEmail: "邮件原文",
+  title: "邮件",
+  unknownCheckNotice:
+    "这份已保存的检查未注明使用了云端 AI 还是本地规则。本地规则仅适用于英语，可能遗漏其他语言中的诈骗。没有警示信号并不代表邮件安全。",
+  warning: {
+    concern: "这封邮件有值得警惕的地方。采取行动前，请先核实其中的要求。",
+    intro: (reason: string) =>
+      `可能是诈骗。${reason} 如果您不确定，请先询问信任的人，再回复、打开链接、转账或提供个人信息。`,
+    signs: (signs: string) => `警示信号：${signs}。`,
+  },
+  warningSigns: "警示信号",
+  warningSignsFound: "发现警示信号",
+  whatShouldIDo: "我该怎么做？",
+};
+
+export { email };

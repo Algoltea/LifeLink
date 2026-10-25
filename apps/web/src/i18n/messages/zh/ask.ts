@@ -1,0 +1,81 @@
+import type { Messages } from "../en";
+
+const ask: Messages["ask"] = {
+  closeHistory: "关闭聊天记录",
+  composerLabel: "向 LifeLink 输入文字或说话",
+  conversationLabel: "与 LifeLink 的对话",
+  copied: "已复制",
+  copy: "复制",
+  copyUnavailable: "这里无法复制。您可以手动选择文字。",
+  emailSummary: {
+    cloud: "云端摘要",
+    cloudConsent:
+      "使用云端 AI 生成更完整的摘要。这会将最近导入的 15 封邮件的可用文字和已保存的摘要发送给 AI 服务提供方。不勾选则由 LifeLink 生成摘要。",
+    count: (count: number) => `${count} 封最近导入的邮件 · `,
+    empty: "尚未导入邮件。请先在邮件页面检查新邮件，然后重新生成摘要。",
+    emptyGroup: "此分类中没有邮件。",
+    groups: {
+      check_first: "行动前先核实",
+      low_priority: "优先级较低",
+      reply: "可能需要回复",
+      review: "值得查看",
+    },
+    howMade: "这份摘要如何生成",
+    local: "LifeLink 摘要",
+    noSubject: "（无主题）",
+    offline: "请联网后为导入的邮件生成摘要。",
+    openEmail: "打开邮件",
+    options: "摘要选项",
+    practicePrefix: "练习 · ",
+    suggestionsOnly:
+      "仅供参考。采取行动前，请查看原始消息。没有发送任何内容，也没有更改您的邮箱。",
+    summarize: "生成邮件摘要",
+    summarizing: "正在生成邮件摘要…",
+    title: "近期邮件摘要",
+    working: "正在将邮件摘要添加到此聊天…",
+  },
+  failed: "回复未能完成。请再问一次。",
+  history: "记录",
+  historyDescription: "接着上次的对话继续。",
+  historyEmpty: "还没有对话。您的第一次聊天会保存在这里。",
+  historyGroups: {
+    earlier: "更早",
+    thisWeek: "本周",
+  },
+  historyTitle: "聊天记录",
+  lifeLinkSaid: "LifeLink 说：",
+  loadEarlier: "显示更早的消息",
+  loadEarlierConversations: "显示更早的对话",
+  loadingConversation: "正在加载您的对话",
+  loadingConversations: "正在加载对话…",
+  loadingEarlier: "正在加载更早的消息…",
+  loadingHistory: "正在加载您的聊天记录",
+  newChat: "新对话",
+  openNow: "，当前已打开",
+  opening: "正在打开您的对话",
+  quickActions: "快捷操作",
+  suggestions: {
+    reminder: {
+      label: "设置提醒",
+      prompt: "提醒我",
+    },
+    ride: {
+      label: "请人接送",
+      prompt: "帮我问问家人有没有人能送我去赴约，时间是",
+    },
+    write: {
+      label: "给家人写消息",
+      prompt: "帮我写一条消息，收件人是",
+    },
+  },
+  thinking: "正在思考…",
+  title: "问问 LifeLink",
+  titlePrefix: "问问 LifeLink：",
+  waitingConnection: "正在等待网络连接。尚未发送任何内容。",
+  waitingForConnection: "等待联网后发送的消息",
+  whatCanIHelp: "今天有什么可以帮您？",
+  youSaid: "您说：",
+  yourConversation: "您的对话",
+};
+
+export { ask };

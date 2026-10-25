@@ -43,7 +43,7 @@ const settings: Messages["settings"] = {
   helpTitle: "Cómo me gusta recibir ayuda",
   language: "Idioma",
   languageDescription:
-    "Elija el idioma de las pantallas de LifeLink y de la ayuda en la nube. Las pantallas principales están disponibles en inglés y español; con otras opciones, quedan en inglés. La ayuda en la nube puede usar otros idiomas cuando esté disponible. Las revisiones de estafas y de correo que usan reglas locales solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. Las citas y los mensajes conservan sus palabras originales.",
+    "Elija el idioma de las pantallas principales de LifeLink y de la ayuda en la nube. Las pantallas principales están traducidas a los diez idiomas disponibles; algunas páginas nuevas siguen en inglés. Las revisiones de estafas y de correo que usan reglas locales solo cubren el inglés y pueden pasar por alto estafas en otros idiomas. Las citas y los mensajes conservan sus palabras originales.",
   lessMovement: "Menos movimiento",
   lessMovementDescription: "Quita los deslizamientos y desvanecimientos.",
   loading: "Cargando los ajustes",

@@ -32,6 +32,8 @@ import {
   inboxChatSummarySchema,
   withoutPrivateInboxSummaries,
 } from "@lifelink/contracts/inbox-chat";
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import {
   assistantPlanSchema,
   proposalIntents,
@@ -57,6 +59,7 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { decodeJson } from "./integrations/http";
 import { modelFor } from "./integrations/openrouter";
+import { assistantMessagesFor } from "./lib/assistant-messages";
 import { readEnv, readEnvOr } from "./lib/env";
 import { ownerLocale } from "./lib/locale";
 import { UPCOMING_WINDOW, applyProposal } from "./lib/proposals";
@@ -795,6 +798,7 @@ interface PlanningContext {
     relationship: string;
   }[];
   demoMode: boolean;
+  locale: InterfaceLocale;
   /** The language the owner chose for LifeLink, by name. */
   language: string;
   now: string;
@@ -858,6 +862,7 @@ export const planningContext = internalQuery({
       })),
       demoMode: owner.demoMode,
       language: languageName(language),
+      locale: interfaceLocaleOf(language),
       now: isoWithOffset(now, owner.timeZone),
       preferredName: owner.preferredName,
       timeZone: owner.timeZone,
@@ -919,10 +924,8 @@ export const applyProposalForOwner = internalMutation({
     if (proposal === null) {
       return {
         actionId: null,
-        message:
-          (await ownerLocale(ctx, owner._id)) === "es"
-            ? "Esa petición no incluía los detalles necesarios, así que no se preparó nada."
-            : "That request did not have the details I need, so nothing was prepared.",
+        message: assistantMessagesFor(await ownerLocale(ctx, owner._id))
+          .invalidProposal,
         taskId: null,
       };
     }
@@ -1026,10 +1029,7 @@ const rulesPlan = (text: string, context: PlanningContext): AssistantPlan => {
     messageDraft: null,
     recipients: [],
     reminderTitle: null,
-    reply:
-      context.language === "Spanish"
-        ? "En el modo de práctica sin el asistente conectado, solo entiendo peticiones en inglés para pedir transporte, preparar mensajes, añadir productos o revisar mensajes sospechosos. Puede escribir sus propios mensajes en cualquier idioma desde Mensajes."
-        : "In practice mode without the assistant model connected, I only understand requests in English for rides, message drafts, grocery items, or scam checks. You can write your own messages in any language from Messages.",
+    reply: assistantMessagesFor(context.locale).practiceEnglishOnly,
   };
 
   const groceryItems = GROCERY_PATTERN.exec(text)?.groups?.items;
@@ -1138,9 +1138,7 @@ export const respond = internalAction({
     if (apiKey === null) {
       if (!context.demoMode) {
         await saveAssistantText(
-          context.language === "Spanish"
-            ? "El asistente aún no está configurado, así que no puedo preparar esto. Puede escribir a su familia desde Mensajes. Quien configuró la aplicación puede terminar con bun run dev:setup."
-            : "The assistant is not set up yet, so I can't plan this for you. You can still write to family from Messages. Whoever set up the app can finish it with bun run dev:setup.",
+          assistantMessagesFor(context.locale).notConfigured,
           RULES_AGENT_NAME
         );
 
@@ -1263,9 +1261,7 @@ export const respond = internalAction({
       const reason = errorMessage(error).slice(0, 200);
 
       await saveAssistantText(
-        context.language === "Spanish"
-          ? `No pude resolverlo ahora (${reason}). Revise la conversación por si se preparó algo y vuelva a intentarlo en un momento.`
-          : `I couldn't work that out just now (${reason}). Check the conversation for anything already prepared, and try again in a moment.`,
+        assistantMessagesFor(context.locale).providerError(reason),
         AGENT_NAME
       );
 

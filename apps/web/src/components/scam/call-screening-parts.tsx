@@ -15,15 +15,20 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { useLocale } from "@/i18n/locale";
-import { callScreening as en } from "@/i18n/messages/en/call-screening";
-import { callScreening as es } from "@/i18n/messages/es/call-screening";
+import { messagesFor, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 
 import type { CallState } from "./use-call-screening";
 
-const useCallScreeningMessages = () => (useLocale() === "es" ? es : en);
+const useCallScreeningMessages = (): Messages["callScreening"] =>
+  useMessages().callScreening;
 
-const callFlagReason = (reason: string, messages: typeof en): string => {
+const callFlagReason = (
+  reason: string,
+  messages: Messages["callScreening"]
+): string => {
+  const en = messagesFor("en").callScreening;
+
   const reasons = new Map([
     [en.moneyReason, messages.moneyReason],
     [en.credentialsReason, messages.credentialsReason],

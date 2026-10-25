@@ -1,0 +1,56 @@
+import type { Messages } from "../en";
+
+const family: Messages["family"] = {
+  appointments: "预约安排",
+  budget: (amount: string) => ` · 预算 ${amount}`,
+  checked: (kind: string, day: string) => `${kind}，检查时间：${day}`,
+  codeHint: "邀请您的人可以在其“信任圈”页面找到邀请码并读给您。",
+  connect: "连接",
+  connected: "已连接。您只能看到对方选择分享的内容。",
+  empty: "目前还没有人与您分享内容。收到邀请后，请在下方输入对方的邀请码。",
+  groceries: "购物清单",
+  haveCode: "有邀请码吗？",
+  invitationCode: "邀请码",
+  kinds: {
+    email: "邮件",
+    screenshot: "截图",
+    text: "文字",
+  },
+  likelyScam: "很可能是诈骗",
+  loadingMessages: "正在加载消息",
+  loadingPhoto: "正在加载照片…",
+  loadingShared: "正在加载分享的信息",
+  loadingWhatWasShared: "正在加载已分享的内容",
+  messagesWith: (name: string) => `与 ${name} 的消息`,
+  noMessages: "LifeLink 中还没有消息。",
+  noSharedReminders: "没有分享的提醒。",
+  notSharing: "此人目前没有与您分享内容。",
+  nothingLeft: "没有剩余待购物品。",
+  nothingSoon: "未来 30 天没有安排。",
+  onlyResult: "只分享结果，绝不分享消息本身。",
+  photoUnavailable: "无法查看这张照片。",
+  photos: "照片",
+  replyTo: (name: string) => `回复 ${name}`,
+  ride: {
+    asked: "已请人接送，尚未确认",
+    confirmed: "接送已确认",
+    declined: "接送请求已被婉拒",
+  },
+  scamChecks: "诈骗检查",
+  sendReply: "发送回复",
+  sharedPhoto: "分享的照片",
+  sharedReminders: "分享的提醒",
+  shares: (name: string, scopes: string) =>
+    `${name} 分享了：${scopes}。您可以查看，但不能代对方发送、批准或花费任何款项。`,
+  subline:
+    "只能查看每个人选择分享的内容。您可以查看，但不能代他们发送、批准或花费任何款项。",
+  suspicious: "可疑",
+  theyWrote: (name: string) => `${name} 写道：`,
+  title: "家人",
+  updates: "近况",
+  withPhotos: " · 附有照片",
+  you: "您",
+  youWrote: "您写道：",
+};
+
+export { family };

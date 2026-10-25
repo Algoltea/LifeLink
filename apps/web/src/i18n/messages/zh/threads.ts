@@ -1,0 +1,85 @@
+import type { Messages } from "../en";
+
+const threads: Messages["threads"] = {
+  addPerson: "添加联系人",
+  addPhoto: "添加照片",
+  addWayToReach: (firstName: string) =>
+    `请在信任圈中添加 ${firstName} 的联系方式。`,
+  addingPhoto: "正在添加照片…",
+  backTo: "返回",
+  channels: {
+    discord: "Discord 私信",
+    email: "邮件",
+    imessage: "iMessage",
+    in_app: "LifeLink 消息",
+    telegram: "Telegram",
+  },
+  chooseConversation: "选择联系人，阅读对话并回复。",
+  conversationWith: (name: string) => `与 ${name} 的对话`,
+  conversationWithPrefix: "对话对象：",
+  conversations: "对话",
+  dividerAt: (day: string, time: string) => `${day} ${time}`,
+  empty: "将家人或朋友添加到您的信任圈，就可以开始写消息给他们。",
+  emptyThread: (firstName: string) => `还没有与 ${firstName} 的消息`,
+  emptyThreadHint: (firstName: string) =>
+    `请在下方输入内容。发送前，您会看到 ${firstName} 将收到的确切内容。`,
+  helpMeUnderstand: "帮我理解",
+  loadingConversation: "正在加载对话",
+  loadingConversations: "正在加载对话",
+  maxPhotos: (count: number) =>
+    `最多可以附上 ${count} 张照片。如需添加其他照片，请先移除一张。`,
+  messageTo: (firstName: string) => `发给 ${firstName} 的消息`,
+  messagesWith: (name: string) => `与 ${name} 的消息`,
+  noWayToReach: "尚无联系方式",
+  noWayToReachName: (firstName: string) => `尚无 ${firstName} 的联系方式`,
+  notSent: "未发送",
+  notSureSent: "不确定是否已发送",
+  nothingSentUntilApproved: "您查看、核对并批准后，才会发送。",
+  pendingMany: (count: number, firstName: string) =>
+    `${count} 条发给 ${firstName} 的消息正等待您批准。`,
+  pendingOne: (firstName: string) =>
+    `有一条发给 ${firstName} 的消息正等待您批准。`,
+  peopleCount: (count: number) => `${count} 人`,
+  photoCount: (count: number) => `${count} 张照片`,
+  photoInvalid: (name: string) =>
+    `${name}：请选择照片（JPEG、PNG、WebP 或 HEIC）。`,
+  photosToSend: "待发送的照片",
+  practiceNothingSent: (firstName: string) =>
+    `练习：不会向 ${firstName} 发送任何内容。`,
+  preparing: "正在准备…",
+  preparingMessage: "正在准备您的消息",
+  previewManyPhotos: (count: number) => `${count} 张照片`,
+  previewOnePhoto: "一张照片",
+  previewYou: (words: string) => `您：${words}`,
+  recap: "回顾",
+  recapThis: "这段对话",
+  removePhoto: (name: string) => `移除 ${name}`,
+  replyAdded: "回复已添加到您的消息中。查看并核对前，您可以修改。",
+  review: "查看并核对",
+  reviewBeforeSending: "发送前核对",
+  reviewBeforeSendingTail: "，然后再发送",
+  reviewIt: "查看并核对",
+  seeWhatHappened: "查看结果",
+  srThem: (firstName: string, when: string) => `${firstName}，${when}：`,
+  srYou: (when: string) => `您，${when}：`,
+  startConversation: "开始对话",
+  status: {
+    delivered: "已送达",
+    draft: "草稿，未发送",
+    failed: "未发送",
+    read: "已读",
+    received: "已收到",
+    sending: "正在发送…",
+    sent: "已发送",
+    unknown: "不确定是否已发送",
+  },
+  subline: "给信任圈中的人写消息。每条消息发送前都会先给您查看。",
+  title: "消息",
+  toAddress: (address: string) => `，发送至 ${address}`,
+  waitingForApproval: (count: number) =>
+    count === 1 ? "等待您批准" : `${count} 项等待您批准`,
+  writeTo: (firstName: string) => `写给 ${firstName}`,
+  writeToPlaceholder: (firstName: string) => `写给 ${firstName}…`,
+};
+
+export { threads };

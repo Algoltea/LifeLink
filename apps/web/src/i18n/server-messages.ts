@@ -1,7 +1,7 @@
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 
 import { getLocale } from "./locale";
-import { es as spanish } from "./server/es";
+import { serverCatalogs } from "./server/catalogs";
 
 /**
  * The backend writes its messages in English. Known messages are shown in
@@ -17,16 +17,17 @@ const translateServerMessage = (
   }
 
   const text = message.trim();
+  const catalog = serverCatalogs[locale];
 
-  const exact = Object.hasOwn(spanish.exact, text)
-    ? spanish.exact[text]
+  const exact = Object.hasOwn(catalog.exact, text)
+    ? catalog.exact[text]
     : undefined;
 
   if (exact !== undefined) {
     return exact;
   }
 
-  for (const [pattern, replace] of spanish.patterns) {
+  for (const [pattern, replace] of catalog.patterns) {
     const match = pattern.exec(text);
 
     if (match) {

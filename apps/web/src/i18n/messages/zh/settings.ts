@@ -1,0 +1,101 @@
+import type { Messages } from "../en";
+
+const settings: Messages["settings"] = {
+  accountsAndPermissions: "账号与权限",
+  accountsLink: "LifeLink 可使用的账号",
+  aiEmailChecks: "用 AI 检查新邮件",
+  aiEmailChecksDescription:
+    "收到新邮件时，云端 AI 服务会检查其中是否有诈骗警示信号。旧邮件和练习邮件绝不会发送。",
+  captions: "说话时显示字幕",
+  captionsDescription: "与 LifeLink 交谈时显示文字。",
+  characterCount: (count: number, maximum: number) =>
+    `${count} / ${maximum} 个字符`,
+  choicesNotSaved: (error: string) =>
+    `您的选择尚未保存到账号。${error} 请在下方重试。`,
+  contrast: "对比度",
+  contrastDescription: "提高对比度会让文字更深、边框更明显。",
+  contrastMore: "更高对比度",
+  contrastStandard: "标准",
+  defaultVoice: "LifeLink 默认声音",
+  demoAllowedHint: "此开关会自动保存。",
+  demoBetweenModes:
+    "在一种模式下准备的内容，切换到另一种模式执行前必须重新核对。",
+  demoDescription:
+    "在练习模式下，不会实际发送内容、在外部保存内容或购买物品。所有原本会发生的操作均为模拟，并标明“练习”。同时会添加示例联系人和消息，让您安心试用。",
+  demoFailed: (error: string) =>
+    `无法更改练习模式。${error} 请再次尝试此开关。`,
+  demoOff: "练习模式已关闭。您现在批准的操作会实际执行。",
+  demoOn: "练习模式已开启。",
+  demoTitle: "练习模式",
+  demoTurnedOff: "此应用的练习模式已停用。",
+  demoUse: "使用练习模式",
+  detailDetailed: "详细",
+  detailShort: "简短",
+  explanations: "解释方式",
+  explanationsDescription: "简短方式说明要点。详细方式会多解释一些。",
+  fullName: "姓名",
+  groceriesLink: "购物清单与预算",
+  hearSample: "试听",
+  helpDescription:
+    "用于 LifeLink 向您解释消息、诈骗检查、对话回顾或早间简报时。只有您能看到这些内容。下方选项更改后会自动保存；笔记需要单独按“保存笔记”。",
+  helpTitle: "我希望怎样获得帮助",
+  language: "语言",
+  languageDescription:
+    "选择 LifeLink 核心页面和云端帮助的语言。十种语言都已有核心页面翻译；少数较新的页面仍使用英语。使用本地规则的诈骗和邮件检查仅适用于英语，可能遗漏其他语言中的诈骗。引用和消息保留原文。",
+  lessMovement: "减少动态效果",
+  lessMovementDescription: "关闭滑动和淡入淡出效果。",
+  loading: "正在加载设置",
+  newsOnToday: "在今日页面显示新闻",
+  newsOnTodayDescription:
+    "在今日页面显示三条新闻标题。您可以在那里选择好消息或要闻。",
+  notes: "关于帮助偏好的笔记",
+  notesHint:
+    "例如：“请一次告诉我一个步骤。”这些笔记只用于 LifeLink 向您提供的解释，绝不会显示给家人或放入消息中。如果您允许云端解释，这些笔记会随消息发送给 AI 服务提供方。",
+  notesNotSaved: (error: string) =>
+    `笔记未能保存。${error} 您的文字仍在这里。请选择“保存笔记”重试。`,
+  notesSaveHint: "选择“保存笔记”以保留文字更改。",
+  notesSaved: "您的笔记已保存。",
+  oneStep: "一次一步",
+  oneStepDescription: "每次显示一条解释或下一步，按“下一步”继续。",
+  permissionsLink: "谁能看到什么",
+  postalCode: "邮政编码",
+  preferredName: "LifeLink 对您的称呼",
+  profileNotSaved: (error: string) =>
+    `个人资料未能保存。${error} 您填写的内容仍在这里。请选择“保存资料”重试。`,
+  profileSaveHint: "选择“保存资料”以保留此部分的更改。",
+  profileTitle: "关于您",
+  readAloudAuto: "自动朗读",
+  readAloudAutoDescription: "LifeLink 会朗读新的简报和回复。",
+  readAloudVoice: "朗读声音",
+  readAloudVoiceDescription:
+    "选择为您朗读的声音。“LifeLink 默认声音”会使用标准声音。",
+  saveNotes: "保存笔记",
+  saveProfile: "保存资料",
+  saved: "已保存。",
+  savesAsYouChange: "这些偏好设置更改后会自动保存。",
+  seeingAndHearing: "视觉与听觉",
+  signOff: "消息末尾的署名",
+  signOffPlaceholder: "例如：妈妈",
+  speakingSpeed: "语速",
+  speakingSpeedDescription: "LifeLink 朗读时的速度。",
+  speechQuicker: "较快",
+  speechSample: "这是 LifeLink 为您朗读时的声音。",
+  speechSlower: "较慢",
+  speechUsual: "正常",
+  subline: "让 LifeLink 的文字和声音更适合您。",
+  textSize: "文字大小",
+  textSizeDescription: "应用于所有页面。此设备会记住您的选择。",
+  textSizeLarge: "大",
+  textSizeLarger: "更大",
+  textSizeLargest: "最大",
+  textSizeStandard: "标准",
+  theme: "浅色或深色",
+  themeDark: "深色",
+  themeLight: "浅色",
+  themeSystem: "跟随设备",
+  timeZone: "时区",
+  title: "设置",
+  trySavingAgain: "重新保存",
+};
+
+export { settings };

@@ -1,0 +1,46 @@
+import type { Messages } from "../en";
+
+const common: Messages["common"] = {
+  back: "Indietro",
+  cancel: "Annulla",
+  close: "Chiudi",
+  done: "Fatto",
+  edit: "Modifica",
+  genericError: "Qualcosa non ha funzionato. Riprovi.",
+  genericErrorShort: "Qualcosa non ha funzionato.",
+  loading: "Caricamento",
+  next: "Avanti",
+  no: "No",
+  off: "Disattivato",
+  on: "Attivato",
+  permissions: {
+    add: "Aggiungere",
+    calendar: "Trovare date",
+    draft: "Preparare bozze",
+    message: "Messaggi",
+    money: "Denaro",
+    notice: "Avvisi",
+    post: "Pubblicare",
+    read: "Leggere",
+    replies: "Risposte",
+    send: "Inviare",
+    unavailable: "Ancora nessuna funzione",
+  },
+  practice: "Prova",
+  practiceTitle:
+    "Modalità di prova: nulla è stato realmente inviato o salvato al di fuori di LifeLink.",
+  previous: "Precedente",
+  readAloud: "Leggi ad alta voce",
+  readAloudPlay: "Riproduci audio",
+  readAloudPreparing: "Preparazione dell’audio · Interrompi",
+  readAloudReady: "L’audio è pronto. Prema Leggi ad alta voce per ascoltarlo.",
+  readAloudStop: "Interrompi lettura",
+  remove: "Rimuovi",
+  save: "Salva",
+  saved: "Salvato",
+  saving: "Salvataggio…",
+  tryAgain: "Riprova",
+  yes: "Sì",
+};
+
+export { common };

@@ -36,7 +36,8 @@ import { messageOf } from "@/lib/errors";
 type CircleContact = FunctionReturnType<typeof api.contacts.list>[number];
 
 const languageLabel = (language: string | null | undefined): string =>
-  interfaceLocaleOf(language) === "es" ? "Español" : "English";
+  interfaceLocales.find((locale) => locale.id === interfaceLocaleOf(language))
+    ?.label ?? "English";
 
 const contactFormValues = (contact: CircleContact | null) => ({
   language: contact?.language ?? null,

@@ -160,6 +160,11 @@ const acceptImessageConversation = async (
 
 const INTRODUCTIONS: Record<InterfaceLocale, (ownerName: string) => string[]> =
   {
+    de: (ownerName) => [
+      `LifeLink: Dieses Gespräch ist mit dem LifeLink-Konto von ${ownerName} verbunden. Nachrichten von dieser Nummer werden im Namen von ${ownerName} gesendet. Ihre Antworten gehen direkt an ${ownerName}. Speichern Sie diese Nummer als „LifeLink“, damit Sie künftige Nachrichten erkennen.`,
+      "",
+      `Nachricht von ${ownerName}:`,
+    ],
     en: (ownerName) => [
       `LifeLink: This conversation is connected to ${ownerName}'s LifeLink account. Messages from this number are sent on ${ownerName}'s behalf, and your replies go directly to ${ownerName}. Save this number as "LifeLink" to recognize future messages.`,
       "",
@@ -169,6 +174,41 @@ const INTRODUCTIONS: Record<InterfaceLocale, (ownerName: string) => string[]> =
       `LifeLink: Esta conversación está conectada a la cuenta de LifeLink de ${ownerName}. Los mensajes de este número se envían en nombre de ${ownerName}, y sus respuestas le llegan directamente a ${ownerName}. Guarde este número como "LifeLink" para reconocer los próximos mensajes.`,
       "",
       `Mensaje de ${ownerName}:`,
+    ],
+    fr: (ownerName) => [
+      `LifeLink : Cette conversation est liée au compte LifeLink de ${ownerName}. Les messages de ce numéro sont envoyés au nom de ${ownerName}, et vos réponses lui parviennent directement. Enregistrez ce numéro sous « LifeLink » pour reconnaître les prochains messages.`,
+      "",
+      `Message de ${ownerName} :`,
+    ],
+    it: (ownerName) => [
+      `LifeLink: Questa conversazione è collegata all'account LifeLink di ${ownerName}. I messaggi da questo numero sono inviati per conto di ${ownerName} e le sue risposte arrivano direttamente a ${ownerName}. Salvi questo numero come «LifeLink» per riconoscere i prossimi messaggi.`,
+      "",
+      `Messaggio da ${ownerName}:`,
+    ],
+    ko: (ownerName) => [
+      `LifeLink: 이 대화는 ${ownerName} 님의 LifeLink 계정에 연결되어 있습니다. 이 번호의 메시지는 ${ownerName} 님을 대신해 보내며, 답장은 ${ownerName} 님께 직접 전달됩니다. 앞으로 오는 메시지를 알아보실 수 있도록 이 번호를 “LifeLink”로 저장해 주세요.`,
+      "",
+      `${ownerName} 님의 메시지:`,
+    ],
+    pt: (ownerName) => [
+      `LifeLink: Esta conversa está conectada à conta LifeLink de ${ownerName}. As mensagens deste número são enviadas em nome de ${ownerName}, e suas respostas chegam diretamente a ${ownerName}. Salve este número como “LifeLink” para reconhecer as próximas mensagens.`,
+      "",
+      `Mensagem de ${ownerName}:`,
+    ],
+    tl: (ownerName) => [
+      `LifeLink: Nakakonekta ang pag-uusap na ito sa LifeLink account ni ${ownerName}. Ipinapadala ang mga mensahe mula sa numerong ito sa ngalan ni ${ownerName}, at direktang napupunta kay ${ownerName} ang inyong mga sagot. I-save ang numerong ito bilang “LifeLink” para makilala ang mga susunod na mensahe.`,
+      "",
+      `Mensahe mula kay ${ownerName}:`,
+    ],
+    vi: (ownerName) => [
+      `LifeLink: Cuộc trò chuyện này được kết nối với tài khoản LifeLink của ${ownerName}. Tin nhắn từ số này được gửi thay mặt ${ownerName}, và câu trả lời của bạn sẽ được gửi thẳng đến ${ownerName}. Hãy lưu số này với tên “LifeLink” để nhận ra các tin nhắn sau này.`,
+      "",
+      `Tin nhắn từ ${ownerName}:`,
+    ],
+    zh: (ownerName) => [
+      `LifeLink：此对话已连接到${ownerName}的LifeLink账户。此号码的消息代表${ownerName}发送，您的回复会直接送达${ownerName}。请将此号码保存为“LifeLink”，以便识别以后的消息。`,
+      "",
+      `来自${ownerName}的消息：`,
     ],
   };
 

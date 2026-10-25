@@ -1,9 +1,7 @@
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 
-import { getLocale, useLocale } from "@/i18n/locale";
-import { connections as enConnections } from "@/i18n/messages/en/connections";
+import { getLocale, messagesFor, useMessages } from "@/i18n/locale";
 import type { ConnectionsMessages } from "@/i18n/messages/en/connections";
-import { connections as esConnections } from "@/i18n/messages/es/connections";
 import { translateServerMessage } from "@/i18n/server-messages";
 
 const UNAVAILABLE_FEATURES =
@@ -15,14 +13,13 @@ const SAVED_REAL_ACCOUNT =
 const CONNECTION_STATE = /^The connection is (?<status>.+)\.$/u;
 
 const useConnectionMessages = (): ConnectionsMessages =>
-  useLocale() === "es" ? esConnections : enConnections;
+  useMessages().connections;
 
 const translateConnectionMessage = (
   message: string,
   locale: InterfaceLocale = getLocale()
 ): string => {
-  const words: ConnectionsMessages =
-    locale === "es" ? esConnections : enConnections;
+  const words = messagesFor(locale).connections;
 
   const text = message.trim();
 

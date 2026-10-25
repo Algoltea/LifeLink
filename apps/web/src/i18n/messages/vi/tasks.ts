@@ -1,0 +1,158 @@
+import type { Messages } from "../en";
+
+const tasks: Messages["tasks"] = {
+  alsoWaiting: "Cũng đang chờ quý vị",
+  answerFirst: "Vui lòng trả lời câu hỏi ở trên trước.",
+  approve: {
+    calendar_event: "Phê duyệt và thêm",
+    confirm_arrangement: "Xác nhận chuyến đi",
+    create_reminder: "Lưu lời nhắc",
+    drive_note: "Phê duyệt và lưu",
+    email_draft: "Phê duyệt và lưu bản nháp",
+    family_update: "Chia sẻ cập nhật",
+    grocery_handoff: "Phê duyệt yêu cầu",
+    send_message: "Phê duyệt và gửi",
+  },
+  approveAgain:
+    "Có thay đổi sau khi quý vị phê duyệt, vui lòng xem và phê duyệt lại.",
+  approvedWaiting: "Đã phê duyệt. Đang chờ bắt đầu…",
+  approving: "Đang phê duyệt…",
+  askAgainIfChanged:
+    "Nếu có thay đổi sau khi phê duyệt, như giờ hoặc người nhận, LifeLink sẽ hỏi lại quý vị.",
+  backToToday: "Quay lại Hôm nay",
+  breadcrumb: "Đường dẫn điều hướng",
+  cancelEditing: "Hủy chỉnh sửa",
+  cancelRequest: "Hủy yêu cầu này",
+  cancelled: "Quý vị đã hủy. Chưa gửi gì.",
+  cancelling: "Đang hủy…",
+  changeWords: "Sửa lời nhắn",
+  changesSaved:
+    "Đã lưu thay đổi. Xem lại tin nhắn đã cập nhật trước khi phê duyệt.",
+  checkNow: "Kiểm tra ngay",
+  checkedForYou: "Đã kiểm tra cho quý vị",
+  checking: "Đang kiểm tra…",
+  checks: {
+    appointment: (title, day, time) =>
+      `Ngày giờ khớp với ${title} vào ${day} lúc ${time}.`,
+    contact: (name, relationship) =>
+      `${name} có trong danh bạ (${relationship}).`,
+    hasLink:
+      "Tin nhắn này có liên kết. Đảm bảo quý vị muốn đưa liên kết đó vào.",
+    noLinks: "Tin nhắn không có liên kết.",
+    nothingUnclear: "Không có điều gì chưa rõ về người hoặc thời gian.",
+    trusted: "tin cậy",
+  },
+  couldNotTell:
+    "Chúng tôi không thể xác định từ đây. Vui lòng kiểm tra (ví dụ hỏi người đó) rồi cho biết:",
+  detailsChanged:
+    "Chi tiết đã thay đổi khi quý vị chỉnh sửa. Bản sửa vẫn ở đây. Đối chiếu với nội dung mới nhất trước khi lưu.",
+  detailsGone: "Chi tiết này không còn khả dụng.",
+  didNotGoThrough: "Việc này chưa thực hiện được.",
+  done: "Xong",
+  earlierVersionHide: "Ẩn phiên bản trước",
+  earlierVersionShow: "Hiện phiên bản trước",
+  goToCircle: "Đến Nhóm tin cậy",
+  heading: {
+    approveSubline: "Không có gì diễn ra cho đến khi quý vị phê duyệt.",
+    approveTitle: "Kiểm tra rồi phê duyệt",
+    completedSubline: "Mọi việc ở đây đã hoàn tất.",
+    confirmSubline: (who) => `${who} đã trả lời. Kiểm tra giờ rồi xác nhận.`,
+    confirmTitle: "Xác nhận chuyến đi",
+    sendSubline: (who) =>
+      `Không gửi gì đến ${who} cho đến khi quý vị nhấn Phê duyệt. Quý vị có thể sửa lời nhắn trước.`,
+    sendTitle: "Đọc trước khi gửi",
+    standsSubline: "Đây là tình trạng hiện tại.",
+    waitingSubline: (who) =>
+      `Tin nhắn đã được gửi. Phản hồi của ${who} sẽ hiển thị ở đây ngay khi đến.`,
+    waitingTitle: (who) => `Đang chờ ${who}`,
+  },
+  howItWent: "Kết quả thực hiện",
+  inProgress: "Đang thực hiện",
+  itArrived: "Đã nhận được",
+  itDidNotArrive: "Chưa nhận được",
+  keepMyEdits: "Giữ bản sửa của tôi",
+  latestWording: "Xem nội dung mới nhất",
+  loadingDetails: "Đang tải chi tiết công việc",
+  loadingLatest: "Đang tải chi tiết mới nhất",
+  loadingRequest: "Đang tải chi tiết yêu cầu",
+  messageText: "Nội dung tin nhắn",
+  messages: "Tin nhắn",
+  noLongerEditable:
+    "Không thể sửa yêu cầu này nữa. Nội dung chưa lưu vẫn ở đây để quý vị sao chép.",
+  notFound: "Không tìm thấy nội dung này.",
+  notSure: "Chúng tôi chưa chắc việc này đã thực hiện được.",
+  notSureDetail:
+    "Dịch vụ chưa xác nhận điều đã xảy ra. LifeLink giữ trạng thái chưa chắc chắn để tránh hiểu nhầm rằng có thể thử lại an toàn.",
+  nothingNeedsYou: "Hiện không có việc gì cần quý vị.",
+  nothingToApprove: "Không có gì cần phê duyệt ở đây.",
+  nothingToApproveRequest: "Yêu cầu này không có gì cần phê duyệt.",
+  nothingWasSent: "Chưa gửi gì nên có thể thử lại an toàn.",
+  offlineApprovalFailed:
+    "Không lưu được phê duyệt khi ngoại tuyến. Vui lòng phê duyệt lại khi có mạng.",
+  offlineApprovalSaved:
+    "Đã lưu để thực hiện khi có mạng. LifeLink sẽ kiểm tra mọi thứ lại trước khi gửi.",
+  openReceipt: "Mở biên nhận",
+  outcomeError: (error) => `${error} Vui lòng thử lại.`,
+  practiceApproval:
+    " Chế độ thực hành: phê duyệt chỉ cho thấy điều sẽ diễn ra; không gửi gì thật.",
+  progress: "Tiến độ",
+  progressAndNext: "Tiến độ và các bước tiếp theo",
+  recordedOutcome: "Kết quả đã ghi nhận",
+  reminderShare: "Cho nhóm tin cậy xem lời nhắc này",
+  reminderShareAria: "Chia sẻ lời nhắc với nhóm tin cậy",
+  reminderShareHint: "Chỉ những người quý vị chia sẻ lời nhắc.",
+  replied: (who) => `${who} đã trả lời`,
+  reviewStatus: {
+    approved: "Đã phê duyệt",
+    awaiting_approval: "Xem lại chi tiết này",
+    cancelled: "Đã hủy",
+    executing: "Đang thực hiện",
+    failed: "Chưa thực hiện được",
+    succeeded: "Đã hoàn tất",
+    unknown: "Kết quả chưa xác nhận",
+  },
+  savedApproveAgain: "Đã lưu. Vì lời nhắn đã đổi, vui lòng phê duyệt lại.",
+  savingOutcome: "Đang lưu kết quả…",
+  seeDetails: "Xem chi tiết",
+  sentStatus: {
+    sent: "đã gửi",
+  },
+  sentWaiting: "Tin nhắn đã gửi. Phản hồi sẽ hiển thị ngay khi đến.",
+  shoppingRetired: "Không còn phê duyệt được yêu cầu mua sắm.",
+  spectrumUnknown:
+    "Vẫn chưa xác nhận được tin nhắn này. Hãy hỏi người nhận đã nhận được chưa. Nếu chưa, tin nhắn vẫn có thể đến sau; LifeLink sẽ giữ trạng thái chưa chắc chắn.",
+  status: {
+    awaiting_approval: "Đến lượt quý vị",
+    cancelled: "Đã hủy",
+    completed: "Đã hoàn tất",
+    in_progress: "Đang xử lý",
+    needs_attention: "Cần xem lại",
+    needs_clarification: "Câu hỏi dành cho quý vị",
+    waiting_for_reply: "Đang chờ trả lời",
+  },
+  stepByStep: "Từng bước",
+  steps: {
+    awaiting_approval: "Cần quý vị",
+    failed: "Không thành công",
+    pending: "Sau",
+    running: "Đang xử lý",
+    skipped: "Không cần",
+    succeeded: "Xong",
+    unknown: "Chưa chắc đã thực hiện được",
+    waiting: "Đang chờ",
+  },
+  them: "họ",
+  they: "Họ",
+  unclearReply: (who) =>
+    `Chúng tôi chưa chắc ${who} muốn nói gì. ${who} có đồng ý không?`,
+  useLatestWords: "Dùng nội dung mới nhất",
+  version: (version, status) => `Phiên bản ${version} · ${status}`,
+  wentNotThrough: "Chưa thực hiện được. Quý vị có thể thử lại.",
+  wentThrough: "Đã thực hiện được.",
+  whoCan: (who) => `Có, ${who} có thể`,
+  whoCannot: (who) => `Không, ${who} không thể`,
+  workingNow: "Đang xử lý…",
+  youSent: "Quý vị đã gửi",
+};
+
+export { tasks };

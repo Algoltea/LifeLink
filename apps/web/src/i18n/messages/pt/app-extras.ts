@@ -1,0 +1,131 @@
+import type { Messages } from "../en";
+
+const appExtras: Messages["appExtras"] = {
+  approvalRecorded: (label) => `Aprovação registrada: ${label}`,
+  loading: {
+    addPerson: "Adicionar uma pessoa",
+    addPhoto: "Adicionar uma foto",
+    app: "Carregando LifeLink",
+    beforeSending: "antes de enviar",
+    call: "Ligar",
+    checkPhoto: "Verificar esta foto",
+    checks: "Carregando suas verificações",
+    chooseFile: "Escolha um arquivo para ver uma prévia aqui.",
+    choosePhoto: "Escolher uma foto",
+    circle: "Carregando seu círculo de confiança",
+    circleBody:
+      "As pessoas em quem você confia, como falar com elas e exatamente o que cada uma pode ver.",
+    circleTitle: "Círculo de confiança",
+    connectEmail: "Conectar Gmail ou Outlook",
+    connections: "Carregando conexões",
+    connectionsBody:
+      "Escolha com o que quer ajuda. Abra um cartão para ver tudo o que ele pode fazer antes de conectar.",
+    connectionsTitle: "Conexões",
+    conversation: "Carregando conversa",
+    conversations: "Carregando conversas",
+    conversationsTitle: "Conversas",
+    documentsTitle: "Documentos",
+    drive: "Carregando seus arquivos do Drive",
+    driveNotice:
+      "Drive de prática com arquivos de exemplo e notas que você salva no modo de prática. Nada aqui vem de uma conta Google real.",
+    earlierChecks: "Verificações anteriores",
+    edit: "Editar",
+    email: "Carregando e-mail",
+    emailTitle: "E-mail",
+    emails: "Carregando e-mails",
+    familyBody:
+      "Veja apenas o que cada pessoa escolher compartilhar. Você pode ver, mas nunca enviar, aprovar nem gastar nada por elas.",
+    familyTitle: "Família",
+    groceriesBody:
+      "Mantenha uma lista de compras, planeje seu orçamento e copie ou imprima o que precisa.",
+    groceriesTitle: "Lista de compras",
+    helpUnderstand: "Ajude-me a entender",
+    inbox: "Caixa de entrada",
+    listenCall: "Ouvir uma ligação",
+    lists: "Carregando suas listas",
+    message: "Mensagens",
+    messagesBody:
+      "Escreva para as pessoas do seu círculo de confiança. Você vê cada mensagem antes do envio.",
+    messagesTitle: "Mensagens",
+    notSharing: "Você não está compartilhando nada com ninguém.",
+    page: "Carregando sua página",
+    permissions: "Permissões",
+    photo: "Foto",
+    practiceCall: "Experimentar uma ligação de prática",
+    practiceMessage: "Prática: nada será enviado à pessoa.",
+    readAloud: "Ler em voz alta",
+    readDay: "Ler meu dia em voz alta",
+    recap: "Resumo",
+    recapBody:
+      "O LifeLink pode resumir o que você e sua família combinaram, o que foi apenas oferecido e o que ainda está em aberto.",
+    recapConversation: "Resumir esta conversa",
+    recapPractice:
+      "No modo de prática, o próprio LifeLink faz o resumo. Mensagens de prática nunca são enviadas a um provedor de IA.",
+    review: "Revisar",
+    scamBody:
+      "Está em dúvida sobre uma mensagem ou ligação? O LifeLink procura sinais de alerta antes de você agir.",
+    scamTitle: "Verificar golpes",
+    settings: "Carregando configurações",
+    settingsBody: "Deixe o LifeLink confortável para ler e ouvir.",
+    settingsTitle: "Configurações",
+    shared: "Carregando informações compartilhadas",
+    startListening: "Começar a ouvir",
+    takePhoto: "Tirar uma foto",
+    task: "Carregando detalhes da tarefa",
+    text: "Texto",
+    thisConversation: "esta conversa",
+    today: "Carregando Hoje",
+    yourFiles: "Seus arquivos",
+  },
+  openingFamily: "Abrindo sua visão da família",
+  phone: {
+    allCountries: "Todos os países",
+    common: "Mais comuns",
+    countryCode: "Código do país",
+    other: "Outro: digite o código com +",
+  },
+  signIn: {
+    backHome: "Voltar ao início",
+    body: "Entre para ver as mensagens e os compromissos de hoje. Nada é enviado até você autorizar.",
+    breakPrompt: "Quer fazer uma pausa?",
+    busy: "Um momento…",
+    connectionError:
+      "Não foi possível conectar. Verifique sua conexão com a internet e tente novamente.",
+    createAccount: "Criar conta",
+    createBody: "Leva cerca de um minuto. A família vem depois.",
+    createError: "Não foi possível criar a conta. Tente novamente.",
+    createOption: "Criar uma conta",
+    createTitle: "Comece por aqui.",
+    email: "E-mail",
+    friend: "Pessoa amiga",
+    hide: "Ocultar",
+    hidePassword: "Ocultar senha",
+    mismatch:
+      "O e-mail e a senha não correspondem. Confira os dados e tente novamente.",
+    modeLabel: "Entrar ou criar uma conta",
+    name: "Seu nome completo",
+    or: ", ou ",
+    paintingAlt: {
+      "sign-in":
+        "Claude Monet, Woman with a Parasol: uma mulher com uma sombrinha verde está no alto de uma colina ao vento, diante de um céu luminoso, com seu filho pequeno na grama por perto.",
+      "sign-up":
+        "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte: pessoas descansam em um gramado ensolarado à beira do rio, enquanto um casal sob uma sombrinha fica ao lado de um cão pequeno e um macaco de estimação.",
+    },
+    password: "Senha",
+    passwordHint: (count) => `Pelo menos ${count} caracteres.`,
+    passwordMinimum: (count) =>
+      `Escolha uma senha com pelo menos ${count} caracteres.`,
+    play: "Jogar Paciência sem entrar",
+    playMahjong: "jogar Mahjong",
+    show: "Mostrar",
+    showPassword: "Mostrar senha",
+    signIn: "Entrar",
+    welcome: "Que bom ter você de volta.",
+  },
+  timeZone: {
+    all: "Todos os fusos horários",
+    common: "Mais comuns",
+  },
+};
+
+export { appExtras };

@@ -1,0 +1,56 @@
+import type { Messages } from "../en";
+
+const family: Messages["family"] = {
+  appointments: "Lịch hẹn",
+  budget: (amount) => ` · ngân sách ${amount}`,
+  checked: (kind, day) => `${kind} được kiểm tra ${day}`,
+  codeHint: "Người mời có thể đọc mã từ trang Nhóm tin cậy của họ.",
+  connect: "Kết nối",
+  connected: "Đã kết nối. Quý vị chỉ thấy những gì họ chọn chia sẻ.",
+  empty: "Chưa ai chia sẻ với quý vị. Khi có lời mời, nhập mã của họ bên dưới.",
+  groceries: "Thực phẩm",
+  haveCode: "Quý vị có mã mời?",
+  invitationCode: "Mã mời",
+  kinds: {
+    email: "email",
+    screenshot: "ảnh chụp màn hình",
+    text: "văn bản",
+  },
+  likelyScam: "Có thể là lừa đảo",
+  loadingMessages: "Đang tải tin nhắn",
+  loadingPhoto: "Đang tải ảnh…",
+  loadingShared: "Đang tải thông tin được chia sẻ",
+  loadingWhatWasShared: "Đang tải nội dung đã chia sẻ",
+  messagesWith: (name) => `Tin nhắn với ${name}`,
+  noMessages: "Chưa có tin nhắn trong LifeLink.",
+  noSharedReminders: "Chưa có lời nhắc được chia sẻ.",
+  notSharing: "Người này hiện không chia sẻ với quý vị.",
+  nothingLeft: "Không còn gì cần mua.",
+  nothingSoon: "Không có gì trong 30 ngày tới.",
+  onlyResult: "Chỉ chia sẻ kết quả, không bao giờ chia sẻ chính tin nhắn.",
+  photoUnavailable: "Ảnh này không khả dụng.",
+  photos: "Ảnh",
+  replyTo: (name) => `Trả lời ${name}`,
+  ride: {
+    asked: "Đã nhờ đưa đón, chưa xác nhận",
+    confirmed: "Đã xác nhận chuyến đi",
+    declined: "Đã từ chối đưa đón",
+  },
+  scamChecks: "Kiểm tra lừa đảo",
+  sendReply: "Gửi trả lời",
+  sharedPhoto: "Ảnh được chia sẻ",
+  sharedReminders: "Lời nhắc được chia sẻ",
+  shares: (name, scopes) =>
+    `${name} chia sẻ: ${scopes}. Quý vị có thể xem, nhưng không thể gửi, phê duyệt hoặc chi tiêu thay họ.`,
+  subline:
+    "Chỉ xem những gì mỗi người chọn chia sẻ. Quý vị có thể xem, nhưng không bao giờ được gửi, phê duyệt hay chi tiêu thay họ.",
+  suspicious: "Đáng ngờ",
+  theyWrote: (name) => `${name} viết: `,
+  title: "Gia đình",
+  updates: "Cập nhật",
+  withPhotos: " · kèm ảnh",
+  you: "Quý vị",
+  youWrote: "Quý vị viết: ",
+};
+
+export { family };

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { interfaceLocales } from "@lifelink/contracts/locale";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
@@ -122,19 +123,22 @@ describe("changing the screen language", () => {
     vi.unstubAllGlobals();
   });
 
-  it("updates words without replacing unsaved fields or moving focus", async () => {
-    const name = required<HTMLInputElement>('input[name="name"]');
-    name.value = "Unsaved name";
-    name.focus();
+  it.each(interfaceLocales.filter(({ id }) => id !== "en"))(
+    "switches to $id without replacing unsaved fields or moving focus",
+    async ({ id }) => {
+      const name = required<HTMLInputElement>('input[name="name"]');
+      name.value = "Unsaved name";
+      name.focus();
 
-    await act(() => setLocale("es"));
+      await act(() => setLocale(id));
 
-    expect(required("h1").textContent).toBe(currentMessages().settings.title);
-    expect(required('input[name="name"]')).toBe(name);
-    expect(name.value).toBe("Unsaved name");
-    expect(document.activeElement).toBe(name);
-    expect(backend.update).not.toHaveBeenCalled();
-  });
+      expect(required("h1").textContent).toBe(currentMessages().settings.title);
+      expect(required('input[name="name"]')).toBe(name);
+      expect(name.value).toBe("Unsaved name");
+      expect(document.activeElement).toBe(name);
+      expect(backend.update).not.toHaveBeenCalled();
+    }
+  );
 
   it("retains a rejected language save and retries the same selection", async () => {
     const pending = Promise.withResolvers<null>();
