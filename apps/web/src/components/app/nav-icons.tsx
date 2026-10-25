@@ -83,9 +83,10 @@ const ConnectionsIcon = (props: NavIconProps) => (
 /** The sun coming up over the horizon, for the day ahead. */
 const TodayIcon = (props: NavIconProps) => (
   <svg {...iconAttributes} {...props}>
-    <path d="M2 15H22M6 19H18" />
-    <path d="M6.5 15A5.5 5.5 0 0 1 17.5 15" />
-    <path d="M12 7.75V5M6.87 9.87L4.93 7.93M17.13 9.87L19.07 7.93" />
+    <path d="M2 15.5H22M7 19.5H17" />
+    <path d="M7 15.5A5 5 0 0 1 17 15.5" />
+    {/* Five rays 30° apart, starting clear of the sun's stroke. */}
+    <path d="M12 7.5V5M8 8.57L6.75 6.41M16 8.57L17.25 6.41M5.07 11.5L2.91 10.25M18.93 11.5L21.09 10.25" />
   </svg>
 );
 
