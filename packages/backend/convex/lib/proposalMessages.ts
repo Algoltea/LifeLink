@@ -25,6 +25,7 @@ interface ProposalMessages {
   whichGroceries: string;
   whichRecipient: string;
   whichReminder: string;
+  whichRideTime: string;
 }
 
 /** Only LifeLink's new owner-facing words; names and authored details are interpolated unchanged. */
@@ -59,6 +60,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "Wem möchten Sie schreiben?",
     whichReminder:
       "Woran und wann genau soll ich Sie erinnern? Bitte nennen Sie den Tag und die Uhrzeit.",
+    whichRideTime:
+      "Wann müssen Sie dort sein? Bitte nennen Sie den Tag und die Uhrzeit.",
   },
   en: {
     appointmentPrepared: (title, when) =>
@@ -88,6 +91,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "Who would you like to write to?",
     whichReminder:
       "What should I remind you about, and exactly when? Please give the day and time.",
+    whichRideTime:
+      "When do you need to be there? Please give the day and time.",
   },
   es: {
     appointmentPrepared: (title, when) =>
@@ -117,6 +122,7 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "¿A quién le gustaría escribir?",
     whichReminder:
       "¿Qué quiere que le recuerde y cuándo exactamente? Dígame el día y la hora.",
+    whichRideTime: "¿Cuándo necesita estar allí? Dígame el día y la hora.",
   },
   fr: {
     appointmentPrepared: (title, when) =>
@@ -146,6 +152,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "À qui souhaitez-vous écrire ?",
     whichReminder:
       "Que souhaitez-vous que je vous rappelle, et à quel moment ? Indiquez le jour et l'heure.",
+    whichRideTime:
+      "À quel moment devez-vous y être ? Indiquez le jour et l'heure.",
   },
   it: {
     appointmentPrepared: (title, when) =>
@@ -175,6 +183,7 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "A chi desidera scrivere?",
     whichReminder:
       "Che cosa desidera ricordare e quando esattamente? Mi indichi il giorno e l'ora.",
+    whichRideTime: "Quando deve essere lì? Mi indichi il giorno e l'ora.",
   },
   ko: {
     appointmentPrepared: (title, when) =>
@@ -203,6 +212,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichGroceries: "목록에 어떤 물품을 추가할까요?",
     whichRecipient: "누구에게 메시지를 보내고 싶으세요?",
     whichReminder: "무엇을 언제 알려드릴까요? 날짜와 시간을 말씀해 주세요.",
+    whichRideTime:
+      "언제까지 그곳에 도착해야 하나요? 날짜와 시간을 말씀해 주세요.",
   },
   pt: {
     appointmentPrepared: (title, when) =>
@@ -233,6 +244,7 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "Para quem você gostaria de escrever?",
     whichReminder:
       "O que você quer que eu lembre e quando exatamente? Diga o dia e a hora.",
+    whichRideTime: "Quando você precisa estar lá? Diga o dia e a hora.",
   },
   tl: {
     appointmentPrepared: (title, when) =>
@@ -264,6 +276,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "Sino ang gusto ninyong sulatan?",
     whichReminder:
       "Ano ang gusto ninyong ipaalala ko, at kailan? Pakibigay ang araw at oras.",
+    whichRideTime:
+      "Kailan mo kailangang makarating doon? Pakibigay ang araw at oras.",
   },
   vi: {
     appointmentPrepared: (title, when) =>
@@ -294,6 +308,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichRecipient: "Bạn muốn viết cho ai?",
     whichReminder:
       "Bạn muốn tôi nhắc việc gì và vào lúc nào? Vui lòng cho biết ngày và giờ.",
+    whichRideTime:
+      "Bạn cần có mặt ở đó lúc nào? Vui lòng cho biết ngày và giờ.",
   },
   zh: {
     appointmentPrepared: (title, when) =>
@@ -321,6 +337,7 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
     whichGroceries: "您想在清单中添加哪些物品？",
     whichRecipient: "您想给谁写消息？",
     whichReminder: "您希望我提醒您什么？请告诉我具体日期和时间。",
+    whichRideTime: "您需要什么时候到达那里？请告诉我日期和时间。",
   },
 };
 

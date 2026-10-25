@@ -1021,6 +1021,10 @@ export default defineSchema({
     appointmentId: v.union(v.id("appointments"), v.null()),
     contactId: v.union(v.id("contacts"), v.null()),
     createdAt: v.number(),
+    // A ride to a place rather than to a saved appointment.
+    destination: v.optional(
+      v.object({ place: v.string(), startsAt: v.number() })
+    ),
     kind: v.union(
       v.literal("ride_request"),
       v.literal("send_message"),

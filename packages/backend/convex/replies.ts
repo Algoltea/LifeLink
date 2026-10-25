@@ -47,13 +47,24 @@ export const replyContext = internalQuery({
       .filter((row) => row.eq(row.field("direction"), "outgoing"))
       .first();
 
+    const destination =
+      task.destination === undefined
+        ? null
+        : {
+            startsAt: task.destination.startsAt,
+            title: task.destination.place,
+          };
+
+    // A ride to a place gives the classifier the same day and time to check against.
+    const ride = appointment ?? destination;
+
     return {
       appointment:
-        appointment === null
+        ride === null
           ? null
           : {
-              startsAt: isoWithOffset(appointment.startsAt, owner.timeZone),
-              title: appointment.title,
+              startsAt: isoWithOffset(ride.startsAt, owner.timeZone),
+              title: ride.title,
             },
       asked: asked?.body ?? "",
       demoMode: owner.demoMode,

@@ -79,6 +79,12 @@ const assistantPlanSchema = z.strictObject({
     .describe(
       "What the assistant says back, in plain, warm, short sentences suitable for reading aloud."
     ),
+  // Optional so proposals written before rides to places still parse.
+  rideDestination: nullableString
+    .optional()
+    .describe(
+      "For ride_request to a place that is not a stored appointment: where they need to go, as they said it. Otherwise null."
+    ),
 });
 
 type AssistantPlan = z.infer<typeof assistantPlanSchema>;

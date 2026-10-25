@@ -20,7 +20,7 @@ import {
   matchRecipient,
   startRideRequest,
 } from "./journey";
-import type { RecipientMatch } from "./journey";
+import type { RecipientMatch, RideDestination } from "./journey";
 import { createAction } from "./lifecycle";
 import { ownerLocale } from "./locale";
 import { resolveMessageRecipients } from "./messageRecipients";
@@ -64,20 +64,42 @@ const recipientMatchFor = (
 };
 
 const ridePreparedMessage = (
-  appointment: Doc<"appointments"> | null,
+  ride: { startsAt: number; title: string } | null,
   contact: Doc<"contacts"> | null,
   timeZone: string,
   locale: InterfaceLocale
 ): string =>
   proposalMessagesFor(locale).ridePrepared(
     contact === null ? null : firstName(contact.name),
-    appointment === null
+    ride === null
       ? null
       : {
-          day: formatDay(appointment.startsAt, timeZone, intlLocaleOf(locale)),
-          title: appointment.title,
+          day: formatDay(ride.startsAt, timeZone, intlLocaleOf(locale)),
+          title: ride.title,
         }
   );
+
+/**
+ * A ride to a place the person named, such as the store or church, when it is
+ * not one of their saved appointments. It needs a clear time to ask for.
+ */
+const rideDestinationOf = (
+  proposal: Proposal,
+  proposedAppointment: Doc<"appointments"> | null,
+  now: number
+): RideDestination | "needs_time" | null => {
+  const place = proposal.rideDestination?.trim() ?? "";
+
+  if (proposedAppointment !== null || place.length === 0) {
+    return null;
+  }
+
+  const startsAt = parseAbsoluteIso(proposal.dateTimeIso);
+
+  return startsAt === null || startsAt < now
+    ? "needs_time"
+    : { place, startsAt };
+};
 
 const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, now, owner, proposal } = planning;
@@ -92,19 +114,26 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
     )
     .collect();
 
-  if (appointments.length === 0) {
-    return outcome(proposalMessagesFor(locale).noAppointment);
-  }
-
   const proposedAppointment =
     appointments.find(
       (appointment) => appointment._id === proposal.appointmentId
     ) ?? null;
 
+  const destination = rideDestinationOf(proposal, proposedAppointment, now);
+
+  if (destination === "needs_time") {
+    return outcome(proposalMessagesFor(locale).whichRideTime);
+  }
+
+  if (destination === null && appointments.length === 0) {
+    return outcome(proposalMessagesFor(locale).noAppointment);
+  }
+
   const onlyAppointment =
     appointments.length === 1 ? (appointments[0] ?? null) : null;
 
-  const appointment = proposedAppointment ?? onlyAppointment;
+  const appointment =
+    destination === null ? (proposedAppointment ?? onlyAppointment) : null;
 
   const reachable = planning.contacts.filter(
     (contact) => contact.trusted && channelFor(contact) !== null
@@ -128,9 +157,11 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
 
   const taskId = await startRideRequest(ctx, {
     appointment,
-    appointmentOptions: appointment === null ? appointments : [],
+    appointmentOptions:
+      appointment === null && destination === null ? appointments : [],
     contact,
     contactOptions: contact === null ? contactOptions : [],
+    destination,
     mode: planning.mode,
     origin: planning.origin,
     owner,
@@ -138,7 +169,15 @@ const proposeRide = async (planning: Planning): Promise<ProposalOutcome> => {
   });
 
   return outcome(
-    ridePreparedMessage(appointment, contact, owner.timeZone, locale),
+    ridePreparedMessage(
+      appointment ??
+        (destination === null
+          ? null
+          : { startsAt: destination.startsAt, title: destination.place }),
+      contact,
+      owner.timeZone,
+      locale
+    ),
     taskId
   );
 };

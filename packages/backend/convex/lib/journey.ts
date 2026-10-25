@@ -15,7 +15,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { audit } from "./audit";
 import type { Mode } from "./capabilities";
-import { rideRequestDraft } from "./drafts";
+import { ridePlaceDraft, rideRequestDraft } from "./drafts";
 import { createAction } from "./lifecycle";
 import type { Ambiguity } from "./lifecycle";
 import { contactLocale } from "./locale";
@@ -28,9 +28,12 @@ type TaskKind = Doc<"tasks">["kind"];
 
 type Channel = Doc<"messages">["channel"];
 
+type RideDestination = NonNullable<Doc<"tasks">["destination"]>;
+
 interface NewTask {
   appointmentId: Id<"appointments"> | null;
   contactId: Id<"contacts"> | null;
+  destination?: RideDestination;
   kind: TaskKind;
   mode: Mode;
   origin: Doc<"tasks">["origin"];
@@ -50,6 +53,7 @@ const createTask = async (
     appointmentId: task.appointmentId,
     contactId: task.contactId,
     createdAt: now,
+    destination: task.destination,
     kind: task.kind,
     mode: task.mode,
     origin: task.origin,
@@ -207,24 +211,52 @@ const signOff = (owner: Doc<"profiles">): string =>
 
 // ── Ride journey ──────────────────────────────────────────────────────────
 
+/** A place ride has no stored id; an appointment always has one. */
+const isPlace = (
+  ride: Doc<"appointments"> | RideDestination
+): ride is RideDestination => !("_id" in ride);
+
 /** The ride request, written in the language the contact reads. */
 const rideRequestBody = async (
   ctx: QueryCtx,
   owner: Doc<"profiles">,
   contact: Doc<"contacts">,
-  appointment: Doc<"appointments">
-): Promise<string> =>
-  rideRequestDraft(
+  ride: Doc<"appointments"> | RideDestination
+): Promise<string> => {
+  const locale = await contactLocale(ctx, owner._id, contact);
+
+  if (isPlace(ride)) {
+    return ridePlaceDraft(
+      {
+        firstName: firstName(contact.name),
+        place: ride.place,
+        signOff: signOff(owner),
+        startsAt: ride.startsAt,
+        timeZone: owner.timeZone,
+      },
+      locale
+    );
+  }
+
+  return rideRequestDraft(
     {
       firstName: firstName(contact.name),
-      location: appointment.location,
+      location: ride.location,
       signOff: signOff(owner),
-      startsAt: appointment.startsAt,
+      startsAt: ride.startsAt,
       timeZone: owner.timeZone,
-      title: appointment.title,
+      title: ride.title,
     },
-    await contactLocale(ctx, owner._id, contact)
+    locale
   );
+};
+
+/** Where a ride goes: the saved appointment, else the place the person named. */
+const rideTitleOf = (
+  appointment: Doc<"appointments"> | null,
+  task: Doc<"tasks">
+): string =>
+  appointment?.title ?? task.destination?.place ?? "your appointment";
 
 const RIDE_STEPS: { kind: StepKind; label: string }[] = [
   { kind: "send_message", label: "Ask for a ride" },
@@ -239,6 +271,8 @@ interface RideRequest {
   appointmentOptions: Doc<"appointments">[];
   contact: Doc<"contacts"> | null;
   contactOptions: Doc<"contacts">[];
+  /** A ride to a place the person named, when it is not a saved appointment. */
+  destination: RideDestination | null;
   mode: Mode;
   origin: Doc<"tasks">["origin"];
   owner: Doc<"profiles">;
@@ -255,10 +289,11 @@ const startRideRequest = async (
 ): Promise<Id<"tasks">> => {
   const contact = input.contact ?? input.contactOptions[0] ?? null;
   const appointment = input.appointment ?? input.appointmentOptions[0] ?? null;
+  const ride = appointment ?? input.destination;
 
-  if (contact === null || appointment === null) {
+  if (contact === null || ride === null) {
     throw new Error(
-      "A ride request needs at least one candidate contact and appointment."
+      "A ride request needs at least one candidate contact and an appointment or a place."
     );
   }
 
@@ -276,7 +311,7 @@ const startRideRequest = async (
     });
   }
 
-  if (input.appointment === null) {
+  if (appointment !== null && input.appointment === null) {
     ambiguities.push({
       field: "appointment",
       options: input.appointmentOptions.map((option) => ({
@@ -295,15 +330,16 @@ const startRideRequest = async (
   }
 
   const { stepIds, taskId } = await createTask(ctx, {
-    appointmentId: appointment._id,
+    appointmentId: appointment?._id ?? null,
     contactId: contact._id,
+    destination: isPlace(ride) ? ride : undefined,
     kind: "ride_request",
     mode: input.mode,
     origin: input.origin,
     ownerId: input.owner._id,
     request: input.request,
     steps: RIDE_STEPS,
-    title: `Ride to ${appointment.title}`,
+    title: `Ride to ${isPlace(ride) ? ride.place : ride.title}`,
   });
 
   if (ambiguities.length > 0) {
@@ -314,7 +350,7 @@ const startRideRequest = async (
     ambiguities,
     details: {
       address: channel.address,
-      body: await rideRequestBody(ctx, input.owner, contact, appointment),
+      body: await rideRequestBody(ctx, input.owner, contact, ride),
       channel: channel.channel,
       contactId: contact._id,
       contactName: contact.name,
@@ -324,8 +360,9 @@ const startRideRequest = async (
     mode: input.mode,
     ownerId: input.owner._id,
     proposedBy: "system",
-    rationale:
-      "Written from the appointment details so the date and time match exactly.",
+    rationale: isPlace(ride)
+      ? "Written from the place and time you gave so they match exactly."
+      : "Written from the appointment details so the date and time match exactly.",
     stepId: stepIds[0] ?? null,
     taskId,
   });
@@ -392,7 +429,7 @@ const proposeAfterConfirmation = async (
   const appointment =
     task.appointmentId === null ? null : await ctx.db.get(task.appointmentId);
 
-  const what = appointment?.title ?? "your appointment";
+  const what = rideTitleOf(appointment, task);
   const pickup = formatTime(details.pickupAt, owner.timeZone);
   const day = formatDay(details.pickupAt, owner.timeZone);
   const reminderStep = await stepOfKind(ctx, task._id, "create_reminder");
@@ -683,7 +720,11 @@ const proposeConfirmation = async (
     task.appointmentId === null ? null : await ctx.db.get(task.appointmentId);
 
   const statedPickup = parseAbsoluteIso(classification.pickupTimeIso);
-  const startsAt = appointment?.startsAt ?? reply.now + 60 * MINUTE;
+
+  const startsAt =
+    appointment?.startsAt ??
+    task.destination?.startsAt ??
+    reply.now + 60 * MINUTE;
 
   const plausiblePickup =
     statedPickup !== null &&
@@ -712,7 +753,7 @@ const proposeConfirmation = async (
     updatedAt: reply.now,
   });
 
-  const summary = `${reply.name} will drive you to ${appointment?.title ?? "your appointment"} on ${formatDay(pickupAt, owner.timeZone)}, picking you up at ${formatTime(pickupAt, owner.timeZone)}.`;
+  const summary = `${reply.name} will drive you to ${rideTitleOf(appointment, task)} on ${formatDay(pickupAt, owner.timeZone)}, picking you up at ${formatTime(pickupAt, owner.timeZone)}.`;
 
   await createAction(ctx, {
     ambiguities,
@@ -805,4 +846,4 @@ export {
   stepOfKind,
 };
 
-export type { RecipientMatch };
+export type { RecipientMatch, RideDestination };

@@ -251,3 +251,82 @@ describe("appointment to confirmed ride (demo mode)", () => {
     expect(detail.contact?.id).toBe(samId);
   });
 });
+
+/** Ask for a ride to a place through the assistant's own server-side path. */
+const placeRide = async (
+  backend: Backend,
+  ownerId: Id<"profiles">,
+  samId: Id<"contacts">,
+  dateTimeIso: string | null
+) =>
+  await backend.mutation(internal.assistant.applyProposalForOwner, {
+    channel: "text",
+    model: "test",
+    ownerId,
+    proposalJson: JSON.stringify({
+      appointmentId: null,
+      dateTimeAsSaid: "Saturday at 10",
+      dateTimeIso,
+      groceryItems: [],
+      intent: "ride_request",
+      messageDraft: null,
+      recipients: [{ contactId: samId, nameAsSaid: "Sam" }],
+      reminderTitle: null,
+      rideDestination: "the farmers market",
+    }),
+    request: "Ask Sam if he can give me a ride to the farmers market",
+  });
+
+describe("ride to a place that is not an appointment (demo mode)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("asks the named person for a ride to the place, with no appointment question", async () => {
+    const backend = newBackend();
+    const { owner, ownerId, samId } = await demoOwner(backend);
+    const startsAt = Date.now() + 2 * DAY;
+
+    const outcome = await placeRide(
+      backend,
+      ownerId,
+      samId,
+      new Date(startsAt).toISOString()
+    );
+
+    if (outcome.taskId === null) {
+      throw new Error(outcome.message);
+    }
+
+    const detail = await owner.query(api.tasks.detail, {
+      taskId: outcome.taskId,
+    });
+
+    const current = detail.actions[0]?.current;
+
+    const send =
+      current?.details.kind === "send_message" ? current.details : null;
+
+    expect(detail.task.title).toBe("Ride to the farmers market");
+    expect(detail.task.status).toBe("awaiting_approval");
+    expect(current?.ambiguities).toStrictEqual([]);
+    expect(send?.body).toContain("the farmers market");
+    expect(send?.contactId).toBe(samId);
+  });
+
+  it("asks when before preparing anything if the time is unclear", async () => {
+    const backend = newBackend();
+    const { ownerId, samId } = await demoOwner(backend);
+
+    const outcome = await placeRide(backend, ownerId, samId, null);
+
+    expect(outcome.taskId).toBeNull();
+    expect(outcome.message).toBe(
+      "When do you need to be there? Please give the day and time."
+    );
+  });
+});
