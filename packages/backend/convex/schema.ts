@@ -38,6 +38,7 @@ const newsKind = v.union(v.literal("good"), v.literal("top"));
 const headline = v.object({
   publishedAt: v.union(v.number(), v.null()),
   source: v.string(),
+  teaser: v.optional(v.string()),
   title: v.string(),
   url: v.string(),
 });
@@ -721,6 +722,21 @@ export default defineSchema({
     headlines: v.array(headline),
     kind: newsKind,
   }).index("by_kind", ["kind"]),
+
+  // Article summaries are public text, so one per article and language serves everyone.
+  newsSummaries: defineTable({
+    createdAt: v.number(),
+    gist: v.string(),
+    kind: v.union(
+      v.literal("news"),
+      v.literal("opinion"),
+      v.literal("sponsored")
+    ),
+    language: v.string(),
+    model: v.string(),
+    points: v.array(v.string()),
+    url: v.string(),
+  }).index("by_url_language", ["url", "language"]),
 
   photos: defineTable({
     caption: v.union(v.string(), v.null()),

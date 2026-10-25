@@ -10,8 +10,8 @@ import { decodeJson, describeRejection, request } from "./http";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-// Scam checks (calls, new email, the check form) use their own model.
-type ModelTier = "fast" | "main" | "scam";
+// Scam checks (calls, new email, the check form) and news summaries use their own models.
+type ModelTier = "fast" | "main" | "news" | "scam";
 
 interface ContentText {
   text: string;
@@ -65,14 +65,22 @@ const completionSchema = z.object({
   model: z.string().optional(),
 });
 
-const MODEL_SETTINGS: Record<ModelTier, { env: string; fallback: string }> = {
+// News summaries are always Mercury 3: speed is the point, so it isn't configurable.
+const NEWS_MODEL = "inception/mercury-3";
+
+const MODEL_SETTINGS: Record<
+  Exclude<ModelTier, "news">,
+  { env: string; fallback: string }
+> = {
   fast: { env: "OPENROUTER_FAST_MODEL", fallback: "z-ai/glm-5.3-flash" },
   main: { env: "OPENROUTER_MODEL", fallback: "google/gemini-4-argon" },
   scam: { env: "OPENROUTER_SCAM_MODEL", fallback: "openai/gpt-6-luna" },
 };
 
 const modelFor = (tier: ModelTier): string =>
-  readEnvOr(MODEL_SETTINGS[tier].env, MODEL_SETTINGS[tier].fallback);
+  tier === "news"
+    ? NEWS_MODEL
+    : readEnvOr(MODEL_SETTINGS[tier].env, MODEL_SETTINGS[tier].fallback);
 
 const openRouterConfigured = (): boolean =>
   readEnv("OPENROUTER_API_KEY") !== null;

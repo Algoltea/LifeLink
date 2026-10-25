@@ -4,7 +4,7 @@ import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { api } from "@lifelink/backend/convex/_generated/api";
 import { NEWS_REFRESH_MS, NEWS_SOURCES } from "@lifelink/contracts/news";
-import type { NewsKind } from "@lifelink/contracts/news";
+import type { Headline, NewsKind } from "@lifelink/contracts/news";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ExternalLinkIcon } from "lucide-react";
@@ -13,6 +13,8 @@ import { useCallback, useState } from "react";
 import { usePreferences } from "@/components/app/preferences";
 import { useMessages } from "@/i18n/locale";
 import { useRefreshWhenStale } from "@/lib/refresh";
+
+import { NewsReader } from "./news-reader";
 
 const SHOWN = 5;
 
@@ -52,6 +54,7 @@ const NewsCard = ({ className }: { className?: string }) => {
   const t = useMessages();
   const savePreferences = useMutation(api.profiles.updatePreferences);
   const [chosen, setChosen] = useState<NewsKind | null>(null);
+  const [opened, setOpened] = useState<Headline | null>(null);
   const kind = chosen ?? preferences.newsKind;
   const { failed, news } = useHeadlines(kind, preferences.showNews);
   const headlines = news?.headlines.slice(0, SHOWN) ?? [];
@@ -113,12 +116,12 @@ const NewsCard = ({ className }: { className?: string }) => {
                 key={headline.url}
               >
                 {/* The source sits under the headline so the row stays narrow enough for a column. */}
-                <a
-                  className="text-foreground hover:bg-parchment -mx-3 flex min-h-11 min-w-0 flex-col justify-center rounded-lg px-3 py-1 transition-colors"
-                  href={headline.url}
-                  rel="noopener noreferrer"
-                  target="_blank"
+                <button
+                  aria-haspopup="dialog"
+                  className="text-foreground hover:bg-parchment -mx-3 flex min-h-11 w-[calc(100%+1.5rem)] min-w-0 flex-col justify-center rounded-lg px-3 py-1 text-left transition-colors"
+                  onClick={() => setOpened(headline)}
                   title={headline.title}
+                  type="button"
                 >
                   <span className="text-body line-clamp-2">
                     {headline.title}
@@ -126,13 +129,8 @@ const NewsCard = ({ className }: { className?: string }) => {
                   <span className="text-muted-foreground text-label flex items-center gap-1.5">
                     <span className="sr-only">{t.today.newsSourceFrom}</span>
                     <span className="truncate">{headline.source}</span>
-                    <ExternalLinkIcon
-                      aria-hidden="true"
-                      className="size-4 shrink-0"
-                    />
-                    <span className="sr-only">{t.today.newsOpensNewTab}</span>
                   </span>
-                </a>
+                </button>
               </li>
             ))}
           </ul>
@@ -155,6 +153,7 @@ const NewsCard = ({ className }: { className?: string }) => {
           <span className="sr-only">{t.today.newsOpensNewTab}</span>
         </a>
       ) : null}
+      <NewsReader headline={opened} onClose={() => setOpened(null)} />
     </section>
   );
 };

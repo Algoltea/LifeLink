@@ -346,6 +346,24 @@ const briefingSchema = z.strictObject({
 
 type Briefing = z.infer<typeof briefingSchema>;
 
+const newsArticleKinds = ["news", "opinion", "sponsored"] as const;
+
+const newsSummarySchema = z.strictObject({
+  gist: z
+    .string()
+    .describe("What the article is about, in one plain sentence."),
+  kind: z
+    .enum(newsArticleKinds)
+    .describe(
+      "opinion for commentary, columns, or reviews; sponsored for advertising; otherwise news."
+    ),
+  points: z
+    .array(z.string())
+    .describe("Up to three short sentences with the most important facts."),
+});
+
+type NewsSummary = z.infer<typeof newsSummarySchema>;
+
 export {
   appointmentExtractionSchema,
   callWarningSchema,
@@ -359,6 +377,8 @@ export {
   emailSummarySchema,
   explanationGuidanceSchema,
   messageExplanationSchema,
+  newsArticleKinds,
+  newsSummarySchema,
   replyClassificationSchema,
   replyKinds,
   suggestedRepliesSchema,
@@ -376,6 +396,7 @@ export type {
   EmailSummary,
   ExplanationGuidance,
   MessageExplanation,
+  NewsSummary,
   ReplyClassification,
   ScamReviewResult,
   SuggestedReplies,
