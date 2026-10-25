@@ -137,6 +137,30 @@ describe("multi-recipient messages", () => {
     ]);
   });
 
+  it.each([
+    ["Father", "my dad"],
+    ["Dad", "my father"],
+    ["Mom", "my mother"],
+    ["Grandmother", "my grandma"],
+  ])(
+    "matches a contact saved as %s when asked for %s",
+    async (relationship, phrase) => {
+      const { backend, owner, ownerId, daughterId } = await family();
+      await backend.run(
+        async (ctx) => await ctx.db.patch(daughterId, { relationship })
+      );
+      const result = await propose(backend, ownerId, [phrase]);
+
+      const detail = await owner.query(api.tasks.detail, {
+        taskId: requireTask(result.taskId),
+      });
+
+      expect(detail.actions.map((view) => view.current?.details)).toStrictEqual(
+        [expect.objectContaining({ contactId: daughterId })]
+      );
+    }
+  );
+
   it("keeps a singular friend request ambiguous when several friends match", async () => {
     const { backend, ownerId, contactId, daughterId } = await family();
     await backend.run(async (ctx) => {

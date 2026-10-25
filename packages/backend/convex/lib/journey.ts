@@ -98,6 +98,41 @@ const normalizeWords = (text: string): string[] =>
     .split(WORD_SPLIT)
     .filter((word) => word.length > 0);
 
+/** Everyday family words mapped to one saved-category word, in both directions. */
+const RELATION_SYNONYMS = new Map([
+  ["dad", "father"],
+  ["daddy", "father"],
+  ["gramps", "grandfather"],
+  ["gran", "grandmother"],
+  ["grandad", "grandfather"],
+  ["granddad", "grandfather"],
+  ["grandkid", "grandchild"],
+  ["grandma", "grandmother"],
+  ["grandmom", "grandmother"],
+  ["grandpa", "grandfather"],
+  ["grandpop", "grandfather"],
+  ["granny", "grandmother"],
+  ["hubby", "husband"],
+  ["kid", "child"],
+  ["ma", "mother"],
+  ["mama", "mother"],
+  ["mom", "mother"],
+  ["mommy", "mother"],
+  ["mum", "mother"],
+  ["mummy", "mother"],
+  ["nana", "grandmother"],
+  ["pa", "father"],
+  ["papa", "father"],
+  ["pop", "father"],
+  ["pops", "father"],
+  ["stepdad", "stepfather"],
+  ["stepmom", "stepmother"],
+  ["stepmum", "stepmother"],
+]);
+
+const canonicalRelation = (word: string): string =>
+  RELATION_SYNONYMS.get(word) ?? word;
+
 type RecipientMatch =
   | { contact: Doc<"contacts">; kind: "one" }
   | { contacts: Doc<"contacts">[]; kind: "many" }
@@ -114,12 +149,16 @@ const matchRecipient = (
 
   const matches = contacts.filter((contact) => {
     const nameWords = normalizeWords(contact.name);
-    const relationWords = normalizeWords(contact.relationship);
+
+    const relationWords = new Set(
+      normalizeWords(contact.relationship).map(canonicalRelation)
+    );
 
     return (
       words.length > 0 &&
       words.every(
-        (word) => nameWords.includes(word) || relationWords.includes(word)
+        (word) =>
+          nameWords.includes(word) || relationWords.has(canonicalRelation(word))
       )
     );
   });
