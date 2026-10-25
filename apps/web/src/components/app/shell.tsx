@@ -8,29 +8,23 @@ import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
   FolderOpenIcon,
-  HeartHandshakeIcon,
   HomeIcon,
-  LayersIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
-  MessageSquareTextIcon,
   MessagesSquareIcon,
-  PlugIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ShoppingBasketIcon,
-  SpadeIcon,
   UsersRoundIcon,
   WifiOffIcon,
   XIcon,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGAttributes } from "react";
 
 import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { authClient } from "@/lib/auth-client";
@@ -41,12 +35,19 @@ import {
   GuestAccountLinks,
   GuestPlayInvitation,
 } from "./guest-play-navigation";
+import {
+  AskIcon,
+  ConnectionsIcon,
+  MahjongIcon,
+  SolitaireIcon,
+  TrustedCircleIcon,
+} from "./nav-icons";
 import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 
 interface NavItem {
   href: Route;
-  icon: LucideIcon;
+  icon: ComponentType<SVGAttributes<SVGSVGElement>>;
   label: string;
   /** Left out of the phone menu, because the page needs a tablet-sized screen. */
   wideOnly?: boolean;
@@ -67,13 +68,13 @@ const SETTINGS_GROUP: NavGroup = {
 
 const SOLITAIRE: NavItem = {
   href: "/solitaire",
-  icon: SpadeIcon,
+  icon: SolitaireIcon,
   label: "Solitaire",
 };
 
 const MAHJONG: NavItem = {
   href: "/mahjong",
-  icon: LayersIcon,
+  icon: MahjongIcon,
   label: "Mahjong",
   wideOnly: true,
 };
@@ -85,7 +86,7 @@ const ownerNavigation = (): NavGroup[] => [
   {
     items: [
       { href: "/", icon: HomeIcon, label: "Today" },
-      { href: "/ask", icon: MessageSquareTextIcon, label: "Ask LifeLink" },
+      { href: "/ask", icon: AskIcon, label: "Ask LifeLink" },
       { href: "/messages", icon: MessagesSquareIcon, label: "Messages" },
       { href: "/email", icon: MailIcon, label: "Email" },
       { href: "/documents", icon: FolderOpenIcon, label: "Documents" },
@@ -105,8 +106,8 @@ const ownerNavigation = (): NavGroup[] => [
   },
   {
     items: [
-      { href: "/circle", icon: HeartHandshakeIcon, label: "Trusted circle" },
-      { href: "/connections", icon: PlugIcon, label: "Connections" },
+      { href: "/circle", icon: TrustedCircleIcon, label: "Trusted circle" },
+      { href: "/connections", icon: ConnectionsIcon, label: "Connections" },
     ],
     label: "Your setup",
   },
@@ -137,27 +138,48 @@ const isActive = (pathname: string, href: string): boolean =>
   href === "/" ? pathname === "/" : pathname.startsWith(href);
 
 const NavList = ({
+  dense = false,
   groups,
   onNavigate,
 }: {
+  /**
+   * Shorter rows and gaps, so the desktop sidebar fits a laptop screen without
+   * scrolling; short windows tighten further, down to 40px rows.
+   */
+  dense?: boolean;
   groups: NavGroup[];
   onNavigate?: () => void;
 }) => {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Main" className="flex flex-1 flex-col gap-5">
+    <nav
+      aria-label="Main"
+      className={cn(
+        "flex flex-1 flex-col",
+        dense ? "gap-3 [@media(max-height:900px)]:gap-2" : "gap-5"
+      )}
+    >
       {groups.map((group) => (
         <div
-          className={cn("flex flex-col gap-1", group.pinned && "mt-auto")}
+          className={cn(
+            "flex flex-col",
+            dense ? "gap-0.5" : "gap-1",
+            group.pinned && "mt-auto"
+          )}
           key={group.label ?? (group.pinned ? "pinned" : "main")}
         >
           {group.label ? (
-            <p className="text-muted-foreground text-label px-4 pb-1">
+            <p
+              className={cn(
+                "text-muted-foreground text-label px-4",
+                dense ? "pt-1 [@media(max-height:900px)]:pt-0" : "pb-1"
+              )}
+            >
               {group.label}
             </p>
           ) : null}
-          <ul className="flex flex-col gap-1">
+          <ul className={cn("flex flex-col", dense ? "gap-0.5" : "gap-1")}>
             {group.items.map((item) => {
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
@@ -170,7 +192,10 @@ const NavList = ({
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "text-foreground hover:bg-neutral-wash text-label min-h-control flex items-center gap-3 rounded-md px-4 transition-colors",
+                      "text-foreground hover:bg-neutral-wash text-label flex items-center gap-3 rounded-md px-4 transition-colors",
+                      dense
+                        ? "min-h-[2.444rem] [@media(max-height:900px)]:min-h-[2.222rem]"
+                        : "min-h-control",
                       active &&
                         "bg-neutral-wash text-accent-foreground font-semibold"
                     )}
@@ -432,7 +457,9 @@ const ShellFrame = ({
       <aside
         className={cn(
           "border-border bg-parchment sticky top-0 hidden h-svh flex-col overflow-y-auto border-r min-[1101px]:flex",
-          guest ? "px-[1.333rem] py-[1.778rem]" : "gap-6 px-3 pb-5"
+          guest
+            ? "px-[1.333rem] py-[1.778rem]"
+            : "gap-3 px-3 pb-3 [@media(max-height:900px)]:gap-2 [@media(max-height:900px)]:pb-2"
         )}
       >
         {guest ? (
@@ -453,8 +480,8 @@ const ShellFrame = ({
                 <BrandName />
               </Link>
             </div>
-            {navigation ?? <NavList groups={groups} />}
-            <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
+            {navigation ?? <NavList dense groups={groups} />}
+            <div className="border-border mt-auto flex flex-col gap-3 border-t pt-3 [@media(max-height:900px)]:pt-2">
               {account}
             </div>
           </>
