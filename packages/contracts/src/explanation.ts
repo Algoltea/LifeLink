@@ -156,7 +156,21 @@ const DAY_WORDS =
   /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tonight|tomorrow|this weekend|next week|this (?:morning|afternoon|evening)|(?:jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?|may \d{1,2}(?:st|nd|rd|th)?|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/giu;
 
 const TIME_WORDS =
-  /\b\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)|\b(?:noon|midnight)\b/giu;
+  /(?<![\w.:/])(?:\d{1,2}(?::\d{2})?\s?(?:am|pm|a\.m\.|p\.m\.)|(?:[01]?\d|2[0-3]):[0-5]\d(?![\w:])|(?:noon|midnight)\b)/giu;
+
+const NON_TIME_CONTEXT =
+  /\b(?:ratio|odds|scale|score)\s*(?:(?:of|is|was)\s*|[=:]\s*)?$/iu;
+
+const NON_TIME_TOKEN = /(?:https?:\/\/|www\.|\/)/iu;
+
+const isClockTime = (source: string, match: RegExpMatchArray): boolean => {
+  const index = match.index ?? 0;
+  const before = source.slice(0, index);
+  const tokenStart = before.search(/\S*$/u);
+  const token = source.slice(tokenStart).split(/\s/u, 1)[0] ?? "";
+
+  return !NON_TIME_TOKEN.test(token) && !NON_TIME_CONTEXT.test(before);
+};
 
 interface Found {
   index: number;
@@ -171,11 +185,17 @@ const findDates = (source: string): Found[] => {
       isTime: false,
       text: match[0],
     })),
-    ...[...source.matchAll(TIME_WORDS)].map((match) => ({
-      index: match.index,
-      isTime: true,
-      text: match[0],
-    })),
+    ...[...source.matchAll(TIME_WORDS)].flatMap((match) =>
+      isClockTime(source, match)
+        ? [
+            {
+              index: match.index,
+              isTime: true,
+              text: match[0],
+            },
+          ]
+        : []
+    ),
   ].toSorted((first, second) => first.index - second.index);
 
   const seen = new Set<string>();

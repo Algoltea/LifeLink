@@ -214,6 +214,43 @@ describe("the local reading", () => {
     );
   });
 
+  it.each(["12:30", "09:05", "18:45", "23:59", "0:00", "2:30pm"])(
+    "recognizes the clock time %s without claiming it is missing",
+    (time) => {
+      const reading = localExplanation(
+        `Still on for lunch Sunday at ${time}?`,
+        {
+          senderName: "Linda",
+          signOff: "Ruth",
+        }
+      );
+
+      expect(reading.dates.map((date) => date.quote)).toStrictEqual([
+        "Sunday",
+        time,
+      ]);
+      expect(reading.missingDetails).toStrictEqual([]);
+      expect(reading.suggestedReplies[1]?.draft).not.toContain("What time");
+    }
+  );
+
+  it.each([
+    "Can you check the ratio 12:30 on Sunday?",
+    "Can you check https://example.com/12:30 on Sunday?",
+    "Can you check www.example.com/12:30 on Sunday?",
+    "Can you check the score 12:30 on Sunday?",
+    "Can you come Sunday at 24:30?",
+    "Can you come Sunday at 12:99?",
+  ])("does not interpret non-clock text as a time: %s", (source) => {
+    const reading = localExplanation(source, {
+      senderName: "Linda",
+      signOff: "Ruth",
+    });
+
+    expect(reading.dates.map((date) => date.quote)).toStrictEqual(["Sunday"]);
+    expect(reading.missingDetails).toContain("No time is given.");
+  });
+
   it("suggests no replies when nothing is asked", () => {
     const reading = localExplanation("Thinking of you today.", {
       senderName: "Sam",
