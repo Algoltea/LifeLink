@@ -15,8 +15,8 @@ import { useLocale, useMessages } from "@/i18n/locale";
 import { hasEmailWarning } from "@/lib/email-warning";
 import { formatWhen } from "@/lib/format";
 
-// Two keep the email group as short as the groups beside it; All email has the rest.
-const SHOWN = 2;
+// Three keep the email list short so Messages, beneath it, shows without scrolling; All email has the rest.
+const SHOWN = 3;
 const MAILBOX_IDS = new Set(["gmail", "outlook"]);
 
 type EmailRow = FunctionReturnType<typeof api.emails.list>[number];

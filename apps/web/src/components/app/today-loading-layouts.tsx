@@ -81,37 +81,38 @@ const TodayLoadingNews = () => (
   </div>
 );
 
-/** Your week and Messages, Latest email, then News: three columns on a wide screen like the real groups. */
+/** Your week, then Latest email and Messages, then News: three columns on a wide screen like the real groups. */
 const TodayLoadingPanels = () => (
   <div
     className="grid shrink-0 items-start gap-x-6 gap-y-6 @min-[36rem]/content:grid-cols-2 @min-[52rem]/content:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]"
     data-loading-part="today-panels"
   >
+    <div className={PANEL}>
+      <PanelHeading />
+      <div className="flex items-center gap-3.5 py-2.5">
+        <div className="w-20 shrink-0">
+          <TodayLine className="h-[1.333rem] w-3/4" />
+          <TodayLine />
+        </div>
+        <div className="min-w-0 flex-1">
+          <TodayLine />
+          <TodayLine className="h-[1.333rem] w-3/4" />
+          <TodayLine className="h-[1.333rem] w-1/2" />
+        </div>
+      </div>
+    </div>
     <div className="flex min-w-0 flex-col gap-5">
       <div className={PANEL}>
-        <PanelHeading />
-        <div className="flex items-center gap-3.5 py-2.5">
-          <div className="w-20 shrink-0">
-            <TodayLine className="h-[1.333rem] w-3/4" />
-            <TodayLine />
-          </div>
-          <div className="min-w-0 flex-1">
-            <TodayLine />
-            <TodayLine className="h-[1.333rem] w-3/4" />
-            <TodayLine className="h-[1.333rem] w-1/2" />
-          </div>
+        <LinkedHeading />
+        <div className="flex flex-col gap-1">
+          <EmailRow />
+          <EmailRow />
+          <EmailRow />
         </div>
       </div>
       <div className={PANEL}>
         <LinkedHeading />
         <MessagesLoadingRows rows={1} />
-      </div>
-    </div>
-    <div className={PANEL}>
-      <LinkedHeading />
-      <div className="flex flex-col gap-1">
-        <EmailRow />
-        <EmailRow />
       </div>
     </div>
     <TodayLoadingNews />
