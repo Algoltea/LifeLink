@@ -188,6 +188,8 @@ const pt: ServerCatalog = {
       "Prática: nada foi adicionado ao seu calendário real.",
     "Practice: nothing was saved in your real Google Drive.":
       "Prática: nada foi salvo no seu Google Drive real.",
+    "Practice: the reply was not really sent.":
+      "Prática: a resposta não foi enviada de verdade.",
     "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.":
       "A pressão pode dificultar uma pausa para verificar. Confirme um pedido urgente com um contato que você já conhece.",
     "Pressure to act fast": "Pressão para agir rápido",
@@ -380,6 +382,10 @@ const pt: ServerCatalog = {
       /^Shared with (?<count>\d+) (?:person|people) in your trusted circle\.$/u,
       (count) =>
         `Compartilhado com ${count} ${count === "1" ? "pessoa" : "pessoas"} do seu círculo de confiança.`,
+    ],
+    [
+      /^Reply sent to (?<to>[^“”"\r\n]+)\.$/u,
+      (to) => `Resposta enviada para ${to}.`,
     ],
     [
       /^Draft saved in your (?<provider>Gmail|Outlook) Drafts folder\. It has not been sent\.$/u,

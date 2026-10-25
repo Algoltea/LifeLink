@@ -25,6 +25,8 @@ const actionDetails: Messages["actionDetails"] = {
   readNote: "메모 소리 내어 읽기",
   readUpdate: "새 소식 소리 내어 읽기",
   reminder: "알림",
+  replySentFrom: (provider) =>
+    `승인하신 뒤에만 사용하시는 ${provider}에서 같은 대화의 답장으로 보냅니다.`,
   sharedWithCircle: "믿을 수 있는 사람들과 공유",
   shoppingRecord:
     "이전에 요청하신 장보기 기록입니다. LifeLink를 통한 구매는 더 이상 제공되지 않습니다.",
@@ -41,6 +43,8 @@ const actionDetails: Messages["actionDetails"] = {
       `받는 분: ${name}, 보내는 방법: ${channel}${route}. 메시지 내용: ${body}`,
     reminder: (title, when, shared) =>
       `알림: ${title}. ${when}. ${shared ? "믿을 수 있는 사람들과 공유됩니다." : "본인만 보실 수 있습니다."}`,
+    reply: (to, subject, body) =>
+      `답장 받는 분: ${to}. 제목: ${subject}. 내용: ${body}`,
     update: (text) => `새 소식의 내용: ${text}`,
   },
   starts: "시작",

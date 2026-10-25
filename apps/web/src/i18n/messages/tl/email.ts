@@ -77,13 +77,14 @@ const email: Messages["email"] = {
   reconnect: "Ikonekta ulit",
   reply: "Tumugon",
   replyAdded:
-    "Naidagdag ang tugon sa inyong burador. Maaari ninyo itong baguhin bago suriin.",
+    "Naidagdag ang tugon sa inyong mensahe. Maaari ninyo itong baguhin bago suriin.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Wala pong ipinapadala. Susuriin muna ninyo ito, saka ise-save bilang burador sa inyong ${provider}.`,
+      `Wala pa pong ipinapadala. Susuriin muna ninyo ito, saka ipapadala mula sa inyong ${provider} sa parehong usapan. Mas gusto ninyong tapusin ito sa ${provider}? I-save na lang bilang burador.`,
     placeholder: "Isulat ang inyong tugon…",
     replyTo: (to) => `Tumugon kay ${to}`,
-    review: "Suriin ang burador",
+    review: "Suriin at ipadala",
+    saveDraft: "I-save na lang bilang burador",
     speak: "Magsalita",
     stopListening: "Ihinto ang pakikinig",
   },

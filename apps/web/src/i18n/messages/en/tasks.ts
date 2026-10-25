@@ -7,6 +7,7 @@ const tasks = {
     create_reminder: "Save the reminder",
     drive_note: "Approve and save it",
     email_draft: "Approve and save the draft",
+    email_reply: "Approve and send",
     family_update: "Share the update",
     grocery_handoff: "Approve request",
     send_message: "Approve and send",

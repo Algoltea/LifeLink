@@ -150,6 +150,8 @@ const ko: ServerCatalog = {
       "연습: 실제 캘린더에는 아무것도 추가하지 않았습니다.",
     "Practice: nothing was saved in your real Google Drive.":
       "연습: 실제 Google Drive에는 아무것도 저장하지 않았습니다.",
+    "Practice: the reply was not really sent.":
+      "연습: 답장을 실제로 보내지 않았습니다.",
     "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.":
       "압박을 받으면 멈춰서 확인하기 어려울 수 있습니다. 급한 요청은 이미 알고 계신 연락처를 통해 확인해 주세요.",
     "Pressure to act fast": "서두르라는 압박",
@@ -370,6 +372,10 @@ const ko: ServerCatalog = {
     [
       /^Shared with (?<count>\d+) (?:person|people) in your trusted circle\.$/u,
       (count) => `믿을 수 있는 사람들 중 ${count}명에게 공유했습니다.`,
+    ],
+    [
+      /^Reply sent to (?<to>[^“”"\r\n]+)\.$/u,
+      (to) => `${to}에게 답장을 보냈습니다.`,
     ],
     [
       /^Draft saved in your (?<provider>Gmail|Outlook) Drafts folder\. It has not been sent\.$/u,

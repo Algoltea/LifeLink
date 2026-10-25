@@ -80,13 +80,14 @@ const email: Messages["email"] = {
   reconnect: "Erneut verbinden",
   reply: "Antworten",
   replyAdded:
-    "Die Antwort wurde zu Ihrem Entwurf hinzugefügt. Sie können sie vor der Prüfung ändern.",
+    "Die Antwort wurde zu Ihrer Nachricht hinzugefügt. Sie können sie vor der Prüfung ändern.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Es wird nichts gesendet. Sie prüfen den Text zuerst. Danach wird er als Entwurf in Ihrem ${provider} gespeichert.`,
+      `Es wurde noch nichts gesendet. Sie prüfen die Antwort zuerst. Danach wird sie über Ihr ${provider} im selben Gespräch gesendet. Möchten Sie sie lieber in ${provider} fertigstellen? Speichern Sie sie stattdessen als Entwurf.`,
     placeholder: "Schreiben Sie Ihre Antwort…",
     replyTo: (to) => `Antwort an ${to}`,
-    review: "Entwurf prüfen",
+    review: "Prüfen und senden",
+    saveDraft: "Stattdessen als Entwurf speichern",
     speak: "Sprechen",
     stopListening: "Zuhören beenden",
   },

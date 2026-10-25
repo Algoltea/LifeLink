@@ -24,6 +24,8 @@ const actionDetails = {
   readNote: "Read the note aloud",
   readUpdate: "Read the update aloud",
   reminder: "Reminder",
+  replySentFrom: (provider: string) =>
+    `Sent from your ${provider} as a reply in the same conversation, only after you approve it.`,
   sharedWithCircle: "Shared with your trusted circle",
   shoppingRecord:
     "This is a record of an earlier shopping request. Shopping through LifeLink is no longer available.",
@@ -41,6 +43,8 @@ const actionDetails = {
       `To ${name}, by ${channel}${route}. The message says: ${body}`,
     reminder: (title: string, when: string, shared: boolean) =>
       `Reminder: ${title}. ${when}. ${shared ? "Shared with your trusted circle." : "Just for you."}`,
+    reply: (to: string, subject: string, body: string) =>
+      `Reply to ${to}. Subject: ${subject}. It says: ${body}`,
     update: (text: string) => `The update says: ${text}`,
   },
   starts: "Starts",

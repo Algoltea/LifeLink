@@ -25,6 +25,8 @@ const actionDetails: Messages["actionDetails"] = {
   readNote: "朗读笔记",
   readUpdate: "朗读近况",
   reminder: "提醒",
+  replySentFrom: (provider: string) =>
+    `只有您批准后，才会从您的 ${provider} 作为回复发送到同一对话中。`,
   sharedWithCircle: "与信任圈分享",
   shoppingRecord: "这是之前购物请求的记录。现在已不能通过 LifeLink 购物。",
   spoken: {
@@ -40,6 +42,8 @@ const actionDetails: Messages["actionDetails"] = {
       `发给 ${name}，通过${channel}${route}。消息内容是：${body}`,
     reminder: (title: string, when: string, shared: boolean) =>
       `提醒：${title}。${when}。${shared ? "与您的信任圈分享。" : "仅您可见。"}`,
+    reply: (to: string, subject: string, body: string) =>
+      `回复 ${to}。主题：${subject}。内容是：${body}`,
     update: (text: string) => `近况内容是：${text}`,
   },
   starts: "开始时间",

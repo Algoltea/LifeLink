@@ -34,6 +34,14 @@ type ActionView = TaskDetail["actions"][number];
 
 type Ambiguity = NonNullable<ActionView["current"]>["ambiguities"][number];
 
+/** The words the person can change before approving, for actions that have them. */
+const wordsOf = (details: ActionDetails): string | null =>
+  details.kind === "send_message" ||
+  details.kind === "email_draft" ||
+  details.kind === "email_reply"
+    ? details.body
+    : null;
+
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
@@ -627,7 +635,9 @@ const ApprovalBar = ({
           onClick={onApprove}
           size="lg"
         >
-          {kind === "send_message" ? <SendIcon /> : null}
+          {kind === "send_message" || kind === "email_reply" ? (
+            <SendIcon />
+          ) : null}
           {pending === "approve" ? t.approving : t.approve[kind]}
         </Button>
         {editable ? (
@@ -744,10 +754,7 @@ const ReviewVersion = ({
   const awaiting = view.action.status === "awaiting_approval";
   const canApprove = awaiting && !retired;
 
-  const body =
-    details.kind === "send_message" || details.kind === "email_draft"
-      ? details.body
-      : null;
+  const body = wordsOf(details);
 
   const reapproval =
     canApprove &&

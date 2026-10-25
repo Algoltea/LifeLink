@@ -9,6 +9,7 @@ const tasks: Messages["tasks"] = {
     create_reminder: "I-save ang paalala",
     drive_note: "Aprubahan at i-save",
     email_draft: "Aprubahan at i-save ang burador",
+    email_reply: "Aprubahan at ipadala",
     family_update: "Ibahagi ang balita",
     grocery_handoff: "Aprubahan ang kahilingan",
     send_message: "Aprubahan at ipadala",

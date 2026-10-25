@@ -66,6 +66,13 @@ const headingFor = (
     return { subline: t.sendSubline(who), title: t.sendTitle };
   }
 
+  if (awaiting && focus?.current?.details.kind === "email_reply") {
+    return {
+      subline: t.sendSubline(focus.current.details.to),
+      title: t.sendTitle,
+    };
+  }
+
   if (awaiting && kind === "confirm_arrangement") {
     return { subline: t.confirmSubline(who), title: t.confirmTitle };
   }
@@ -117,7 +124,7 @@ const ChecksPanel = ({
     );
   }
 
-  if (details?.kind === "send_message") {
+  if (details?.kind === "send_message" || details?.kind === "email_reply") {
     checks.push(
       LINK_PATTERN.test(details.body) ? t.checks.hasLink : t.checks.noLinks
     );

@@ -80,13 +80,14 @@ const email: Messages["email"] = {
   reconnect: "Reconnecter",
   reply: "Répondre",
   replyAdded:
-    "Réponse ajoutée à votre brouillon. Vous pouvez la modifier avant de la vérifier.",
+    "Réponse ajoutée à votre message. Vous pouvez la modifier avant de la vérifier.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Rien n’est envoyé. Vous vérifierez d’abord votre réponse, puis elle sera enregistrée comme brouillon dans votre ${provider}.`,
+      `Rien n’est encore envoyé. Vous vérifierez d’abord votre réponse, puis elle sera envoyée depuis votre ${provider} dans la même conversation. Vous préférez la terminer dans ${provider} ? Enregistrez-la comme brouillon à la place.`,
     placeholder: "Écrivez votre réponse…",
     replyTo: (to) => `Répondre à ${to}`,
-    review: "Vérifier le brouillon",
+    review: "Vérifier et envoyer",
+    saveDraft: "Enregistrer plutôt comme brouillon",
     speak: "Parler",
     stopListening: "Arrêter l’écoute",
   },

@@ -104,6 +104,32 @@ describe("complete interface catalogs", () => {
       translateGameMessage("Moved king of hearts to empty column 7.", words)
     ).toContain("第 7 列（空列）");
   });
+
+  it.each(interfaceLocales)(
+    "distinguishes sending from saving and preserves reply content in $id",
+    ({ id }) => {
+      const messages = messagesFor(id);
+      const recipient = "Élodie 김 <elodie@example.com>";
+      const subject = "“Wait for an answer” — 明天";
+      const body = "  Please sign in again.\n한국어: “Do not translate me.”  ";
+
+      const narration = messages.actionDetails.spoken.reply(
+        recipient,
+        subject,
+        body
+      );
+
+      expect(messages.tasks.approve.email_reply).not.toBe(
+        messages.tasks.approve.email_draft
+      );
+      expect(messages.email.replyComposer.review).not.toBe(
+        messages.email.replyComposer.saveDraft
+      );
+      expect(narration).toContain(recipient);
+      expect(narration).toContain(subject);
+      expect(narration).toContain(body);
+    }
+  );
 });
 
 describe("fixed server message coverage and provenance", () => {

@@ -78,13 +78,14 @@ const email: Messages["email"] = {
   reconnect: "Ricollega",
   reply: "Rispondi",
   replyAdded:
-    "Risposta aggiunta alla bozza. Può modificarla prima della verifica.",
+    "Risposta aggiunta al Suo messaggio. Può modificarla prima della verifica.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Nulla viene inviato. Prima verificherà il messaggio, poi verrà salvato come bozza in ${provider}.`,
+      `Non viene ancora inviato nulla. Prima verificherà la risposta, poi verrà inviata dal Suo account ${provider} nella stessa conversazione. Preferisce completarla in ${provider}? La salvi invece come bozza.`,
     placeholder: "Scriva la Sua risposta…",
     replyTo: (to) => `Rispondi a ${to}`,
-    review: "Verifica la bozza",
+    review: "Verifica e invia",
+    saveDraft: "Salva invece come bozza",
     speak: "Parla",
     stopListening: "Interrompi ascolto",
   },

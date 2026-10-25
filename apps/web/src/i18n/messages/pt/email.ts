@@ -78,13 +78,14 @@ const email: Messages["email"] = {
   reconnect: "Reconectar",
   reply: "Responder",
   replyAdded:
-    "Resposta adicionada ao seu rascunho. Você pode alterá-la antes de revisar.",
+    "Resposta adicionada à sua mensagem. Você pode alterá-la antes de revisar.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Nada é enviado. Você revisará primeiro, e depois ele será salvo como rascunho no seu ${provider}.`,
+      `Nada é enviado ainda. Você revisará primeiro, e depois a resposta será enviada pelo seu ${provider} na mesma conversa. Prefere terminar em ${provider}? Salve como rascunho.`,
     placeholder: "Escreva sua resposta…",
     replyTo: (to) => `Responder a ${to}`,
-    review: "Revisar o rascunho",
+    review: "Revisar e enviar",
+    saveDraft: "Salvar como rascunho em vez de enviar",
     speak: "Falar",
     stopListening: "Parar de ouvir",
   },

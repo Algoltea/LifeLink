@@ -75,13 +75,14 @@ const email: Messages["email"] = {
   reconnect: "Kết nối lại",
   reply: "Trả lời",
   replyAdded:
-    "Đã thêm câu trả lời vào bản nháp. Quý vị có thể sửa trước khi xem lại.",
+    "Đã thêm câu trả lời vào tin nhắn. Quý vị có thể sửa trước khi xem lại.",
   replyComposer: {
     nothingSent: (provider) =>
-      `Chưa gửi gì. Quý vị sẽ xem lại trước, rồi nội dung được lưu thành bản nháp trong ${provider} của quý vị.`,
+      `Chưa gửi gì. Quý vị sẽ xem lại trước, rồi câu trả lời được gửi từ ${provider} của quý vị trong cùng cuộc trò chuyện. Nếu muốn hoàn tất trong ${provider}, hãy lưu thành bản nháp thay vì gửi.`,
     placeholder: "Viết câu trả lời…",
     replyTo: (to) => `Trả lời ${to}`,
-    review: "Xem lại bản nháp",
+    review: "Xem lại và gửi",
+    saveDraft: "Lưu thành bản nháp thay vì gửi",
     speak: "Nói",
     stopListening: "Dừng nghe",
   },

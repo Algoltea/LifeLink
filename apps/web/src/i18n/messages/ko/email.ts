@@ -74,13 +74,14 @@ const email: Messages["email"] = {
   readyToRead: "읽을 준비가 되었습니다",
   reconnect: "다시 연결",
   reply: "답장",
-  replyAdded: "답장을 초안에 추가했습니다. 검토 전에 수정하실 수 있습니다.",
+  replyAdded: "답장을 메시지에 추가했습니다. 검토 전에 수정하실 수 있습니다.",
   replyComposer: {
     nothingSent: (provider) =>
-      `아직 보내지 않습니다. 먼저 검토하시면 ${provider}에 초안으로 저장됩니다.`,
+      `아직 보낸 내용은 없습니다. 먼저 검토하신 뒤 사용하시는 ${provider}에서 같은 대화로 답장을 보냅니다. ${provider}에서 마무리하고 싶으시면 대신 초안으로 저장해 주세요.`,
     placeholder: "답장을 적어 주세요…",
     replyTo: (to) => `받는 분: ${to}`,
-    review: "초안 검토",
+    review: "검토하고 보내기",
+    saveDraft: "대신 초안으로 저장",
     speak: "말하기",
     stopListening: "듣기 중지",
   },

@@ -25,6 +25,8 @@ const actionDetails: Messages["actionDetails"] = {
   readNote: "Đọc ghi chú thành tiếng",
   readUpdate: "Đọc cập nhật thành tiếng",
   reminder: "Lời nhắc",
+  replySentFrom: (provider) =>
+    `Chỉ sau khi quý vị phê duyệt, câu trả lời mới được gửi từ ${provider} của quý vị trong cùng cuộc trò chuyện.`,
   sharedWithCircle: "Chia sẻ với nhóm tin cậy",
   shoppingRecord:
     "Đây là bản ghi yêu cầu mua sắm trước đây. Hiện không còn có thể mua sắm qua LifeLink.",
@@ -41,6 +43,8 @@ const actionDetails: Messages["actionDetails"] = {
       `Gửi đến ${name}, qua ${channel}${route}. Nội dung tin nhắn: ${body}`,
     reminder: (title, when, shared) =>
       `Lời nhắc: ${title}. ${when}. ${shared ? "Chia sẻ với nhóm tin cậy." : "Chỉ dành cho quý vị."}`,
+    reply: (to, subject, body) =>
+      `Trả lời ${to}. Chủ đề: ${subject}. Nội dung: ${body}`,
     update: (text) => `Nội dung cập nhật: ${text}`,
   },
   starts: "Bắt đầu",

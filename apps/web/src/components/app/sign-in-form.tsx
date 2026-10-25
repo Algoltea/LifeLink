@@ -250,7 +250,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                         showPassword ? words.hidePassword : words.showPassword
                       }
                       aria-pressed={showPassword}
-                      className="min-h-control-lg w-[4.667rem]"
+                      className="min-h-control-lg min-w-[4.667rem] shrink-0 whitespace-nowrap"
                       onClick={() => setShowPassword(!showPassword)}
                       type="button"
                       variant="outline"

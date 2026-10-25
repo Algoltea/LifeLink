@@ -26,6 +26,8 @@ const actionDetails: Messages["actionDetails"] = {
   readNote: "Leggi la nota ad alta voce",
   readUpdate: "Leggi l’aggiornamento ad alta voce",
   reminder: "Promemoria",
+  replySentFrom: (provider) =>
+    `La risposta viene inviata dal Suo account ${provider} nella stessa conversazione, solo dopo la Sua approvazione.`,
   sharedWithCircle: "Condiviso con la Sua cerchia di fiducia",
   shoppingRecord:
     "Questo è il record di una precedente richiesta di acquisto. Gli acquisti tramite LifeLink non sono più disponibili.",
@@ -42,6 +44,8 @@ const actionDetails: Messages["actionDetails"] = {
       `A ${name}, tramite ${channel}${route}. Il messaggio dice: ${body}`,
     reminder: (title, when, shared) =>
       `Promemoria: ${title}. ${when}. ${shared ? "Condiviso con la Sua cerchia di fiducia." : "Solo per Lei."}`,
+    reply: (to, subject, body) =>
+      `Risposta a ${to}. Oggetto: ${subject}. Il testo è: ${body}`,
     update: (text) => `L’aggiornamento dice: ${text}`,
   },
   starts: "Inizio",

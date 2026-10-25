@@ -155,6 +155,8 @@ const tl: ServerCatalog = {
       "Pagsasanay: walang idinagdag sa inyong totoong kalendaryo.",
     "Practice: nothing was saved in your real Google Drive.":
       "Pagsasanay: walang na-save sa inyong totoong Google Drive.",
+    "Practice: the reply was not really sent.":
+      "Pagsasanay: hindi talaga ipinadala ang tugon.",
     "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.":
       "Maaaring mahirap huminto at magsuri kapag minamadali kayo. Tiyakin po ang agarang kahilingan sa pamamagitan ng kontak na kilala na ninyo.",
     "Pressure to act fast": "Pamimilit na kumilos agad",
@@ -379,6 +381,10 @@ const tl: ServerCatalog = {
     [
       /^Shared with (?<count>\d+) (?:person|people) in your trusted circle\.$/u,
       (count) => `Ibinahagi sa ${count} tao sa Mga pinagkakatiwalaan.`,
+    ],
+    [
+      /^Reply sent to (?<to>[^“”"\r\n]+)\.$/u,
+      (to) => `Naipadala ang tugon kay ${to}.`,
     ],
     [
       /^Draft saved in your (?<provider>Gmail|Outlook) Drafts folder\. It has not been sent\.$/u,

@@ -154,6 +154,8 @@ const vi: ServerCatalog = {
       "Thực hành: không thêm gì vào lịch thật của quý vị.",
     "Practice: nothing was saved in your real Google Drive.":
       "Thực hành: không lưu gì vào Google Drive thật của quý vị.",
+    "Practice: the reply was not really sent.":
+      "Thực hành: câu trả lời không được gửi thật.",
     "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.":
       "Áp lực có thể khiến quý vị khó dừng lại để kiểm tra. Hãy xác minh yêu cầu khẩn cấp qua một liên hệ quý vị đã biết.",
     "Pressure to act fast": "Gây áp lực phải hành động nhanh",
@@ -374,6 +376,10 @@ const vi: ServerCatalog = {
     [
       /^Shared with (?<count>\d+) (?:person|people) in your trusted circle\.$/u,
       (count) => `Đã chia sẻ với ${count} người trong Nhóm tin cậy.`,
+    ],
+    [
+      /^Reply sent to (?<to>[^“”"\r\n]+)\.$/u,
+      (to) => `Đã gửi câu trả lời đến ${to}.`,
     ],
     [
       /^Draft saved in your (?<provider>Gmail|Outlook) Drafts folder\. It has not been sent\.$/u,

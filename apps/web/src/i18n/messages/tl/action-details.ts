@@ -25,6 +25,8 @@ const actionDetails: Messages["actionDetails"] = {
   readNote: "Basahin nang malakas ang tala",
   readUpdate: "Basahin nang malakas ang balita",
   reminder: "Paalala",
+  replySentFrom: (provider) =>
+    `Ipapadala mula sa inyong ${provider} bilang tugon sa parehong usapan, pagkatapos lamang ninyong aprubahan.`,
   sharedWithCircle: "Ibinahagi sa inyong mga pinagkakatiwalaan",
   shoppingRecord:
     "Tala ito ng dating kahilingan sa pamimili. Hindi na available ang pamimili sa pamamagitan ng LifeLink.",
@@ -41,6 +43,8 @@ const actionDetails: Messages["actionDetails"] = {
       `Para kay ${name}, sa ${channel}${route}. Nakasaad sa mensahe: ${body}`,
     reminder: (title, when, shared) =>
       `Paalala: ${title}. ${when}. ${shared ? "Ibinahagi sa inyong mga pinagkakatiwalaan." : "Para lang sa inyo."}`,
+    reply: (to, subject, body) =>
+      `Tugon kay ${to}. Paksa: ${subject}. Nakasaad dito: ${body}`,
     update: (text) => `Nakasaad sa balita: ${text}`,
   },
   starts: "Simula",

@@ -9,6 +9,7 @@ const tasks: Messages["tasks"] = {
     create_reminder: "알림 저장",
     drive_note: "승인하고 저장",
     email_draft: "승인하고 초안 저장",
+    email_reply: "승인하고 보내기",
     family_update: "새 소식 공유",
     grocery_handoff: "요청 승인",
     send_message: "승인하고 보내기",

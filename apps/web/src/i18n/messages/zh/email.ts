@@ -71,13 +71,14 @@ const email: Messages["email"] = {
   readyToRead: "可以阅读了",
   reconnect: "重新连接",
   reply: "回复",
-  replyAdded: "回复已添加到草稿。查看并核对前，您可以修改。",
+  replyAdded: "回复已添加到您的消息中。查看并核对前，您可以修改。",
   replyComposer: {
     nothingSent: (provider: string) =>
-      `不会发送任何内容。您会先查看并核对，然后将其保存为您的 ${provider} 草稿。`,
+      `尚未发送任何内容。您会先查看并核对，然后从您的 ${provider} 在同一对话中发送。想在 ${provider} 中继续完成？也可以改为保存草稿。`,
     placeholder: "写下您的回复…",
     replyTo: (to: string) => `回复 ${to}`,
-    review: "查看并核对草稿",
+    review: "核对并发送",
+    saveDraft: "改为保存草稿",
     speak: "说话",
     stopListening: "停止收听",
   },

@@ -165,6 +165,7 @@ const zh: ServerCatalog = {
       "练习：没有向您的真实日历添加任何内容。",
     "Practice: nothing was saved in your real Google Drive.":
       "练习：没有在您的真实 Google Drive 中保存任何内容。",
+    "Practice: the reply was not really sent.": "练习：回复并未实际发送。",
     "Pressure can make it harder to stop and check. Verify an urgent request through a contact you already know.":
       "催促可能让人难以停下来核实。对于紧急请求，请通过您原本就认识的联系人核实。",
     "Pressure to act fast": "催促立即行动",
@@ -341,6 +342,7 @@ const zh: ServerCatalog = {
       /^Shared with (?<count>\d+) (?:person|people) in your trusted circle\.$/u,
       (count) => `已与信任圈中的 ${count} 人分享。`,
     ],
+    [/^Reply sent to (?<to>[^“”"\r\n]+)\.$/u, (to) => `已向 ${to} 发送回复。`],
     [
       /^Draft saved in your (?<provider>Gmail|Outlook) Drafts folder\. It has not been sent\.$/u,
       (provider) => `草稿已保存到您的 ${provider} 草稿文件夹。尚未发送。`,
