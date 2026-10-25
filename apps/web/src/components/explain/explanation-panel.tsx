@@ -252,7 +252,6 @@ const ExplanationBody = ({
                 aria-label={words.replyLabelFor(reply.label)}
                 className="rounded-full whitespace-normal"
                 key={reply.kind}
-                lang={language}
                 onClick={() => onUseReply(reply.draft)}
                 size="sm"
                 variant="outline"
