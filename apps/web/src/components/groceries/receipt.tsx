@@ -260,7 +260,7 @@ const estimateFor = (list: Doc<"groceryLists">) => {
 const Ribbon = () => (
   <svg
     aria-hidden="true"
-    className="mx-auto h-6 w-20"
+    className="h-5 w-16 shrink-0"
     fill="currentColor"
     viewBox="0 0 96 28"
   >
@@ -301,13 +301,13 @@ const BillHead = ({ list }: { list: Doc<"groceryLists"> }) => {
   const madeOn = new Date(list._creationTime);
 
   return (
-    <header className="ledger-head col-span-3 flex flex-col gap-2 px-6 pt-5 pb-3">
+    <header className="ledger-head col-span-3 flex flex-col gap-1 px-5 pt-3 pb-2">
       <p className="flex flex-wrap items-baseline gap-x-3">
-        <span aria-hidden="true" className="ledger-blackletter text-lg">
+        <span aria-hidden="true" className="ledger-blackletter text-base">
           LifeLink,
         </span>
         <time
-          className="ledger-hand border-foreground/40 min-w-[min(100%,8rem)] flex-1 border-b px-2 text-right text-2xl leading-[1.4]"
+          className="ledger-hand border-foreground/40 min-w-[min(100%,8rem)] flex-1 border-b px-2 text-right text-xl leading-[1.3]"
           dateTime={madeOn.toISOString()}
         >
           {new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(
@@ -315,17 +315,19 @@ const BillHead = ({ list }: { list: Doc<"groceryLists"> }) => {
           )}
         </time>
       </p>
-      <p className="ledger-hand border-foreground/40 border-b px-2 text-3xl leading-[1.4] break-words">
+      <p className="ledger-hand border-foreground/40 border-b px-2 text-2xl leading-[1.3] break-words">
         {list.name}
       </p>
-      <Ribbon />
-      <h2
-        className="ledger-bodoni text-center text-4xl leading-none font-black tracking-wide break-words uppercase"
-        id="receipt-heading"
-      >
-        {t.estimate}
-      </h2>
-      <p className="text-label text-center tracking-[0.2em] break-words uppercase">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 pt-1">
+        <Ribbon />
+        <h2
+          className="ledger-bodoni text-2xl leading-none font-black tracking-wide break-words uppercase"
+          id="receipt-heading"
+        >
+          {t.estimate}
+        </h2>
+      </div>
+      <p className="text-label text-center leading-snug tracking-[0.15em] break-words uppercase">
         {dealsIn}
       </p>
     </header>
