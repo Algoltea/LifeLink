@@ -1,3 +1,4 @@
+import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
 import type { ActionDetails } from "@lifelink/contracts/actions";
 import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
@@ -183,10 +184,12 @@ const EmailSlip = ({
   details,
   bodyEditor,
   className,
+  execution,
 }: {
   details: Extract<ActionDetails, { kind: "email_draft" | "email_reply" }>;
   bodyEditor?: ReactNode;
   className?: string;
+  execution?: Pick<Doc<"actions">, "mode" | "status">;
 }) => {
   const t = useMessages().actionDetails;
 
@@ -218,11 +221,17 @@ const EmailSlip = ({
           text={t.spoken.emailAloud(details.subject, details.body)}
         />
       )}
-      <p className="text-muted-foreground text-base">
-        {details.kind === "email_reply"
-          ? t.replySentFrom(details.provider === "gmail" ? "Gmail" : "Outlook")
-          : t.draftSavedIn(details.provider === "gmail" ? "Gmail" : "Outlook")}
-      </p>
+      {execution?.mode === "live" && execution.status === "succeeded" ? (
+        <p className="text-muted-foreground text-base">
+          {details.kind === "email_reply"
+            ? t.replySentFrom(
+                details.provider === "gmail" ? "Gmail" : "Outlook"
+              )
+            : t.draftSavedIn(
+                details.provider === "gmail" ? "Gmail" : "Outlook"
+              )}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -234,6 +243,7 @@ const DetailsView = ({
   granteeNames,
   hue,
   timeZone,
+  execution,
 }: {
   bodyEditor?: ReactNode;
   className?: string;
@@ -241,6 +251,8 @@ const DetailsView = ({
   granteeNames: string[];
   hue: number;
   timeZone: string;
+  /** Only a successful live action can claim an external mailbox outcome. */
+  execution?: Pick<Doc<"actions">, "mode" | "status">;
 }) => {
   const messages = useMessages();
   const locale = useLocale();
@@ -390,6 +402,7 @@ const DetailsView = ({
     case "email_reply": {
       return (
         <EmailSlip
+          execution={execution}
           details={details}
           bodyEditor={bodyEditor}
           className={className}

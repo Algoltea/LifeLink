@@ -252,6 +252,84 @@ describe("presentation task copy", () => {
     }
   );
 
+  it.each(["email_draft", "email_reply"] as const)(
+    "claims a mailbox outcome only for a successful live %s",
+    (kind) => {
+      const externalText =
+        kind === "email_draft"
+          ? "Saved as a draft in your Gmail."
+          : "Sent from your Gmail as a reply";
+
+      for (const mode of ["live", "simulated"] as const) {
+        for (const status of [
+          "awaiting_approval",
+          "executing",
+          "failed",
+          "cancelled",
+          "succeeded",
+        ] as const) {
+          for (const presentation of [false, true]) {
+            me.profile.presentationDemo = presentation;
+            me.profile.demoMode = mode === "simulated";
+            const view = viewFor();
+            view.action.kind = kind;
+            view.action.mode = mode;
+            view.action.status = status;
+
+            if (view.current === null) {
+              throw new Error("Missing fixture version");
+            }
+
+            view.current.details =
+              kind === "email_draft"
+                ? {
+                    body: "Thank you",
+                    connectionId: "connection-test",
+                    kind,
+                    provider: "gmail",
+                    replyToMessageId: "message-test",
+                    subject: "Photos",
+                    to: "linda@example.test",
+                  }
+                : {
+                    body: "Thank you",
+                    connectionId: "connection-test",
+                    inReplyToMessageId: "message-test",
+                    kind,
+                    provider: "gmail",
+                    subject: "Photos",
+                    threadId: "thread-test",
+                    to: "linda@example.test",
+                  };
+            view.receipts = [];
+
+            const markup = renderToStaticMarkup(
+              <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
+                <PreferencesProvider>
+                  <OfflineQueueProvider>
+                    <ActionReview
+                      hue={30}
+                      timeZone="America/New_York"
+                      view={view}
+                    />
+                  </OfflineQueueProvider>
+                </PreferencesProvider>
+              </ConvexProviderWithAuth>
+            );
+
+            expect(markup.includes(externalText)).toBe(
+              mode === "live" && status === "succeeded"
+            );
+            expect(markup).toContain("Thank you");
+            expect(markup.includes("Practice mode: approving")).toBe(
+              mode === "simulated" && !presentation
+            );
+          }
+        }
+      }
+    }
+  );
+
   it("keeps presentation approval arguments and simulated action mode unchanged", async () => {
     me.profile.presentationDemo = true;
     const view = viewFor();

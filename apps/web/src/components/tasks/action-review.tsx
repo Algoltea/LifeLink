@@ -978,6 +978,7 @@ const ReviewVersion = ({
 
       <DetailsView
         bodyEditor={editor}
+        execution={view.action}
         details={details}
         granteeNames={view.granteeNames}
         hue={hue}
