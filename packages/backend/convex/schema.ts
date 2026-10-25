@@ -42,6 +42,13 @@ const headline = v.object({
   url: v.string(),
 });
 
+const marketQuote = v.object({
+  id: v.string(),
+  marketTime: v.number(),
+  previousClose: v.number(),
+  price: v.number(),
+});
+
 const forecast = v.object({
   current: v.object({
     code: v.number(),
@@ -630,6 +637,12 @@ export default defineSchema({
     ),
     verified: v.boolean(),
   }).index("by_dedupe_key", ["provider", "dedupeKey"]),
+
+  // Public market prices, shared by everyone; one row, refreshed on demand at most every 15 minutes.
+  marketsCache: defineTable({
+    fetchedAt: v.number(),
+    quotes: v.array(marketQuote),
+  }),
 
   // "Help me understand this": private to the owner, never read by any family query.
   messageExplanations: defineTable({
