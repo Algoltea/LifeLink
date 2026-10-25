@@ -212,6 +212,53 @@ describe("grocery item validation", () => {
     ).rejects.toThrow(/Choose a unit/u);
   });
 
+  it("adds a pasted list in one step, or nothing when any item is invalid", async () => {
+    const { backend, listId, person } = await setupList();
+
+    const names = () =>
+      backend.run(async (ctx) => {
+        const list = await ctx.db.get(listId);
+
+        return list?.items.map((item) => [item.name, item.quantity, item.unit]);
+      });
+
+    await expect(
+      person.mutation(api.groceries.addItems, {
+        items: [
+          { name: " Milk ", quantity: 1, unit: "gallon" },
+          { name: "Apples", quantity: 6, unit: null },
+        ],
+        listId,
+      })
+    ).resolves.toBe(2);
+
+    await expect(
+      person.mutation(api.groceries.addItems, {
+        items: [
+          { name: "Bread", quantity: 1, unit: null },
+          { name: "Soup", quantity: 1.5, unit: "can" },
+        ],
+        listId,
+      })
+    ).rejects.toThrow(/whole number/u);
+
+    await expect(
+      person.mutation(api.groceries.addItems, {
+        items: Array.from({ length: 99 }, (_, index) => ({
+          name: `Item ${index}`,
+          quantity: 1,
+          unit: null,
+        })),
+        listId,
+      })
+    ).rejects.toThrow(/list is full/u);
+
+    await expect(names()).resolves.toStrictEqual([
+      ["Milk", 1, "gallon"],
+      ["Apples", 6, null],
+    ]);
+  });
+
   it("keeps fractional measurements, free items, and unknown estimates distinct", async () => {
     const { backend, listId, person } = await setupList();
     await person.mutation(api.groceries.addItem, {

@@ -1,5 +1,6 @@
 import {
   groceryEstimateError,
+  groceryListLimit,
   groceryQuantityError,
   groceryUnit,
 } from "@lifelink/contracts/groceries";
@@ -31,7 +32,7 @@ import { INSTACART_RETIRED_REASON } from "./lib/capabilities";
 import { requireOwned, requireOwner } from "./lib/session";
 import { reserveCloudUse } from "./lib/usage";
 
-const MAX_ITEMS = 100;
+const MAX_ITEMS = groceryListLimit;
 
 /** " · Oct 24" or " (copy)" left by an earlier copy, so names don't pile up. */
 const COPY_SUFFIX = / (?:· [A-Z][a-z]{2} \d{1,2}|\(copy\))$/u;
@@ -238,6 +239,63 @@ export const addItem = mutation({
       ],
       updatedAt: Date.now(),
     });
+  },
+});
+
+/** Several items at once, from a pasted list; all are added or none are. */
+export const addItems = mutation({
+  args: {
+    items: v.array(
+      v.object({
+        name: v.string(),
+        quantity: v.number(),
+        unit: v.union(v.string(), v.null()),
+      })
+    ),
+    listId: v.id("groceryLists"),
+  },
+  handler: async (ctx, args) => {
+    const { list } = await ownedList(ctx, args.listId);
+
+    const items = args.items.map((item) => ({
+      estimatedCents: null,
+      name: item.name.trim(),
+      quantity: item.quantity,
+      unit: item.unit?.trim() || null,
+    }));
+
+    if (items.length === 0) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "What would you like to add?",
+      });
+    }
+
+    for (const item of items) {
+      const validationError = itemError(item);
+
+      if (validationError !== null) {
+        throw new ConvexError({ code: "invalid", message: validationError });
+      }
+    }
+
+    if (list.items.length + items.length > MAX_ITEMS) {
+      throw new ConvexError({ code: "invalid", message: FULL_LIST });
+    }
+
+    await ctx.db.patch(list._id, {
+      items: [
+        ...list.items,
+        ...items.map((item) => ({
+          ...item,
+          checked: false,
+          id: crypto.randomUUID(),
+        })),
+      ],
+      updatedAt: Date.now(),
+    });
+
+    return items.length;
   },
 });
 

@@ -1,4 +1,7 @@
 /** Shared choices and validation for grocery quantities. */
+/** Items one list can hold; longer trips start a second list. */
+const groceryListLimit = 100;
+
 // `aliases` only help people find a unit by typing; `value` is what gets stored.
 const groceryUnits = [
   {
@@ -181,6 +184,7 @@ export type { GroceryUnitChoice };
 
 export {
   groceryEstimateError,
+  groceryListLimit,
   groceryQuantityError,
   groceryUnit,
   groceryUnitMatches,
