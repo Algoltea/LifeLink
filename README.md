@@ -2,18 +2,28 @@
 
 # LifeLink
 
-LifeLink is a calm, accessible assistant that helps older adults stay close to family, keep track of the day, and check messages that look wrong. You speak or type what you need, review exactly what will happen, approve it, and then follow its progress until it's done.
+**One calm, voice-first place for older adults to stay connected, get through the day, and stop scams, with someone they trust one tap away.**
 
-Two commands get you from a fresh checkout to a running app:
+> **Speak or type → review the exact action → approve → done.**
 
-```bash
-bun run dev:setup   # once, and again whenever you like: it keeps what's already set
-bun run dev         # web app on http://localhost:3001, Convex, and (if configured) the Discord bridge
-```
+**[Try it live at lifel.ink](https://lifel.ink)** · **[Devpost](https://devpost.com/software/lifelink-pey4gt)**
+
+Built in 36 hours at **[SBUHacks 2026](https://hack.sbcs.io/)** (Stony Brook University, October 23 to 25), theme _Steel and Steam_.
 
 ---
 
 ## Contents
+
+**The project**
+
+- [Why we built it](#why-we-built-it)
+- [What it does](#what-it-does)
+- [The AI never acts on its own](#the-ai-never-acts-on-its-own)
+- [How we built it](#how-we-built-it)
+- [Try it](#try-it)
+- [Challenges, wins, and what's next](#challenges-wins-and-whats-next)
+
+**For developers**
 
 - [Getting started](#getting-started)
 - [Environment](#environment)
@@ -23,6 +33,119 @@ bun run dev         # web app on http://localhost:3001, Convex, and (if configur
 - [Integrations](#integrations)
 - [Development](#development)
 - [Project status](#project-status)
+
+---
+
+## Why we built it
+
+Scammers target older adults online all the time. They buy ads and send emails pretending to be Medicare or a bank. Last month it happened to a teammate's grandmother: she spent four hours on the phone with a scammer and lost over $90,000.
+
+The usual advice is to let family handle everything, and she refused. She wanted to keep doing things herself. So we built **one interface** where older adults act for themselves in a controlled, safe environment, and where someone they trust is a tap away, so nobody spends hours talking to the wrong person.
+
+We aren't the only ones who see the gap. Y Combinator's Fall 2026 Request for Startups includes **[AI for the Aging Population](https://www.ycombinator.com/rfs#ai-for-the-aging-population)**. It notes that by 2030 one in five Americans will be over 65, that about 53 million family members already provide unpaid care, and that few technologies, even popular voice assistants, are designed for older adults. It calls out the same areas LifeLink focuses on: conversational voice interfaces, safety and independence, and software that helps families coordinate care and appointments.
+
+## What it does
+
+### Stop scams
+
+- **Every new email is screened** and labelled **Likely a scam**, **Warning signs**, or **No warning signs**, with the exact reasons, so people learn the patterns as well as get the verdict.
+- **Check anything:** paste a text, photograph a letter, pick a screenshot, or put a call on speakerphone for **live captions and a spoken warning** when a scam is detected.
+- **Ask someone you trust:** when a scam is detected, one tap prepares a message to someone in your Trusted Circle. It still needs your approval to send. Family you invite can see scam alerts without ever seeing the message itself.
+- **Help me understand** explains any confusing message or email: what it's asking for, the dates, what's missing, and a few replies you could send.
+
+### Stay connected
+
+- **Message family over iMessage, email, Discord, or Telegram** from one simple interface, protected by the same scam checks. Send one message to several people across platforms at once ("Tell all my grandkids I'd love to see them this weekend").
+- **Ask** _"Can Sam drive me to my appointment Tuesday?"_ LifeLink writes the message. When Sam answers, it tells you whether that's a yes, a no, or a different time, then offers the calendar event and a reminder.
+- **See photos and documents** that friends and family send.
+- **Keep an eye on stocks and commodities** for retirement savings.
+
+### Your day
+
+- **Read my day** reads the weather aloud, says who wrote to you, and flags any email that looks like a scam, so nothing comes as a surprise.
+- **Weather next to each appointment** shows when rain or ice might change plans.
+- **News without the ads:** uplifting stories from Good News Network and Smithsonian, or world news from NPR. Tap a headline for a short summary inside the app. No outside sites and no endless feed.
+- **How I like help:** short or detailed answers, one step at a time, ten languages (English, Spanish, French, German, Italian, Portuguese, Simplified Chinese, Vietnamese, Korean, Tagalog), theme, font, text size, and read-aloud voice.
+
+### Groceries
+
+- Paste a list from a text or email and every item is added at once.
+- Items are sorted by aisle in the order you walk the store, with cold and frozen last.
+- Set a budget, see the estimated total, save a usual list, reuse past trips, and print or copy the list for whoever's shopping.
+
+### Fun
+
+- **Solitaire and Mahjong** with no ads and no sign-up. Both work offline.
+
+**Everything** works with read-aloud, large text, high contrast, full keyboard control, and all ten languages. **Practice mode** lets anyone try every feature on sample data first, with nothing real sent.
+
+## The AI never acts on its own
+
+The model only _proposes_. The Convex backend writes out the exact action, fingerprints it, and runs it only when the approval matches the current version and the permissions still hold:
+
+$$
+\text{execute} \iff H(d_{\text{approved}}) = H(d_{\text{current}}) \ \land\ \text{permissions still hold}
+$$
+
+If anything changes after you approve (the wording, the recipient, the day), the old approval no longer counts and you approve again. Family members only ever _see_ what you chose to share. They can never act for you, and you can revoke their access instantly. The [architecture section](#task-flow-gemini-proposes-convex-decides) lists the guarantees the backend enforces and tests.
+
+## How we built it
+
+**Stack:** Next.js 16 (React 19, Tailwind v4, installable PWA), Convex, and Better Auth in a Bun + Turborepo monorepo. The web app is deployed on **Vercel**. The Discord bridge holds a persistent Gateway connection, which serverless hosting can't keep open, so it runs as a **systemd service on a Vultr Debian VPS**.
+
+| Job | Model | Why |
+| --- | --- | --- |
+| Assistant and chat | **Gemini 4 Argon** (via OpenRouter) | Plans requests and writes drafts with tool calls and structured output |
+| Live call captions and all speech-to-text | **Gemini 3.8 Live** | Streams audio for speakerphone calls, talking to LifeLink, and dictating messages |
+| Scam classification | **GPT-6 Luna** (via OpenRouter) | Fast and cheap enough to run on every email, call, and text |
+| News summaries | **Mercury 3** (via OpenRouter) | A diffusion model, so summaries appear almost instantly |
+| Read-aloud | **ElevenLabs v4 Turbo** (via OpenRouter) | 21 natural voices, in the user's language |
+
+**Services:** Composio (Gmail, Outlook, Google Calendar, Google Drive), [Photon](https://photon.codes) Spectrum (iMessage), the Discord and Telegram bot APIs, Open-Meteo (weather), and Yahoo Finance (market quotes).
+
+**Quality:** TypeScript end to end, Ultracite (Oxlint + Oxfmt), and nearly 800 Vitest tests. The tests cover approval versioning, family permissions, webhook deduplication, unknown-outcome reconciliation, scam-evidence checks, and both game engines. CI runs lint, types, tests, and a production build on every pull request.
+
+## Try it
+
+The quickest route is **[lifel.ink](https://lifel.ink)**. Sign up there and follow the steps below.
+
+To run it locally, use **Practice mode**: every outcome is simulated and labelled, so no provider keys are needed.
+
+```bash
+bun run dev:setup   # once: installs dependencies, signs in to Convex, writes env files
+bun run dev         # web app on http://localhost:3001, plus Convex and the Discord bridge
+```
+
+1. Sign up (at [lifel.ink](https://lifel.ink) or `http://localhost:3001`), choose **It's for me**, and tick **Practice mode**.
+2. On **Ask**, type or say **"Can Sam drive me to my appointment on Tuesday?"** Review the message, approve it, and watch Sam's simulated reply become a confirmation and a reminder.
+3. Open **Scam check** and try the **practice call** to see live captions and spoken warnings without a microphone.
+4. Open **Email** to see the automatic scam labels, then use **Help me understand** on any message.
+
+For a fully populated walkthrough, see [Presentation demo account](#presentation-demo-account).
+
+## Challenges, wins, and what's next
+
+**Challenges**
+
+- **The Discord bot couldn't run on Vercel.** It needs a long-lived Gateway connection, so we set up a Debian VPS on Vultr and ran the bridge there as a systemd service.
+- **Instacart closed developer sign-ups mid-hackathon,** so we removed ordering and kept lists, budgets, and estimates ([details](docs/instacart-retirement.md)).
+- **Facebook and Instagram APIs only cover business accounts,** not the personal accounts families use, so the Connections screen says so plainly rather than offering something that can't work.
+- **Long translations kept getting cut off at large text sizes,** which matters most for exactly the people who need large text.
+
+**What we're proud of**
+
+- **Real-time scam screening on live calls.** Our teammate's grandmother was on the phone for four hours. LifeLink warns while the call is still going.
+- **One interface to learn instead of a dozen.** Weather, stocks, email, texts, calendar, documents, photos, news, groceries, and games, all with the same scam protection.
+- **Built for how older adults actually use technology:** big text, big buttons, read-aloud in their own language, and Practice mode to try everything first.
+- **Family can help without taking control.** You choose exactly what each person can see, they can never act for you, and you can remove access instantly.
+
+**What's next:** put LifeLink in the hands of older adults and their families, learn from how they use it, and keep making a safer, more connected online world for them.
+
+---
+
+# For developers
+
+Everything below covers setup, architecture, and what has been verified.
 
 ---
 
