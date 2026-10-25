@@ -57,7 +57,7 @@ const PrintableList = ({ list }: { list: Doc<"groceryLists"> }) => {
     <div aria-hidden="true" className="hidden" id="grocery-print">
       <h2 className="pb-4 text-3xl">{list.name}</h2>
       {openSections(list, t).map((section) => (
-        <section className="pb-4" key={section.items[0]?.id}>
+        <section className="pb-4" key={section.heading ?? "unsorted"}>
           {section.heading === null ? null : (
             <h3 className="pb-2 font-semibold">{section.heading}</h3>
           )}
