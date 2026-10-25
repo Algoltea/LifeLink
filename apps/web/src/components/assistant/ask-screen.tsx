@@ -18,6 +18,7 @@ import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import { Composer } from "@/components/voice/composer";
+import { useLocale, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { useGreeting } from "@/lib/greeting";
 
@@ -27,6 +28,7 @@ import {
   CHAT_WORKSPACE,
 } from "./chat-layout";
 import { ChatLoadingWorkspace } from "./chat-loading-workspace";
+import { conversationTitleFor } from "./conversation-title";
 import { EmailSummaryPreset } from "./email-summary-preset";
 import { HistoryDrawer } from "./history-drawer";
 import { AssistantThread } from "./thread";
@@ -35,21 +37,9 @@ const DEFAULT_TIME_ZONE = "America/New_York";
 
 /** Ideas fill the box rather than sending, so the person can finish the sentence. */
 const SUGGESTIONS = [
-  {
-    Icon: CarIcon,
-    label: "Ask for a ride",
-    prompt: "Ask my family if someone can drive me to my appointment on ",
-  },
-  {
-    Icon: MessageSquareIcon,
-    label: "Write to family",
-    prompt: "Help me write a message to ",
-  },
-  {
-    Icon: AlarmClockIcon,
-    label: "Set a reminder",
-    prompt: "Remind me to ",
-  },
+  { Icon: CarIcon, key: "ride" },
+  { Icon: MessageSquareIcon, key: "write" },
+  { Icon: AlarmClockIcon, key: "reminder" },
 ] as const;
 
 /**
@@ -64,6 +54,7 @@ const ChatTopBar = ({
   title: string | null;
 }) => {
   const heading = useRef<HTMLHeadingElement>(null);
+  const t = useMessages().ask;
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -78,11 +69,11 @@ const ChatTopBar = ({
       >
         {title ? (
           <>
-            <span className="sr-only">Ask LifeLink: </span>
+            <span className="sr-only">{t.titlePrefix}</span>
             {title}
           </>
         ) : (
-          "Ask LifeLink"
+          t.title
         )}
       </h1>
       <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
@@ -117,6 +108,7 @@ const Conversation = ({
   const composerArea = useRef<HTMLFieldSetElement>(null);
 
   const greeting = useGreeting(timeZone);
+  const t = useMessages().ask;
 
   const { queue } = useOffline();
 
@@ -135,7 +127,7 @@ const Conversation = ({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5">
       <section
-        aria-label="Conversation with LifeLink"
+        aria-label={t.conversationLabel}
         className={cn(
           "px-1",
           hasMessages || loading
@@ -144,11 +136,11 @@ const Conversation = ({
         )}
       >
         <div className={cn(CHAT_READING_COLUMN, "pt-2 pb-4")}>
-          <h2 className="sr-only">Your conversation</h2>
+          <h2 className="sr-only">{t.yourConversation}</h2>
           {loading ? (
             <LoadingRows
               layout="assistant-conversation"
-              label="Loading your conversation"
+              label={t.loadingConversation}
               rows={2}
             />
           ) : null}
@@ -158,9 +150,7 @@ const Conversation = ({
                 {greeting}
                 {firstName ? `, ${firstName}` : ""}
               </p>
-              <p className="text-muted-foreground text-lg">
-                What can I help with today?
-              </p>
+              <p className="text-muted-foreground text-lg">{t.whatCanIHelp}</p>
             </div>
           ) : null}
           {hasMessages ? (
@@ -172,7 +162,7 @@ const Conversation = ({
           ) : null}
           {queuedRequests.length > 0 ? (
             <ol
-              aria-label="Messages waiting for connection"
+              aria-label={t.waitingForConnection}
               className="mt-8 flex flex-col gap-4"
             >
               {queuedRequests.map((item) =>
@@ -185,7 +175,7 @@ const Conversation = ({
                       {item.text}
                     </p>
                     <p className="text-muted-foreground mt-2 text-base">
-                      Waiting for a connection. Nothing has been sent.
+                      {t.waitingConnection}
                     </p>
                   </li>
                 ) : null
@@ -195,7 +185,7 @@ const Conversation = ({
         </div>
       </section>
       <fieldset
-        aria-label="Write or speak to LifeLink"
+        aria-label={t.composerLabel}
         className={cn(
           CHAT_READING_COLUMN,
           "min-w-0 shrink-0 pb-[env(safe-area-inset-bottom)]"
@@ -213,25 +203,25 @@ const Conversation = ({
       {loading ? null : (
         <div className={hasMessages ? "shrink-0" : "min-h-0 flex-1"}>
           <ul
-            aria-label="Quick actions"
+            aria-label={t.quickActions}
             className={cn(
               CHAT_READING_COLUMN,
               "flex flex-wrap justify-center gap-3"
             )}
           >
-            {SUGGESTIONS.map(({ Icon, label, prompt }) => (
-              <li key={label}>
+            {SUGGESTIONS.map(({ Icon, key }) => (
+              <li key={key}>
                 <button
                   className="border-border text-label hover:bg-parchment min-h-control inline-flex items-center gap-2 rounded-full border px-5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={disabled}
                   onClick={() => {
-                    onDraftChange(prompt);
+                    onDraftChange(t.suggestions[key].prompt);
                     composerArea.current?.querySelector("textarea")?.focus();
                   }}
                   type="button"
                 >
                   <Icon aria-hidden="true" className="text-primary size-5" />
-                  {label}
+                  {t.suggestions[key].label}
                 </button>
               </li>
             ))}
@@ -250,6 +240,7 @@ const Conversation = ({
 };
 
 const AskWorkspace = () => {
+  const locale = useLocale();
   const threadId = useQuery(api.assistant.myThread);
 
   const history = usePaginatedQuery(
@@ -259,6 +250,7 @@ const AskWorkspace = () => {
   );
 
   const { me } = usePreferences();
+  const t = useMessages().ask;
 
   const activeConversation = history.results.find(
     (conversation) => conversation.threadId === threadId
@@ -321,17 +313,19 @@ const AskWorkspace = () => {
               variant="outline"
             >
               <SquarePenIcon aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">New chat</span>
+              <span className="sr-only sm:not-sr-only">{t.newChat}</span>
             </Button>
           </>
         }
         title={
-          activeConversation?.hasMessages ? activeConversation.title : null
+          activeConversation?.hasMessages
+            ? conversationTitleFor(activeConversation, locale)
+            : null
         }
       />
       {conversationError ? <ErrorNote>{conversationError}</ErrorNote> : null}
       {threadId === undefined ? (
-        <LoadingRows layout="ask" label="Opening your conversation" rows={2} />
+        <LoadingRows layout="ask" label={t.opening} rows={2} />
       ) : (
         <Conversation
           disabled={busy}

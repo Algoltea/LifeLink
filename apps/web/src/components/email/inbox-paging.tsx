@@ -9,6 +9,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const InboxPaging = ({
@@ -25,10 +26,11 @@ const InboxPaging = ({
   const [busy, setBusy] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const convex = useConvex();
-  let olderLabel = page?.isDone ? "Load older emails" : "Older emails";
+  const t = useMessages().email.paging;
+  let olderLabel = page?.isDone ? t.loadOlder : t.older;
 
   if (busy) {
-    olderLabel = "Loading…";
+    olderLabel = t.loading;
   }
 
   const next = async (): Promise<void> => {
@@ -65,9 +67,7 @@ const InboxPaging = ({
           onNavigate([...cursors, updated.continueCursor]);
         }
       } else if (result.added === 0 && result.errors.length === 0) {
-        toast.info(
-          "No additional emails imported. Try the next batch if older emails are still available."
-        );
+        toast.info(t.noMoreImported);
       }
     } catch (error) {
       setOperationError(messageOf(error instanceof Error ? error : null));
@@ -79,7 +79,7 @@ const InboxPaging = ({
   return (
     <div className="border-rule mt-4 flex flex-col gap-3 border-t px-3 pt-4">
       <p aria-live="polite" className="text-muted-foreground text-label">
-        Page {cursors.length} · Up to 15 emails at a time
+        {t.page(cursors.length)}
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -92,7 +92,7 @@ const InboxPaging = ({
           variant="outline"
         >
           <ChevronLeftIcon aria-hidden="true" />
-          Newer
+          {t.newer}
         </Button>
         <Button
           aria-busy={busy}
@@ -110,9 +110,7 @@ const InboxPaging = ({
         </Button>
       </div>
       {page?.isDone && olderAvailable === false ? (
-        <p className="text-muted-foreground text-label">
-          No older emails available.
-        </p>
+        <p className="text-muted-foreground text-label">{t.noOlder}</p>
       ) : null}
       {operationError ? (
         <p className="text-negative text-label" role="alert">

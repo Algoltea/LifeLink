@@ -2,7 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc } from "@lifelink/backend/convex/_generated/dataModel";
-import { aisleLabel, moveItem } from "@lifelink/contracts/grocery-aisles";
+import { moveItem } from "@lifelink/contracts/grocery-aisles";
 import type { MoveDirection } from "@lifelink/contracts/grocery-aisles";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
@@ -21,11 +21,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyNote } from "@/components/app/states";
+import { useLocale, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { money } from "@/lib/format";
 
 import {
   UNDO_WINDOW_MS,
+  aisleHeading,
   isSorted,
   itemMatches,
   openSections,
@@ -39,7 +42,11 @@ const errorText = (cause: unknown): string =>
 
 type ListId = Doc<"groceryLists">["_id"];
 
-const MOVE_PREFIX = /^Move/u;
+interface ItemMove {
+  direction: MoveDirection;
+  item: GroceryItem;
+  neighbour: GroceryItem;
+}
 
 interface MoveControls {
   /** Null when the item is already first or last. */
@@ -52,15 +59,23 @@ interface MoveControls {
 const moveLabel = (
   item: GroceryItem,
   neighbour: GroceryItem | undefined,
-  direction: MoveDirection
+  direction: MoveDirection,
+  messages: Messages["groceries"],
+  completed = false
 ): string | null => {
   if (neighbour === undefined) {
     return null;
   }
 
-  return neighbour.aisle === item.aisle
-    ? `Move ${item.name} ${direction}`
-    : `Move ${item.name} ${direction}, into ${aisleLabel(neighbour.aisle)}`;
+  const format = completed ? messages.movedItem : messages.moveItem;
+
+  return format(
+    item.name,
+    direction,
+    neighbour.aisle === item.aisle
+      ? null
+      : aisleHeading(neighbour.aisle, messages)
+  );
 };
 
 const MoveButtons = ({
@@ -69,29 +84,33 @@ const MoveButtons = ({
 }: {
   item: GroceryItem;
   move: MoveControls;
-}) => (
-  <div className="flex shrink-0">
-    {(["up", "down"] as const).map((direction) => {
-      const label = move[direction];
+}) => {
+  const t = useMessages().groceries;
 
-      return (
-        <Button
-          aria-label={label ?? `Move ${item.name} ${direction}`}
-          data-item={item.id}
-          data-move={direction}
-          disabled={label === null}
-          key={direction}
-          onClick={() => move.onMove(direction)}
-          size="icon"
-          title={label ?? undefined}
-          variant="ghost"
-        >
-          {direction === "up" ? <ArrowUpIcon /> : <ArrowDownIcon />}
-        </Button>
-      );
-    })}
-  </div>
-);
+  return (
+    <div className="flex shrink-0">
+      {(["up", "down"] as const).map((direction) => {
+        const label = move[direction];
+
+        return (
+          <Button
+            aria-label={label ?? t.moveItem(item.name, direction, null)}
+            data-item={item.id}
+            data-move={direction}
+            disabled={label === null}
+            key={direction}
+            onClick={() => move.onMove(direction)}
+            size="icon"
+            title={label ?? undefined}
+            variant="ghost"
+          >
+            {direction === "up" ? <ArrowUpIcon /> : <ArrowDownIcon />}
+          </Button>
+        );
+      })}
+    </div>
+  );
+};
 
 const ItemRow = ({
   item,
@@ -104,6 +123,8 @@ const ItemRow = ({
   move: MoveControls | null;
   onToggle: () => void;
 }) => {
+  const locale = useLocale();
+  const t = useMessages().groceries;
   const updateItem = useMutation(api.groceries.updateItem);
   const removeItem = useMutation(api.groceries.removeItem);
   const restoreItem = useMutation(api.groceries.restoreItem);
@@ -118,9 +139,9 @@ const ItemRow = ({
       }
 
       // The X is easy to hit by mistake, so every removal can be undone.
-      toast(`Removed ${removed.item.name}.`, {
+      toast(t.removed(removed.item.name), {
         action: {
-          label: "Undo",
+          label: t.undo,
           onClick: async () => {
             try {
               await restoreItem({ ...removed, listId });
@@ -161,14 +182,14 @@ const ItemRow = ({
           htmlFor={checkboxId}
         >
           {item.name}
-          {item.checked ? <span className="sr-only"> (in cart)</span> : null}
+          {item.checked ? <span className="sr-only">{t.inCartSr}</span> : null}
         </Label>
         <span className="text-muted-foreground text-base">
           {[
-            quantityWords(item),
+            quantityWords(item, locale),
             item.estimatedCents === null
               ? ""
-              : `about ${money(item.estimatedCents)}`,
+              : t.about(money(item.estimatedCents, locale)),
           ]
             .filter((part) => part.length > 0)
             .join(" · ")}
@@ -176,7 +197,7 @@ const ItemRow = ({
       </div>
       {move === null ? null : <MoveButtons item={item} move={move} />}
       <Button
-        aria-label={`Remove ${item.name}`}
+        aria-label={t.removeItem(item.name)}
         onClick={remove}
         size="icon"
         variant="ghost"
@@ -186,13 +207,6 @@ const ItemRow = ({
     </li>
   );
 };
-
-const SORT_FALLBACK_NOTES = {
-  failed: "The assistant didn't answer, so LifeLink's built-in guide was used.",
-  limit:
-    "The assistant has sorted a lot of lists recently, so LifeLink's built-in guide was used.",
-  unavailable: "Sorted with LifeLink's built-in guide.",
-} as const;
 
 /**
  * Asks the assistant which store section each item is in, then lists them
@@ -206,6 +220,7 @@ const SortByAisleButton = ({
   afterSort: () => void;
   list: Doc<"groceryLists">;
 }) => {
+  const t = useMessages().groceries;
   const sortByAisle = useAction(api.groceries.sortByAisle);
   const restoreArrangement = useMutation(api.groceries.restoreArrangement);
   const [sorting, setSorting] = useState(false);
@@ -217,10 +232,10 @@ const SortByAisleButton = ({
     return null;
   }
 
-  let label = sorted ? "Sort new items by aisle" : "Sort by aisle";
+  let label = sorted ? t.sortNewByAisle : t.sortByAisle;
 
   if (sorting) {
-    label = "Sorting…";
+    label = t.sorting;
   }
 
   const sort = async (): Promise<void> => {
@@ -229,35 +244,29 @@ const SortByAisleButton = ({
     try {
       const outcome = await sortByAisle({ listId: list._id });
 
-      const summary =
-        outcome.sorted === 1
-          ? "Sorted 1 item by aisle."
-          : `Sorted ${outcome.sorted} items by aisle.`;
+      const summary = t.sortedByAisle(outcome.sorted);
 
       const note =
         outcome.localReason === null
           ? ""
-          : ` ${SORT_FALLBACK_NOTES[outcome.localReason]}`;
+          : ` ${t.sortFallback[outcome.localReason]}`;
 
-      toast.success(
-        `${summary}${note} Move any item that's in the wrong place.`,
-        {
-          action: {
-            label: "Undo",
-            onClick: async () => {
-              try {
-                await restoreArrangement({
-                  arrangement: outcome.previous,
-                  listId: list._id,
-                });
-              } catch (error) {
-                toast.error(errorText(error));
-              }
-            },
+      toast.success(`${summary}${note} ${t.moveHint}`, {
+        action: {
+          label: t.undo,
+          onClick: async () => {
+            try {
+              await restoreArrangement({
+                arrangement: outcome.previous,
+                listId: list._id,
+              });
+            } catch (error) {
+              toast.error(errorText(error));
+            }
           },
-          duration: UNDO_WINDOW_MS,
-        }
-      );
+        },
+        duration: UNDO_WINDOW_MS,
+      });
       afterSort();
     } catch (error) {
       toast.error(errorText(error));
@@ -289,12 +298,13 @@ const ItemSearch = ({
   onChange: (query: string) => void;
   query: string;
 }) => {
+  const t = useMessages().groceries;
   const searchId = useId();
 
   return (
     <search className="relative flex min-w-0 flex-1 basis-64 items-center">
       <label className="sr-only" htmlFor={searchId}>
-        Find an item on this list
+        {t.itemSearch}
       </label>
       <SearchIcon
         aria-hidden="true"
@@ -310,7 +320,7 @@ const ItemSearch = ({
             onChange("");
           }
         }}
-        placeholder="Find an item, like milk"
+        placeholder={t.itemSearchPlaceholder}
         ref={input}
         type="search"
         value={query}
@@ -325,7 +335,11 @@ interface Block {
 }
 
 /** What to show: matches while searching, otherwise sections then the cart. */
-const blocksFor = (list: Doc<"groceryLists">, query: string): Block[] => {
+const blocksFor = (
+  list: Doc<"groceryLists">,
+  query: string,
+  messages: Messages["groceries"]
+): Block[] => {
   const ordered = shoppingOrder(list.items);
 
   if (query.trim().length > 0) {
@@ -344,8 +358,10 @@ const blocksFor = (list: Doc<"groceryLists">, query: string): Block[] => {
   const inCart = list.items.filter((item) => item.checked);
 
   return [
-    ...openSections(list),
-    ...(inCart.length > 0 ? [{ heading: "In your cart", items: inCart }] : []),
+    ...openSections(list, messages),
+    ...(inCart.length > 0
+      ? [{ heading: messages.inYourCart, items: inCart }]
+      : []),
   ];
 };
 
@@ -383,8 +399,9 @@ const useMoveItem = () =>
  * since moving within a partial list would be confusing.
  */
 const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
+  const t = useMessages().groceries;
   const [query, setQuery] = useState("");
-  const [announcement, setAnnouncement] = useState("");
+  const [announcement, setAnnouncement] = useState<ItemMove | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const refocusAt = useRef<number | null>(null);
@@ -396,7 +413,7 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
 
   const moveOnServer = useMoveItem();
   const searching = query.trim().length > 0;
-  const blocks = blocksFor(list, query);
+  const blocks = blocksFor(list, query, t);
   const shown = blocks.flatMap((block) => block.items);
   const open = list.items.filter((item) => !item.checked);
 
@@ -444,11 +461,11 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
   const move = async (
     item: GroceryItem,
     direction: MoveDirection,
-    label: string
+    neighbour: GroceryItem
   ): Promise<void> => {
     const pending = { direction, itemId: item.id };
     pendingMove.current = pending;
-    setAnnouncement(`${label.replace(MOVE_PREFIX, "Moved")}.`);
+    setAnnouncement({ direction, item, neighbour });
 
     try {
       await moveOnServer({ direction, itemId: item.id, listId: list._id });
@@ -468,16 +485,16 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
       return null;
     }
 
-    const up = moveLabel(item, open[at - 1], "up");
-    const down = moveLabel(item, open[at + 1], "down");
+    const up = moveLabel(item, open[at - 1], "up", t);
+    const down = moveLabel(item, open[at + 1], "down", t);
 
     return {
       down,
       onMove: async (direction) => {
-        const label = direction === "up" ? up : down;
+        const neighbour = open[at + (direction === "up" ? -1 : 1)];
 
-        if (label !== null) {
-          await move(item, direction, label);
+        if (neighbour !== undefined) {
+          await move(item, direction, neighbour);
         }
       },
       up,
@@ -485,12 +502,19 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
   };
 
   if (list.items.length === 0) {
-    return (
-      <EmptyNote>
-        Nothing on this list yet. Open Add items to add the first item.
-      </EmptyNote>
-    );
+    return <EmptyNote>{t.nothingOnListHint}</EmptyNote>;
   }
+
+  const moveAnnouncement =
+    announcement === null
+      ? ""
+      : moveLabel(
+          announcement.item,
+          announcement.neighbour,
+          announcement.direction,
+          t,
+          true
+        );
 
   return (
     <div className="flex flex-col gap-3" ref={container}>
@@ -503,8 +527,8 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
       </div>
       <p aria-live="polite" className="text-muted-foreground text-base">
         {searching
-          ? `${shown.length} of ${list.items.length} ${list.items.length === 1 ? "item matches" : "items match"}`
-          : announcement}
+          ? t.itemSearchCount(shown.length, list.items.length)
+          : moveAnnouncement}
       </p>
       {searching && shown.length === 0 ? (
         <EmptyNote
@@ -516,25 +540,25 @@ const GroceryItems = ({ list }: { list: Doc<"groceryLists"> }) => {
               }}
               variant="outline"
             >
-              Clear search
+              {t.clearItemSearch}
             </Button>
           }
         >
-          Nothing on this list matches “{query.trim()}”.
+          {t.noMatchingItems(query.trim())}
         </EmptyNote>
       ) : null}
       {blocks.map((block) =>
         block.items.length === 0 ? null : (
           <section
             aria-label={block.heading ?? undefined}
-            key={`${block.heading}-${block.items[0]?.id}`}
+            key={block.items[0]?.id}
           >
             {block.heading === null ? null : (
               <h3 className="pt-3 pb-1 text-lg leading-7 font-semibold">
                 {block.heading}
               </h3>
             )}
-            <ul aria-label={block.heading ?? `Items on ${list.name}`}>
+            <ul aria-label={block.heading ?? t.itemsOn(list.name)}>
               {block.items.map((item) => (
                 <ItemRow
                   item={item}

@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { EmptyNote } from "@/components/app/states";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
 import { isRowStillShown } from "@/lib/list-beside-reader";
 
@@ -44,6 +46,8 @@ const MailboxStatus = () => {
   const connections = useQuery(api.connections.list);
   const refresh = useAction(api.emails.refresh);
   const [busy, setBusy] = useState(false);
+  const locale = useLocale();
+  const t = useMessages().email;
 
   if (connections === undefined) {
     return null;
@@ -61,7 +65,7 @@ const MailboxStatus = () => {
 
   return (
     <section
-      aria-label="Your mailboxes"
+      aria-label={t.mailboxes}
       className="bg-parchment text-foreground flex flex-col gap-2 rounded-xl py-2 pr-2 pl-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -71,28 +75,17 @@ const MailboxStatus = () => {
             className="text-muted-foreground size-5 shrink-0"
           />
           <span>
-            {active.length === 0 ? (
-              <>
-                No mailbox connected.
-                {connections.demoMode
-                  ? " These are sample emails, so you can practice safely."
-                  : ""}
-              </>
-            ) : (
-              <>
-                Connected:{" "}
-                {active
-                  .map(
-                    (mailbox) =>
-                      `${mailbox.definition.label}${mailbox.accountLabel ? ` (${mailbox.accountLabel})` : ""}`
-                  )
-                  .join(", ")}
-                .
-                {connections.demoMode
-                  ? " These are sample emails, so you can practice safely."
-                  : ""}
-              </>
-            )}
+            {active.length === 0
+              ? t.noMailbox
+              : t.connected(
+                  active
+                    .map(
+                      (mailbox) =>
+                        `${mailbox.definition.label}${mailbox.accountLabel ? ` (${mailbox.accountLabel})` : ""}`
+                    )
+                    .join(", ")
+                )}
+            {connections.demoMode ? t.sampleEmails : ""}
           </span>
         </p>
         {active.length === 0 ? (
@@ -102,7 +95,7 @@ const MailboxStatus = () => {
             })}
             href="/connections"
           >
-            Connect Gmail or Outlook
+            {t.connectMailbox}
           </Link>
         ) : (
           <Button
@@ -116,14 +109,10 @@ const MailboxStatus = () => {
                 const result = await refresh({});
 
                 for (const problem of result.errors) {
-                  toast.error(problem);
+                  toast.error(translateServerMessage(problem));
                 }
 
-                toast.success(
-                  result.added === 0
-                    ? "No new emails."
-                    : `${result.added} new ${result.added === 1 ? "email" : "emails"}.`
-                );
+                toast.success(t.newEmails(result.added));
               } catch (error) {
                 toast.error(errorText(error));
               }
@@ -134,7 +123,7 @@ const MailboxStatus = () => {
             variant="outline"
           >
             <RefreshCwIcon aria-hidden="true" />
-            {busy ? "Checking…" : "Check for new email"}
+            {busy ? t.checking : t.checkForNew}
           </Button>
         )}
       </div>
@@ -143,10 +132,14 @@ const MailboxStatus = () => {
           className="text-negative text-label pb-2"
           key={mailbox.definition.id}
         >
-          {mailbox.definition.label} needs attention
-          {mailbox.lastError ? `: ${mailbox.lastError}` : "."}{" "}
+          {t.needsAttention(
+            mailbox.definition.label,
+            mailbox.lastError
+              ? translateServerMessage(mailbox.lastError, locale)
+              : null
+          )}{" "}
           <Link className="font-semibold underline" href="/connections">
-            Reconnect
+            {t.reconnect}
           </Link>
         </p>
       ))}
@@ -155,32 +148,29 @@ const MailboxStatus = () => {
 };
 
 /** What the automatic checks do and don't do, one press away instead of always on screen. */
-const ChecksExplained = () => (
-  <section
-    aria-labelledby={`${CHECKS_PANEL_ID}-heading`}
-    className="border-border bg-raised flex max-w-3xl flex-col gap-2 rounded-xl border px-5 py-4"
-    id={CHECKS_PANEL_ID}
-  >
-    <h2 className="text-body font-semibold" id={`${CHECKS_PANEL_ID}-heading`}>
-      How the email checks work
-    </h2>
-    <p>
-      New email is checked in LifeLink, on this device, for common scam signs.
-      Pick a message to read it and see what stood out.
-    </p>
-    <p className="text-muted-foreground text-label">
-      Automatic checks don’t send email to an AI provider. They can’t confirm
-      who sent an email or whether what it says is true. “Check for new email”
-      brings in your recent emails and checks them the same way.
-    </p>
-    <Link
-      className="text-foreground min-h-control inline-flex items-center self-start font-semibold underline underline-offset-4"
-      href="/scam"
+const ChecksExplained = () => {
+  const t = useMessages().email;
+
+  return (
+    <section
+      aria-labelledby={`${CHECKS_PANEL_ID}-heading`}
+      className="border-border bg-raised flex max-w-3xl flex-col gap-2 rounded-xl border px-5 py-4"
+      id={CHECKS_PANEL_ID}
     >
-      Check another message
-    </Link>
-  </section>
-);
+      <h2 className="text-body font-semibold" id={`${CHECKS_PANEL_ID}-heading`}>
+        {t.checksTitle}
+      </h2>
+      <p>{t.checksIntro}</p>
+      <p className="text-muted-foreground text-label">{t.checksAutomatic}</p>
+      <Link
+        className="text-foreground min-h-control inline-flex items-center self-start font-semibold underline underline-offset-4"
+        href="/scam"
+      >
+        {t.checkAnother}
+      </Link>
+    </section>
+  );
+};
 
 const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
@@ -194,6 +184,7 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
   const pageFocusPending = useRef(false);
   const checkRecent = useMutation(api.emails.checkRecent);
   const { me } = usePreferences();
+  const t = useMessages().email;
   const [selectedId, setSelectedId] = useState<string | null>(initialEmailId);
 
   const selectedRow = useQuery(
@@ -281,7 +272,9 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
     if (openedNote.current !== null) {
       openedNote.current.textContent =
         opened !== undefined && listStaysBeside()
-          ? `Opened: ${opened.subject || "(No subject)"}`
+          ? currentMessages().email.opened(
+              opened.subject || currentMessages().email.noSubject
+            )
           : "";
     }
   });
@@ -302,11 +295,11 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
             variant="ghost"
           >
             <ShieldCheckIcon aria-hidden="true" />
-            About scam checks
+            {t.aboutChecks}
           </Button>
         }
         className="items-center"
-        title="Email"
+        title={t.title}
       />
       <MailboxStatus />
       {explaining ? <ChecksExplained /> : null}
@@ -315,12 +308,12 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
           className="bg-negative-wash text-negative rounded-md p-4"
           role="alert"
         >
-          <p>The scam check couldn’t finish. {scanError}</p>
+          <p>{t.checkCouldNotFinish(scanError)}</p>
           <Link
             className="inline-flex min-h-12 items-center font-semibold underline"
             href="/scam"
           >
-            Open the manual scam check
+            {t.openManualCheck}
           </Link>
         </div>
       )}
@@ -339,11 +332,11 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
               ref={inboxHeadingRef}
               tabIndex={-1}
             >
-              Inbox
+              {t.inbox}
             </h2>
             {emails && emails.length > 0 ? (
               <p className="text-muted-foreground text-label">
-                {emails.length} {emails.length === 1 ? "email" : "emails"}
+                {t.countEmails(emails.length)}
               </p>
             ) : null}
           </div>
@@ -373,7 +366,7 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
         </section>
         {selected === null ? (
           <EmptyNote className="hidden @3xl/content:mt-12 @3xl/content:ml-10 @3xl/content:flex">
-            Choose an email to read it and see its scam check.
+            {t.chooseEmail}
           </EmptyNote>
         ) : (
           <div className="flex min-w-0 flex-col gap-2 @3xl/content:pl-10">
@@ -387,7 +380,7 @@ const EmailScreen = ({ initialEmailId }: { initialEmailId: string | null }) => {
               variant="ghost"
             >
               <ChevronLeftIcon aria-hidden="true" />
-              Back to inbox
+              {t.backToInbox}
             </Button>
             <EmailReader
               emailId={selected.id}

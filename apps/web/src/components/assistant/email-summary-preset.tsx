@@ -7,6 +7,7 @@ import { useId, useRef, useState } from "react";
 
 import { useOffline } from "@/components/app/offline-queue";
 import { usePreferences } from "@/components/app/preferences";
+import { useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const EmailSummaryPreset = ({
@@ -27,6 +28,7 @@ const EmailSummaryPreset = ({
   const pending = useRef(false);
   const consentId = useId();
   const practice = me?.profile?.demoMode === true;
+  const t = useMessages().ask.emailSummary;
 
   return (
     <div className="flex max-w-prose flex-col items-start gap-2">
@@ -59,12 +61,12 @@ const EmailSummaryPreset = ({
         type="button"
       >
         <MailIcon aria-hidden="true" className="text-primary size-5" />
-        {busy ? "Summarizing emails…" : "Summarize emails"}
+        {busy ? t.summarizing : t.summarize}
       </button>
       {practice ? null : (
         <details className="text-label max-w-prose">
           <summary className="text-muted-foreground min-h-control flex cursor-pointer items-center px-2 underline underline-offset-4">
-            Summary options
+            {t.options}
           </summary>
           <label
             className="min-h-control flex cursor-pointer items-start gap-3 py-2"
@@ -78,23 +80,17 @@ const EmailSummaryPreset = ({
               onChange={(event) => setAllowCloudAnalysis(event.target.checked)}
               type="checkbox"
             />
-            <span>
-              Use cloud AI for a fuller summary. This sends the available text
-              and saved summaries of my newest 15 imported emails to the AI
-              provider. Leave unchecked to summarize in LifeLink.
-            </span>
+            <span>{t.cloudConsent}</span>
           </label>
         </details>
       )}
       {busy ? (
         <output className="text-muted-foreground text-label">
-          Adding the email summary to this chat…
+          {t.working}
         </output>
       ) : null}
       {online ? null : (
-        <p className="text-muted-foreground text-label">
-          Connect to summarize your imported emails.
-        </p>
+        <p className="text-muted-foreground text-label">{t.offline}</p>
       )}
       {operationError ? (
         <p className="text-negative text-label" role="alert">

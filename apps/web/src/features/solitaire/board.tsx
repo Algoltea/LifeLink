@@ -10,6 +10,8 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { RotateCcw } from "lucide-react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
+import { useMessages } from "@/i18n/locale";
+
 import {
   foundationLabel,
   sameSlot,
@@ -22,6 +24,7 @@ import {
   wasteLabel,
 } from "./board-model";
 import type { Slot } from "./board-model";
+import type { SolitaireMessages } from "./localization";
 import { CardBack, CardFace, EmptyFoundation, EmptyPile } from "./playing-card";
 
 type Mark = "hint" | "none" | "selected" | "target";
@@ -69,16 +72,16 @@ interface SlotButtonProps {
   readonly slot: Slot;
 }
 
-const markSuffix = (mark: Mark): string => {
+const markSuffix = (mark: Mark, t: SolitaireMessages): string => {
   if (mark === "selected") {
-    return " Selected.";
+    return t.selected;
   }
 
   if (mark === "target") {
-    return " The selected card can go here.";
+    return t.target;
   }
 
-  return mark === "hint" ? " Suggested by the hint." : "";
+  return mark === "hint" ? t.suggested : "";
 };
 
 const SlotButton = ({
@@ -89,11 +92,12 @@ const SlotButton = ({
   mark,
   slot,
 }: SlotButtonProps) => {
+  const t = useMessages().solitaire;
   const key = slotKey(slot);
 
   return (
     <button
-      aria-label={`${label}${markSuffix(mark)}`}
+      aria-label={`${label}${markSuffix(mark, t)}`}
       className={cn(
         "hover:outline-control relative block aspect-[5/7] w-full cursor-pointer rounded-md text-left hover:outline hover:outline-2 focus-visible:z-10",
         className
@@ -142,6 +146,7 @@ const pileMark = (
 };
 
 const StockPile = ({ board }: { readonly board: BoardProps }) => {
+  const t = useMessages().solitaire;
   const { state } = board;
   const mark: Mark = board.hint?.type === "draw" ? "hint" : "none";
 
@@ -149,7 +154,7 @@ const StockPile = ({ board }: { readonly board: BoardProps }) => {
     <div className="[container-type:inline-size]">
       <SlotButton
         board={board}
-        label={stockLabel(state)}
+        label={stockLabel(state, t)}
         mark={mark}
         slot={{ area: "stock" }}
       >
@@ -170,6 +175,7 @@ const StockPile = ({ board }: { readonly board: BoardProps }) => {
 const FAN_OFFSETS = ["left-0", "left-[24cqi]", "left-[48cqi]"] as const;
 
 const WastePile = ({ board }: { readonly board: BoardProps }) => {
+  const t = useMessages().solitaire;
   const { state } = board;
   const visible = state.waste.slice(-state.drawCount);
   const top = visible.at(-1);
@@ -196,7 +202,7 @@ const WastePile = ({ board }: { readonly board: BoardProps }) => {
         <SlotButton
           board={board}
           className={cn(under.length > 0 && "absolute top-0", topOffset)}
-          label={wasteLabel(state)}
+          label={wasteLabel(state, t)}
           mark={mark}
           slot={{ area: "waste" }}
         >
@@ -206,7 +212,7 @@ const WastePile = ({ board }: { readonly board: BoardProps }) => {
               tone={mark === "selected" ? "selected" : "plain"}
             />
           ) : (
-            <EmptyPile label="Waste" />
+            <EmptyPile label={t.waste} />
           )}
         </SlotButton>
         {under.length > 0 ? (
@@ -224,6 +230,7 @@ const FoundationPile = ({
   readonly board: BoardProps;
   readonly index: number;
 }) => {
+  const t = useMessages().solitaire;
   const top = board.state.foundations[index]?.at(-1);
   const suit = FOUNDATION_SUITS[index];
   const source: MoveSource | null = top ? { index, kind: "foundation" } : null;
@@ -233,7 +240,7 @@ const FoundationPile = ({
     <div className="[container-type:inline-size]">
       <SlotButton
         board={board}
-        label={foundationLabel(board.state, index)}
+        label={foundationLabel(board.state, index, t)}
         mark={mark}
         slot={{ area: "foundation", index }}
       >
@@ -288,6 +295,7 @@ const TableauColumn = ({
   readonly board: BoardProps;
   readonly index: number;
 }) => {
+  const t = useMessages().solitaire;
   const column = board.state.tableau[index] ?? [];
 
   if (column.length === 0) {
@@ -297,11 +305,11 @@ const TableauColumn = ({
       <div className="[container-type:inline-size]">
         <SlotButton
           board={board}
-          label={tableauCardLabel(column, index, 0)}
+          label={tableauCardLabel(column, index, 0, t)}
           mark={mark}
           slot={{ area: "tableau", cardIndex: 0, index }}
         >
-          <EmptyPile label="King" />
+          <EmptyPile label={t.king} />
         </SlotButton>
       </div>
     );
@@ -336,7 +344,7 @@ const TableauColumn = ({
             board={board}
             className={offset}
             key={card.id}
-            label={tableauCardLabel(column, index, cardIndex)}
+            label={tableauCardLabel(column, index, cardIndex, t)}
             mark={mark}
             slot={{ area: "tableau", cardIndex, index }}
           >
@@ -374,24 +382,28 @@ const TABLE_WIDTH: CSSProperties = {
 };
 
 // Every slot button forwards arrow keys and Escape to the board; Enter and Space click it natively.
-export const Board = (board: BoardProps) => (
-  <section
-    aria-label="Card table"
-    className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 [--board-gap:0.75rem] sm:p-6"
-  >
-    <div className="mx-auto w-full min-w-[32.5rem]" style={TABLE_WIDTH}>
-      <div className="grid grid-cols-7 gap-(--board-gap)">
-        <StockPile board={board} />
-        <WastePile board={board} />
-        {FOUNDATION_INDEXES.map((index) => (
-          <FoundationPile board={board} index={index} key={index} />
-        ))}
+export const Board = (board: BoardProps) => {
+  const t = useMessages().solitaire;
+
+  return (
+    <section
+      aria-label={t.table}
+      className="bg-parchment min-w-0 overflow-x-auto overscroll-x-contain rounded-lg p-4 [--board-gap:0.75rem] sm:p-6"
+    >
+      <div className="mx-auto w-full min-w-[32.5rem]" style={TABLE_WIDTH}>
+        <div className="grid grid-cols-7 gap-(--board-gap)">
+          <StockPile board={board} />
+          <WastePile board={board} />
+          {FOUNDATION_INDEXES.map((index) => (
+            <FoundationPile board={board} index={index} key={index} />
+          ))}
+        </div>
+        <div className="mt-6 grid grid-cols-7 items-start gap-(--board-gap) pb-2">
+          {COLUMN_INDEXES.map((index) => (
+            <TableauColumn board={board} index={index} key={index} />
+          ))}
+        </div>
       </div>
-      <div className="mt-6 grid grid-cols-7 items-start gap-(--board-gap) pb-2">
-        {COLUMN_INDEXES.map((index) => (
-          <TableauColumn board={board} index={index} key={index} />
-        ))}
-      </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};

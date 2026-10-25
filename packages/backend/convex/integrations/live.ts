@@ -31,9 +31,13 @@ const SUBMIT_TOOL = {
   },
 };
 
-const systemInstructionFor = (preferredName: string): string =>
+const systemInstructionFor = (
+  preferredName: string,
+  language = "English"
+): string =>
   [
     `You are a calm, warm voice assistant for ${preferredName}, an older adult.`,
+    `Speak in ${language}, the language they chose. If they speak to you in another language, answer in that language.`,
     "Speak in short, plain sentences. Never rush. Confirm what you heard.",
     "When they want something done, call submit_request with their words, then say it is ready to review on screen.",
     "You cannot send, buy, or change settings yourself, and you never claim something was sent.",
@@ -55,7 +59,7 @@ type LiveTokenResult =
   | { expiresAt: number; model: string; ok: true; token: string };
 
 type LiveTokenPurpose =
-  | { kind: "conversation"; preferredName: string }
+  | { kind: "conversation"; language: string; preferredName: string }
   | { kind: "call_screening" };
 
 const setupFor = (model: string, purpose: LiveTokenPurpose) => ({
@@ -68,7 +72,14 @@ const setupFor = (model: string, purpose: LiveTokenPurpose) => ({
         outputAudioTranscription: {},
         sessionResumption: {},
         systemInstruction: {
-          parts: [{ text: systemInstructionFor(purpose.preferredName) }],
+          parts: [
+            {
+              text: systemInstructionFor(
+                purpose.preferredName,
+                purpose.language
+              ),
+            },
+          ],
         },
         tools: [{ functionDeclarations: [SUBMIT_TOOL] }],
       }
@@ -132,9 +143,10 @@ const createToken = async (
 };
 
 const createLiveToken = async (
-  preferredName: string
+  preferredName: string,
+  language = "English"
 ): Promise<LiveTokenResult> =>
-  await createToken({ kind: "conversation", preferredName });
+  await createToken({ kind: "conversation", language, preferredName });
 
 const createCallScreeningToken = async (): Promise<LiveTokenResult> =>
   await createToken({ kind: "call_screening" });

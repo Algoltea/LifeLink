@@ -358,6 +358,8 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     hue: v.number(),
+    // The language LifeLink's own words to them use; unset or null follows the owner's language.
+    language: v.optional(v.union(v.literal("en"), v.literal("es"), v.null())),
     linkedProfileId: v.union(v.id("profiles"), v.null()),
     name: v.string(),
     ownerId: v.id("profiles"),

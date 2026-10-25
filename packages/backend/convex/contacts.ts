@@ -9,6 +9,7 @@ import {
   query,
 } from "./_generated/server";
 import { audit } from "./lib/audit";
+import { localeValidator } from "./lib/locale";
 import { requireOwned, requireOwner, requireProfile } from "./lib/session";
 import {
   applyTelegramChoice,
@@ -217,6 +218,7 @@ export const list = query({
 export const create = mutation({
   args: {
     channels: v.array(channelValidator),
+    language: v.optional(v.union(localeValidator, v.null())),
     name: v.string(),
     relationship: v.string(),
     savedHandles: v.optional(v.array(savedHandleValidator)),
@@ -242,6 +244,7 @@ export const create = mutation({
       channels,
       createdAt: Date.now(),
       hue: hueFor(name),
+      language: args.language ?? null,
       linkedProfileId: null,
       name,
       ownerId: owner._id,
@@ -272,6 +275,7 @@ export const update = mutation({
   args: {
     channels: v.array(channelValidator),
     contactId: v.id("contacts"),
+    language: v.optional(v.union(localeValidator, v.null())),
     name: v.string(),
     relationship: v.string(),
     savedHandles: v.optional(v.array(savedHandleValidator)),
@@ -300,6 +304,8 @@ export const update = mutation({
 
     await ctx.db.patch(contact._id, {
       channels: [...channels, ...keptTelegram],
+      // Older clients don't send a language; keep the saved one then.
+      language: args.language === undefined ? contact.language : args.language,
       name: args.name.trim() || contact.name,
       relationship: args.relationship.trim(),
       trusted: args.trusted,

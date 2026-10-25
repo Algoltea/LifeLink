@@ -1,5 +1,6 @@
 "use client";
 
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
 import { Label } from "@lifelink/ui/components/label";
@@ -9,6 +10,9 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
+import { useLocale, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
+import { translateServerMessage } from "@/i18n/server-messages";
 import { authClient } from "@/lib/auth-client";
 
 import { BrandMark } from "./brand";
@@ -17,36 +21,41 @@ const MIN_PASSWORD_LENGTH = 10;
 
 type Mode = "sign-in" | "sign-up";
 
-const SUBMIT_WORDS: Record<Mode, string> = {
-  "sign-in": "Sign in",
-  "sign-up": "Create account",
-};
+type SignInFailure =
+  | { code: "passwordMinimum" | "mismatch" | "createError" | "connectionError" }
+  | { code: "server"; message: string };
 
-const HEADINGS: Record<Mode, { intro: string; title: string }> = {
-  "sign-in": {
-    intro:
-      "Sign in to see today’s messages and appointments. Nothing is sent until you say so.",
-    title: "Welcome back.",
-  },
-  "sign-up": {
-    intro: "It takes about a minute. Family comes later.",
-    title: "Get started.",
-  },
+const failureMessage = (
+  failure: SignInFailure | null,
+  words: Messages["appExtras"]["signIn"],
+  locale: InterfaceLocale
+): string | null => {
+  if (failure === null) {
+    return null;
+  }
+
+  if (failure.code === "server") {
+    return translateServerMessage(failure.message, locale);
+  }
+
+  if (failure.code === "passwordMinimum") {
+    return words.passwordMinimum(MIN_PASSWORD_LENGTH);
+  }
+
+  return words[failure.code];
 };
 
 /** Each mode has its own painting, credited on the picture like the landing page. */
 const PAINTINGS: Record<
   Mode,
-  { alt: string; caption: string; position: string; src: string }
+  { caption: string; position: string; src: string }
 > = {
   "sign-in": {
-    alt: "Claude Monet, Woman with a Parasol: a woman holding a green parasol stands on a windy hilltop against a bright sky, her young son in the grass nearby.",
     caption: "Claude Monet, Woman with a Parasol, 1875.",
     position: "object-center",
     src: "/landing/monet-woman-with-a-parasol.jpg",
   },
   "sign-up": {
-    alt: "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte: people rest on a sunny riverside lawn while a couple under a parasol stands beside a small dog and a pet monkey.",
     caption:
       "Georges Seurat, A Sunday Afternoon on the Island of La Grande Jatte, 1884–\u206086.",
     position: "object-right",
@@ -54,14 +63,18 @@ const PAINTINGS: Record<
   },
 };
 
-const MODES = [
-  { label: "Sign in", value: "sign-in" },
-  { label: "Create an account", value: "sign-up" },
-] as const;
-
 const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
+  const locale = useLocale();
+  const { signIn: words } = useMessages().appExtras;
+
+  const modes = [
+    { label: words.signIn, value: "sign-in" },
+    { label: words.createOption, value: "sign-up" },
+  ] as const;
+
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<SignInFailure | null>(null);
+  const error = failureMessage(failure, words, locale);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const nameId = useId();
@@ -74,12 +87,10 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
     const password = String(form.get("password") ?? "");
     const name = String(form.get("name") ?? "").trim();
 
-    setError(null);
+    setFailure(null);
 
     if (mode === "sign-up" && password.length < MIN_PASSWORD_LENGTH) {
-      setError(
-        `Please choose a password of at least ${MIN_PASSWORD_LENGTH} characters.`
-      );
+      setFailure({ code: "passwordMinimum" });
 
       return;
     }
@@ -92,25 +103,26 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
           ? await authClient.signIn.email({ email, password })
           : await authClient.signUp.email({
               email,
-              name: name || email.split("@")[0] || "Friend",
+              name: name || email.split("@")[0] || words.friend,
               password,
             });
 
       if (result.error) {
-        setError(
-          mode === "sign-in"
-            ? "That email and password did not match. Please check them and try again."
-            : (result.error.message ??
-                "We could not create the account. Please try again.")
-        );
+        let nextFailure: SignInFailure = { code: "createError" };
+
+        if (mode === "sign-in") {
+          nextFailure = { code: "mismatch" };
+        } else if (result.error.message) {
+          nextFailure = { code: "server", message: result.error.message };
+        }
+
+        setFailure(nextFailure);
         setBusy(false);
 
         return;
       }
     } catch {
-      setError(
-        "We couldn’t connect. Check your internet connection and try again."
-      );
+      setFailure({ code: "connectionError" });
       setBusy(false);
 
       return;
@@ -121,7 +133,9 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
   };
 
   const painting = PAINTINGS[mode];
-  const heading = HEADINGS[mode];
+  const title = mode === "sign-in" ? words.welcome : words.createTitle;
+  const intro = mode === "sign-in" ? words.body : words.createBody;
+  const submitLabel = mode === "sign-in" ? words.signIn : words.createAccount;
 
   return (
     <div className="bg-background text-foreground grid min-h-svh lg:grid-cols-2">
@@ -144,26 +158,26 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
               className="inline-flex min-h-12 items-center text-[0.944rem] font-medium underline underline-offset-[0.278rem]"
               href="/"
             >
-              Back to home
+              {words.backHome}
             </Link>
           </nav>
 
           <div className="flex flex-col gap-[1.444rem]">
             <div className="flex flex-col gap-[0.889rem]">
               <h1 className="text-[2.444rem] leading-[1.09] font-semibold tracking-[-0.04em] sm:text-[3.111rem] sm:leading-[1.07]">
-                {heading.title}
+                {title}
               </h1>
               <p className="text-muted-foreground text-[1.056rem] leading-[1.58]">
-                {heading.intro}
+                {intro}
               </p>
             </div>
             <Segmented
-              label="Sign in or create an account"
+              label={words.modeLabel}
               onValueChange={(nextMode) => {
                 setMode(nextMode);
-                setError(null);
+                setFailure(null);
               }}
-              options={MODES}
+              options={modes}
               stretch
               value={mode}
             />
@@ -182,7 +196,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                       className="text-[0.944rem] font-semibold"
                       htmlFor={nameId}
                     >
-                      Your full name
+                      {words.name}
                     </Label>
                     <Input
                       autoComplete="name"
@@ -198,7 +212,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                     className="text-[0.944rem] font-semibold"
                     htmlFor={emailId}
                   >
-                    Email
+                    {words.email}
                   </Label>
                   <Input
                     autoComplete="email"
@@ -215,7 +229,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                     className="text-[0.944rem] font-semibold"
                     htmlFor={passwordId}
                   >
-                    Password
+                    {words.password}
                   </Label>
                   <div className="flex gap-[0.444rem]">
                     <Input
@@ -233,7 +247,7 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                     />
                     <Button
                       aria-label={
-                        showPassword ? "Hide password" : "Show password"
+                        showPassword ? words.hidePassword : words.showPassword
                       }
                       aria-pressed={showPassword}
                       className="min-h-control-lg w-[4.667rem]"
@@ -241,12 +255,12 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                       type="button"
                       variant="outline"
                     >
-                      {showPassword ? "Hide" : "Show"}
+                      {showPassword ? words.hide : words.show}
                     </Button>
                   </div>
                   {mode === "sign-up" ? (
                     <p className="text-muted-foreground text-[0.889rem]">
-                      At least {MIN_PASSWORD_LENGTH} characters.
+                      {words.passwordHint(MIN_PASSWORD_LENGTH)}
                     </p>
                   ) : null}
                 </div>
@@ -267,27 +281,27 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
                 size="lg"
                 type="submit"
               >
-                {busy ? "One moment…" : SUBMIT_WORDS[mode]}
+                {busy ? words.busy : submitLabel}
               </Button>
             </form>
           </div>
 
           <p className="border-border text-muted-foreground border-t pt-[1.111rem] text-[0.889rem] leading-[1.5]">
-            Just taking a break?
+            {words.breakPrompt}
             <br />
             <Link
               className="text-accent-foreground inline-flex min-h-12 items-center text-[0.944rem] font-medium underline underline-offset-[0.222rem]"
               href="/solitaire"
             >
-              Play Solitaire without signing in
+              {words.play}
             </Link>
             <span className={HIDE_ON_PHONES}>
-              {", or "}
+              {words.or}
               <Link
                 className="text-accent-foreground inline-flex min-h-12 items-center text-[0.944rem] font-medium underline underline-offset-[0.222rem]"
                 href="/mahjong"
               >
-                play Mahjong
+                {words.playMahjong}
               </Link>
             </span>
           </p>
@@ -296,15 +310,17 @@ const SignInForm = ({ initialMode = "sign-in" }: { initialMode?: Mode }) => {
 
       {/* Like the landing page: a painting beside the form, credited on the picture itself. */}
       <figure className="bg-neutral-wash sticky top-0 hidden h-svh self-start overflow-hidden lg:block">
-        <Image
-          alt={painting.alt}
-          className={`object-cover ${painting.position}`}
-          fill
-          key={painting.src}
-          loading="eager"
-          sizes="50vw"
-          src={painting.src}
-        />
+        <div className="relative h-full">
+          <Image
+            alt={words.paintingAlt[mode]}
+            className={`object-cover ${painting.position}`}
+            fill
+            key={painting.src}
+            loading="eager"
+            sizes="50vw"
+            src={painting.src}
+          />
+        </div>
         <figcaption className="bg-raised text-foreground absolute right-0 bottom-0 max-w-[calc(100%-1.111rem)] px-[0.889rem] py-[0.556rem] text-[0.889rem] leading-[1.5] text-balance">
           {painting.caption}
         </figcaption>

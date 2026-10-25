@@ -9,6 +9,8 @@ import type { ReactNode, Ref } from "react";
 
 import { Avatar } from "@/components/app/bits";
 import { IsoIcon } from "@/components/app/iso-icon";
+import { useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 
 import type { CircleContact } from "./contact-form";
 import { imessageRowStatus } from "./contact-imessage-setup";
@@ -18,40 +20,35 @@ import type {
 } from "./contact-imessage-setup";
 
 /** How messages reach them, in words, without the address itself. */
-const REACHED_BY: Record<CircleContact["channels"][number]["channel"], string> =
-  {
-    discord: "Reached by Discord",
-    email: "Reached by email",
-    imessage: "Reached by iMessage",
-    in_app: "Reached in LifeLink",
-    telegram: "Reached by Telegram",
-  };
-
-const reachLine = (contact: CircleContact): string => {
+const reachLine = (contact: CircleContact, t: Messages["circle"]): string => {
   const preferred =
     contact.channels.find((channel) => channel.preferred) ??
     contact.channels[0];
 
   if (preferred) {
-    return REACHED_BY[preferred.channel];
+    return t.reachedBy[preferred.channel];
   }
 
   if (contact.telegram && !contact.telegram.linked) {
-    return "Telegram: waiting for them to tap Start";
+    return t.reachTelegramWaiting;
   }
 
   return (contact.savedHandles ?? []).length > 0
-    ? "WhatsApp saved. Can’t message yet"
-    : "No way to reach them yet";
+    ? t.reachWhatsappSaved
+    : t.reachNone;
 };
 
 /** Marks someone in the trusted circle. The word carries the meaning; the key is decoration. */
-const TrustedBadge = () => (
-  <span className="text-label inline-flex items-center gap-1 font-medium">
-    <IsoIcon kind="trusted" size={28} />
-    Trusted
-  </span>
-);
+const TrustedBadge = () => {
+  const t = useMessages();
+
+  return (
+    <span className="text-label inline-flex items-center gap-1 font-medium">
+      <IsoIcon kind="trusted" size={28} />
+      {t.circle.trusted}
+    </span>
+  );
+};
 
 /** One person: who they are, how they're reached, and at most one status. Changes live behind Edit. */
 const ContactRow = ({
@@ -79,8 +76,11 @@ const ContactRow = ({
     (channel) => channel.channel === "imessage"
   );
 
+  const messages = useMessages();
+  const t = messages.circle;
+
   const status = usesIMessage
-    ? imessageRowStatus(imessageContext, imessageRow)
+    ? imessageRowStatus(imessageContext, imessageRow, messages)
     : null;
 
   return (
@@ -97,10 +97,10 @@ const ContactRow = ({
             {contact.name}
           </span>
           {contact.trusted ? <TrustedBadge /> : null}
-          {contact.sample ? <Pill>Practice contact</Pill> : null}
+          {contact.sample ? <Pill>{t.practiceContact}</Pill> : null}
         </span>
         <span className="text-muted-foreground text-label">
-          {contact.relationship || "Contact"} · {reachLine(contact)}
+          {contact.relationship || t.contactFallback} · {reachLine(contact, t)}
         </span>
         <p className="text-label mt-2 wrap-anywhere">{sharingSummary}</p>
         {status ? (
@@ -118,7 +118,7 @@ const ContactRow = ({
           href={`/messages/${contact._id}` as Route}
         >
           <MessageCircleIcon aria-hidden="true" />
-          Message
+          {t.message}
           <span className="sr-only"> {contact.name}</span>
         </Link>
         <Button
@@ -128,12 +128,12 @@ const ContactRow = ({
           variant="outline"
         >
           <ShieldCheckIcon aria-hidden="true" />
-          Permissions
-          <span className="sr-only"> for {contact.name}</span>
+          {t.permissions}
+          <span className="sr-only">{t.permissionsFor(contact.name)}</span>
         </Button>
         <Button onClick={onEdit} ref={editRef} size="sm" variant="ghost">
           <PencilIcon aria-hidden="true" />
-          Edit
+          {t.edit}
           <span className="sr-only"> {contact.name}</span>
         </Button>
       </div>

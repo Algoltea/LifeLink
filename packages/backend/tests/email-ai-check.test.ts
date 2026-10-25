@@ -122,6 +122,93 @@ describe("AI checks on newly arrived email", () => {
     fetchMock.mockReset();
   });
 
+  it("projects the linked review's actual method after cloud analysis replaces local rules", async () => {
+    const { backend, connectionId, owner, ownerId } = await setup();
+    const emailId = await sync(backend, ownerId, connectionId);
+    const local = await owner.query(api.emails.get, { emailId });
+
+    expect(local.email.scamCheck).toMatchObject({
+      method: "local",
+      model: expect.stringMatching(/^rules/u),
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      modelReply("Buy two Apple gift cards today")
+    );
+    await backend.action(internal.scam.checkNewEmail, { emailId });
+    const cloud = await owner.query(api.emails.get, { emailId });
+
+    expect(cloud.email.scamCheck).toMatchObject({
+      method: "cloud",
+      model: "test-fast-model",
+      rulesVersion: local.email.scamCheck?.rulesVersion,
+    });
+    expect(cloud.email.bodyText).toBe(SCAM_BODY);
+    await expect(
+      backend.run(async (ctx) => await ctx.db.get(emailId))
+    ).resolves.toMatchObject({
+      scamCheck: { rulesVersion: local.email.scamCheck?.rulesVersion },
+    });
+  });
+
+  it("keeps legacy checks with no model method unknown", async () => {
+    const { backend, connectionId, owner, ownerId } = await setup();
+    const emailId = await sync(backend, ownerId, connectionId);
+    const local = await owner.query(api.emails.get, { emailId });
+    const reviewId = local.email.scamCheck?.reviewId;
+
+    if (reviewId === undefined) {
+      throw new Error("Expected an automatic review");
+    }
+
+    await backend.run(
+      async (ctx) => await ctx.db.patch(reviewId, { model: "" })
+    );
+
+    const detail = await owner.query(api.emails.get, { emailId });
+
+    expect(detail.email.scamCheck).toMatchObject({ model: "" });
+    expect(detail.email.scamCheck).not.toHaveProperty("method", "local");
+    expect(detail.email.scamCheck).not.toHaveProperty("method", "cloud");
+  });
+
+  it.each(["owner", "email"])(
+    "does not expose review metadata when the linked %s does not match",
+    async (mismatch) => {
+      const { backend, connectionId, owner, ownerId } = await setup();
+      const emailId = await sync(backend, ownerId, connectionId);
+
+      const { id: otherId } = await signUp(backend, {
+        demo: false,
+        name: "Other owner",
+        role: "owner",
+        subject: "unrelated-review-owner",
+      });
+
+      const local = await owner.query(api.emails.get, { emailId });
+      const reviewId = local.email.scamCheck?.reviewId;
+
+      if (reviewId === undefined) {
+        throw new Error("Expected an automatic review");
+      }
+
+      await backend.run(
+        async (ctx) =>
+          await ctx.db.patch(reviewId, {
+            emailId: mismatch === "email" ? null : emailId,
+            model: "private-provider-model",
+            ownerId: mismatch === "owner" ? otherId : ownerId,
+          })
+      );
+
+      const detail = await owner.query(api.emails.get, { emailId });
+
+      expect(detail.email.scamCheck).not.toHaveProperty("model");
+      expect(detail.email.scamCheck).not.toHaveProperty("method");
+      expect(detail.warningSigns).toStrictEqual([]);
+    }
+  );
+
   it("replaces the keyword result with the fast model's checked result", async () => {
     const { backend, connectionId, ownerId } = await setup();
     const emailId = await sync(backend, ownerId, connectionId);
@@ -218,7 +305,7 @@ describe("AI checks on newly arrived email", () => {
   });
 
   it("keeps the keyword result when the model is unavailable", async () => {
-    const { backend, connectionId, ownerId } = await setup();
+    const { backend, connectionId, owner, ownerId } = await setup();
     const emailId = await sync(backend, ownerId, connectionId);
 
     fetchMock.mockResolvedValueOnce(
@@ -238,6 +325,12 @@ describe("AI checks on newly arrived email", () => {
     expect(review).toMatchObject({
       cloudAnalysisConsent: true,
       model: expect.stringMatching(/^rules/u),
+    });
+
+    const detail = await owner.query(api.emails.get, { emailId });
+    expect(detail.email.scamCheck).toMatchObject({
+      method: "local",
+      model: review?.model,
     });
   });
 });

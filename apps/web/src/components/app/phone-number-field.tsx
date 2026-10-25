@@ -1,6 +1,10 @@
 "use client";
 
+import { intlLocaleOf } from "@lifelink/contracts/locale";
 import { Input } from "@lifelink/ui/components/input";
+import { useMemo } from "react";
+
+import { useLocale, useMessages } from "@/i18n/locale";
 
 /** Calling codes by region. Several regions share +1, so the region is what gets picked. */
 const CALLING_CODES = {
@@ -145,16 +149,7 @@ const OTHER_REGION = "";
 const NON_DIGITS = /\D/gu;
 const SPLIT_PATTERN = /^\+(?<digits>\d+)$/u;
 
-const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
-
-const regionLabel = (region: string): string =>
-  `${regionNames.of(region) ?? region} +${callingCodes.get(region) ?? ""}`;
-
 const commonRegions = new Set<string>(COMMON_REGIONS);
-
-const otherRegions = [...callingCodes.keys()]
-  .filter((region) => !commonRegions.has(region))
-  .toSorted((a, b) => regionLabel(a).localeCompare(regionLabel(b)));
 
 /** The device's region when it has a calling code, else the United States. */
 const defaultRegion = (): string => {
@@ -237,42 +232,68 @@ const PhoneNumberField = ({
   number: string;
   onChange: (next: { number: string; region: string }) => void;
   region: string;
-}) => (
-  <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-    <select
-      aria-label="Country code"
-      className="border-control bg-raised text-foreground hover:border-foreground min-h-control w-full min-w-0 rounded-md border px-4 py-2 text-base transition-colors sm:w-56"
-      onChange={(event) => onChange({ number, region: event.target.value })}
-      value={region}
-    >
-      <optgroup label="Common">
-        {COMMON_REGIONS.map((code) => (
-          <option key={code} value={code}>
-            {regionLabel(code)}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="All countries">
-        {otherRegions.map((code) => (
-          <option key={code} value={code}>
-            {regionLabel(code)}
-          </option>
-        ))}
-        <option value={OTHER_REGION}>Other: type the + code yourself</option>
-      </optgroup>
-    </select>
-    <Input
-      aria-describedby={describedBy}
-      autoComplete="tel-national"
-      className="min-w-0 flex-1 basis-48"
-      id={id}
-      inputMode="tel"
-      onChange={(event) => onChange({ number: event.target.value, region })}
-      placeholder={region === OTHER_REGION ? "+44 20 7946 0958" : undefined}
-      type="tel"
-      value={number}
-    />
-  </div>
-);
+}) => {
+  const locale = useLocale();
+  const { phone: words } = useMessages().appExtras;
+
+  const { common, other } = useMemo(() => {
+    const intlLocale = intlLocaleOf(locale);
+    const regionNames = new Intl.DisplayNames([intlLocale], { type: "region" });
+
+    const toOption = (regionCode: string) => ({
+      label: `${regionNames.of(regionCode) ?? regionCode} +${callingCodes.get(regionCode) ?? ""}`,
+      value: regionCode,
+    });
+
+    return {
+      common: COMMON_REGIONS.map(toOption),
+      other: [...callingCodes.keys()]
+        .flatMap((regionCode) =>
+          commonRegions.has(regionCode) ? [] : [toOption(regionCode)]
+        )
+        .toSorted((first, second) =>
+          first.label.localeCompare(second.label, intlLocale)
+        ),
+    };
+  }, [locale]);
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+      <select
+        aria-label={words.countryCode}
+        className="border-control bg-raised text-foreground hover:border-foreground min-h-control w-full min-w-0 rounded-md border px-4 py-2 text-base transition-colors sm:w-56"
+        onChange={(event) => onChange({ number, region: event.target.value })}
+        value={region}
+      >
+        <optgroup label={words.common}>
+          {common.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={words.allCountries}>
+          {other.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+          <option value={OTHER_REGION}>{words.other}</option>
+        </optgroup>
+      </select>
+      <Input
+        aria-describedby={describedBy}
+        autoComplete="tel-national"
+        className="min-w-0 flex-1 basis-48"
+        id={id}
+        inputMode="tel"
+        onChange={(event) => onChange({ number: event.target.value, region })}
+        placeholder={region === OTHER_REGION ? "+44 20 7946 0958" : undefined}
+        type="tel"
+        value={number}
+      />
+    </div>
+  );
+};
 
 export { PhoneNumberField, defaultRegion, joinPhone, splitPhone };

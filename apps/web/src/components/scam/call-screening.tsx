@@ -16,6 +16,7 @@ import {
 import { useEffect, useId, useState } from "react";
 
 import { usePreferences } from "@/components/app/preferences";
+import { useLocale } from "@/i18n/locale";
 import { ago } from "@/lib/format";
 
 import {
@@ -24,8 +25,9 @@ import {
   CallPrivacy,
   CallWarningGuide,
   callTime,
+  useCallScreeningMessages,
 } from "./call-screening-parts";
-import { CallSummary, OUTCOME_LABELS, outcomeOf } from "./call-summary";
+import { CallSummary, outcomeOf } from "./call-summary";
 import { TrustedPeople } from "./trusted-people";
 import { useCallScreening } from "./use-call-screening";
 import type { CallState } from "./use-call-screening";
@@ -35,6 +37,7 @@ const CallLanding = ({
 }: {
   start: (practice: boolean) => Promise<void>;
 }) => {
+  const messages = useCallScreeningMessages();
   const { me } = usePreferences();
   const integrations = useQuery(api.status.integrations);
   const [consent, setConsent] = useState(false);
@@ -53,21 +56,20 @@ const CallLanding = ({
     >
       <div>
         <h2 className="text-section font-semibold" id="call-screening-title">
-          Listen to a call
+          {messages.listenTitle}
         </h2>
         <p className="text-muted-foreground text-label mt-2">
-          LifeLink shows the call’s words on screen, has AI check them for scam
-          warning signs, and warns you out loud if it finds one.
+          {messages.intro}
         </p>
       </div>
       <ol className="text-body marker:text-accent-ink list-decimal space-y-3 pl-6 marker:font-semibold">
-        <li>Put the call on speaker near this device.</li>
-        <li>Press Start listening and allow the microphone.</li>
-        <li>Keep this screen open while you talk.</li>
+        <li>{messages.speakerStep}</li>
+        <li>{messages.startStep}</li>
+        <li>{messages.openStep}</li>
       </ol>
+      <p className="text-muted-foreground text-label">{messages.otherDevice}</p>
       <p className="text-muted-foreground text-label">
-        If your phone cannot use the microphone during a call, open LifeLink on
-        another device.
+        {messages.languageLimit}
       </p>
       <CallPrivacy />
       {!practiceMode && configured ? (
@@ -82,10 +84,7 @@ const CallLanding = ({
             onChange={(event) => setConsent(event.target.checked)}
             type="checkbox"
           />
-          <span>
-            I understand the call’s sound and words will be sent to cloud AI
-            services while this check is on.
-          </span>
+          <span>{messages.consent}</span>
         </label>
       ) : null}
       <Button
@@ -94,17 +93,16 @@ const CallLanding = ({
         onClick={() => start(false)}
       >
         <MicIcon aria-hidden="true" />
-        Start listening
+        {messages.start}
       </Button>
       {practiceMode ? (
         <p className="text-muted-foreground text-label">
-          Practice mode is on. Try the made-up call below without a microphone.
+          {messages.practiceMode}
         </p>
       ) : null}
       {!practiceMode && integrations !== undefined && !configured ? (
         <p className="text-muted-foreground text-label">
-          Live call checks are not set up yet. You can try a practice call or
-          type the caller’s words.
+          {messages.notConfigured}
         </p>
       ) : null}
       <Button
@@ -113,48 +111,57 @@ const CallLanding = ({
         variant="ghost"
       >
         <PlayIcon aria-hidden="true" />
-        Try a practice call
+        {messages.tryPractice}
       </Button>
       <p className="text-muted-foreground text-label">
-        The practice call uses no microphone or cloud AI. Its short summary is
-        saved in Earlier checks.
+        {messages.practiceSaved}
       </p>
     </section>
   );
 };
 
-const listeningTitle = (status: string, practice: boolean): string => {
+const listeningTitle = (
+  messages: ReturnType<typeof useCallScreeningMessages>,
+  status: string,
+  practice: boolean
+): string => {
   if (status === "connecting") {
-    return "Getting ready…";
+    return messages.gettingReady;
   }
 
   if (practice && status === "listening") {
-    return "Practice call playing";
+    return messages.practicePlaying;
   }
 
-  return status === "listening"
-    ? "LifeLink is listening"
-    : "Listening has stopped";
+  return status === "listening" ? messages.listening : messages.stopped;
 };
 
-const callStopLabel = (failed: boolean, practice: boolean): string => {
+const callStopLabel = (
+  messages: ReturnType<typeof useCallScreeningMessages>,
+  failed: boolean,
+  practice: boolean
+): string => {
   if (failed) {
-    return "Finish and save summary";
+    return messages.finishSave;
   }
 
-  return practice ? "Stop practice call" : "Stop listening";
+  return practice ? messages.stopPractice : messages.stopListening;
 };
 
-const callErrorText = (permissionDenied: boolean, empty: boolean): string => {
+const callErrorText = (
+  messages: ReturnType<typeof useCallScreeningMessages>,
+  permissionDenied: boolean,
+  empty: boolean
+): string => {
   if (permissionDenied) {
-    return "Microphone access was not allowed. Allow the microphone in your browser’s site settings, then try again. You can also try a practice call.";
+    return messages.permissionDenied;
   }
 
   if (empty) {
-    return "LifeLink could not start listening. Try again, or try a practice call.";
+    return messages.startError;
   }
 
-  return "The listening connection stopped. Your captions are still here. Press Start again to keep listening, or Finish to save a summary.";
+  return messages.connectionError;
 };
 
 const CallEnded = ({
@@ -165,36 +172,41 @@ const CallEnded = ({
   onBack: () => void;
   onRetry: () => Promise<void>;
   state: CallState;
-}) => (
-  <div className="space-y-5">
-    {state.checking ? (
-      <output className="text-body">
-        Checking the last part of the call for warning signs…
-      </output>
-    ) : null}
-    {state.notice ? (
-      <output className="text-body">{state.notice}</output>
-    ) : null}
-    <CallSummary
-      onBack={onBack}
-      onRetry={onRetry}
-      saveError={state.saveError}
-      saving={state.saving || state.checking}
-      summary={state}
-      summaryId={state.summaryId}
-    />
-  </div>
-);
+}) => {
+  const messages = useCallScreeningMessages();
+
+  return (
+    <div className="space-y-5">
+      {state.checking ? (
+        <output className="text-body">{messages.checkingLastPart}</output>
+      ) : null}
+      {state.notice ? (
+        <output className="text-body">{messages.timeLimit}</output>
+      ) : null}
+      <CallSummary
+        onBack={onBack}
+        onRetry={onRetry}
+        saveError={state.saveError}
+        saving={state.saving || state.checking}
+        summary={state}
+        summaryId={state.summaryId}
+      />
+    </div>
+  );
+};
 
 const CallScreening = ({
   onActiveChange,
 }: {
   onActiveChange: (active: boolean) => void;
 }) => {
+  const messages = useCallScreeningMessages();
+
   const { state, start, finish, reset, toggleMute, retrySave } =
     useCallScreening();
 
   const active = state.status !== "idle";
+
   useEffect(() => {
     onActiveChange(active);
   }, [active, onActiveChange]);
@@ -213,7 +225,7 @@ const CallScreening = ({
   const failed =
     state.status === "error" || state.status === "permission-denied";
 
-  const stopLabel = callStopLabel(failed, state.practice);
+  const stopLabel = callStopLabel(messages, failed, state.practice);
 
   return (
     <section className="flex min-w-0 flex-col gap-6">
@@ -224,14 +236,12 @@ const CallScreening = ({
         />
         <div className="min-w-0 flex-1">
           <h2 className="sm:text-section text-xl font-semibold">
-            {listeningTitle(state.status, state.practice)}
+            {listeningTitle(messages, state.status, state.practice)}
           </h2>
           <p className="text-muted-foreground text-body">
-            {state.practice ? "Practice · " : ""}
+            {state.practice ? `${messages.practice} · ` : ""}
             {callTime(state.durationMs)}
-            {listening && !lastFlag
-              ? " · No warning signs picked up so far"
-              : ""}
+            {listening && !lastFlag ? messages.noWarningsYet : ""}
           </p>
         </div>
         <Button
@@ -241,7 +251,9 @@ const CallScreening = ({
           variant="secondary"
         >
           <SquareIcon aria-hidden="true" className="fill-current" />
-          <span className="sm:hidden">{failed ? "Finish" : "Stop"}</span>
+          <span className="sm:hidden">
+            {failed ? messages.finish : messages.stop}
+          </span>
           <span className="hidden sm:inline">{stopLabel}</span>
         </Button>
       </div>
@@ -249,6 +261,7 @@ const CallScreening = ({
         <div className="text-body flex flex-col gap-4" role="alert">
           <p>
             {callErrorText(
+              messages,
               state.status === "permission-denied",
               state.captions.length === 0 && state.durationMs === 0
             )}
@@ -257,21 +270,21 @@ const CallScreening = ({
             <Button
               onClick={() => start(state.practice, state.status === "error")}
             >
-              Start again
+              {messages.startAgain}
             </Button>
             <Button onClick={() => start(true)} variant="outline">
-              Try a practice call
+              {messages.tryPractice}
             </Button>
             <Button onClick={reset} variant="ghost">
-              Check a message
+              {messages.checkMessage}
             </Button>
           </div>
         </div>
       ) : null}
       {state.practice ? (
         <p className="text-body">
-          <Pill tone="neutral">Practice</Pill> This is a made-up call. No
-          microphone or cloud AI is used.
+          <Pill tone="neutral">{messages.practice}</Pill>{" "}
+          {messages.practiceExplanation}
         </p>
       ) : null}
       {lastFlag ? (
@@ -284,37 +297,25 @@ const CallScreening = ({
       ) : null}
       {state.inputPaused ? (
         <output className="text-muted-foreground text-body">
-          Listening pauses while the alert plays so it won’t hear its own
-          warning.
+          {messages.paused}
         </output>
       ) : null}
       {state.checksUnavailable ? (
-        <output className="text-body">
-          Warning-sign checks aren’t available right now. The call’s words still
-          appear below.
-        </output>
+        <output className="text-body">{messages.checksUnavailable}</output>
       ) : null}
       {state.alertStatus === "unavailable" && !lastFlag ? (
-        <output className="text-body">
-          Sound is unavailable. Warning signs will still appear on screen.
-        </output>
+        <output className="text-body">{messages.soundUnavailable}</output>
       ) : null}
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         {lastFlag ? (
           <aside className="order-first flex flex-col gap-4 xl:order-last">
             <h2 className="text-section font-semibold">
-              Ask someone you trust
+              {messages.askTrusted}
             </h2>
             <p className="text-muted-foreground text-body">
-              It’s fine to say “I’ll call you back” and hang up first.
+              {messages.hangUpFirst}
             </p>
-            <TrustedPeople
-              message={
-                state.practice
-                  ? "I tried LifeLink’s practice scam call. Could we talk about what to do if a call like that happens?"
-                  : undefined
-              }
-            />
+            <TrustedPeople practiceCall={state.practice} />
           </aside>
         ) : null}
         <CallCaptions
@@ -331,7 +332,9 @@ const CallScreening = ({
 
 /** Call summaries remain separate from message records for older clients. */
 const CallHistory = () => {
+  const locale = useLocale();
   const summaries = useQuery(api.callscreening.list);
+  const messages = useCallScreeningMessages();
   const { me } = usePreferences();
 
   const [selected, setSelected] = useState<Id<"scamCallSummaries"> | null>(
@@ -348,13 +351,13 @@ const CallHistory = () => {
     <div className="flex flex-col gap-6">
       {current ? (
         <CallSummary
-          backLabel="Close"
+          backLabel={messages.close}
           onBack={() => setSelected(null)}
           summary={{ ...current, practice: current.mode === "simulated" }}
           summaryId={current._id}
         />
       ) : null}
-      <ul aria-label="Earlier call checks">
+      <ul aria-label={messages.earlierAria}>
         {summaries.map((summary) => (
           <li className="border-rule border-t" key={summary._id}>
             <button
@@ -369,13 +372,13 @@ const CallHistory = () => {
               <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="text-body font-semibold">
                   {summary.mode === "simulated"
-                    ? "Practice call"
-                    : "Phone call"}{" "}
+                    ? messages.practiceCall
+                    : messages.phoneCall}{" "}
                   · {callTime(summary.durationMs)}
                 </span>
                 <span className="text-muted-foreground text-body">
                   {
-                    OUTCOME_LABELS[
+                    messages.outcomeLabels[
                       outcomeOf({
                         ...summary,
                         practice: summary.mode === "simulated",
@@ -385,12 +388,14 @@ const CallHistory = () => {
                   ·{" "}
                   {ago(
                     summary.createdAt,
-                    me?.profile?.timeZone ?? "America/New_York"
+                    me?.profile?.timeZone ?? "America/New_York",
+                    undefined,
+                    locale
                   )}
                 </span>
               </span>
               <span className="text-body hidden font-medium sm:inline">
-                Review
+                {messages.review}
               </span>
               <ChevronRightIcon
                 aria-hidden="true"

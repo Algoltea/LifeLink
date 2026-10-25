@@ -1,5 +1,9 @@
-import { helpStyleOf } from "@lifelink/contracts/help-style";
-import type { ExplanationDetail } from "@lifelink/contracts/help-style";
+import { helpStyleOf, languageName } from "@lifelink/contracts/help-style";
+import type {
+  ExplanationDetail,
+  SupportLanguage,
+} from "@lifelink/contracts/help-style";
+import { interfaceLocaleOf, intlLocaleOf } from "@lifelink/contracts/locale";
 import { briefingSchema } from "@lifelink/contracts/model-output";
 import type { Briefing } from "@lifelink/contracts/model-output";
 import { v } from "convex/values";
@@ -92,23 +96,27 @@ export const facts = internalQuery({
       )
       .collect();
 
+    const style = helpStyleOf(preferences);
+    const intl = intlLocaleOf(interfaceLocaleOf(style.language));
+
     return {
       appointments: appointments.map((appointment) => ({
-        day: formatDay(appointment.startsAt, owner.timeZone),
+        day: formatDay(appointment.startsAt, owner.timeZone, intl),
         ride: appointment.rideStatus,
-        time: formatTime(appointment.startsAt, owner.timeZone),
+        time: formatTime(appointment.startsAt, owner.timeZone, intl),
         title: appointment.title,
       })),
       demoMode: owner.demoMode,
-      detail: helpStyleOf(preferences).detail,
+      detail: style.detail,
+      language: style.language,
       name: owner.preferredName,
       reminders: reminders
         .filter((reminder) => reminder.dismissedAt === null)
         .map((reminder) => ({
-          time: formatTime(reminder.remindAt, owner.timeZone),
+          time: formatTime(reminder.remindAt, owner.timeZone, intl),
           title: reminder.title,
         })),
-      today: formatDay(now, owner.timeZone),
+      today: formatDay(now, owner.timeZone, intl),
       waitingCount: waiting.length,
     };
   },
@@ -118,6 +126,7 @@ interface Facts {
   appointments: { day: string; ride: string; time: string; title: string }[];
   demoMode: boolean;
   detail: ExplanationDetail;
+  language: SupportLanguage;
   name: string;
   reminders: { time: string; title: string }[];
   today: string;
@@ -130,6 +139,36 @@ const maxLines = (detail: ExplanationDetail): number =>
 
 const rulesBriefing = (input: Facts): Briefing => {
   const [next] = input.appointments;
+
+  if (input.language === "es") {
+    const lines: string[] = [];
+
+    if (next?.ride === "none") {
+      lines.push("Aún no tiene transporte para esa cita.");
+    }
+
+    if (next?.ride === "confirmed") {
+      lines.push("Su transporte está confirmado.");
+    }
+
+    for (const reminder of input.reminders.slice(0, 2)) {
+      lines.push(`Recordatorio a las ${reminder.time}: ${reminder.title}.`);
+    }
+
+    if (input.waitingCount > 0) {
+      lines.push(
+        `${input.waitingCount} ${input.waitingCount === 1 ? "cosa espera" : "cosas esperan"} su aprobación.`
+      );
+    }
+
+    return {
+      greetingFact:
+        next === undefined
+          ? "No hay nada programado para los próximos días."
+          : `${next.title} es el ${next.day} a las ${next.time}.`,
+      lines: lines.slice(0, maxLines(input.detail)),
+    };
+  }
 
   const greetingFact =
     next === undefined
@@ -180,6 +219,7 @@ export const generate = internalAction({
             content: [
               `Write ${input.name}'s short morning briefing for ${input.today}. Return only JSON.`,
               "Use only the facts given. Do not add or guess anything. Short, warm, plain sentences. No emoji.",
+              `Write your own words in ${languageName(input.language)}. Keep names and quoted text unchanged.`,
               input.detail === "short"
                 ? "Keep it brief: at most three lines after the greeting fact."
                 : "You may use up to five lines after the greeting fact.",

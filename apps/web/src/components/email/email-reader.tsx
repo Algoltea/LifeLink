@@ -9,7 +9,6 @@ import {
   InfoIcon,
   LightbulbIcon,
   ReplyIcon,
-  ShieldCheckIcon,
   ShieldIcon,
   ShieldQuestionIcon,
   TextIcon,
@@ -23,7 +22,14 @@ import { toast } from "sonner";
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
-import { emailWarningIntro, hasEmailWarning } from "@/lib/email-warning";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
+import {
+  emailCheckNotice,
+  emailWarningIntro,
+  emailWarningSign,
+  hasEmailWarning,
+} from "@/lib/email-warning";
 import { messageOf } from "@/lib/errors";
 import { formatShortDay, formatTime, formatWhen } from "@/lib/format";
 
@@ -34,25 +40,18 @@ import type { ReplyDraft } from "./reply-composer";
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const RIDE_WORDS = {
-  asked: "You've asked someone for a ride.",
-  confirmed: "Your ride is confirmed.",
-  declined: "The ride was declined.",
-  none: null,
-} as const;
-
 const REPLY_FORM_ID = "email-reply";
 
-const scanSummaryFor = (email: Doc<"emails">): string => {
+const scanSummaryFor = (email: Doc<"emails">, t: Messages["email"]): string => {
   if (hasEmailWarning(email)) {
-    return "Warning signs found";
+    return t.warningSignsFound;
   }
 
   if (email.scamCheck === undefined) {
-    return "This email has not been checked yet.";
+    return t.notCheckedEmail;
   }
 
-  return "No warning signs found. Sender not confirmed.";
+  return t.noSigns;
 };
 
 const checkLinkClass = buttonVariants({
@@ -61,7 +60,7 @@ const checkLinkClass = buttonVariants({
   variant: "outline",
 });
 
-/** The local check's result, said once, where it can't be missed. */
+/** The saved check's result and limits, where they can't be missed. */
 const ScanBanner = ({
   email,
   warningSigns,
@@ -69,17 +68,22 @@ const ScanBanner = ({
   email: Doc<"emails">;
   warningSigns: string[];
 }) => {
-  const scanSummary = scanSummaryFor(email);
+  const locale = useLocale();
+  const t = useMessages().email;
+  const scanSummary = scanSummaryFor(email, t);
+  const checkNotice = emailCheckNotice(email, locale);
   const checkHref = { pathname: "/scam", query: { email: email._id } };
 
   if (email.scamCheck !== undefined && !hasEmailWarning(email)) {
     return (
       <p className="text-muted-foreground text-label flex items-start gap-2.5">
-        <ShieldCheckIcon
+        <ShieldQuestionIcon
           aria-hidden="true"
           className="mt-0.5 size-5 shrink-0"
         />
-        <span>{scanSummary}</span>
+        <span>
+          {scanSummary} {checkNotice}
+        </span>
       </p>
     );
   }
@@ -108,30 +112,25 @@ const ScanBanner = ({
       )}
       <div className="flex min-w-0 flex-1 basis-64 flex-col gap-0.5">
         <p className="text-body font-semibold">{scanSummary}</p>
-        {pending ? (
-          <p className="text-body">
-            Check for common warning signs before you act.
-          </p>
-        ) : null}
+        {pending ? <p className="text-body">{t.checkFirst}</p> : null}
         {!pending && warningSigns.length > 0 ? (
           <ul className="text-body mt-2 flex list-disc flex-col gap-1 pl-5">
             {warningSigns.map((sign) => (
-              <li key={sign}>{sign}</li>
+              <li key={sign}>{emailWarningSign(email, sign, locale)}</li>
             ))}
           </ul>
         ) : null}
         {!pending && warningSigns.length === 0 ? (
-          <p className="text-body">
-            This email raised a concern. Check the request before acting.
-          </p>
+          <p className="text-body">{t.concern}</p>
         ) : null}
+        {checkNotice ? <p className="text-body mt-2">{checkNotice}</p> : null}
       </div>
       <Link
         className={buttonVariants({ className: "self-start", size: "sm" })}
         href={checkHref}
       >
         <ShieldQuestionIcon aria-hidden="true" />
-        {pending ? "Check this email" : "What should I do?"}
+        {pending ? t.checkThis : t.whatShouldIDo}
       </Link>
     </div>
   );
@@ -147,6 +146,8 @@ const SummaryBody = ({
   const summarize = useMutation(api.emails.summarize);
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
   const consentId = useId();
+  const locale = useLocale();
+  const t = useMessages().email;
   const working = email.selectedForReview && email.summary === null;
 
   if (email.summary !== null) {
@@ -157,17 +158,14 @@ const SummaryBody = ({
           <p className="font-semibold">{email.actionNeeded}</p>
         ) : null}
         {hasEmailWarning(email) ? (
-          <p className="text-negative">
-            This has signs of a scam. Please check it before you do anything it
-            asks.
-          </p>
+          <p className="text-negative">{t.scamSigns}</p>
         ) : null}
         <ReadAloudButton
           className="self-start"
-          label="Read the summary aloud"
+          label={t.readSummary}
           text={[
-            emailWarningIntro(email, warningSigns),
-            "Email summary.",
+            emailWarningIntro(email, warningSigns, locale),
+            t.summarySpoken,
             email.summary,
             email.actionNeeded ?? "",
           ]
@@ -180,7 +178,7 @@ const SummaryBody = ({
 
   return (
     <div aria-live="polite" className="flex flex-col gap-3">
-      {working ? <p>Reading it now…</p> : null}
+      {working ? <p>{t.readingNow}</p> : null}
       {working ? null : (
         <label
           className="hover:text-accent-foreground text-label flex min-h-12 cursor-pointer items-start gap-3 leading-relaxed transition-colors"
@@ -193,11 +191,7 @@ const SummaryBody = ({
             onChange={(event) => setAllowCloudAnalysis(event.target.checked)}
             type="checkbox"
           />
-          <span>
-            Send this email to a cloud AI service for a summary and to spot any
-            appointment in it. Leave unchecked for a short preview made in
-            LifeLink.
-          </span>
+          <span>{t.cloudConsent}</span>
         </label>
       )}
       {working ? null : (
@@ -212,23 +206,19 @@ const SummaryBody = ({
           }}
           size="sm"
         >
-          {allowCloudAnalysis
-            ? "Summarize with cloud AI"
-            : "Show a short preview"}
+          {allowCloudAnalysis ? t.summarizeCloud : t.preview}
         </Button>
       )}
     </div>
   );
 };
 
-const summaryNote = (email: Doc<"emails">): string => {
+const summaryNote = (email: Doc<"emails">, t: Messages["email"]): string => {
   if (email.summary !== null) {
-    return "Ready to read";
+    return t.readyToRead;
   }
 
-  return email.selectedForReview
-    ? "Reading it now…"
-    : "Get a short preview made in LifeLink, or choose cloud AI";
+  return email.selectedForReview ? t.readingNow : t.summaryNote;
 };
 
 const ReaderHeader = ({
@@ -239,45 +229,50 @@ const ReaderHeader = ({
   email: Doc<"emails">;
   headingRef: RefObject<HTMLHeadingElement | null>;
   timeZone: string;
-}) => (
-  <header className="flex flex-col gap-4">
-    <h2
-      className="text-mobile-title sm:text-page-title leading-tight font-semibold tracking-tight outline-none"
-      id="email-subject"
-      ref={headingRef}
-      tabIndex={-1}
-    >
-      {email.subject || "(No subject)"}
-    </h2>
-    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
-      <Avatar
-        hue={hueFor(email.fromAddress)}
-        name={email.fromName ?? email.fromAddress}
-      />
-      <p className="flex min-w-0 flex-1 basis-56 flex-col">
-        <span className="text-body font-semibold">
-          <span className="sr-only">From </span>
-          {email.fromName ?? email.fromAddress}
-        </span>
-        {email.fromName ? (
-          <span className="text-muted-foreground text-label">
-            {email.fromAddress}
+}) => {
+  const locale = useLocale();
+  const t = useMessages().email;
+
+  return (
+    <header className="flex flex-col gap-4">
+      <h2
+        className="text-mobile-title sm:text-page-title leading-tight font-semibold tracking-tight outline-none"
+        id="email-subject"
+        ref={headingRef}
+        tabIndex={-1}
+      >
+        {email.subject || t.noSubject}
+      </h2>
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+        <Avatar
+          hue={hueFor(email.fromAddress)}
+          name={email.fromName ?? email.fromAddress}
+        />
+        <p className="flex min-w-0 flex-1 basis-56 flex-col">
+          <span className="text-body font-semibold">
+            <span className="sr-only">{t.from}</span>
+            {email.fromName ?? email.fromAddress}
           </span>
-        ) : null}
-      </p>
-      <p className="text-muted-foreground text-label flex flex-wrap items-center gap-2 self-start pt-0.5">
-        <time
-          dateTime={new Date(email.receivedAt).toISOString()}
-          title={formatWhen(email.receivedAt, timeZone)}
-        >
-          {formatShortDay(email.receivedAt, timeZone)} ·{" "}
-          {formatTime(email.receivedAt, timeZone)}
-        </time>
-        <ModePill mode={email.mode} />
-      </p>
-    </div>
-  </header>
-);
+          {email.fromName ? (
+            <span className="text-muted-foreground text-label">
+              {email.fromAddress}
+            </span>
+          ) : null}
+        </p>
+        <p className="text-muted-foreground text-label flex flex-wrap items-center gap-2 self-start pt-0.5">
+          <time
+            dateTime={new Date(email.receivedAt).toISOString()}
+            title={formatWhen(email.receivedAt, timeZone, locale)}
+          >
+            {formatShortDay(email.receivedAt, timeZone, locale)} ·{" "}
+            {formatTime(email.receivedAt, timeZone, locale)}
+          </time>
+          <ModePill mode={email.mode} />
+        </p>
+      </div>
+    </header>
+  );
+};
 
 const AppointmentCard = ({
   appointment,
@@ -286,7 +281,12 @@ const AppointmentCard = ({
   appointment: Doc<"appointments">;
   timeZone: string;
 }) => {
-  const ride = RIDE_WORDS[appointment.rideStatus];
+  const locale = useLocale();
+  const messages = useMessages();
+  const t = messages.email;
+
+  const ride =
+    appointment.rideStatus === "none" ? null : t.ride[appointment.rideStatus];
 
   return (
     <section
@@ -294,17 +294,18 @@ const AppointmentCard = ({
       className="bg-parchment flex flex-col gap-1 rounded-xl px-5 py-4"
     >
       <h3 className="text-body font-semibold" id="appointment-heading">
-        Appointment found
+        {t.appointmentFound}
       </h3>
       <p className="font-bold">{appointment.title}</p>
       <p>
-        {formatWhen(appointment.startsAt, timeZone)}
+        {formatWhen(appointment.startsAt, timeZone, locale)}
         {appointment.location ? ` · ${appointment.location}` : ""}
       </p>
       <p className="text-muted-foreground text-label">
-        It’s been added to Your week on your Today page.{ride ? ` ${ride}` : ""}{" "}
+        {t.appointmentAdded}
+        {ride ? ` ${ride}` : ""}{" "}
         <Link className="text-foreground font-semibold underline" href="/">
-          Go to Today
+          {messages.errors.goToToday}
         </Link>
       </p>
     </section>
@@ -319,36 +320,46 @@ const CheckDisclosure = ({
   email: Doc<"emails">;
   labelId: string;
   timeZone: string;
-}) => (
-  <Disclosure
-    icon={<ShieldIcon />}
-    labelId={labelId}
-    note={
-      email.scamCheck === undefined
-        ? "Not checked yet · done in LifeLink"
-        : `Checked ${formatShortDay(email.scamCheck.checkedAt, timeZone)} at ${formatTime(email.scamCheck.checkedAt, timeZone)} · done in LifeLink`
-    }
-    title={
-      email.scamCheck === undefined ? "Scam check not done yet" : "Scam check"
-    }
-  >
-    <p className="font-semibold">{scanSummaryFor(email)}</p>
-    <p className="text-muted-foreground text-label">
-      It uses common warning signs, not cloud AI. This check can’t confirm who
-      sent it or whether what it says is true.
-      {email.scamCheck === undefined
-        ? " You can check it manually below."
-        : ` Checked ${formatWhen(email.scamCheck.checkedAt, timeZone)}.`}
-    </p>
-    <Link
-      className={checkLinkClass}
-      href={{ pathname: "/scam", query: { email: email._id } }}
+}) => {
+  const locale = useLocale();
+  const words = useMessages();
+  const t = words.email;
+
+  return (
+    <Disclosure
+      icon={<ShieldIcon />}
+      labelId={labelId}
+      note={
+        email.scamCheck === undefined
+          ? t.notCheckedNote
+          : t.checked(
+              words.format.at(
+                formatShortDay(email.scamCheck.checkedAt, timeZone, locale),
+                formatTime(email.scamCheck.checkedAt, timeZone, locale)
+              )
+            )
+      }
+      title={email.scamCheck === undefined ? t.scamCheckNotDone : t.scamCheck}
     >
-      <ShieldQuestionIcon aria-hidden="true" />
-      {email.scamCheck === undefined ? "Check this email" : "What should I do?"}
-    </Link>
-  </Disclosure>
-);
+      <p className="font-semibold">{scanSummaryFor(email, t)}</p>
+      <p className="text-muted-foreground text-label">
+        {emailCheckNotice(email, locale) || t.checksAutomatic}
+        {email.scamCheck === undefined
+          ? t.checkManually
+          : t.checkedAt(
+              formatWhen(email.scamCheck.checkedAt, timeZone, locale)
+            )}
+      </p>
+      <Link
+        className={checkLinkClass}
+        href={{ pathname: "/scam", query: { email: email._id } }}
+      >
+        <ShieldQuestionIcon aria-hidden="true" />
+        {email.scamCheck === undefined ? t.checkThis : t.whatShouldIDo}
+      </Link>
+    </Disclosure>
+  );
+};
 
 /** One email, shown like a mail app, with what LifeLink can do with it. */
 const EmailReader = ({
@@ -373,6 +384,9 @@ const EmailReader = ({
   const loadedId = detail?.email._id;
   const summaryId = useId();
   const checkId = useId();
+  const locale = useLocale();
+  const messages = useMessages();
+  const t = messages.email;
 
   // When the reader replaces the inbox, land on the subject.
   const landOnSubject = useEffectEvent(() => {
@@ -393,7 +407,7 @@ const EmailReader = ({
   }, [focusReply]);
 
   if (detail === undefined) {
-    return <ReaderSkeleton label="Loading email" />;
+    return <ReaderSkeleton label={t.loadingEmail} />;
   }
 
   const { appointment, email, warningSigns } = detail;
@@ -424,16 +438,20 @@ const EmailReader = ({
           variant={hasEmailWarning(email) ? "outline" : "default"}
         >
           <ReplyIcon aria-hidden="true" />
-          Reply
+          {t.reply}
         </Button>
         {hasBody ? (
           <>
             <ReadAloudButton
-              label="Read aloud"
+              label={messages.common.readAloud}
               text={[
-                emailWarningIntro(email, warningSigns),
-                "Now, the email.",
-                `${email.subject || "No subject"}. From ${email.fromName || email.fromAddress}. ${email.bodyText}`,
+                emailWarningIntro(email, warningSigns, locale),
+                t.nowTheEmail,
+                t.spokenFrom(
+                  email.subject || t.noSubjectSpoken,
+                  email.fromName || email.fromAddress,
+                  email.bodyText
+                ),
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -447,7 +465,7 @@ const EmailReader = ({
               variant="outline"
             >
               <LightbulbIcon aria-hidden="true" />
-              Help me understand
+              {t.helpMeUnderstand}
             </Button>
           </>
         ) : null}
@@ -458,24 +476,21 @@ const EmailReader = ({
         className="flex flex-col gap-4 pt-2"
       >
         <h3 className="sr-only" id="body-heading">
-          The email
+          {t.theEmail}
         </h3>
         {hasBody ? (
           <p className="max-w-prose leading-relaxed wrap-anywhere whitespace-pre-wrap">
             {email.bodyText}
           </p>
         ) : (
-          <EmptyNote>This email has no text.</EmptyNote>
+          <EmptyNote>{t.noText}</EmptyNote>
         )}
         <p className="text-muted-foreground text-label flex max-w-prose items-start gap-2.5">
           <InfoIcon
             aria-hidden="true"
             className="mt-0.5 size-[1.125rem] shrink-0"
           />
-          <span>
-            Links in emails aren’t opened by LifeLink. If it asks for money or
-            private details, check it first.
-          </span>
+          <span>{t.linksNotOpened}</span>
         </p>
       </section>
 
@@ -487,8 +502,7 @@ const EmailReader = ({
             setReply({
               body: suggestion,
               fromSuggestion: true,
-              notice:
-                "Reply added to your draft. You can change it before reviewing.",
+              notice: currentMessages().email.replyAdded,
             });
             openReply();
           }}
@@ -506,8 +520,8 @@ const EmailReader = ({
           defaultOpen={email.summary !== null || email.selectedForReview}
           icon={<TextIcon />}
           labelId={summaryId}
-          note={summaryNote(email)}
-          title="Summary"
+          note={summaryNote(email, t)}
+          title={t.summary}
         >
           <SummaryBody email={email} warningSigns={warningSigns} />
         </Disclosure>
@@ -515,7 +529,7 @@ const EmailReader = ({
       </div>
 
       {replying ? (
-        <section aria-label="Reply" className="pt-4 pb-2">
+        <section aria-label={t.reply} className="pt-4 pb-2">
           <ReplyComposer
             emailId={emailId}
             id={REPLY_FORM_ID}

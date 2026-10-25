@@ -2,6 +2,8 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { intlLocaleOf } from "@lifelink/contracts/locale";
+import type { InterfaceLocale } from "@lifelink/contracts/locale";
 import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import { XIcon } from "lucide-react";
@@ -14,6 +16,9 @@ import { OneAtATime } from "@/components/app/one-at-a-time";
 import type { Step } from "@/components/app/one-at-a-time";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
+import { useLocale } from "@/i18n/locale";
+import { explanation as en } from "@/i18n/messages/en/explanation";
+import { explanation as es } from "@/i18n/messages/es/explanation";
 import { messageOf } from "@/lib/errors";
 
 type Explanation = Doc<"messageExplanations">;
@@ -22,31 +27,25 @@ type ExplainSource = { emailId: Id<"emails"> } | { messageId: Id<"messages"> };
 
 type HeadingLevel = 2 | 3;
 
-const LOCAL_WORDS: Record<NonNullable<Explanation["localReason"]>, string> = {
-  chosen:
-    "Local reading: found by patterns, not full understanding. Nothing was sent to an AI provider.",
-  failed:
-    "Local reading. You asked for a cloud reading, but it didn’t finish. The provider may already have received this message.",
-  limit:
-    "Local reading. Today’s limit for cloud readings has been reached, so nothing more was sent.",
-  practice:
-    "Practice: explained in LifeLink. Practice messages are never sent to an AI provider.",
-  unavailable:
-    "Local reading. The cloud assistant isn’t set up, so nothing was sent to an AI provider.",
-};
+const catalogs = { en, es };
 
-const methodWords = (explanation: Explanation): string =>
+const useWords = () => catalogs[useLocale()];
+
+const methodWords = (
+  explanation: Explanation,
+  locale: InterfaceLocale
+): string =>
   explanation.method === "cloud"
-    ? "Cloud AI reading, requested with your permission. Every quote was checked against the message."
-    : LOCAL_WORDS[explanation.localReason ?? "chosen"];
+    ? catalogs[locale].cloud
+    : catalogs[locale].local[explanation.localReason ?? "chosen"];
 
-const DROPPED_WORDS =
-  "Some details the assistant gave were not in the message word for word, so they are shown as guesses or left out.";
+const contentLanguage = (explanation: Explanation): string =>
+  explanation.method === "cloud"
+    ? (explanation.helpStyle?.language ?? "en")
+    : "en";
 
-const GUESS_WORDS = "These are guesses, not something the message says.";
-
-const formatIsoDate = (isoDate: string): string =>
-  new Intl.DateTimeFormat("en-US", {
+const formatIsoDate = (isoDate: string, locale: InterfaceLocale): string =>
+  new Intl.DateTimeFormat(intlLocaleOf(locale), {
     day: "numeric",
     month: "long",
     timeZone: "UTC",
@@ -113,34 +112,50 @@ const Quote = ({ children }: { children: string }) => (
 );
 
 /** Everything worth reading aloud, with guesses named as guesses. */
-const spokenText = (explanation: Explanation): string =>
-  [
+const spokenText = (
+  explanation: Explanation,
+  locale: InterfaceLocale
+): string => {
+  const words = catalogs[locale];
+
+  return [
+    explanation.method === "local" ? words.localLanguageNotice : "",
     explanation.plainSummary,
-    ...explanation.requests.map(
-      (item) => `They ask: ${item.text} In their words: ${item.quote}.`
+    ...explanation.requests.map((item) =>
+      words.requestSpoken(item.text, item.quote)
     ),
-    ...explanation.dates.map(
-      (date) =>
-        `Date mentioned: ${date.quote}${date.isoDate ? `, ${formatIsoDate(date.isoDate)}` : ""}.`
+    ...explanation.dates.map((date) =>
+      words.dateSpoken(
+        date.quote,
+        date.isoDate ? formatIsoDate(date.isoDate, locale) : ""
+      )
     ),
-    ...explanation.missingDetails.map((detail) => `Not said yet: ${detail}`),
-    explanation.interpretations.length > 0 ? GUESS_WORDS : "",
-    ...explanation.interpretations.map((item) => `A guess: ${item.text}`),
+    ...explanation.missingDetails.map((detail) => words.missingSpoken(detail)),
+    explanation.interpretations.length > 0 ? words.guessNote : "",
+    ...explanation.interpretations.map((item) => words.guessSpoken(item.text)),
   ]
     .filter((part) => part.length > 0)
     .join(" ");
+};
 
 /** The explanation's sections, in reading order; empty sections are left out. */
 const sectionsOf = (
   explanation: Explanation,
   level: HeadingLevel,
-  onUseReply: (draft: string) => void
+  onUseReply: (draft: string) => void,
+  locale: InterfaceLocale
 ): Step[] => {
+  const words = catalogs[locale];
+  const language = contentLanguage(explanation);
+
   const steps: Step[] = [
     {
       content: (
-        <Part level={level} title="In plain words">
-          <p className="min-w-0 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
+        <Part level={level} title={words.inPlainWords}>
+          <p
+            className="min-w-0 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap"
+            lang={language}
+          >
             {explanation.plainSummary}
           </p>
         </Part>
@@ -152,11 +167,13 @@ const sectionsOf = (
   if (explanation.requests.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="What they’re asking">
+        <Part level={level} title={words.requests}>
           <ul className="flex flex-col gap-3">
             {explanation.requests.map((item) => (
               <li className="flex flex-col gap-1" key={item.quote}>
-                <span className="text-lg">{item.text}</span>
+                <span className="text-lg" lang={language}>
+                  {item.text}
+                </span>
                 <Quote>{item.quote}</Quote>
               </li>
             ))}
@@ -170,12 +187,14 @@ const sectionsOf = (
   if (explanation.dates.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="Dates and times mentioned">
+        <Part level={level} title={words.dates}>
           <ul className="flex flex-col gap-2 text-lg">
             {explanation.dates.map((date) => (
               <li key={date.quote}>
                 “{date.quote}”
-                {date.isoDate ? ` (${formatIsoDate(date.isoDate)})` : ""}
+                {date.isoDate
+                  ? ` (${formatIsoDate(date.isoDate, locale)})`
+                  : ""}
               </li>
             ))}
           </ul>
@@ -188,10 +207,12 @@ const sectionsOf = (
   if (explanation.missingDetails.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="Not said yet">
+        <Part level={level} title={words.missing}>
           <ul className="flex list-disc flex-col gap-1 pl-6 text-lg">
             {explanation.missingDetails.map((detail) => (
-              <li key={detail}>{detail}</li>
+              <li key={detail} lang={language}>
+                {detail}
+              </li>
             ))}
           </ul>
         </Part>
@@ -203,11 +224,13 @@ const sectionsOf = (
   if (explanation.statedFacts.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="What the message says">
+        <Part level={level} title={words.facts}>
           <ul className="flex flex-col gap-3">
             {explanation.statedFacts.map((item) => (
               <li className="flex flex-col gap-1" key={item.quote}>
-                <span className="text-lg">{item.text}</span>
+                <span className="text-lg" lang={language}>
+                  {item.text}
+                </span>
                 <Quote>{item.quote}</Quote>
               </li>
             ))}
@@ -221,13 +244,18 @@ const sectionsOf = (
   if (explanation.interpretations.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="What it might mean">
-          <p className="text-base font-semibold">{GUESS_WORDS}</p>
+        <Part level={level} title={words.guesses}>
+          <p className="text-base font-semibold">{words.guessNote}</p>
           <ul className="flex flex-col gap-3">
             {explanation.interpretations.map((item) => (
               <li className="flex flex-col gap-1" key={item.text}>
-                <span className="text-lg">{item.text}</span>
-                <span className="text-muted-foreground text-base">
+                <span className="text-lg" lang={language}>
+                  {item.text}
+                </span>
+                <span
+                  className="text-muted-foreground text-base"
+                  lang={language}
+                >
                   {item.why}
                 </span>
               </li>
@@ -242,33 +270,32 @@ const sectionsOf = (
   if (explanation.suggestedReplies.length > 0) {
     steps.push({
       content: (
-        <Part level={level} title="Possible replies">
-          <p className="text-muted-foreground text-base">
-            Nothing is sent. A reply goes into your message box, where you can
-            change it and review it before anything happens.
-          </p>
+        <Part level={level} title={words.replies}>
+          <p className="text-muted-foreground text-base">{words.repliesHint}</p>
           <ul className="flex flex-col gap-4">
             {explanation.suggestedReplies.map((reply) => (
               <li
                 className="border-rule flex flex-col gap-2 border-b pb-4"
                 key={reply.kind}
               >
-                <span className="text-lg font-bold">{reply.label}</span>
-                <p className="text-lg leading-7 whitespace-pre-wrap">
+                <span className="text-lg font-bold" lang={language}>
+                  {reply.label}
+                </span>
+                <p
+                  className="text-lg leading-7 whitespace-pre-wrap"
+                  lang={language}
+                >
                   {reply.draft}
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <ReadAloudButton
-                    label="Read this reply aloud"
-                    text={reply.draft}
-                  />
+                  <ReadAloudButton label={words.readReply} text={reply.draft} />
                   <Button
-                    aria-label={`Use this reply: ${reply.label}`}
+                    aria-label={words.useReplyLabel(reply.label)}
                     className="whitespace-normal"
                     onClick={() => onUseReply(reply.draft)}
                     variant="outline"
                   >
-                    Use this reply
+                    {words.useReply}
                   </Button>
                 </div>
               </li>
@@ -293,26 +320,22 @@ const ExplanationBody = ({
   onUseReply: (draft: string) => void;
 }) => {
   const { preferences } = usePreferences();
-  const steps = sectionsOf(explanation, level, onUseReply);
-
-  // Mark the language the explanation was written in, so screen readers pronounce it properly.
-  const language =
-    explanation.method === "cloud"
-      ? (explanation.helpStyle?.language ?? "en")
-      : "en";
+  const locale = useLocale();
+  const words = catalogs[locale];
+  const steps = sectionsOf(explanation, level, onUseReply, locale);
 
   return (
-    <div className="flex flex-col gap-5" lang={language}>
+    <div className="flex flex-col gap-5">
       {explanation.droppedCount > 0 ? (
-        <p className="text-base font-semibold">{DROPPED_WORDS}</p>
+        <p className="text-base font-semibold">{words.droppedNote}</p>
       ) : null}
       <ReadAloudButton
         className="self-start"
-        label="Read the explanation aloud"
-        text={spokenText(explanation)}
+        label={words.readAloud}
+        text={spokenText(explanation, locale)}
       />
       {preferences.stepByStep ? (
-        <OneAtATime noun="Part" steps={steps} />
+        <OneAtATime noun={words.part} steps={steps} />
       ) : (
         steps.map((step) => <div key={step.key}>{step.content}</div>)
       )}
@@ -330,6 +353,7 @@ const RequestForm = ({
   upgrade: boolean;
 }) => {
   const request = useMutation(api.explanations.request);
+  const words = useWords();
   const { me } = usePreferences();
   const hasNotes = (me?.preferences?.communicationNotes ?? "").length > 0;
   const [allowCloudAnalysis, setAllowCloudAnalysis] = useState(false);
@@ -340,21 +364,18 @@ const RequestForm = ({
     return null;
   }
 
-  let buttonLabel = "Explain this message";
+  let buttonLabel = words.explainThis;
 
   if (allowCloudAnalysis) {
     buttonLabel = upgrade
-      ? "Explain again with cloud AI"
-      : "Explain with cloud AI";
+      ? words.explainAgainWithCloud
+      : words.explainWithCloud;
   }
 
   return (
     <div className="flex flex-col gap-3">
       {practice ? (
-        <p className="text-base">
-          In Practice mode, LifeLink reads the message locally. Practice
-          messages are never sent to an AI provider.
-        </p>
+        <p className="text-base">{words.practiceNote}</p>
       ) : (
         <label
           className="hover:text-accent-foreground flex min-h-12 cursor-pointer items-start gap-3 text-base leading-relaxed transition-colors"
@@ -368,11 +389,7 @@ const RequestForm = ({
             type="checkbox"
           />
           <span>
-            Use the cloud assistant for a fuller explanation. The message text
-            {hasNotes
-              ? ", and your notes about how you like help, are"
-              : " is"}{" "}
-            sent to the AI provider. Leave unchecked for a local reading.
+            {hasNotes ? words.cloudConsentWithNotes : words.cloudConsent}
           </span>
         </label>
       )}
@@ -417,6 +434,8 @@ const ExplanationPanel = ({
   source: ExplainSource;
 }) => {
   const explanation = useQuery(api.explanations.forSource, source);
+  const locale = useLocale();
+  const words = catalogs[locale];
   const { me } = usePreferences();
   const headingId = useId();
   const sectionRef = useRef<HTMLElement>(null);
@@ -430,31 +449,26 @@ const ExplanationPanel = ({
     me?.profile?.demoMode === true || explanation?.mode === "simulated";
 
   let body: ReactNode = (
-    <LoadingRows layout="panel" label="Loading the explanation" rows={2} />
+    <LoadingRows layout="panel" label={words.loading} rows={2} />
   );
 
   if (explanation === null) {
     body = (
       <>
-        <p className="text-lg">
-          LifeLink can say what this message asks, which dates it mentions, and
-          what it leaves out.
-        </p>
+        <p className="text-lg">{words.intro}</p>
         <RequestForm practice={practice} source={source} upgrade={false} />
       </>
     );
   } else if (explanation?.status === "explaining") {
-    body = <p className="text-lg">Reading the message…</p>;
+    body = <p className="text-lg">{words.reading}</p>;
   } else if (explanation !== undefined) {
     body = (
       <>
-        <p className="text-base font-semibold">{methodWords(explanation)}</p>
-        {explanation.method === "local" &&
-        (explanation.helpStyle?.language ?? "en") !== "en" ? (
-          <p className="text-base">
-            Local readings are in English. A cloud explanation can be written in
-            your chosen language.
-          </p>
+        <p className="text-base font-semibold">
+          {methodWords(explanation, locale)}
+        </p>
+        {explanation.method === "local" ? (
+          <p className="text-base">{words.localLanguageNotice}</p>
         ) : null}
         <ExplanationBody
           explanation={explanation}
@@ -477,11 +491,11 @@ const ExplanationPanel = ({
     >
       <div className="flex items-start justify-between gap-3">
         <Heading id={headingId} level={level}>
-          Help understanding this message
+          {words.title}
         </Heading>
         {onClose ? (
           <Button
-            aria-label="Close the explanation"
+            aria-label={words.close}
             onClick={() => {
               if (returnFocusRef?.current?.isConnected) {
                 returnFocusRef.current.focus();
@@ -499,9 +513,7 @@ const ExplanationPanel = ({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {explanation ? <ModePill mode={explanation.mode} /> : null}
-        <p className="text-muted-foreground text-base">
-          Only you can see this. It is never sent or shared with family.
-        </p>
+        <p className="text-muted-foreground text-base">{words.onlyYou}</p>
       </div>
       {body}
     </section>

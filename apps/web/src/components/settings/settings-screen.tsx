@@ -8,6 +8,7 @@ import {
   helpStyleOf,
   supportLanguages,
 } from "@lifelink/contracts/help-style";
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import { SPEECH_VOICES, isSpeechVoice } from "@lifelink/contracts/speech";
 import { Button } from "@lifelink/ui/components/button";
 import { Input } from "@lifelink/ui/components/input";
@@ -26,6 +27,8 @@ import { PageHeader } from "@/components/app/page-header";
 import { usePreferences } from "@/components/app/preferences";
 import { LoadingRows } from "@/components/app/states";
 import { TimeZoneSelect } from "@/components/app/time-zone-select";
+import { currentMessages, setLocale, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { saveDisplay } from "@/lib/display";
 import { messageOf } from "@/lib/errors";
 
@@ -39,12 +42,12 @@ const errorText = (cause: unknown): string =>
 
 type SaveState = "idle" | "pending" | "saved" | "failed";
 
-const SAVE_WORDS: Record<SaveState, string> = {
+const saveWords = (t: Messages): Record<SaveState, string> => ({
   failed: "",
   idle: "",
-  pending: "Saving…",
-  saved: "Saved.",
-};
+  pending: t.common.saving,
+  saved: t.settings.saved,
+});
 
 const submissionState = (busy: boolean, saved: boolean): SaveState => {
   if (busy) {
@@ -61,6 +64,8 @@ const SaveFeedback = ({
   state: SaveState;
   failure: string | null;
 }) => {
+  const t = useMessages();
+
   if (failure) {
     return (
       <p className="text-destructive text-base" role="alert">
@@ -71,7 +76,7 @@ const SaveFeedback = ({
 
   return (
     <output className="text-muted-foreground text-base">
-      {SAVE_WORDS[state]}
+      {saveWords(t)[state]}
     </output>
   );
 };
@@ -112,9 +117,7 @@ const usePreferenceSave = (
       setState("saved");
     } catch (error) {
       setState("failed");
-      setFailure(
-        `Your choices haven’t been saved to your account. ${errorText(error)} Try again below.`
-      );
+      setFailure(currentMessages().settings.choicesNotSaved(errorText(error)));
     }
 
     pending.current = false;
@@ -123,34 +126,41 @@ const usePreferenceSave = (
   return { failure, save, state, value };
 };
 
-const TEXT_SIZES = [
-  { label: "Standard", value: "1" },
-  { label: "Large", value: "1.15" },
-  { label: "Larger", value: "1.3" },
-  { label: "Largest", value: "1.5" },
-] as const;
+type Words = Messages["settings"];
 
-const SPEECH_RATES = [
-  { label: "Slower", value: "0.75" },
-  { label: "Usual", value: "0.9" },
-  { label: "Quicker", value: "1.1" },
-] as const;
+const textSizes = (t: Words) =>
+  [
+    { label: t.textSizeStandard, value: "1" },
+    { label: t.textSizeLarge, value: "1.15" },
+    { label: t.textSizeLarger, value: "1.3" },
+    { label: t.textSizeLargest, value: "1.5" },
+  ] as const;
 
-const THEMES = [
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-  { label: "Match my device", value: "system" },
-] as const;
+const speechRates = (t: Words) =>
+  [
+    { label: t.speechSlower, value: "0.75" },
+    { label: t.speechUsual, value: "0.9" },
+    { label: t.speechQuicker, value: "1.1" },
+  ] as const;
 
-const DETAILS = [
-  { label: "Short", value: "short" },
-  { label: "Detailed", value: "detailed" },
-] as const;
+const themes = (t: Words) =>
+  [
+    { label: t.themeLight, value: "light" },
+    { label: t.themeDark, value: "dark" },
+    { label: t.themeSystem, value: "system" },
+  ] as const;
 
-const CONTRASTS = [
-  { label: "Standard", value: "standard" },
-  { label: "More contrast", value: "more" },
-] as const;
+const details = (t: Words) =>
+  [
+    { label: t.detailShort, value: "short" },
+    { label: t.detailDetailed, value: "detailed" },
+  ] as const;
+
+const contrasts = (t: Words) =>
+  [
+    { label: t.contrastStandard, value: "standard" },
+    { label: t.contrastMore, value: "more" },
+  ] as const;
 
 /** The closest offered option, so a stored value between steps still shows as selected. */
 const nearest = <Value extends string>(
@@ -211,6 +221,7 @@ const Toggle = ({
   onChange: (value: boolean) => void;
 }) => {
   const id = useId();
+  const t = useMessages();
 
   return (
     <div className="border-rule flex flex-col items-start gap-4 border-t py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -224,7 +235,7 @@ const Toggle = ({
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <span aria-hidden="true" className="w-8 text-base font-semibold">
-          {checked ? "On" : "Off"}
+          {checked ? t.common.on : t.common.off}
         </span>
         <Switch checked={checked} id={id} onCheckedChange={onChange} />
       </div>
@@ -234,6 +245,8 @@ const Toggle = ({
 
 const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const { failure, save, state, value } = usePreferenceSave(stored, true);
+  const t = useMessages().settings;
+  const style = helpStyleOf(value);
   const voiceId = useId();
   const voiceHintId = useId();
 
@@ -246,73 +259,87 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
         className="pb-2 text-2xl leading-8 font-semibold"
         id="display-heading"
       >
-        Seeing and hearing
+        {t.seeingAndHearing}
       </h2>
       <p className="text-muted-foreground pb-6 text-lg leading-7">
-        These preferences save as you change them.
+        {t.savesAsYouChange}
       </p>
       <fieldset disabled={state === "pending"} className="min-w-0">
-        <Row
-          description="Changes every page. Your choice is remembered on this device."
-          label="Text size"
-        >
+        <Row description={t.languageDescription} label={t.language}>
+          <select
+            aria-label={t.language}
+            className="border-control bg-raised text-foreground min-h-12 max-w-full self-start rounded-md border px-4 text-base"
+            onChange={(event) => {
+              const supportLanguage = event.target.value;
+
+              // Switch at once; the saved choice confirms it when the account updates.
+              setLocale(interfaceLocaleOf(supportLanguage));
+              void save({ supportLanguage });
+            }}
+            value={style.language}
+          >
+            {supportLanguages.map((language) => (
+              <option key={language.id} lang={language.id} value={language.id}>
+                {language.label}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row description={t.textSizeDescription} label={t.textSize}>
           <Segmented
-            label="Text size"
+            label={t.textSize}
             onValueChange={(scale) => save({ textScale: Number(scale) })}
-            options={TEXT_SIZES}
-            value={nearest(TEXT_SIZES, value.textScale)}
+            options={textSizes(t)}
+            value={nearest(textSizes(t), value.textScale)}
           />
         </Row>
-        <Row
-          description="More contrast makes text darker and borders stronger."
-          label="Contrast"
-        >
+        <Row description={t.contrastDescription} label={t.contrast}>
           <Segmented
-            label="Contrast"
+            label={t.contrast}
             onValueChange={(contrast) => save({ contrast })}
-            options={CONTRASTS}
+            options={contrasts(t)}
             value={value.contrast}
           />
         </Row>
-        <Row label="Light or dark">
+        <Row label={t.theme}>
           <Segmented
-            label="Light or dark"
+            label={t.theme}
             onValueChange={(theme) => save({ theme })}
-            options={THEMES}
+            options={themes(t)}
             value={value.theme}
           />
         </Row>
         <Toggle
           checked={value.reducedMotion}
-          description="Turns off sliding and fading."
-          label="Less movement"
+          description={t.lessMovementDescription}
+          label={t.lessMovement}
           onChange={(reducedMotion) => save({ reducedMotion })}
         />
         <Toggle
           checked={value.showNews ?? true}
-          description="Shows three headlines on Today. You choose good news or top news there."
-          label="News on Today"
+          description={t.newsOnTodayDescription}
+          label={t.newsOnToday}
           onChange={(showNews) => save({ showNews })}
         />
         <Toggle
           checked={value.readAloud}
-          description="LifeLink reads new briefings and replies out loud."
-          label="Read aloud automatically"
+          description={t.readAloudAutoDescription}
+          label={t.readAloudAuto}
           onChange={(readAloud) => save({ readAloud })}
         />
         <Toggle
           checked={value.captions}
-          description="Shows the words while you talk with LifeLink."
-          label="Captions when speaking"
+          description={t.captionsDescription}
+          label={t.captions}
           onChange={(captions) => save({ captions })}
         />
         <div className="border-rule flex flex-col gap-3 border-t py-5">
-          <Label htmlFor={voiceId}>Read-aloud voice</Label>
+          <Label htmlFor={voiceId}>{t.readAloudVoice}</Label>
           <p
             className="text-muted-foreground max-w-prose text-lg leading-7"
             id={voiceHintId}
           >
-            Choose who reads to you. LifeLink default uses the standard voice.
+            {t.readAloudVoiceDescription}
           </p>
           <select
             aria-describedby={voiceHintId}
@@ -327,7 +354,7 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
             }}
             value={value.speechVoice ?? ""}
           >
-            <option value="">LifeLink default</option>
+            <option value="">{t.defaultVoice}</option>
             {SPEECH_VOICES.map((voice) => (
               <option key={voice.value} value={voice.value}>
                 {voice.label}
@@ -335,21 +362,18 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
             ))}
           </select>
         </div>
-        <Row
-          description="How fast LifeLink speaks when it reads aloud."
-          label="Speaking speed"
-        >
+        <Row description={t.speakingSpeedDescription} label={t.speakingSpeed}>
           <div className="flex flex-wrap items-center gap-3">
             <Segmented
-              label="Speaking speed"
+              label={t.speakingSpeed}
               onValueChange={(rate) => save({ speechRate: Number(rate) })}
-              options={SPEECH_RATES}
-              value={nearest(SPEECH_RATES, value.speechRate)}
+              options={speechRates(t)}
+              value={nearest(speechRates(t), value.speechRate)}
             />
             <ReadAloudButton
-              label="Hear a sample"
+              label={t.hearSample}
               rate={value.speechRate}
-              text="This is how LifeLink sounds when it reads to you."
+              text={t.speechSample}
               voice={value.speechVoice ?? null}
             />
           </div>
@@ -362,7 +386,7 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           variant="outline"
           onClick={() => save({})}
         >
-          Try saving again
+          {t.trySavingAgain}
         </Button>
       ) : null}
     </section>
@@ -378,6 +402,7 @@ const NotesSetting = ({ saved }: { saved: string }) => {
   const [savedNotes, setSavedNotes] = useState(saved);
   const notesId = useId();
   const hintId = useId();
+  const t = useMessages().settings;
 
   return (
     <form
@@ -395,25 +420,20 @@ const NotesSetting = ({ saved }: { saved: string }) => {
         try {
           await update({ communicationNotes: notes });
           setSavedNotes(cleanNotes(notes));
-          toast.success("Your notes are saved.");
+          toast.success(t.notesSaved);
         } catch (error) {
-          setFailure(
-            `Your notes weren’t saved. ${errorText(error)} Your text is still here. Choose Save notes to try again.`
-          );
+          setFailure(t.notesNotSaved(errorText(error)));
         }
 
         setBusy(false);
       }}
     >
-      <Label htmlFor={notesId}>Notes about how I like help</Label>
+      <Label htmlFor={notesId}>{t.notes}</Label>
       <span
         className="text-muted-foreground max-w-prose text-lg leading-7"
         id={hintId}
       >
-        For example, “Give me one step at a time.” Only LifeLink’s explanations
-        to you use these. They are never shown to family or put in a message. If
-        you allow a cloud explanation, these notes go to the AI provider with
-        the message.
+        {t.notesHint}
       </span>
       <Textarea
         aria-describedby={hintId}
@@ -426,11 +446,9 @@ const NotesSetting = ({ saved }: { saved: string }) => {
         value={notes}
       />
       <span className="text-muted-foreground text-base">
-        {notes.length} of {MAX_NOTES_LENGTH} characters
+        {t.characterCount(notes.length, MAX_NOTES_LENGTH)}
       </span>
-      <p className="text-muted-foreground text-base">
-        Choose Save notes to keep changes to this text.
-      </p>
+      <p className="text-muted-foreground text-base">{t.notesSaveHint}</p>
       <SaveFeedback
         failure={failure}
         state={submissionState(busy, cleanNotes(notes) === savedNotes)}
@@ -442,7 +460,7 @@ const NotesSetting = ({ saved }: { saved: string }) => {
         type="submit"
         variant="outline"
       >
-        Save notes
+        {t.saveNotes}
       </Button>
     </form>
   );
@@ -452,6 +470,7 @@ const NotesSetting = ({ saved }: { saved: string }) => {
 const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const { failure, save, state, value } = usePreferenceSave(stored);
   const style = helpStyleOf(value);
+  const t = useMessages().settings;
 
   return (
     <section
@@ -460,54 +479,32 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
       id="help"
     >
       <h2 className="pb-2 text-2xl leading-8 font-semibold" id="help-heading">
-        How I like help
+        {t.helpTitle}
       </h2>
       <p className="text-muted-foreground pb-6 text-lg leading-7">
-        Used when LifeLink explains a message, a scam check, a conversation
-        recap, or your morning briefing. Only you see these. The choices below
-        save as you change them; notes have their own Save notes button.
+        {t.helpDescription}
       </p>
       <fieldset disabled={state === "pending"} className="min-w-0">
-        <Row
-          description="Short gives the main points. Detailed explains a little more."
-          label="Explanations"
-        >
+        <Row description={t.explanationsDescription} label={t.explanations}>
           <Segmented
-            label="Explanations"
+            label={t.explanations}
             onValueChange={(explanationDetail) => save({ explanationDetail })}
-            options={DETAILS}
+            options={details(t)}
             value={style.detail}
           />
         </Row>
         <Toggle
           checked={style.stepByStep}
-          description="Shows explanations and next steps one at a time, with a Next button."
-          label="One step at a time"
+          description={t.oneStepDescription}
+          label={t.oneStep}
           onChange={(stepByStep) => save({ stepByStep })}
         />
         <Toggle
           checked={value.aiEmailChecks ?? true}
-          description="When a new email arrives, a cloud AI service checks it for scam warning signs. Older emails and practice emails are never sent."
-          label="Check new emails with AI"
+          description={t.aiEmailChecksDescription}
+          label={t.aiEmailChecks}
           onChange={(aiEmailChecks) => save({ aiEmailChecks })}
         />
-        <Row
-          description="LifeLink’s cloud explanations and scam checks are written in this language. Quotes stay in the message’s own words, local readings stay in English, and suggested replies follow the message’s language. Read-aloud and voice typing stay in English for now."
-          label="Language for help"
-        >
-          <select
-            aria-label="Language for help"
-            className="border-control bg-raised text-foreground min-h-12 max-w-full self-start rounded-md border px-4 text-base"
-            onChange={(event) => save({ supportLanguage: event.target.value })}
-            value={style.language}
-          >
-            {supportLanguages.map((language) => (
-              <option key={language.id} lang={language.id} value={language.id}>
-                {language.label}
-              </option>
-            ))}
-          </select>
-        </Row>
       </fieldset>
       <SaveFeedback failure={failure} state={state} />
       {failure ? (
@@ -516,7 +513,7 @@ const HelpSettings = ({ stored }: { stored: Doc<"preferences"> }) => {
           variant="outline"
           onClick={() => save({})}
         >
-          Try saving again
+          {t.trySavingAgain}
         </Button>
       ) : null}
       <NotesSetting saved={style.notes} />
@@ -529,6 +526,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const t = useMessages().settings;
 
   const ids = {
     name: useId(),
@@ -545,11 +543,9 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
       id="profile"
     >
       <h2 className="text-2xl leading-8 font-semibold" id="profile-heading">
-        About you
+        {t.profileTitle}
       </h2>
-      <p className="text-muted-foreground text-lg">
-        Choose Save profile to keep changes in this section.
-      </p>
+      <p className="text-muted-foreground text-lg">{t.profileSaveHint}</p>
       <form
         onSubmit={async (event) => {
           event.preventDefault();
@@ -585,11 +581,9 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
               timeZone: text("timeZone"),
             });
             setSaved(true);
-            toast.success("Saved.");
+            toast.success(t.saved);
           } catch (error) {
-            setFailure(
-              `Your profile wasn’t saved. ${errorText(error)} Your entries are still here. Choose Save profile to try again.`
-            );
+            setFailure(t.profileNotSaved(errorText(error)));
           }
 
           setBusy(false);
@@ -599,7 +593,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
       >
         <fieldset disabled={busy} className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.name}>Full name</Label>
+            <Label htmlFor={ids.name}>{t.fullName}</Label>
             <Input
               autoComplete="name"
               defaultValue={profile.displayName}
@@ -609,7 +603,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.preferred}>What LifeLink calls you</Label>
+            <Label htmlFor={ids.preferred}>{t.preferredName}</Label>
             <Input
               defaultValue={profile.preferredName}
               id={ids.preferred}
@@ -619,17 +613,17 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
           </div>
           {profile.role === "owner" ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor={ids.signOff}>How you sign messages</Label>
+              <Label htmlFor={ids.signOff}>{t.signOff}</Label>
               <Input
                 defaultValue={profile.signOffName ?? ""}
                 id={ids.signOff}
                 name="signOff"
-                placeholder="For example, Mom"
+                placeholder={t.signOffPlaceholder}
               />
             </div>
           ) : null}
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.timeZone}>Time zone</Label>
+            <Label htmlFor={ids.timeZone}>{t.timeZone}</Label>
             <TimeZoneSelect
               current={profile.timeZone}
               defaultValue={profile.timeZone}
@@ -639,7 +633,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={ids.zip}>Postal code</Label>
+            <Label htmlFor={ids.zip}>{t.postalCode}</Label>
             <Input
               autoComplete="postal-code"
               defaultValue={profile.postalCode ?? ""}
@@ -655,7 +649,7 @@ const ProfileSettings = ({ profile }: { profile: Doc<"profiles"> }) => {
           disabled={busy}
           type="submit"
         >
-          Save profile
+          {t.saveProfile}
         </Button>
       </form>
     </section>
@@ -673,6 +667,7 @@ const DemoSettings = ({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const id = useId();
+  const t = useMessages();
 
   return (
     <section
@@ -682,23 +677,21 @@ const DemoSettings = ({
     >
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-2xl leading-8 font-semibold" id="demo-heading">
-          Practice mode
+          {t.settings.demoTitle}
         </h2>
         {profile.demoMode ? <SimulatedPill /> : null}
       </div>
       <p className="max-w-prose text-lg leading-7">
-        In practice mode nothing real is sent, saved elsewhere, or bought.
-        Everything that would happen is simulated and marked “Practice”, and
-        sample people and messages are added so you can try things safely.
+        {t.settings.demoDescription}
       </p>
       {allowed ? (
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <Label className={busy ? undefined : "cursor-pointer"} htmlFor={id}>
-            Use practice mode
+            {t.settings.demoUse}
           </Label>
           <div className="flex items-center gap-3">
             <span aria-hidden="true" className="w-8 text-base font-semibold">
-              {profile.demoMode ? "On" : "Off"}
+              {profile.demoMode ? t.common.on : t.common.off}
             </span>
             <Switch
               disabled={busy}
@@ -715,14 +708,10 @@ const DemoSettings = ({
                 try {
                   await setDemoMode({ enabled });
                   toast.success(
-                    enabled
-                      ? "Practice mode is on."
-                      : "Practice mode is off. Anything you approve now really happens."
+                    enabled ? t.settings.demoOn : t.settings.demoOff
                   );
                 } catch (error) {
-                  setFailure(
-                    `Practice mode couldn’t be changed. ${errorText(error)} Try the switch again.`
-                  );
+                  setFailure(t.settings.demoFailed(errorText(error)));
                 }
 
                 setBusy(false);
@@ -732,18 +721,17 @@ const DemoSettings = ({
         </div>
       ) : (
         <p className="text-muted-foreground text-lg leading-7">
-          Practice mode has been turned off for this app.
+          {t.settings.demoTurnedOff}
         </p>
       )}
       {allowed ? (
         <p className="text-muted-foreground text-base">
-          This switch saves automatically.
+          {t.settings.demoAllowedHint}
         </p>
       ) : null}
       <SaveFeedback failure={failure} state={busy ? "pending" : "idle"} />
       <p className="text-muted-foreground text-lg leading-7">
-        Anything prepared in one mode has to be reviewed again before it runs in
-        the other.
+        {t.settings.demoBetweenModes}
       </p>
     </section>
   );
@@ -751,15 +739,13 @@ const DemoSettings = ({
 
 const SettingsScreen = () => {
   const { me } = usePreferences();
+  const t = useMessages().settings;
 
   if (!me?.profile || !me.preferences) {
     return (
       <>
-        <PageHeader
-          subline="Make LifeLink comfortable to read and listen to."
-          title="Settings"
-        />
-        <LoadingRows layout="settings" label="Loading settings" rows={4} />
+        <PageHeader subline={t.subline} title={t.title} />
+        <LoadingRows layout="settings" label={t.loading} rows={4} />
       </>
     );
   }
@@ -768,10 +754,7 @@ const SettingsScreen = () => {
 
   return (
     <>
-      <PageHeader
-        subline="Make LifeLink comfortable to read and listen to."
-        title="Settings"
-      />
+      <PageHeader subline={t.subline} title={t.title} />
       <div className="grid items-start gap-8 xl:grid-cols-2">
         <DisplaySettings stored={me.preferences} />
         <div className="flex flex-col gap-8">
@@ -789,7 +772,7 @@ const SettingsScreen = () => {
                 className="text-2xl leading-8 font-semibold"
                 id="more-heading"
               >
-                Accounts and permissions
+                {t.accountsAndPermissions}
               </h2>
               <ul className="flex flex-col gap-2 text-lg">
                 <li>
@@ -797,7 +780,7 @@ const SettingsScreen = () => {
                     className="inline-flex min-h-12 items-center underline underline-offset-4"
                     href="/connections"
                   >
-                    Accounts LifeLink can use
+                    {t.accountsLink}
                   </Link>
                 </li>
                 <li>
@@ -805,7 +788,7 @@ const SettingsScreen = () => {
                     className="inline-flex min-h-12 items-center underline underline-offset-4"
                     href="/groceries#budget"
                   >
-                    Grocery lists and budgets
+                    {t.groceriesLink}
                   </Link>
                 </li>
                 <li>
@@ -813,7 +796,7 @@ const SettingsScreen = () => {
                     className="inline-flex min-h-12 items-center underline underline-offset-4"
                     href="/circle"
                   >
-                    Who can see what
+                    {t.permissionsLink}
                   </Link>
                 </li>
               </ul>

@@ -16,6 +16,7 @@ import {
   dictationAvailable,
   startDictation,
 } from "@/components/voice/dictation";
+import { useMessages } from "@/i18n/locale";
 import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
@@ -72,6 +73,8 @@ const ReplyComposer = ({
   }, [reply]);
   const inputId = useId();
   const hintId = useId();
+  const messages = useMessages();
+  const t = messages.email.replyComposer;
   useEffect(() => () => dictation.current?.stop(), []);
 
   const toggleDictation = () => {
@@ -129,7 +132,7 @@ const ReplyComposer = ({
             htmlFor={inputId}
             id={`${id}-label`}
           >
-            Reply to {to}
+            {t.replyTo(to)}
           </label>
           <Button
             className="text-muted-foreground rounded-full px-3"
@@ -138,7 +141,7 @@ const ReplyComposer = ({
             variant="ghost"
           >
             <XIcon aria-hidden="true" />
-            Close
+            {messages.common.close}
           </Button>
         </div>
         <textarea
@@ -146,7 +149,7 @@ const ReplyComposer = ({
           className="text-body placeholder:text-muted-foreground field-sizing-content min-h-24 w-full resize-none bg-transparent outline-none"
           id={inputId}
           onChange={(event) => onChange(edited(reply, event.target.value))}
-          placeholder="Write your reply…"
+          placeholder={t.placeholder}
           ref={inputRef}
           rows={3}
           value={reply.body}
@@ -165,7 +168,7 @@ const ReplyComposer = ({
               ) : (
                 <MicIcon aria-hidden="true" />
               )}
-              {listening ? "Stop listening" : "Speak"}
+              {listening ? t.stopListening : t.speak}
             </Button>
           ) : (
             <span />
@@ -179,7 +182,7 @@ const ReplyComposer = ({
             disabled={busy || reply.body.trim().length === 0}
             type="submit"
           >
-            {busy ? "Preparing…" : "Review the draft"}
+            {busy ? messages.threads.preparing : t.review}
             <span
               aria-hidden="true"
               className="bg-primary-foreground/20 flex size-9 items-center justify-center rounded-full"
@@ -193,8 +196,7 @@ const ReplyComposer = ({
         {reply.notice}
       </output>
       <p className="text-muted-foreground text-label text-center" id={hintId}>
-        Nothing is sent. You’ll review it first, then it’s saved as a draft in
-        your {provider === "gmail" ? "Gmail" : "Outlook"}.
+        {t.nothingSent(provider === "gmail" ? "Gmail" : "Outlook")}
       </p>
     </form>
   );

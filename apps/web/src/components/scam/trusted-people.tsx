@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
+import { interfaceLocaleOf } from "@lifelink/contracts/locale";
 import { Button, buttonVariants } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { useMutation, useQuery } from "convex/react";
@@ -16,16 +17,16 @@ import { usePreferences } from "@/components/app/preferences";
 import { ScamTrustedPeopleLoading } from "@/components/app/scam-loading-layouts";
 import type { CircleContact } from "@/components/circle/contact-form";
 import { TrustedBadge } from "@/components/circle/contact-row";
+import { messagesFor, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 interface TrustedPeopleProps {
   reviewId?: Id<"scamReviews">;
   message?: string;
+  /** Select the practice template in the recipient’s language when no body is provided. */
+  practiceCall?: boolean;
   disabled?: boolean;
 }
-
-const CALL_HELP_MESSAGE =
-  "I’m not sure about a call I received. Could you help me check whether it’s real before I share anything or send money?";
 
 const PHONE_CHARACTERS = /^\+?[0-9 ().-]+$/u;
 const PHONE_FORMATTING = /[ ().-]/gu;
@@ -62,14 +63,6 @@ const phoneFor = (contact: CircleContact): string | null => {
   return null;
 };
 
-const REACHED_BY = {
-  discord: "Reached by message",
-  email: "Reached by email",
-  imessage: "Reached by message",
-  in_app: "Reached in LifeLink",
-  telegram: "Reached by message",
-} as const;
-
 /** Match the backend's preferred-channel and linked-family fallback selection. */
 const messageChannelFor = (contact: CircleContact) => {
   const saved =
@@ -103,6 +96,7 @@ const TrustedPersonRow = ({
   const fallbackId = useId();
   const needsDetails = channel === null;
   const callEnabled = canCall && phone !== null && !disabled;
+  const t = useMessages().trustedPeople;
 
   return (
     <li className="border-rule grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 border-b py-5 last:border-b-0">
@@ -120,14 +114,14 @@ const TrustedPersonRow = ({
           <TrustedBadge />
         </div>
         <p className="text-muted-foreground text-body">
-          {contact.relationship || "Contact"} ·{" "}
-          {channel === null ? "No message address saved" : REACHED_BY[channel]}
+          {contact.relationship || t.contactFallback} ·{" "}
+          {channel === null ? t.noMessageAddress : t.reachedBy[channel]}
         </p>
       </div>
       <div className="col-span-2 flex flex-wrap gap-3 sm:col-span-1 sm:col-start-2">
         {callEnabled ? (
           <a
-            aria-label={`Call ${contact.name}`}
+            aria-label={t.callAria(contact.name)}
             className={cn(
               buttonVariants({ variant: "outline" }),
               "min-h-control flex-1 px-4"
@@ -135,26 +129,26 @@ const TrustedPersonRow = ({
             href={`tel:${phone}`}
           >
             <PhoneIcon aria-hidden="true" />
-            Call
+            {t.call}
           </a>
         ) : null}
         {phone !== null && !callEnabled ? (
           <Button
             aria-describedby={needsDetails ? fallbackId : reviewNoteId}
-            aria-label={`Call ${contact.name}`}
+            aria-label={t.callAria(contact.name)}
             className="min-h-control flex-1 px-4"
             disabled
             type="button"
             variant="outline"
           >
             <PhoneIcon aria-hidden="true" />
-            Call
+            {t.call}
           </Button>
         ) : null}
         <Button
           aria-busy={busy}
           aria-describedby={channel === null ? fallbackId : reviewNoteId}
-          aria-label={`Prepare a message to ${contact.name}`}
+          aria-label={t.prepareAria(contact.name)}
           className="min-h-control flex-1 px-4"
           disabled={disabled || channel === null}
           onClick={onMessage}
@@ -162,7 +156,7 @@ const TrustedPersonRow = ({
           variant="outline"
         >
           <MessageCircleIcon aria-hidden="true" />
-          {busy ? "Preparing…" : "Prepare message"}
+          {busy ? t.preparing : t.prepare}
         </Button>
       </div>
       {needsDetails ? (
@@ -170,14 +164,14 @@ const TrustedPersonRow = ({
           className="text-muted-foreground text-body col-span-2"
           id={fallbackId}
         >
-          {phone === null ? "No phone number is saved. " : null}
-          {channel === null ? "No way to message them is saved. " : null}
-          Save their contact details in your{" "}
+          {phone === null ? t.noPhone : null}
+          {channel === null ? t.noWayToMessage : null}
+          {t.saveDetails}
           <Link
             className="font-medium underline underline-offset-4"
             href="/circle"
           >
-            Trusted circle
+            {t.trustedCircle}
           </Link>
           .
         </p>
@@ -190,6 +184,7 @@ const TrustedPersonRow = ({
 const TrustedPeople = ({
   reviewId,
   message,
+  practiceCall = false,
   disabled = false,
 }: TrustedPeopleProps) => {
   const contacts = useQuery(api.contacts.list);
@@ -206,8 +201,23 @@ const TrustedPeople = ({
   const [failure, setFailure] = useState<string | null>(null);
   const preparing = useRef(false);
   const reviewNoteId = useId();
-  const body = message ?? CALL_HELP_MESSAGE;
+  const t = useMessages().trustedPeople;
   const canCall = me?.profile?.demoMode === false;
+
+  const bodyFor = (contact: CircleContact): string => {
+    // Authored bodies are exact; only new templates follow the recipient’s language.
+    if (message !== undefined) {
+      return message;
+    }
+
+    const recipientMessages = messagesFor(
+      contact.language ?? interfaceLocaleOf(me?.preferences?.supportLanguage)
+    );
+
+    return practiceCall
+      ? recipientMessages.callScreening.practiceHelp
+      : recipientMessages.trustedPeople.callHelpMessage;
+  };
 
   const trusted = contacts?.filter(
     (contact) => contact.trusted && !contact.sample
@@ -225,13 +235,17 @@ const TrustedPeople = ({
     try {
       const taskId = reviewId
         ? await ask({ contactId: contact._id, reviewId })
-        : await draft({ body, contactId: contact._id, photoIds: [] });
+        : await draft({
+            body: bodyFor(contact),
+            contactId: contact._id,
+            photoIds: [],
+          });
 
       // SAFETY: this stored task ID came from the draft mutation; /tasks/[taskId] is a real route.
       router.push(`/tasks/${taskId}` as Route);
     } catch (error) {
       setFailure(
-        `The message to ${contact.name} couldn’t be prepared. ${messageOf(error instanceof Error ? error : null)} Nothing was sent. Try Prepare message again.`
+        t.failed(contact.name, messageOf(error instanceof Error ? error : null))
       );
       preparing.current = false;
       setBusyContactId(null);
@@ -240,11 +254,11 @@ const TrustedPeople = ({
 
   if (trusted === undefined) {
     return (
-      <div aria-busy="true" aria-label="Loading trusted people">
+      <div aria-busy="true" aria-label={t.loading}>
         <div aria-hidden="true">
           <ScamTrustedPeopleLoading />
         </div>
-        <output className="sr-only">Loading trusted people</output>
+        <output className="sr-only">{t.loading}</output>
       </div>
     );
   }
@@ -253,18 +267,17 @@ const TrustedPeople = ({
     return (
       <div className="bg-parchment flex flex-col gap-3 rounded-xl p-5">
         <p className="text-body">
-          A second opinion can help. Add someone you know to your{" "}
+          {t.empty}
           <Link
             className="font-medium underline underline-offset-4"
             href="/circle"
           >
-            Trusted circle
-          </Link>{" "}
-          to ask for help checking this. You’ll review any message before it is
-          sent.
+            {t.trustedCircle}
+          </Link>
+          {t.emptyRest}
         </p>
         <Link className={buttonVariants({ variant: "outline" })} href="/circle">
-          Add a trusted person
+          {t.add}
         </Link>
       </div>
     );
@@ -273,28 +286,18 @@ const TrustedPeople = ({
   return (
     <div className="text-body flex min-w-0 flex-col gap-3">
       <div className="flex flex-col gap-2" id={reviewNoteId}>
-        <p>
-          {reviewId
-            ? "Prepare a message asking someone to help with this check. You can read and change it before approving it. Nothing is sent yet."
-            : "Prepare a message asking for help with the call. You can read and change it before approving it. Nothing is sent yet."}
-        </p>
+        <p>{reviewId ? t.introCheck : t.introCall}</p>
         {me?.profile?.demoMode ? (
-          <p className="text-muted-foreground">
-            Calls are unavailable in Practice mode.
-          </p>
+          <p className="text-muted-foreground">{t.callsPractice}</p>
         ) : null}
         {me?.profile ? null : (
-          <p className="text-muted-foreground">
-            Calls are unavailable until your account settings load.
-          </p>
+          <p className="text-muted-foreground">{t.callsLoading}</p>
         )}
         {disabled ? (
-          <p className="text-muted-foreground">
-            Call and Prepare message are unavailable right now.
-          </p>
+          <p className="text-muted-foreground">{t.unavailable}</p>
         ) : null}
       </div>
-      <ul aria-label="Trusted people" className="flex min-w-0 flex-col">
+      <ul aria-label={t.list} className="flex min-w-0 flex-col">
         {trusted.map((contact) => (
           <TrustedPersonRow
             busy={busyContactId === contact._id}

@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@lifelink/backend/convex/_generated/api";
-import { sharingScopes } from "@lifelink/contracts/sharing";
+import { sharingScopeIds } from "@lifelink/contracts/sharing";
 import type { SharingScope } from "@lifelink/contracts/sharing";
 import { Button } from "@lifelink/ui/components/button";
 import { Checkbox } from "@lifelink/ui/components/checkbox";
@@ -17,6 +17,8 @@ import { toast } from "sonner";
 
 import { ReadAloudButton } from "@/components/app/bits";
 import { LoadingRows } from "@/components/app/states";
+import { useLocale, useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 import { formatDay } from "@/lib/format";
 
@@ -25,13 +27,16 @@ import type { CircleContact } from "./contact-form";
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const EXPIRY_OPTIONS = [
-  { label: "No end date", value: "none" },
-  { label: "30 days", value: "30" },
-  { label: "7 days", value: "7" },
-] as const;
+type Words = Messages["sharing"];
 
-type Expiry = (typeof EXPIRY_OPTIONS)[number]["value"];
+const expiryOptions = (t: Words) =>
+  [
+    { label: t.expiry.none, value: "none" },
+    { label: t.expiry.thirty, value: "30" },
+    { label: t.expiry.seven, value: "7" },
+  ] as const;
+
+type Expiry = ReturnType<typeof expiryOptions>[number]["value"];
 
 const ScopePicker = ({
   onChange,
@@ -41,29 +46,30 @@ const ScopePicker = ({
   value: SharingScope[];
 }) => {
   const baseId = useId();
+  const t = useMessages().sharing;
 
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="pb-2 text-lg font-semibold">What they can see</legend>
-      {sharingScopes.map((scope) => (
-        <div className="flex items-start gap-4" key={scope.id}>
+      <legend className="pb-2 text-lg font-semibold">{t.whatTheyCanSee}</legend>
+      {sharingScopeIds.map((scope) => (
+        <div className="flex items-start gap-4" key={scope}>
           <Checkbox
-            checked={value.includes(scope.id)}
-            id={`${baseId}-${scope.id}`}
+            checked={value.includes(scope)}
+            id={`${baseId}-${scope}`}
             onCheckedChange={(checked) =>
               onChange(
                 checked
-                  ? [...value, scope.id]
-                  : value.filter((item) => item !== scope.id)
+                  ? [...value, scope]
+                  : value.filter((item) => item !== scope)
               )
             }
           />
           <div className="flex flex-col">
-            <Label className="cursor-pointer" htmlFor={`${baseId}-${scope.id}`}>
-              {scope.label}
+            <Label className="cursor-pointer" htmlFor={`${baseId}-${scope}`}>
+              {t.scopes[scope].label}
             </Label>
             <span className="text-muted-foreground text-lg leading-7">
-              {scope.description}
+              {t.scopes[scope].description}
             </span>
           </div>
         </div>
@@ -88,19 +94,19 @@ const InviteForm = ({
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const messages = useMessages();
+  const t = messages.sharing;
   const person = contact;
 
   if (code !== null) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-lg">
-          Give {person?.name.split(" ")[0] ?? "them"} this code. They create a
-          LifeLink account, choose “A family member invited me”, and type it in.
-          It works once, for 14 days. Copy it now; it’s only shown here once.
+          {t.giveCode(person?.name.split(" ")[0] ?? t.them)}
         </p>
         <p
           className="num border-border bg-raised rounded-xl border px-4 py-5 text-center text-2xl leading-8 font-semibold tracking-wider break-all"
-          aria-label={`Invitation code ${code.split("").join(" ")}`}
+          aria-label={t.codeAriaLabel(code.split("").join(" "))}
         >
           {code}
         </p>
@@ -123,11 +129,9 @@ const InviteForm = ({
 
               try {
                 await navigator.clipboard.writeText(code);
-                toast.success("Code copied.");
+                toast.success(t.codeCopied);
               } catch {
-                setFailure(
-                  "The code couldn’t be copied. Try Copy the code again, or write down the code shown above."
-                );
+                setFailure(t.codeCopyFailed);
               }
 
               setBusy(false);
@@ -135,13 +139,18 @@ const InviteForm = ({
             variant="outline"
           >
             <CopyIcon />
-            Copy the code
+            {t.copyCode}
           </Button>
           <ReadAloudButton
-            label="Read the code aloud"
-            text={`The code is ${code.replaceAll("-", ", dash, ").split("").join(" ")}`}
+            label={t.readCode}
+            text={t.codeSpoken(
+              code
+                .split("-")
+                .map((part) => part.split("").join(" "))
+                .join(t.codeSpokenDash)
+            )}
           />
-          <Button onClick={onDone}>Done</Button>
+          <Button onClick={onDone}>{messages.common.done}</Button>
         </div>
       </div>
     );
@@ -169,9 +178,7 @@ const InviteForm = ({
 
           setCode(result.code);
         } catch (error) {
-          setFailure(
-            `The invitation couldn’t be created. ${errorText(error)} Your choices are still here. Try making the code again.`
-          );
+          setFailure(t.inviteFailed(errorText(error)));
         }
 
         setBusy(false);
@@ -180,16 +187,14 @@ const InviteForm = ({
       <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
         <ScopePicker onChange={setScopes} value={scopes} />
         {scopes.length === 0 ? (
-          <p className="text-muted-foreground text-lg">
-            Choose at least one thing to share to create a code.
-          </p>
+          <p className="text-muted-foreground text-lg">{t.chooseAtLeastOne}</p>
         ) : null}
         <div className="flex flex-col gap-2">
-          <span className="text-lg font-semibold">For how long</span>
+          <span className="text-lg font-semibold">{t.forHowLong}</span>
           <Segmented
-            label="For how long"
+            label={t.forHowLong}
             onValueChange={setExpiry}
-            options={EXPIRY_OPTIONS}
+            options={expiryOptions(t)}
             value={expiry}
           />
         </div>
@@ -205,10 +210,10 @@ const InviteForm = ({
           disabled={busy || scopes.length === 0}
           type="submit"
         >
-          {busy ? "Making the code…" : "Create invitation code"}
+          {busy ? t.makingCode : t.createCode}
         </Button>
         <Button disabled={busy} onClick={onDone} type="button" variant="ghost">
-          Cancel
+          {messages.common.cancel}
         </Button>
       </div>
     </form>
@@ -218,13 +223,6 @@ const InviteForm = ({
 type GrantRow = NonNullable<
   ReturnType<typeof useQuery<typeof api.sharing.listGrants>>
 >[number];
-
-const STATE_WORDS: Record<GrantRow["state"], string> = {
-  active: "Can see shared information",
-  expired: "Sharing ended",
-  invited: "Invitation not used yet",
-  revoked: "Sharing stopped",
-};
 
 const GrantCard = ({
   grant,
@@ -241,7 +239,10 @@ const GrantCard = ({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const live = grant.state === "active" || grant.state === "invited";
-  const state = STATE_WORDS[grant.state];
+  const locale = useLocale();
+  const messages = useMessages();
+  const t = messages.sharing;
+  const state = t.state[grant.state];
 
   return (
     <li className="border-rule flex flex-col gap-4 border-t py-5 first:border-t-0 first:pt-0">
@@ -250,8 +251,8 @@ const GrantCard = ({
           <span className="text-lg font-semibold">{state}</span>
           <span className="text-muted-foreground text-base">
             {grant.expiresAt === null
-              ? "No end date"
-              : `Until ${formatDay(grant.expiresAt, timeZone)}`}
+              ? t.expiry.none
+              : t.until(formatDay(grant.expiresAt, timeZone, locale))}
           </span>
         </div>
       </div>
@@ -275,17 +276,15 @@ const GrantCard = ({
                 try {
                   await updateScopes({ grantId: grant.id, scopes });
                   setEditing(false);
-                  toast.success("Sharing updated. It applies right away.");
+                  toast.success(t.updated);
                 } catch (error) {
-                  setFailure(
-                    `Sharing couldn’t be updated. ${errorText(error)} Your choices are still here. Choose Save permissions to try again.`
-                  );
+                  setFailure(t.updateFailed(errorText(error)));
                 }
 
                 setBusy(false);
               }}
             >
-              {busy ? "Saving…" : "Save permissions"}
+              {busy ? messages.common.saving : t.savePermissions}
             </Button>
             <Button
               disabled={busy}
@@ -295,24 +294,21 @@ const GrantCard = ({
               }}
               variant="ghost"
             >
-              Cancel
+              {messages.common.cancel}
             </Button>
           </div>
         </div>
       ) : (
-        <ul aria-label="Shared information" className="flex flex-wrap gap-2">
+        <ul aria-label={t.sharedInformation} className="flex flex-wrap gap-2">
           {grant.scopes.map((scope) => (
             <li key={scope}>
-              <Pill>
-                {sharingScopes.find((item) => item.id === scope)?.label ??
-                  scope}
-              </Pill>
+              <Pill>{t.scopes[scope].label}</Pill>
             </li>
           ))}
         </ul>
       )}
       {!editing && grant.scopes.length === 0 ? (
-        <p className="text-lg">No information is selected to share.</p>
+        <p className="text-lg">{t.noInformationSelected}</p>
       ) : null}
       {!confirming && failure ? (
         <p className="text-destructive text-base" role="alert">
@@ -330,7 +326,7 @@ const GrantCard = ({
             variant="outline"
           >
             <PencilIcon />
-            Change permissions
+            {t.changePermissions}
           </Button>
           <Button
             onClick={() => {
@@ -339,12 +335,12 @@ const GrantCard = ({
             }}
             variant="destructive"
           >
-            Stop sharing
+            {t.stopSharing}
           </Button>
         </div>
       ) : null}
       <Dialog
-        description={`${grant.contactName} will immediately stop seeing anything you shared. You can invite them again later.`}
+        description={t.stopDescription(grant.contactName)}
         onOpenChange={(open) => {
           if (!busy) {
             setConfirming(open);
@@ -352,7 +348,7 @@ const GrantCard = ({
           }
         }}
         open={confirming}
-        title={`Stop sharing with ${grant.contactName}?`}
+        title={t.stopTitle(grant.contactName)}
       >
         {failure ? (
           <p className="text-destructive text-base" role="alert">
@@ -374,11 +370,9 @@ const GrantCard = ({
               try {
                 await revoke({ grantId: grant.id });
                 setConfirming(false);
-                toast.success(`Stopped sharing with ${grant.contactName}.`);
+                toast.success(t.stopped(grant.contactName));
               } catch (error) {
-                setFailure(
-                  `Sharing couldn’t be stopped. ${errorText(error)} Try Stop sharing again.`
-                );
+                setFailure(t.stopFailed(errorText(error)));
               }
 
               setBusy(false);
@@ -386,8 +380,8 @@ const GrantCard = ({
             variant="destructive"
           >
             {busy
-              ? "Stopping sharing…"
-              : `Stop sharing with ${grant.contactName.split(" ")[0]}`}
+              ? t.stopping
+              : t.stopSharingWith(grant.contactName.split(" ")[0] ?? "")}
           </Button>
           <Button
             disabled={busy}
@@ -397,7 +391,7 @@ const GrantCard = ({
             }}
             variant="ghost"
           >
-            Keep sharing
+            {t.keepSharing}
           </Button>
         </div>
       </Dialog>
@@ -416,6 +410,8 @@ const ContactPermissions = ({
   timeZone: string;
 }) => {
   const [inviting, setInviting] = useState(false);
+  const t = useMessages().sharing;
+  const firstName = contact.name.split(" ")[0] ?? contact.name;
 
   const live = grants?.some(
     (grant) => grant.state === "active" || grant.state === "invited"
@@ -423,25 +419,20 @@ const ContactPermissions = ({
 
   return (
     <section
-      aria-label={`Permissions for ${contact.name}`}
+      aria-label={t.permissionsFor(contact.name)}
       className="bg-parchment flex min-w-0 flex-col gap-5 rounded-xl p-5 sm:p-6"
     >
       <div className="flex max-w-prose flex-col gap-2">
         <h3 className="text-section font-semibold">
-          What {contact.name.split(" ")[0]} can see
+          {t.whatNameCanSee(firstName)}
         </h3>
-        <p className="text-lg">
-          Choose which information to share in LifeLink. They can only view it;
-          they can’t send messages, approve actions, or spend for you.
-        </p>
+        <p className="text-lg">{t.viewOnly}</p>
       </div>
       {grants === undefined ? (
-        <LoadingRows layout="note" label="Loading permissions" rows={2} />
+        <LoadingRows layout="note" label={t.loadingPermissions} rows={2} />
       ) : null}
       {grants?.length === 0 ? (
-        <p className="text-lg">
-          You aren’t sharing any information with {contact.name.split(" ")[0]}.
-        </p>
+        <p className="text-lg">{t.notSharing(firstName)}</p>
       ) : null}
       {grants && grants.length > 0 ? (
         <ul>
@@ -457,12 +448,9 @@ const ContactPermissions = ({
       ) : null}
       {grants !== undefined && !live && !inviting ? (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-lg">
-            To start sharing, choose what they can see and give them an
-            invitation code. They enter it in their own LifeLink account.
-          </p>
+          <p className="text-lg">{t.startSharing}</p>
           <Button onClick={() => setInviting(true)}>
-            Choose what to share
+            {t.chooseWhatToShare}
           </Button>
         </div>
       ) : null}
@@ -470,26 +458,28 @@ const ContactPermissions = ({
   );
 };
 
-const sharingSummary = (grants: GrantRow[] | undefined): string => {
+const sharingSummary = (grants: GrantRow[] | undefined, t: Words): string => {
   if (grants === undefined) {
-    return "Loading permissions…";
+    return t.loadingPermissionsShort;
   }
 
   const active = grants.filter((grant) => grant.state === "active");
   const scopes = new Set(active.flatMap((grant) => grant.scopes));
 
   if (scopes.size > 0) {
-    return `Can see: ${sharingScopes
-      .filter((scope) => scopes.has(scope.id))
-      .map((scope) => scope.label.toLowerCase())
-      .join(", ")}`;
+    return t.canSee(
+      sharingScopeIds
+        .filter((scope) => scopes.has(scope))
+        .map((scope) => t.scopes[scope].label.toLowerCase())
+        .join(", ")
+    );
   }
 
   if (grants.some((grant) => grant.state === "invited")) {
-    return "Invitation waiting to be accepted";
+    return t.invitationWaiting;
   }
 
-  return "No information shared";
+  return t.noInformationShared;
 };
 
 export { ContactPermissions, sharingSummary };

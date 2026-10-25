@@ -6,6 +6,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
+import { useMessages } from "@/i18n/locale";
+import type { Messages } from "@/i18n/locale";
+
 const HIDDEN_KEY = "lifelink:getting-started-hidden";
 const HIDDEN_EVENT = "lifelink:getting-started-hidden";
 
@@ -48,38 +51,37 @@ interface Step {
   title: string;
 }
 
-const stepsFor = (progress: Progress): Step[] => [
+const stepsFor = (
+  progress: Progress,
+  steps: Messages["today"]["steps"]
+): Step[] => [
   {
-    action: "Connect email",
-    description:
-      "LifeLink reads it with you and points out anything that looks like a scam.",
+    action: steps.emailAction,
+    description: steps.emailDescription,
     done: progress.connected,
     href: "/connections",
-    title: "Connect your email",
+    title: steps.emailTitle,
   },
   {
-    action: "Add a person",
-    description:
-      "Choose who can help with rides and what they can see. You stay in charge.",
+    action: steps.trustedAction,
+    description: steps.trustedDescription,
     done: progress.trusted,
     href: "/circle",
-    title: "Add someone you trust",
+    title: steps.trustedTitle,
   },
   {
-    action: "Ask LifeLink",
-    description:
-      "Try “Remind me to water the plants at five.” You’ll review anything before it happens.",
+    action: steps.askAction,
+    description: steps.askDescription,
     done: progress.asked,
     href: "/ask",
-    title: "Ask for a hand",
+    title: steps.askTitle,
   },
   {
-    action: "Add postal code",
-    description:
-      "LifeLink shows the weather on Today and next to each appointment.",
+    action: steps.locationAction,
+    description: steps.locationDescription,
     done: progress.location,
     href: "/settings#profile",
-    title: "Add your postal code",
+    title: steps.locationTitle,
   },
 ];
 
@@ -93,68 +95,77 @@ const showsGettingStarted = (progress: Progress, hidden: boolean): boolean =>
     progress.trusted
   );
 
-const GettingStarted = ({ progress }: { progress: Progress }) => (
-  <section aria-labelledby="getting-started-heading" className="flex flex-col">
-    <h2
-      className="text-section pb-4 font-semibold"
-      id="getting-started-heading"
+const GettingStarted = ({ progress }: { progress: Progress }) => {
+  const t = useMessages();
+
+  return (
+    <section
+      aria-labelledby="getting-started-heading"
+      className="flex flex-col"
     >
-      Getting started
-    </h2>
-    <div className="border-border bg-parchment flex flex-col rounded-xl border px-5 pt-2 pb-4 sm:px-6">
-      <ol className="flex flex-col">
-        {stepsFor(progress).map((step, index) => (
-          <li
-            className="border-border flex items-start gap-4 border-b py-5"
-            key={step.href}
-          >
-            {step.done ? (
-              <span className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
-                <CheckIcon aria-hidden="true" className="size-5" />
-              </span>
-            ) : (
-              <span
-                aria-hidden="true"
-                className="border-control num flex size-8 shrink-0 items-center justify-center rounded-full border-[1.5px] font-semibold"
-              >
-                {index + 1}
-              </span>
-            )}
-            <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:gap-4">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <h3 className="text-xl leading-7 font-medium">{step.title}</h3>
-                <p className="text-muted-foreground text-label">
-                  {step.description}
-                </p>
+      <h2
+        className="text-section pb-4 font-semibold"
+        id="getting-started-heading"
+      >
+        {t.today.gettingStarted}
+      </h2>
+      <div className="border-border bg-parchment flex flex-col rounded-xl border px-5 pt-2 pb-4 sm:px-6">
+        <ol className="flex flex-col">
+          {stepsFor(progress, t.today.steps).map((step, index) => (
+            <li
+              className="border-border flex items-start gap-4 border-b py-5"
+              key={step.href}
+            >
+              {step.done ? (
+                <span className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
+                  <CheckIcon aria-hidden="true" className="size-5" />
+                </span>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="border-control num flex size-8 shrink-0 items-center justify-center rounded-full border-[1.5px] font-semibold"
+                >
+                  {index + 1}
+                </span>
+              )}
+              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <h3 className="text-xl leading-7 font-medium">
+                    {step.title}
+                  </h3>
+                  <p className="text-muted-foreground text-label">
+                    {step.description}
+                  </p>
+                </div>
+                <div className="flex shrink-0 sm:w-40 sm:justify-end">
+                  {step.done ? (
+                    <span className="text-muted-foreground text-label inline-flex min-h-11 items-center font-medium sm:-mt-2">
+                      {t.common.done}
+                    </span>
+                  ) : (
+                    <Link
+                      className="text-accent-foreground text-label inline-flex min-h-11 items-center font-medium underline sm:-mt-2"
+                      href={step.href}
+                    >
+                      {step.action}
+                    </Link>
+                  )}
+                </div>
               </div>
-              <div className="flex shrink-0 sm:w-40 sm:justify-end">
-                {step.done ? (
-                  <span className="text-muted-foreground text-label inline-flex min-h-11 items-center font-medium sm:-mt-2">
-                    Done
-                  </span>
-                ) : (
-                  <Link
-                    className="text-accent-foreground text-label inline-flex min-h-11 items-center font-medium underline sm:-mt-2"
-                    href={step.href}
-                  >
-                    {step.action}
-                  </Link>
-                )}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pt-2">
-        <p className="text-muted-foreground text-label">
-          Each step is marked done when you finish it.
-        </p>
-        <Button onClick={hideSteps} variant="link">
-          Hide these steps
-        </Button>
+            </li>
+          ))}
+        </ol>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pt-2">
+          <p className="text-muted-foreground text-label">
+            {t.today.gettingStartedHint}
+          </p>
+          <Button onClick={hideSteps} variant="link">
+            {t.today.hideSteps}
+          </Button>
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 export { GettingStarted, showsGettingStarted, useStepsHidden };
