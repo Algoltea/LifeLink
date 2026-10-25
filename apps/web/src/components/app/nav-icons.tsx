@@ -80,6 +80,23 @@ const ConnectionsIcon = (props: NavIconProps) => (
   </svg>
 );
 
+/**
+ * A woven basket with an apple and a loaf in it: a rolled rim, a rounded belly
+ * and a staggered weave, so it reads as wicker rather than a wire shop basket.
+ */
+const GroceriesIcon = (props: NavIconProps) => (
+  <svg {...iconAttributes} {...props}>
+    {/* The loaf and the apple stop at the rim, which hides the rest of them. */}
+    <path d="M13.25 11L16.6 3.8A1.75 1.75 0 0 1 19.8 5.3L17.1 11" />
+    <path d="M7.1 11A3 3 0 1 1 11.4 11" />
+    <path d="M9.25 5.5L10 4" />
+    <rect height="2.75" rx="1.375" width="19" x="2.5" y="11" />
+    <path d="M4 13.75C4.4 17.85 5.75 20.5 8.25 20.5H15.75C18.25 20.5 19.6 17.85 20 13.75" />
+    <path d="M4.75 17.1H19.25" />
+    <path d="M9.5 13.75V17.1M14.5 13.75V17.1M12 17.1V20.5" />
+  </svg>
+);
+
 /** Three people on a ring around a heart. */
 const TrustedCircleIcon = (props: NavIconProps) => (
   <svg {...iconAttributes} {...props}>
@@ -99,6 +116,7 @@ const TrustedCircleIcon = (props: NavIconProps) => (
 export {
   AskIcon,
   ConnectionsIcon,
+  GroceriesIcon,
   MahjongIcon,
   SolitaireIcon,
   TrustedCircleIcon,

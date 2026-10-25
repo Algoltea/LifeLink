@@ -15,7 +15,6 @@ import {
   MessagesSquareIcon,
   SettingsIcon,
   ShieldCheckIcon,
-  ShoppingBasketIcon,
   UsersRoundIcon,
   WifiOffIcon,
   XIcon,
@@ -40,6 +39,7 @@ import {
 import {
   AskIcon,
   ConnectionsIcon,
+  GroceriesIcon,
   MahjongIcon,
   SolitaireIcon,
   TrustedCircleIcon,
@@ -115,7 +115,7 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
     {
       items: [
         { href: "/scam", icon: ShieldCheckIcon, label: nav.scam },
-        { href: "/groceries", icon: ShoppingBasketIcon, label: nav.groceries },
+        { href: "/groceries", icon: GroceriesIcon, label: nav.groceries },
       ],
       label: t.groupHelpWith,
     },

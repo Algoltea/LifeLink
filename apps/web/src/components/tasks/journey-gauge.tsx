@@ -11,11 +11,11 @@ import {
   MessageCircleIcon,
   MinusIcon,
   SendIcon,
-  ShoppingBasketIcon,
   UsersIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { GroceriesIcon } from "@/components/app/nav-icons";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 
@@ -48,7 +48,7 @@ const markFor = (kind: Step["kind"], className: string): ReactNode => {
     }
 
     case "grocery_handoff": {
-      return <ShoppingBasketIcon aria-hidden="true" className={className} />;
+      return <GroceriesIcon aria-hidden="true" className={className} />;
     }
 
     case "email_draft":
