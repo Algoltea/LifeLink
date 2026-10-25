@@ -226,7 +226,8 @@ const ProviderCard = ({
         <span className="flex flex-wrap gap-x-2 gap-y-3">
           {icons.map((kind) => (
             <span
-              className="flex w-[4.5rem] flex-col items-center gap-1 sm:w-20"
+              // Widens for a long single word ("Veröffentlichen") instead of spilling into the next icon.
+              className="flex w-min min-w-[4.5rem] flex-col items-center gap-1 sm:min-w-20"
               key={kind}
             >
               <IsoIcon

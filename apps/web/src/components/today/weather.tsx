@@ -80,27 +80,28 @@ const WeekForecast = ({
 
   return (
     <>
-      <ul className="flex flex-col">
+      {/* One shared day column, as wide as the longest day word in any language. */}
+      <ul className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] gap-x-3">
         {forecast.days.map((day, index) => {
           const advice = adviceFor(day, locale);
           const label = weatherLabel(day.code, locale);
 
           return (
             <li
-              className="border-rule flex items-center gap-3 border-t py-2.5 first:border-t-0"
+              className="border-rule col-span-full grid grid-cols-subgrid items-center border-t py-2.5 first:border-t-0"
               key={day.date}
             >
-              <span className="text-body w-14 shrink-0 font-semibold">
+              <span className="text-body min-w-14 font-semibold">
                 {weekday(day.date, index, t.format.today, locale)}
               </span>
               <WeatherIcon
                 className="text-muted-foreground size-5"
                 code={day.code}
               />
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex min-w-0 flex-col">
                 <span className="text-label">{advice ?? label}</span>
               </span>
-              <span className="num text-label shrink-0">
+              <span className="num text-label">
                 <span className="sr-only">{t.weather.high}</span>
                 {degrees(day.highC, unit)}
                 <span className="text-muted-foreground">

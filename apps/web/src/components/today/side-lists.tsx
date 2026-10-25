@@ -154,11 +154,15 @@ const WeekList = ({
       {rows.length === 0 ? (
         <SideEmpty>{t.today.nothingBooked}</SideEmpty>
       ) : (
-        <ul className="flex flex-col gap-1">
+        // One shared time column, as wide as the longest day word in any language.
+        <ul className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 gap-y-1">
           {rows.map((row) => (
-            <li className="flex items-center gap-3.5 py-2.5" key={row.id}>
+            <li
+              className="col-span-full grid grid-cols-subgrid items-center py-2.5"
+              key={row.id}
+            >
               <time
-                className="flex w-20 shrink-0 flex-col"
+                className="flex min-w-20 flex-col"
                 dateTime={new Date(row.at).toISOString()}
                 title={formatWhen(row.at, timeZone, locale)}
               >

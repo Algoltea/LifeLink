@@ -291,7 +291,7 @@ const Account = () => {
                 >
                   <FlaskConicalIcon aria-hidden="true" className="size-5" />
                   <span className="flex-1">{t.shell.practiceMode}</span>
-                  <span className="bg-warning-wash text-warning rounded-full px-2 text-[0.833rem] font-semibold">
+                  <span className="bg-warning-wash text-warning shrink-0 rounded-full px-2 text-[0.833rem] font-semibold">
                     {profile.demoMode ? t.common.on : t.common.off}
                   </span>
                 </Menu.LinkItem>
