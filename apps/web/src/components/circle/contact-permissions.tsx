@@ -403,14 +403,17 @@ const GrantCard = ({
 const ContactPermissions = ({
   contact,
   grants,
+  onClose,
   timeZone,
 }: {
   contact: CircleContact;
   grants: GrantRow[] | undefined;
+  onClose: () => void;
   timeZone: string;
 }) => {
   const [inviting, setInviting] = useState(false);
-  const t = useMessages().sharing;
+  const messages = useMessages();
+  const t = messages.sharing;
   const firstName = contact.name.split(" ")[0] ?? contact.name;
 
   const live = grants?.some(
@@ -422,11 +425,20 @@ const ContactPermissions = ({
       aria-label={t.permissionsFor(contact.name)}
       className="bg-parchment flex min-w-0 flex-col gap-5 rounded-xl p-5 sm:p-6"
     >
-      <div className="flex max-w-prose flex-col gap-2">
-        <h3 className="text-section font-semibold">
-          {t.whatNameCanSee(firstName)}
-        </h3>
-        <p className="text-lg">{t.viewOnly}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex max-w-prose flex-col gap-2">
+          <h3 className="text-section font-semibold">
+            {t.whatNameCanSee(firstName)}
+          </h3>
+          <p className="text-lg">{t.viewOnly}</p>
+        </div>
+        <button
+          className="text-muted-foreground hover:text-foreground text-label min-h-control -my-2 shrink-0 font-medium underline-offset-4 hover:underline"
+          onClick={onClose}
+          type="button"
+        >
+          {messages.common.cancel}
+        </button>
       </div>
       {grants === undefined ? (
         <LoadingRows layout="note" label={t.loadingPermissions} rows={2} />

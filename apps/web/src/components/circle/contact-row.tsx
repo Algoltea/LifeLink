@@ -61,6 +61,7 @@ const ContactRow = ({
   onPermissions,
   permissions,
   permissionsOpen,
+  permissionsRef,
   sharingSummary,
 }: {
   contact: CircleContact;
@@ -71,6 +72,7 @@ const ContactRow = ({
   onPermissions: () => void;
   permissions: ReactNode;
   permissionsOpen: boolean;
+  permissionsRef: Ref<HTMLButtonElement>;
   sharingSummary: string;
 }) => {
   const usesIMessage = contact.channels.some(
@@ -129,6 +131,7 @@ const ContactRow = ({
           aria-controls={`permissions-${contact._id}`}
           aria-expanded={permissionsOpen}
           onClick={onPermissions}
+          ref={permissionsRef}
           variant="outline"
         >
           <ShieldCheckIcon aria-hidden="true" />

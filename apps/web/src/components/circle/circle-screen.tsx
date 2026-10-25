@@ -136,6 +136,7 @@ const CircleScreen = ({
   const addButton = useRef<HTMLButtonElement>(null);
   const peopleHeading = useRef<HTMLHeadingElement>(null);
   const editButtons = useRef(new Map<string, HTMLButtonElement>());
+  const permissionButtons = useRef(new Map<string, HTMLButtonElement>());
 
   // Where focus goes once the editor closes: the control that opened it.
   const focusAfterClose = useRef<(() => void) | null>(null);
@@ -258,9 +259,23 @@ const CircleScreen = ({
                         grants={grants?.filter(
                           (grant) => grant.contactId === contact._id
                         )}
+                        onClose={() => {
+                          setPermissionsFor(null);
+                          // The panel unmounts first, then focus returns to its button.
+                          requestAnimationFrame(() =>
+                            permissionButtons.current.get(contact._id)?.focus()
+                          );
+                        }}
                         timeZone={timeZone}
                       />
                     }
+                    permissionsRef={(node) => {
+                      if (node) {
+                        permissionButtons.current.set(contact._id, node);
+                      } else {
+                        permissionButtons.current.delete(contact._id);
+                      }
+                    }}
                   />
                 )
               )}
