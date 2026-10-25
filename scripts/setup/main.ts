@@ -602,6 +602,7 @@ const validate = async (
         value("OPENROUTER_MODEL"),
         value("OPENROUTER_FAST_MODEL"),
         value("OPENROUTER_SCAM_MODEL") || "openai/gpt-6-luna",
+        value("OPENROUTER_NEWS_MODEL") || "inception/mercury-3",
         value("OPENROUTER_TTS_MODEL"),
       ]);
     }

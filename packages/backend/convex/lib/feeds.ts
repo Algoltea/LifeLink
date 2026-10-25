@@ -15,6 +15,7 @@ const HTTP_URL = /^https?:\/\//u;
 const MAX_ITEMS = 100;
 const MAX_ITEM_CHARS = 50_000;
 const MAX_TITLE_CHARS = 300;
+const MAX_TEASER_CHARS = 500;
 const MAX_URL_CHARS = 2000;
 
 /** Raw fields are capped before tags are stripped, so cleaning stays cheap. */
@@ -110,6 +111,7 @@ const parseFeed = (xml: string, source: NewsSource): Headline[] => {
     const [title] = tagValues(item, "title");
     const [url] = tagValues(item, "link");
     const [published] = tagValues(item, "pubDate");
+    const [teaser] = tagValues(item, "description");
 
     const skipped = tagValues(item, "category").some((category) =>
       skip.has(category.toLowerCase())
@@ -127,13 +129,17 @@ const parseFeed = (xml: string, source: NewsSource): Headline[] => {
 
     const publishedAt = published ? Date.parse(published) : Number.NaN;
 
+    const headline: Headline = {
+      publishedAt: Number.isNaN(publishedAt) ? null : publishedAt,
+      source: source.label,
+      title: clip(title, MAX_TITLE_CHARS),
+      url,
+    };
+
     return [
-      {
-        publishedAt: Number.isNaN(publishedAt) ? null : publishedAt,
-        source: source.label,
-        title: clip(title, MAX_TITLE_CHARS),
-        url,
-      },
+      teaser
+        ? { ...headline, teaser: clip(teaser, MAX_TEASER_CHARS) }
+        : headline,
     ];
   });
 
@@ -163,4 +169,45 @@ const interleave = (
   return mixed;
 };
 
-export { interleave, parseFeed };
+const PARAGRAPH = /<p\b[^>]*>(?<body>[\s\S]*?)<\/p>/giu;
+
+/** Code and templates can hold paragraph-like strings that are not part of the story. */
+const NON_STORY =
+  /<(?<tag>script|style|template|noscript)\b[\s\S]*?<\/\k<tag>\s*>/giu;
+
+/** Menus, captions, and credits are short; story paragraphs are longer. */
+const MIN_PARAGRAPH_CHARS = 60;
+const MAX_ARTICLE_TEXT_CHARS = 12_000;
+
+/**
+ * The story text of a news page: its longer paragraphs, in order, capped so
+ * a summary request stays small. Publishers render their story text in
+ * plain paragraphs, which is all a summary needs.
+ */
+const articleText = (html: string): string => {
+  const paragraphs: string[] = [];
+  let length = 0;
+
+  for (const match of html.replaceAll(NON_STORY, " ").matchAll(PARAGRAPH)) {
+    const text = decodeEntities(
+      (match.groups?.body ?? "").replaceAll(TAGS, " ")
+    )
+      .replaceAll(SPACE, " ")
+      .trim();
+
+    if (text.length < MIN_PARAGRAPH_CHARS) {
+      continue;
+    }
+
+    paragraphs.push(text);
+    length += text.length;
+
+    if (length >= MAX_ARTICLE_TEXT_CHARS) {
+      break;
+    }
+  }
+
+  return paragraphs.join("\n\n").slice(0, MAX_ARTICLE_TEXT_CHARS);
+};
+
+export { articleText, interleave, parseFeed };

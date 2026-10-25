@@ -23,10 +23,16 @@ const today: Messages["today"] = {
     `Tiene mensajes de ${names} de los últimos dos días.`,
   newMessage: "Mensaje nuevo",
   news: "Noticias",
+  newsFullStory: (source) => `Noticia completa en ${source}`,
   newsGood: "Buenas noticias",
   newsMoreFrom: (source) => `Más de ${source}`,
   newsOpensNewTab: ", se abre en una pestaña nueva",
+  newsOpinion: "Artículo de opinión",
   newsSourceFrom: ", de ",
+  newsSponsored: "Contenido patrocinado",
+  newsSummarizing: "Resumiendo…",
+  newsSummaryUnavailable:
+    "No hay un resumen para esta noticia. Puede leer la noticia completa.",
   newsTop: "Noticias principales",
   newsType: "Tipo de noticias",
   newsUnavailable:

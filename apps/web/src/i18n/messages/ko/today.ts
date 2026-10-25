@@ -23,10 +23,16 @@ const today: Messages["today"] = {
   messagesFrom: (names) => `지난 이틀 동안 ${names}에게서 메시지가 왔습니다.`,
   newMessage: "새 메시지",
   news: "뉴스",
+  newsFullStory: (source) => `${source}에서 전체 기사 보기`,
   newsGood: "좋은 소식",
   newsMoreFrom: (source) => `${source}의 다른 기사`,
   newsOpensNewTab: ", 새 탭에서 열림",
+  newsOpinion: "오피니언 기사",
   newsSourceFrom: ", 출처: ",
+  newsSponsored: "후원 콘텐츠",
+  newsSummarizing: "요약하는 중…",
+  newsSummaryUnavailable:
+    "이 기사에는 요약이 없습니다. 전체 기사를 읽을 수 있습니다.",
   newsTop: "주요 뉴스",
   newsType: "뉴스 종류",
   newsUnavailable:

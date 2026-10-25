@@ -23,6 +23,8 @@ interface HttpRequest {
   body?: BodyInit;
   headers?: Record<string, string>;
   method: "DELETE" | "GET" | "PATCH" | "POST";
+  /** "error" refuses redirects, for fetches whose destination was checked first. */
+  redirect?: RequestRedirect;
   timeoutMs?: number;
   url: string;
 }
@@ -42,6 +44,7 @@ const request = async (input: HttpRequest): Promise<HttpOutcome> => {
       body: input.body,
       headers: input.headers,
       method: input.method,
+      redirect: input.redirect,
       signal: controller.signal,
     });
 
