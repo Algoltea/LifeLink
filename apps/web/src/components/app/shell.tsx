@@ -8,29 +8,23 @@ import {
   ChevronsUpDownIcon,
   FlaskConicalIcon,
   FolderOpenIcon,
-  HeartHandshakeIcon,
   HomeIcon,
-  LayersIcon,
   LogOutIcon,
   MailIcon,
   MenuIcon,
-  MessageSquareTextIcon,
   MessagesSquareIcon,
-  PlugIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ShoppingBasketIcon,
-  SpadeIcon,
   UsersRoundIcon,
   WifiOffIcon,
   XIcon,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGAttributes } from "react";
 
 import { HIDE_ON_PHONES } from "@/features/mahjong/screen";
 import { useMessages } from "@/i18n/locale";
@@ -43,12 +37,19 @@ import {
   GuestAccountLinks,
   GuestPlayInvitation,
 } from "./guest-play-navigation";
+import {
+  AskIcon,
+  ConnectionsIcon,
+  MahjongIcon,
+  SolitaireIcon,
+  TrustedCircleIcon,
+} from "./nav-icons";
 import { useOffline } from "./offline-queue";
 import { usePreferences } from "./preferences";
 
 interface NavItem {
   href: Route;
-  icon: LucideIcon;
+  icon: ComponentType<SVGAttributes<SVGSVGElement>>;
   label: string;
   /** Left out of the phone menu, because the page needs a tablet-sized screen. */
   wideOnly?: boolean;
@@ -73,8 +74,8 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
   const { nav } = t;
 
   const games: NavItem[] = [
-    { href: "/solitaire", icon: SpadeIcon, label: nav.solitaire },
-    { href: "/mahjong", icon: LayersIcon, label: nav.mahjong, wideOnly: true },
+    { href: "/solitaire", icon: SolitaireIcon, label: nav.solitaire },
+    { href: "/mahjong", icon: MahjongIcon, label: nav.mahjong, wideOnly: true },
   ];
 
   if (kind === "play") {
@@ -104,7 +105,7 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
     {
       items: [
         { href: "/", icon: HomeIcon, label: nav.today },
-        { href: "/ask", icon: MessageSquareTextIcon, label: nav.ask },
+        { href: "/ask", icon: AskIcon, label: nav.ask },
         { href: "/messages", icon: MessagesSquareIcon, label: nav.messages },
         { href: "/email", icon: MailIcon, label: nav.email },
         { href: "/documents", icon: FolderOpenIcon, label: nav.documents },
@@ -121,8 +122,8 @@ const navigationFor = (kind: NavKind, t: Messages["shell"]): NavGroup[] => {
     { items: games, label: t.groupGames },
     {
       items: [
-        { href: "/circle", icon: HeartHandshakeIcon, label: nav.circle },
-        { href: "/connections", icon: PlugIcon, label: nav.connections },
+        { href: "/circle", icon: TrustedCircleIcon, label: nav.circle },
+        { href: "/connections", icon: ConnectionsIcon, label: nav.connections },
       ],
       label: t.groupSetup,
     },
@@ -137,9 +138,15 @@ const isActive = (pathname: string, href: string): boolean =>
   href === "/" ? pathname === "/" : pathname.startsWith(href);
 
 const NavList = ({
+  dense = false,
   groups,
   onNavigate,
 }: {
+  /**
+   * Shorter rows and gaps, so the desktop sidebar fits a laptop screen without
+   * scrolling; short windows tighten further, down to 40px rows.
+   */
+  dense?: boolean;
   groups: NavGroup[];
   onNavigate?: () => void;
 }) => {
@@ -149,19 +156,31 @@ const NavList = ({
   return (
     <nav
       aria-label={t.shell.mainNavigation}
-      className="flex flex-1 flex-col gap-5"
+      className={cn(
+        "flex flex-1 flex-col",
+        dense ? "gap-3 [@media(max-height:920px)]:gap-1.5" : "gap-5"
+      )}
     >
       {groups.map((group) => (
         <div
-          className={cn("flex flex-col gap-1", group.pinned && "mt-auto")}
+          className={cn(
+            "flex flex-col",
+            dense ? "gap-0.5" : "gap-1",
+            group.pinned && "mt-auto"
+          )}
           key={group.label ?? (group.pinned ? "pinned" : "main")}
         >
           {group.label ? (
-            <p className="text-muted-foreground text-label px-4 pb-1">
+            <p
+              className={cn(
+                "text-muted-foreground text-label px-4",
+                dense ? "pt-1 [@media(max-height:920px)]:pt-0" : "pb-1"
+              )}
+            >
               {group.label}
             </p>
           ) : null}
-          <ul className="flex flex-col gap-1">
+          <ul className={cn("flex flex-col", dense ? "gap-0.5" : "gap-1")}>
             {group.items.map((item) => {
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
@@ -174,7 +193,10 @@ const NavList = ({
                   <Link
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "text-foreground hover:bg-neutral-wash text-label min-h-control flex items-center gap-3 rounded-md px-4 transition-colors",
+                      "text-foreground hover:bg-neutral-wash text-label flex items-center gap-3 rounded-md px-4 transition-colors",
+                      dense
+                        ? "min-h-[2.444rem] [@media(max-height:920px)]:min-h-[2.222rem]"
+                        : "min-h-control",
                       active &&
                         "bg-neutral-wash text-accent-foreground font-semibold"
                     )}
@@ -450,7 +472,9 @@ const ShellFrame = ({
         <aside
           className={cn(
             "border-border bg-parchment sticky top-0 hidden h-svh flex-col overflow-y-auto border-r min-[1101px]:flex",
-            guest ? "px-[1.333rem] py-[1.778rem]" : "gap-6 px-3 pb-5"
+            guest
+              ? "px-[1.333rem] py-[1.778rem]"
+              : "gap-3 px-3 pb-3 [@media(max-height:920px)]:gap-2 [@media(max-height:920px)]:pb-2"
           )}
         >
           {guest ? (
@@ -471,8 +495,8 @@ const ShellFrame = ({
                   <BrandName />
                 </Link>
               </div>
-              {navigation ?? <NavList groups={groups} />}
-              <div className="border-border mt-auto flex flex-col gap-3 border-t pt-4">
+              {navigation ?? <NavList dense groups={groups} />}
+              <div className="border-border mt-auto flex flex-col gap-3 border-t pt-3 [@media(max-height:920px)]:pt-2">
                 {account}
               </div>
             </>

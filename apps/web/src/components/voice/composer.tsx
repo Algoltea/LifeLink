@@ -11,6 +11,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { useOffline } from "@/components/app/offline-queue";
@@ -60,12 +61,44 @@ const voiceHintFor = (
   return t.speakHint;
 };
 
+/** The voice hint: inside the box beside the buttons when compact, otherwise centred under it. */
+const ComposerHint = ({
+  children,
+  compact,
+  id,
+}: {
+  children: string;
+  compact: boolean;
+  id: string;
+}) => (
+  <p
+    className={cn(
+      "text-muted-foreground text-label",
+      compact
+        ? "order-last basis-full @min-[36rem]/composer:order-none @min-[36rem]/composer:flex-1 @min-[36rem]/composer:basis-0 @min-[36rem]/composer:px-2"
+        : "-mt-2 text-center"
+    )}
+    id={id}
+  >
+    {children}
+  </p>
+);
+
+/** Where the hint goes: in the button row, or under the box. */
+const placeHint = (
+  compact: boolean,
+  hint: ReactNode
+): [row: ReactNode, below: ReactNode] =>
+  compact ? [hint, null] : [null, hint];
+
 /**
  * Speak or type. Typed and spoken requests both go to the same backend
  * mutation and come back as proposals to review; nothing is sent from here.
  */
 interface ComposerProps {
   className?: string;
+  /** The voice hint sits inside the box, beside the buttons, so the composer takes one row less. */
+  compact?: boolean;
   draft?: string;
   onDraftChange?: (text: string) => void;
   onSubmitted?: () => void;
@@ -74,6 +107,7 @@ interface ComposerProps {
 
 const ComposerSession = ({
   className,
+  compact = false,
   draft,
   onDraftChange,
   onSubmitted,
@@ -331,6 +365,13 @@ const ComposerSession = ({
 
   const voiceHint = voiceHintFor(voice, voiceAvailable, t);
 
+  const [rowHint, belowHint] = placeHint(
+    compact,
+    <ComposerHint compact={compact} id={hintId}>
+      {voiceHint}
+    </ComposerHint>
+  );
+
   return (
     <div className={cn("@container/composer flex flex-col gap-4", className)}>
       <form
@@ -395,6 +436,7 @@ const ComposerSession = ({
             )}
             {listening ? t.stop : t.speak}
           </button>
+          {rowHint}
           <Button
             aria-busy={submitting}
             aria-label={submitting ? t.sending : t.send}
@@ -414,12 +456,7 @@ const ComposerSession = ({
           </Button>
         </div>
       </form>
-      <p
-        className="text-muted-foreground text-label -mt-2 text-center"
-        id={hintId}
-      >
-        {voiceHint}
-      </p>
+      {belowHint}
       {submissionError ? (
         <ErrorNote>
           {submissionError} {t.retry}

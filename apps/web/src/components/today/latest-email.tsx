@@ -2,6 +2,7 @@
 
 import { api } from "@lifelink/backend/convex/_generated/api";
 import { Pill } from "@lifelink/ui/components/pill";
+import { Skeleton } from "@lifelink/ui/components/skeleton";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ChevronRightIcon, TriangleAlertIcon } from "lucide-react";
@@ -9,12 +10,13 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { listTime } from "@/components/email/email-bits";
-import { AllLink, PANEL_ROW, PanelPart } from "@/components/today/side-lists";
+import { AllLink, PANEL_ROW, TodayPanel } from "@/components/today/side-lists";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { hasEmailWarning } from "@/lib/email-warning";
 import { formatWhen } from "@/lib/format";
 
-const SHOWN = 3;
+// Two keep the email group as short as the groups beside it; All email has the rest.
+const SHOWN = 2;
 const MAILBOX_IDS = new Set(["gmail", "outlook"]);
 
 type EmailRow = FunctionReturnType<typeof api.emails.list>[number];
@@ -22,7 +24,7 @@ type EmailRow = FunctionReturnType<typeof api.emails.list>[number];
 /** The emails Today shows, newest first. */
 const newestEmails = (emails: EmailRow[]): EmailRow[] => emails.slice(0, SHOWN);
 
-/** One clear warning and destination; the full explanation stays in the email. */
+/** One clear warning on the subject line; the full explanation stays in the email. */
 const EmailWarning = ({ email }: { email: EmailRow }) => {
   const t = useMessages();
 
@@ -31,20 +33,17 @@ const EmailWarning = ({ email }: { email: EmailRow }) => {
   }
 
   return (
-    <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <Pill className="text-label font-semibold" tone="warning">
         <TriangleAlertIcon aria-hidden="true" className="size-4" />
         {t.today.possibleScam}
-      </Pill>{" "}
-      <span className="text-accent-foreground text-label inline-flex items-center gap-1 font-medium">
-        {t.today.openForDetails}
-        <ChevronRightIcon aria-hidden="true" className="size-4" />
-      </span>
+      </Pill>
+      <span>{t.today.openForDetails}</span>
     </span>
   );
 };
 
-/** The three newest emails, with a simple hint on messages that need care. */
+/** The newest emails, with a simple hint on messages that need care. */
 const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   const locale = useLocale();
   const emails = useQuery(api.emails.list);
@@ -52,7 +51,20 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
   const connections = useQuery(api.connections.list);
 
   if (emails === undefined || connections === undefined) {
-    return null;
+    return (
+      <TodayPanel
+        action={<AllLink href="/email">{t.today.allEmail}</AllLink>}
+        headingId="latest-email-heading"
+        title={t.today.latestEmail}
+      >
+        <div aria-busy="true" aria-label={t.appExtras.loading.emails}>
+          <div aria-hidden="true" className="flex flex-col gap-5 py-2.5">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </TodayPanel>
+    );
   }
 
   const connected = connections.providers.some(
@@ -62,15 +74,13 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
 
   const newest = newestEmails(emails);
 
-  // The rule above sits here, not in Messages, so it never shows above nothing while email loads.
   return (
-    <PanelPart
+    <TodayPanel
       action={
         newest.length > 0 ? (
           <AllLink href="/email">{t.today.allEmail}</AllLink>
         ) : null
       }
-      className="border-rule mt-2 border-t pt-2"
       headingId="latest-email-heading"
       title={t.today.latestEmail}
     >
@@ -114,20 +124,20 @@ const LatestEmail = ({ timeZone }: { timeZone: string }) => {
                       {listTime(email.receivedAt, timeZone, undefined, locale)}
                     </time>
                   </span>
-                  <span className="text-muted-foreground text-label flex min-w-0 items-center gap-2">
-                    <span className="truncate">
+                  <span className="text-muted-foreground text-label flex min-w-0 flex-col items-start gap-1">
+                    <span className="line-clamp-2">
                       <span className="sr-only">, </span>
                       {email.subject || t.today.noSubject}
                     </span>
-                  </span>{" "}
-                  <EmailWarning email={email} />
+                    <EmailWarning email={email} />
+                  </span>
                 </span>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </PanelPart>
+    </TodayPanel>
   );
 };
 

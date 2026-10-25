@@ -40,24 +40,29 @@ interface WeekRow {
   };
 }
 
-/** Rows in a Today group, inset so their text lines up with the part headings. */
+/** Rows in a Today group, inset so their text lines up with the headings. */
 const PANEL_ROW =
-  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 -mx-3 rounded-lg px-3 py-3.5 transition-colors";
+  "text-foreground hover:bg-parchment flex min-w-0 items-center gap-3.5 -mx-3 rounded-lg px-3 py-2.5 transition-colors";
 
-/** One Today group: a heading and its rows, flat like News. */
+/** One Today group: a heading, its link to the full page, and its rows, flat like News. */
 const TodayPanel = ({
+  action,
   children,
   headingId,
   title,
 }: {
+  action?: ReactNode;
   children: ReactNode;
   headingId: string;
   title: string;
 }) => (
   <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2">
-    <h2 className="text-section font-semibold" id={headingId}>
-      {title}
-    </h2>
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <h2 className="text-section font-semibold" id={headingId}>
+        {title}
+      </h2>
+      {action}
+    </div>
     {children}
   </section>
 );
@@ -71,37 +76,6 @@ const AllLink = ({ children, href }: { children: string; href: Route }) => (
     {children}
     <ChevronRightIcon aria-hidden="true" className="size-5" />
   </Link>
-);
-
-/** A smaller part of a panel, such as "From family and friends" in Messages. */
-const PanelPart = ({
-  action,
-  children,
-  className,
-  headingId,
-  title,
-}: {
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  headingId: string;
-  title: string;
-}) => (
-  <section
-    aria-labelledby={headingId}
-    className={cn("flex min-w-0 flex-col", className)}
-  >
-    <div className="min-h-control flex items-center justify-between gap-4">
-      <h3
-        className="text-muted-foreground text-label font-semibold"
-        id={headingId}
-      >
-        {title}
-      </h3>
-      {action}
-    </div>
-    {children}
-  </section>
 );
 
 const SideEmpty = ({ children }: { children: ReactNode }) => (
@@ -182,7 +156,7 @@ const WeekList = ({
       ) : (
         <ul className="flex flex-col gap-1">
           {rows.map((row) => (
-            <li className="flex items-center gap-3.5 py-3.5" key={row.id}>
+            <li className="flex items-center gap-3.5 py-2.5" key={row.id}>
               <time
                 className="flex w-20 shrink-0 flex-col"
                 dateTime={new Date(row.at).toISOString()}
@@ -201,7 +175,7 @@ const WeekList = ({
                   <span className="sr-only">, </span>
                   {row.title}
                 </span>
-                <span className="text-muted-foreground text-label truncate">
+                <span className="text-muted-foreground text-label wrap-anywhere">
                   <span className="sr-only">, </span>
                   {row.sub}
                 </span>
@@ -222,7 +196,7 @@ const WeekList = ({
                     <WeatherIcon className="size-4" code={row.weather.code} />
                     <span className="num">{row.weather.high}</span>
                     {row.weather.advice ? (
-                      <span className="truncate">· {row.weather.advice}</span>
+                      <span>· {row.weather.advice}</span>
                     ) : null}
                   </span>
                 ) : null}
@@ -266,10 +240,10 @@ const FamilyList = ({
   const rows = latestPerPerson(messages);
 
   return (
-    <PanelPart
+    <TodayPanel
       action={<AllLink href="/messages">{t.today.allMessages}</AllLink>}
-      headingId="family-heading"
-      title={t.today.fromFamily}
+      headingId="messages-heading"
+      title={t.today.messages}
     >
       {rows.length === 0 ? (
         <SideEmpty>{t.today.noMessages}</SideEmpty>
@@ -330,10 +304,10 @@ const FamilyList = ({
           })}
         </ul>
       )}
-    </PanelPart>
+    </TodayPanel>
   );
 };
 
-export { AllLink, FamilyList, PANEL_ROW, PanelPart, TodayPanel, WeekList };
+export { AllLink, FamilyList, PANEL_ROW, TodayPanel, WeekList };
 
 export type { WeekRow };

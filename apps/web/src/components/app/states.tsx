@@ -74,13 +74,16 @@ const LoadingRows = ({
     return <MessagesLoadingWorkspace className={className} label={label} />;
   }
 
+  // Ask and Today stretch to the screen so their composer can rest on the bottom edge.
+  const fills = layout === "ask" || layout === "today";
+
   return (
     <div
       aria-busy="true"
       aria-label={label}
       className={cn(
         "min-w-0",
-        layout === "ask" && "flex min-h-0 flex-1 flex-col",
+        fills && "flex min-h-0 flex-1 flex-col",
         className
       )}
       data-loading-layout={layout}
@@ -89,9 +92,7 @@ const LoadingRows = ({
     >
       <div
         aria-hidden="true"
-        className={
-          layout === "ask" ? "flex min-h-0 flex-1 flex-col" : undefined
-        }
+        className={fills ? "flex min-h-0 flex-1 flex-col" : undefined}
       >
         <LoadingLayoutBody layout={layout} rows={rows} />
       </div>

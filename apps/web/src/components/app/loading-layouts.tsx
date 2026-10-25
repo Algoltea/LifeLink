@@ -5,6 +5,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 
 import { CHAT_READING_COLUMN } from "@/components/assistant/chat-layout";
 import { InboxSkeleton, ReaderSkeleton } from "@/components/email/email-bits";
+import { TodayWorkspace } from "@/components/today/today-workspace";
 import { useMessages } from "@/i18n/locale";
 
 import {
@@ -30,7 +31,6 @@ import {
 } from "./scam-loading-layouts";
 import {
   TodayLoadingHeader,
-  TodayLoadingNews,
   TodayLoadingPanels,
 } from "./today-loading-layouts";
 
@@ -113,22 +113,28 @@ const Controls = () => (
   </div>
 );
 
-const ComposerLayout = () => (
+/** With `compact`, the hint line sits inside the box between the buttons, as on Today. */
+const ComposerLayout = ({ compact = false }: { compact?: boolean }) => (
   <div
     data-loading-part="composer"
     className="@container/composer flex flex-col gap-4"
   >
     <div className="border-border bg-raised flex flex-col gap-2 rounded-3xl border p-3 pl-5">
       <Line className="h-12 w-full" />
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Skeleton className="h-control -ml-2 w-[6.389rem] rounded-full" />
+        {compact ? (
+          <Line className="order-last h-[1.333rem] basis-full @min-[36rem]/composer:order-none @min-[36rem]/composer:mx-2 @min-[36rem]/composer:w-3/5 @min-[36rem]/composer:basis-auto" />
+        ) : null}
         <Skeleton className="size-control rounded-full" />
       </div>
     </div>
-    <div className="-mt-2 text-center">
-      <Line className="mx-auto h-[1.333rem] w-11/12" />
-      <Line className="mx-auto h-[1.333rem] w-2/3 sm:hidden" />
-    </div>
+    {compact ? null : (
+      <div className="-mt-2 text-center">
+        <Line className="mx-auto h-[1.333rem] w-11/12" />
+        <Line className="mx-auto h-[1.333rem] w-2/3 sm:hidden" />
+      </div>
+    )}
   </div>
 );
 
@@ -487,13 +493,12 @@ const ContactRows = ({ rows }: { rows: number }) => (
   </div>
 );
 
-/** Your week and Messages, News, then Ask, as Today shows them. */
+/** The three Today columns, then Ask resting on the bottom edge, as Today shows them. */
 const TodayLayout = () => (
-  <div className="flex flex-col gap-10">
+  <TodayWorkspace composer={<ComposerLayout compact />} loading>
+    <TodayLoadingHeader />
     <TodayLoadingPanels />
-    <TodayLoadingNews />
-    <ComposerLayout />
-  </div>
+  </TodayWorkspace>
 );
 
 const TaskLayout = () => (
