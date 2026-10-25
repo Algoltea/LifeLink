@@ -3,6 +3,7 @@
 import { interfaceLocales } from "@lifelink/contracts/locale";
 import { cn } from "@lifelink/ui/lib/utils";
 import { Check, Languages } from "lucide-react";
+import type { MouseEvent } from "react";
 
 import { setLocale, useLocale, useMessages } from "@/i18n/locale";
 
@@ -10,6 +11,54 @@ import { PAGE } from "./parts";
 
 /** The navbar's Language link points here. */
 const LANGUAGE_SECTION_ID = "language";
+const SCROLL_DURATION_MS = 350;
+let scrollFrame = 0;
+
+const scrollLandingPage = (top: number) => {
+  window.cancelAnimationFrame(scrollFrame);
+
+  if (
+    document.documentElement.dataset.motion === "reduced" ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    window.scrollTo({ behavior: "instant", top });
+
+    return;
+  }
+
+  const startTop = window.scrollY;
+  const startTime = performance.now();
+
+  const animate = (now: number) => {
+    const progress = Math.min((now - startTime) / SCROLL_DURATION_MS, 1);
+    const easedProgress = 1 - (1 - progress) ** 3;
+    window.scrollTo({
+      behavior: "instant",
+      top: startTop + (top - startTop) * easedProgress,
+    });
+
+    if (progress < 1) {
+      scrollFrame = window.requestAnimationFrame(animate);
+    }
+  };
+
+  scrollFrame = window.requestAnimationFrame(animate);
+};
+
+const handleLanguageLinkClick = (event: MouseEvent<HTMLAnchorElement>) => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const section = document.querySelector(`#${LANGUAGE_SECTION_ID}`);
+
+  if (!section) {
+    return;
+  }
+
+  event.preventDefault();
+  scrollLandingPage(section.getBoundingClientRect().top + window.scrollY);
+};
 
 /**
  * Every supported language, each written in its own words so anyone can
@@ -58,7 +107,10 @@ const LanguagePicker = () => {
                       : "bg-parchment text-foreground hover:bg-neutral-wash"
                   )}
                   lang={id}
-                  onClick={() => setLocale(id)}
+                  onClick={() => {
+                    setLocale(id);
+                    scrollLandingPage(0);
+                  }}
                   type="button"
                 >
                   {label}
@@ -78,4 +130,4 @@ const LanguagePicker = () => {
   );
 };
 
-export { LANGUAGE_SECTION_ID, LanguagePicker };
+export { handleLanguageLinkClick, LANGUAGE_SECTION_ID, LanguagePicker };

@@ -8,7 +8,10 @@ import Link from "next/link";
 import { BrandMark } from "@/components/app/brand";
 import { useLocale, useMessages } from "@/i18n/locale";
 
-import { LANGUAGE_SECTION_ID } from "./language-picker";
+import {
+  handleLanguageLinkClick,
+  LANGUAGE_SECTION_ID,
+} from "./language-picker";
 import { MessageSlip } from "./message-slip";
 import { PAGE } from "./parts";
 
@@ -29,6 +32,7 @@ const LanguageLink = () => {
       aria-label={`${language}: ${current ?? locale}`}
       className="flex min-h-[2.667rem] items-center gap-[0.444rem] text-[0.944rem] no-underline hover:underline"
       href={`#${LANGUAGE_SECTION_ID}`}
+      onClick={handleLanguageLinkClick}
     >
       <Languages aria-hidden="true" className="size-[1.333rem] shrink-0" />
       <span className="hidden sm:inline" lang={locale}>

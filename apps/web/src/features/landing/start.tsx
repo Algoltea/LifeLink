@@ -5,7 +5,10 @@ import Link from "next/link";
 import { BrandMark } from "@/components/app/brand";
 import { useMessages } from "@/i18n/locale";
 
-import { LANGUAGE_SECTION_ID } from "./language-picker";
+import {
+  handleLanguageLinkClick,
+  LANGUAGE_SECTION_ID,
+} from "./language-picker";
 import { PAGE } from "./parts";
 import { Reveal } from "./reveal";
 
@@ -140,6 +143,9 @@ const LandingFooter = () => {
               className="w-fit text-[0.889rem] leading-[1.6] no-underline hover:underline"
               href={link.href}
               key={link.href}
+              onClick={
+                link.key === "language" ? handleLanguageLinkClick : undefined
+              }
             >
               {t.links[link.key]}
             </a>
