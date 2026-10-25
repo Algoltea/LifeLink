@@ -8,7 +8,8 @@ import type {
   MarketInstrument,
   MarketQuote,
 } from "@lifelink/contracts/markets";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQueries } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { useCallback, useState } from "react";
 
 import { useRefreshWhenStale } from "@/lib/refresh";
@@ -18,13 +19,23 @@ type MarketsState =
   | { status: "loading" }
   | { quotes: MarketQuote[]; status: "ready" };
 
+const MARKETS_QUERY = { quotes: { args: {}, query: api.markets.quotes } };
+
 /**
  * Prices for Today's ticker. Missing or old prices are fetched again; the
  * server decides whether a fetch is due. When nothing could be fetched the
  * ticker hides, like the weather.
  */
 const useMarkets = (): MarketsState => {
-  const markets = useQuery(api.markets.quotes, {});
+  // This optional feed must not crash Today if its backend is unavailable.
+  // useQueries returns errors as values and keeps listening for recovery.
+  const {
+    quotes,
+  }: {
+    quotes?: FunctionReturnType<typeof api.markets.quotes> | Error;
+  } = useQueries(MARKETS_QUERY);
+
+  const markets = quotes instanceof Error ? undefined : quotes;
   const refreshAction = useAction(api.markets.refresh);
   const [failed, setFailed] = useState(false);
 
@@ -39,7 +50,7 @@ const useMarkets = (): MarketsState => {
   }, [refreshAction]);
 
   useRefreshWhenStale({
-    enabled: true,
+    enabled: markets !== undefined,
     fetchedAt: markets?.fetchedAt,
     maxAgeMs: MARKETS_REFRESH_MS,
     refresh,
