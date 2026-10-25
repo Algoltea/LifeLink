@@ -150,7 +150,7 @@ const spokenDetails = (
     }
 
     case "email_reply": {
-      return `Reply to ${details.to}. Subject: ${details.subject}. It says: ${details.body}`;
+      return t.reply(details.to, details.subject, details.body);
     }
 
     case "calendar_event": {
@@ -212,7 +212,7 @@ const EmailSlip = ({
       )}
       <p className="text-muted-foreground text-base">
         {details.kind === "email_reply"
-          ? `Sent from your ${details.provider === "gmail" ? "Gmail" : "Outlook"} as a reply in the same conversation, only after you approve it.`
+          ? t.replySentFrom(details.provider === "gmail" ? "Gmail" : "Outlook")
           : t.draftSavedIn(details.provider === "gmail" ? "Gmail" : "Outlook")}
       </p>
     </div>

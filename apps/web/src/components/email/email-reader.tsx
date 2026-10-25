@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { Avatar, ModePill, ReadAloudButton } from "@/components/app/bits";
 import { EmptyNote } from "@/components/app/states";
 import { ExplanationPanel } from "@/components/explain/explanation-panel";
-import { useLocale, useMessages } from "@/i18n/locale";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import {
   emailCheckNotice,
@@ -502,8 +502,7 @@ const EmailReader = ({
             setReply({
               body: suggestion,
               fromSuggestion: true,
-              notice:
-                "Reply added to your message. You can change it before reviewing.",
+              notice: currentMessages().email.replyAdded,
             });
             openReply();
           }}

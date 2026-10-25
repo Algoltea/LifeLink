@@ -198,7 +198,7 @@ const ReplyComposer = ({
             size="sm"
             variant="outline"
           >
-            {pending === "draft" ? "Preparing…" : "Save as a draft instead"}
+            {pending === "draft" ? messages.threads.preparing : t.saveDraft}
           </Button>
           <Button
             aria-busy={pending === "send"}
@@ -209,7 +209,7 @@ const ReplyComposer = ({
             disabled={busy || empty}
             type="submit"
           >
-            {pending === "send" ? "Preparing…" : "Review and send"}
+            {pending === "send" ? messages.threads.preparing : t.review}
             <span
               aria-hidden="true"
               className="bg-primary-foreground/20 flex size-9 items-center justify-center rounded-full"
@@ -223,9 +223,7 @@ const ReplyComposer = ({
         {reply.notice}
       </output>
       <p className="text-muted-foreground text-label text-center" id={hintId}>
-        Nothing is sent yet. You’ll review it first, then it’s sent from your{" "}
-        {mailbox} in the same conversation. Prefer to finish it in {mailbox}?
-        Save it as a draft instead.
+        {t.nothingSent(mailbox)}
       </p>
     </form>
   );

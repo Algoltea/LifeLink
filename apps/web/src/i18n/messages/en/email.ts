@@ -75,13 +75,15 @@ const email = {
   readyToRead: "Ready to read",
   reconnect: "Reconnect",
   reply: "Reply",
-  replyAdded: "Reply added to your draft. You can change it before reviewing.",
+  replyAdded:
+    "Reply added to your message. You can change it before reviewing.",
   replyComposer: {
     nothingSent: (provider: string) =>
-      `Nothing is sent. You’ll review it first, then it’s saved as a draft in your ${provider}.`,
+      `Nothing is sent yet. You’ll review it first, then it’s sent from your ${provider} in the same conversation. Prefer to finish it in ${provider}? Save it as a draft instead.`,
     placeholder: "Write your reply…",
     replyTo: (to: string) => `Reply to ${to}`,
-    review: "Review the draft",
+    review: "Review and send",
+    saveDraft: "Save as a draft instead",
     speak: "Speak",
     stopListening: "Stop listening",
   },
