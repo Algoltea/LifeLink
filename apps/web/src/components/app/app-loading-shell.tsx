@@ -16,7 +16,6 @@ import { MessagesLoadingFrame } from "./messages-loading-layouts";
 import { PageHeader } from "./page-header";
 import { ShellFrame } from "./shell";
 import { LoadingRows } from "./states";
-import { TodayLoadingHeader } from "./today-loading-layouts";
 
 const LoadingNavigationRow = () => (
   <div className="min-h-control flex items-center gap-3 px-4">
@@ -91,12 +90,7 @@ const LoadingPage = ({ pathname }: { pathname: string }) => {
 
   switch (pathname) {
     case "/": {
-      return (
-        <>
-          <TodayLoadingHeader />
-          <LoadingRows label={appExtras.loading.today} layout="today" />
-        </>
-      );
+      return <LoadingRows label={appExtras.loading.today} layout="today" />;
     }
 
     case "/ask": {

@@ -11,7 +11,6 @@ import { BellRingIcon } from "lucide-react";
 import { useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
-import { PageHeader } from "@/components/app/page-header";
 import { ErrorNote, LoadingRows } from "@/components/app/states";
 import {
   GettingStarted,
@@ -20,13 +19,10 @@ import {
 } from "@/components/today/getting-started";
 import { LatestEmail } from "@/components/today/latest-email";
 import { NewsCard } from "@/components/today/news-card";
-import {
-  FamilyList,
-  TodayPanel,
-  WeekList,
-} from "@/components/today/side-lists";
+import { FamilyList, WeekList } from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
 import { TodayHeader } from "@/components/today/today-header";
+import { TodayWorkspace } from "@/components/today/today-workspace";
 import { WeatherChip } from "@/components/today/weather";
 import { Composer } from "@/components/voice/composer";
 import { useLocale, messagesFor, useMessages } from "@/i18n/locale";
@@ -205,7 +201,7 @@ const TodayContent = ({
   ].toSorted((left, right) => left.at - right.at);
 
   return (
-    <>
+    <TodayWorkspace composer={<Composer compact />}>
       <TodayHeader
         lines={lines}
         preferredName={summary.preferredName}
@@ -221,21 +217,18 @@ const TodayContent = ({
         <DueReminder key={reminder._id} reminder={reminder} />
       ))}
 
-      {/* Groups sit further apart than the rows inside them. One column on a phone, in the same order. */}
-      <div className="flex flex-col gap-10">
-        {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
-        {/* Side by side on a wide screen; the wide gap stands in for panel edges. */}
-        <div className="grid items-start gap-x-12 gap-y-10 @min-[56rem]/content:grid-cols-2">
+      {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
+
+      {/* Three columns on a wide screen so the whole day fits one view: plans and people, email, then news. One column on a phone, in the same order. */}
+      <div className="grid shrink-0 items-start gap-x-6 gap-y-6 @min-[36rem]/content:grid-cols-2 @min-[52rem]/content:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div className="flex min-w-0 flex-col gap-5">
           <WeekList rows={week} timeZone={timeZone} weather={weather} />
-          <TodayPanel headingId="messages-heading" title={t.today.messages}>
-            <FamilyList messages={summary.messages} timeZone={timeZone} />
-            <LatestEmail timeZone={timeZone} />
-          </TodayPanel>
+          <FamilyList messages={summary.messages} timeZone={timeZone} />
         </div>
-        <NewsCard />
-        <Composer />
+        <LatestEmail timeZone={timeZone} />
+        <NewsCard className="@min-[36rem]/content:col-span-2 @min-[52rem]/content:col-span-1" />
       </div>
-    </>
+    </TodayWorkspace>
   );
 };
 
@@ -245,22 +238,7 @@ const TodayScreen = () => {
   const t = useMessages();
 
   if (summary === undefined) {
-    return (
-      <>
-        <PageHeader
-          className="[&>div]:w-full"
-          subline={
-            <LoadingRows
-              label={t.today.loadingBriefing}
-              layout="briefing"
-              className="w-full"
-            />
-          }
-          title={t.today.title}
-        />
-        <LoadingRows layout="today" label={t.today.loadingToday} rows={5} />
-      </>
-    );
+    return <LoadingRows layout="today" label={t.today.loadingToday} rows={5} />;
   }
 
   return <TodayContent stepsHidden={stepsHidden} summary={summary} />;

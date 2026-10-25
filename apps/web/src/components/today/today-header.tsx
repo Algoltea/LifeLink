@@ -48,7 +48,7 @@ const TodayHeader = ({
   const salutation = name ? `${greeting}, ${name}` : greeting;
 
   return (
-    <header className="flex flex-col gap-4">
+    <header className="flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="flex max-w-3xl min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {date ? (
@@ -57,7 +57,7 @@ const TodayHeader = ({
           {weather}
         </div>
         <h1
-          className="text-page-title font-semibold tracking-tight outline-none sm:text-[2.222rem] sm:leading-tight"
+          className="text-page-title font-semibold tracking-tight outline-none"
           ref={heading}
           tabIndex={-1}
         >
@@ -68,14 +68,11 @@ const TodayHeader = ({
           {lines.join(" ")}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <ReadAloudButton
-          label={t.today.readMyDay}
-          text={[`${salutation}.`, ...lines, ...spoken]
-            .filter(Boolean)
-            .join(" ")}
-        />
-      </div>
+      {/* Beside the briefing, not under it, so the day's overview stays short. */}
+      <ReadAloudButton
+        label={t.today.readMyDay}
+        text={[`${salutation}.`, ...lines, ...spoken].filter(Boolean).join(" ")}
+      />
     </header>
   );
 };
