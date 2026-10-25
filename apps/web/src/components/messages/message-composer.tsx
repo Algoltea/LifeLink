@@ -128,6 +128,7 @@ const SpeakButton = ({
     <button
       aria-label={label}
       aria-pressed={listening}
+      disabled={preparing}
       className={cn(
         ROW_BUTTON,
         listening &&

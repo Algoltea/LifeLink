@@ -327,6 +327,13 @@ select:not([multiple], [size], .appearance-none) {
   text-overflow: ellipsis;
 }
 
+/* Forced colours drop background images, so the native arrow comes back. */
+@media (forced-colors: active) {
+  select:not([multiple], [size], .appearance-none) {
+    appearance: auto;
+  }
+}
+
 /*
  * Motion stays small and short: it confirms that something opened, closed,
  * or arrived, and never makes anyone wait. The reduced-motion rules above
