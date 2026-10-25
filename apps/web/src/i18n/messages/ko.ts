@@ -20,6 +20,7 @@ import { guest } from "./ko/guest";
 import { imessageSetup } from "./ko/imessage-setup";
 import { landing } from "./ko/landing";
 import { mahjong } from "./ko/mahjong";
+import { markets } from "./ko/markets";
 import { onboarding } from "./ko/onboarding";
 import { photoInput } from "./ko/photo-input";
 import { recap } from "./ko/recap";
@@ -61,6 +62,7 @@ const ko: Messages = {
   imessageSetup,
   landing,
   mahjong,
+  markets,
   onboarding,
   photoInput,
   recap,

@@ -20,6 +20,7 @@ import { guest } from "./fr/guest";
 import { imessageSetup } from "./fr/imessage-setup";
 import { landing } from "./fr/landing";
 import { mahjong } from "./fr/mahjong";
+import { markets } from "./fr/markets";
 import { onboarding } from "./fr/onboarding";
 import { photoInput } from "./fr/photo-input";
 import { recap } from "./fr/recap";
@@ -61,6 +62,7 @@ const fr: Messages = {
   imessageSetup,
   landing,
   mahjong,
+  markets,
   onboarding,
   photoInput,
   recap,

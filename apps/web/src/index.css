@@ -32,3 +32,154 @@
     transition: none;
   }
 }
+
+/*
+ * Today's market ticker: a faint watercolor wash, lighter than parchment,
+ * with feathered ends and pastel dabs between quotes. The quotes drift
+ * slowly and stop on hover, focus, the pause button, or an open price list;
+ * the component sets the duration from the number of quotes. With reduced
+ * motion the tape holds still and shows one copy.
+ */
+@keyframes market-drift {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* Many small, faint patches read as brushwork; a few large ones read as a band. */
+:is(.market-tape, .market-wash) {
+  background-color: color-mix(in oklab, var(--parchment) 50%, var(--ground));
+  background-image:
+    radial-gradient(
+      ellipse 4.5rem 1rem at 6% 30%,
+      rgb(234 215 173 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 3.5rem 0.9rem at 17% 72%,
+      rgb(214 226 236 / 0.45),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 5rem 1rem at 29% 28%,
+      rgb(212 224 204 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 3.5rem 0.8rem at 40% 75%,
+      rgb(236 220 226 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 4.5rem 1rem at 52% 32%,
+      rgb(226 216 236 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 4rem 0.9rem at 63% 70%,
+      rgb(234 215 173 / 0.35),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 5rem 1rem at 75% 26%,
+      rgb(214 226 236 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 3.5rem 0.9rem at 86% 74%,
+      rgb(212 224 204 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 4rem 1rem at 97% 34%,
+      rgb(236 220 226 / 0.35),
+      transparent 70%
+    );
+}
+
+.market-tape {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 1rem,
+    black calc(100% - 2rem),
+    transparent 100%
+  );
+}
+
+/* On a dark ground the colors glow faintly instead of lighting the strip. */
+.dark :is(.market-tape, .market-wash) {
+  background-image:
+    radial-gradient(
+      ellipse 5rem 1rem at 12% 35%,
+      rgb(234 215 173 / 0.08),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 5rem 1rem at 38% 70%,
+      rgb(214 226 236 / 0.07),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 5rem 1rem at 64% 30%,
+      rgb(212 224 204 / 0.07),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 5rem 1rem at 90% 70%,
+      rgb(226 216 236 / 0.07),
+      transparent 70%
+    );
+}
+
+/* More contrast: a plain strip with a clear edge and no fade. */
+[data-contrast="more"] :is(.market-tape, .market-wash) {
+  background-image: none;
+  border: 1px solid var(--border);
+}
+
+[data-contrast="more"] .market-tape {
+  mask-image: none;
+}
+
+.market-dab {
+  fill: #a7b8c9;
+}
+
+.market-dab[data-dab="1"] {
+  fill: #a9bc9f;
+}
+
+.market-dab[data-dab="2"] {
+  fill: #c4b2d2;
+}
+
+.market-track {
+  animation: market-drift 60s linear infinite;
+}
+
+.market-ticker[data-paused] .market-track,
+.market-ticker:has(
+    .market-trigger:is(:hover, :focus-visible, [data-popup-open])
+  )
+  .market-track {
+  animation-play-state: paused;
+}
+
+[data-motion="reduced"] .market-track {
+  animation: none;
+}
+
+[data-motion="reduced"] :is(.market-repeat, .market-pause) {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-track {
+    animation: none;
+  }
+
+  :is(.market-repeat, .market-pause) {
+    display: none;
+  }
+}

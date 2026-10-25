@@ -18,6 +18,7 @@ import {
   useStepsHidden,
 } from "@/components/today/getting-started";
 import { LatestEmail } from "@/components/today/latest-email";
+import { MarketTicker } from "@/components/today/markets";
 import { NewsCard } from "@/components/today/news-card";
 import { FamilyList, WeekList } from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
@@ -204,6 +205,7 @@ const TodayContent = ({
     <TodayWorkspace composer={<Composer compact />}>
       <TodayHeader
         lines={lines}
+        markets={<MarketTicker timeZone={timeZone} />}
         preferredName={summary.preferredName}
         spoken={[
           forecast ? spokenWeather(forecast, unit, locale) : "",
