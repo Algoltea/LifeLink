@@ -337,6 +337,11 @@
   }
 }
 
+/* A reply has landed and the hooks are clasped: hold the logo. */
+.thinking-mark[data-still] * {
+  animation: none;
+}
+
 [data-motion="reduced"] .thinking-mark * {
   animation: none;
 }

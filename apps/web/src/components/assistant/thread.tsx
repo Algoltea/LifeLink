@@ -6,12 +6,17 @@ import { inboxChatSummarySchema } from "@lifelink/contracts/inbox-chat";
 import { Button } from "@lifelink/ui/components/button";
 import { cn } from "@lifelink/ui/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { ReadAloudButton, useAutoReadAloud } from "@/components/app/bits";
-import { BrandMark, ThinkingMark } from "@/components/app/brand";
+import {
+  msUntilClasped,
+  syncThinkingMark,
+  THINKING_CYCLE_MS,
+  ThinkingMark,
+} from "@/components/app/brand";
 import {
   InlineActionReview,
   InlineSendAll,
@@ -58,14 +63,74 @@ const AssistantText = ({ message }: { message: UIMessage }) => {
   );
 };
 
+/** The clock CSS animations run on, which ThinkingMark loops are pinned to. */
+const documentTime = (): number =>
+  Number(document.timeline.currentTime ?? performance.now());
+
+/** Puts a ThinkingMark on the page's shared clock whenever it moves. */
+const useThinkingClock = (still = false) => {
+  const mark = useRef<SVGSVGElement>(null);
+
+  useLayoutEffect(() => {
+    if (!still) {
+      syncThinkingMark(mark.current);
+    }
+  }, [still]);
+
+  return mark;
+};
+
 const Thinking = () => {
   const t = useMessages().ask;
+  const mark = useThinkingClock();
 
   return (
-    <p className="text-muted-foreground flex min-h-9 items-center gap-4 pl-1 text-lg">
-      <ThinkingMark size={22} />
+    <p className="text-muted-foreground flex min-h-9 items-center gap-4 text-lg">
+      <span className="flex pl-1 sm:hidden">
+        <ThinkingMark ref={mark} size={22} />
+      </span>
       {t.thinking}
     </p>
+  );
+};
+
+/**
+ * LifeLink's mark beside a reply. It couples while LifeLink thinks; once the
+ * reply lands it finishes its loop and holds on the next clasp, becoming the
+ * logo. Replies older than one loop open already still. Hidden on phones,
+ * where Thinking carries the mark.
+ */
+const ReplyAvatar = ({
+  arrivedAt = 0,
+  thinking,
+}: {
+  arrivedAt?: number;
+  thinking: boolean;
+}) => {
+  const [settled, setSettled] = useState(
+    () => !thinking && Date.now() - arrivedAt >= THINKING_CYCLE_MS
+  );
+
+  useEffect(() => {
+    if (thinking || settled) {
+      return;
+    }
+
+    const timer = setTimeout(
+      () => setSettled(true),
+      msUntilClasped(documentTime())
+    );
+
+    return () => clearTimeout(timer);
+  }, [thinking, settled]);
+
+  const still = settled && !thinking;
+  const mark = useThinkingClock(still);
+
+  return (
+    <span className="hidden size-9 shrink-0 items-center justify-center sm:flex">
+      <ThinkingMark ref={mark} size={18} still={still} />
+    </span>
   );
 };
 
@@ -101,16 +166,23 @@ const useAwaitingReply = (last: UIMessage | undefined): boolean => {
 
 const AwaitingReply = () => (
   <li className="flex gap-4">
-    <span className="border-border bg-parchment hidden size-9 shrink-0 items-center justify-center rounded-full border sm:flex">
-      <BrandMark size={14} />
-    </span>
+    <ReplyAvatar thinking />
     <div className="flex min-w-0 flex-1 flex-col sm:pt-0.5">
       <Thinking />
     </div>
   </li>
 );
 
-const CopyButton = ({ text }: { text: string }) => {
+/** `compact` shows only the icon; the label stays for screen readers. */
+const CopyButton = ({
+  className,
+  compact = false,
+  text,
+}: {
+  className?: string;
+  compact?: boolean;
+  text: string;
+}) => {
   const [copied, setCopied] = useState(false);
   const t = useMessages().ask;
 
@@ -126,6 +198,7 @@ const CopyButton = ({ text }: { text: string }) => {
 
   return (
     <Button
+      className={className}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -134,7 +207,7 @@ const CopyButton = ({ text }: { text: string }) => {
           toast(t.copyUnavailable);
         }
       }}
-      size="sm"
+      size={compact ? "icon" : "sm"}
       variant="ghost"
     >
       {copied ? (
@@ -142,7 +215,9 @@ const CopyButton = ({ text }: { text: string }) => {
       ) : (
         <CopyIcon aria-hidden="true" />
       )}
-      <span aria-live="polite">{copied ? t.copied : t.copy}</span>
+      <span aria-live="polite" className={compact ? "sr-only" : undefined}>
+        {copied ? t.copied : t.copy}
+      </span>
     </Button>
   );
 };
@@ -153,7 +228,13 @@ const Bubble = ({ message }: { message: UIMessage }) => {
 
   if (message.role === "user") {
     return (
-      <li className="flex justify-end pl-10 sm:pl-16">
+      <li className="group flex items-end justify-end gap-1 pl-10 sm:pl-16">
+        {/* Revealed on hover or focus; touch screens cannot hover, so it stays. */}
+        <CopyButton
+          className="text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+          compact
+          text={message.text}
+        />
         <p className="bg-neutral-wash rounded-3xl px-5 py-3.5 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap">
           <span className="sr-only">{t.youSaid}</span>
           {message.text}
@@ -174,11 +255,14 @@ const Bubble = ({ message }: { message: UIMessage }) => {
     .object({ inboxSummary: inboxChatSummarySchema })
     .safeParse(message.metadata);
 
+  const thinking =
+    (message.status === "pending" || message.status === "streaming") &&
+    !message.text &&
+    !emailSummary.success;
+
   return (
     <li className="flex gap-4">
-      <span className="border-border bg-parchment hidden size-9 shrink-0 items-center justify-center rounded-full border sm:flex">
-        <BrandMark size={14} />
-      </span>
+      <ReplyAvatar arrivedAt={message._creationTime} thinking={thinking} />
       <div className="flex min-w-0 flex-1 flex-col gap-4 sm:pt-0.5">
         <span className="sr-only">{t.lifeLinkSaid}</span>
         {emailSummary.success ? (
@@ -187,10 +271,7 @@ const Bubble = ({ message }: { message: UIMessage }) => {
         {!emailSummary.success && message.text ? (
           <AssistantText message={message} />
         ) : null}
-        {(message.status === "pending" || message.status === "streaming") &&
-        !message.text ? (
-          <Thinking />
-        ) : null}
+        {thinking ? <Thinking /> : null}
         {failed ? <p className="text-negative text-lg">{t.failed}</p> : null}
         {prepared.map((tool) => {
           if (tool.actionId) {
