@@ -4,6 +4,7 @@ import { buttonVariants } from "@lifelink/ui/components/button";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
+import { useMessages } from "@/i18n/locale";
 import { authClient } from "@/lib/auth-client";
 
 import { MahjongTable } from "./mahjong-table";
@@ -21,30 +22,35 @@ const isWideEnough = () => window.matchMedia(MAHJONG_SCREEN).matches;
 
 const onServer = () => null;
 
-const Title = () => (
-  <h1 className="text-mobile-title sm:text-page-title font-semibold">
-    Mahjong
-  </h1>
-);
+const Title = () => {
+  const messages = useMessages().mahjong;
+
+  return (
+    <h1 className="text-mobile-title sm:text-page-title font-semibold">
+      {messages.title}
+    </h1>
+  );
+};
 
 /** What a phone shows instead of the board. A saved game stays on the device for a bigger screen. */
-const NeedsBiggerScreen = () => (
-  <div className="flex min-w-0 flex-col gap-6">
-    <Title />
-    <div className="bg-parchment flex flex-col items-start gap-4 rounded-lg px-4 py-4">
-      <p className="text-body max-w-prose">
-        Mahjong needs a bigger screen, so its tiles are large enough to tap.
-        Open LifeLink on a tablet or computer to play.
-      </p>
-      <Link
-        className={buttonVariants({ variant: "outline" })}
-        href="/solitaire"
-      >
-        Play Solitaire instead
-      </Link>
+const NeedsBiggerScreen = () => {
+  const messages = useMessages().mahjong;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      <Title />
+      <div className="bg-parchment flex flex-col items-start gap-4 rounded-lg px-4 py-4">
+        <p className="text-body max-w-prose">{messages.biggerScreen}</p>
+        <Link
+          className={buttonVariants({ variant: "outline" })}
+          href="/solitaire"
+        >
+          {messages.playSolitaire}
+        </Link>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Mahjong for the offline-ready /mahjong route. The board renders only in the
@@ -53,6 +59,7 @@ const NeedsBiggerScreen = () => (
  * quiet placeholder.
  */
 export const MahjongGame = () => {
+  const messages = useMessages().mahjong;
   const wide = useSyncExternalStore(subscribeToWidth, isWideEnough, onServer);
   const { data: session } = authClient.useSession();
 
@@ -68,7 +75,7 @@ export const MahjongGame = () => {
     <div className="flex min-w-0 flex-col gap-6">
       <Title />
       <output className="bg-parchment text-body block rounded-lg px-4 py-3">
-        Setting out the tiles.
+        {messages.preparing}
       </output>
     </div>
   );

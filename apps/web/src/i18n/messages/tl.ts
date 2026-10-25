@@ -19,6 +19,7 @@ import { groceries } from "./tl/groceries";
 import { guest } from "./tl/guest";
 import { imessageSetup } from "./tl/imessage-setup";
 import { landing } from "./tl/landing";
+import { mahjong } from "./tl/mahjong";
 import { onboarding } from "./tl/onboarding";
 import { photoInput } from "./tl/photo-input";
 import { recap } from "./tl/recap";
@@ -59,6 +60,7 @@ const tl: Messages = {
   guest,
   imessageSetup,
   landing,
+  mahjong,
   onboarding,
   photoInput,
   recap,

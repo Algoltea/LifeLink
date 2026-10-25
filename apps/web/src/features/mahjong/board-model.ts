@@ -2,7 +2,6 @@ import { layoutOf } from "@lifelink/mahjong/game";
 import type { Position } from "@lifelink/mahjong/game";
 import type { Layout, Slot } from "@lifelink/mahjong/layouts";
 import { blockerFor, freeSlots } from "@lifelink/mahjong/rules";
-import { tileName } from "@lifelink/mahjong/tiles";
 import type { CSSProperties } from "react";
 
 export type Direction = "down" | "left" | "right" | "up";
@@ -103,36 +102,6 @@ export const tileStyle = (
     top: percent(slot.y + shiftDown * lift, down),
     width: percent(TILE_SPAN, across),
   };
-};
-
-const STATE_WORDS = {
-  "boxed-in": "Blocked on both sides.",
-  covered: "Covered by another tile.",
-  removed: "Already matched.",
-} as const;
-
-/** Spoken name of a tile: what it is, where it is, and whether it can be picked. */
-export const tileLabel = (state: Position, index: number): string => {
-  const layout = layoutOf(state);
-  const tile = state.tiles[index];
-  const slot = layout.slots[index];
-
-  if (!(tile && slot)) {
-    return "Empty place.";
-  }
-
-  const place = [
-    `row ${Math.floor(slot.y / TILE_SPAN) + 1}`,
-    `column ${Math.floor(slot.x / TILE_SPAN) + 1}`,
-  ];
-
-  if (layout.depth > 1) {
-    place.push(`layer ${slot.z + 1}`);
-  }
-
-  const blocker = blockerFor(layout, state.tiles, index);
-
-  return `${tileName(tile)}, ${place.join(", ")}. ${blocker ? STATE_WORDS[blocker] : "Free."}`;
 };
 
 /** The free tiles in reading order: top row first, left to right. */
