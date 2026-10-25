@@ -14,7 +14,7 @@ import { usePreferences } from "@/components/app/preferences";
 import { useMessages } from "@/i18n/locale";
 import { useRefreshWhenStale } from "@/lib/refresh";
 
-const SHOWN = 3;
+const SHOWN = 5;
 
 /** Missing or old headlines are fetched again; the server decides if a fetch is due. */
 const useHeadlines = (kind: NewsKind, enabled: boolean) => {
@@ -46,7 +46,7 @@ const useHeadlines = (kind: NewsKind, enabled: boolean) => {
   return { failed: failed[kind], news };
 };
 
-/** Three headlines; the person picks gentle or ordinary news, saved to their profile. */
+/** Five headlines; the person picks gentle or ordinary news, saved to their profile. */
 const NewsCard = ({ className }: { className?: string }) => {
   const { preferences } = usePreferences();
   const t = useMessages();
@@ -103,8 +103,8 @@ const NewsCard = ({ className }: { className?: string }) => {
           ))}
         </RadioGroup>
       </div>
-      {/* Three rows tall, so switching kinds does not shrink the page and move the rest. */}
-      <div className="min-h-[11rem]">
+      {/* Five rows tall, so switching kinds does not shrink the page and move the rest. */}
+      <div className="min-h-[18.5rem]">
         {headlines.length > 0 ? (
           <ul className="motion-enter flex flex-col" key={kind}>
             {headlines.map((headline) => (

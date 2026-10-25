@@ -115,7 +115,7 @@ describe("explanation language integration", () => {
       }).toStrictEqual({
         focus: true,
         localLanguage: "en",
-        localNotice: true,
+        localNotice: id !== "en",
         method: true,
         original: `“${ORIGINAL}”`,
         reply: true,
@@ -146,9 +146,9 @@ describe("explanation language integration", () => {
         read.click();
         await Promise.resolve();
       });
-      expect(synthesize.mock.calls[0]?.[1]?.text).toContain(
-        words.localLanguageNotice
-      );
+      expect(
+        synthesize.mock.calls[0]?.[1]?.text?.includes(words.localLanguageNotice)
+      ).toBe(id !== "en");
       expect(synthesize.mock.calls[0]?.[1]?.text).toContain(ORIGINAL);
     }
   );

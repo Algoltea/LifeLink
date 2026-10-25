@@ -109,6 +109,12 @@ const Quote = ({ children }: { children: string }) => (
   </blockquote>
 );
 
+/** Local rules only write English, so only other interface languages need the notice. */
+const needsLanguageNotice = (
+  explanation: Explanation,
+  locale: InterfaceLocale
+): boolean => explanation.method === "local" && locale !== "en";
+
 /** Everything worth reading aloud, with guesses named as guesses. */
 const spokenText = (
   explanation: Explanation,
@@ -117,7 +123,7 @@ const spokenText = (
   const words = messagesFor(locale).explanation;
 
   return [
-    explanation.method === "local" ? words.localLanguageNotice : "",
+    needsLanguageNotice(explanation, locale) ? words.localLanguageNotice : "",
     explanation.plainSummary,
     ...explanation.requests.map((item) =>
       words.requestSpoken(item.text, item.quote)
@@ -465,7 +471,7 @@ const ExplanationPanel = ({
         <p className="text-base font-semibold">
           {methodWords(explanation, locale)}
         </p>
-        {explanation.method === "local" ? (
+        {needsLanguageNotice(explanation, locale) ? (
           <p className="text-base">{words.localLanguageNotice}</p>
         ) : null}
         <ExplanationBody

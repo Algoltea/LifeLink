@@ -8,6 +8,7 @@ import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { BellRingIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
@@ -18,6 +19,7 @@ import {
   useStepsHidden,
 } from "@/components/today/getting-started";
 import { LatestEmail } from "@/components/today/latest-email";
+import { MarketTicker } from "@/components/today/markets";
 import { NewsCard } from "@/components/today/news-card";
 import { FamilyList, WeekList } from "@/components/today/side-lists";
 import type { WeekRow } from "@/components/today/side-lists";
@@ -161,6 +163,7 @@ const TodayContent = ({
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
   const t = useMessages();
+  const router = useRouter();
   const lines = currentBriefing(summary, locale);
 
   // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
@@ -201,9 +204,15 @@ const TodayContent = ({
   ].toSorted((left, right) => left.at - right.at);
 
   return (
-    <TodayWorkspace composer={<Composer compact />}>
+    <TodayWorkspace
+      composer={
+        // Today and Ask share the current conversation, so Ask shows the answer as it arrives.
+        <Composer compact onSubmitted={() => router.push("/ask")} />
+      }
+    >
       <TodayHeader
         lines={lines}
+        markets={<MarketTicker timeZone={timeZone} />}
         preferredName={summary.preferredName}
         spoken={[
           forecast ? spokenWeather(forecast, unit, locale) : "",
@@ -219,13 +228,13 @@ const TodayContent = ({
 
       {welcome ? <GettingStarted progress={summary.gettingStarted} /> : null}
 
-      {/* Three columns on a wide screen so the whole day fits one view: plans and people, email, then news. One column on a phone, in the same order. */}
+      {/* Three columns on a wide screen so the whole day fits one view: plans, then email and people, then news. Messages sit under the short email list so they show without scrolling past a long week. One column on a phone, in the same order. */}
       <div className="grid shrink-0 items-start gap-x-6 gap-y-6 @min-[36rem]/content:grid-cols-2 @min-[52rem]/content:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]">
+        <WeekList rows={week} timeZone={timeZone} weather={weather} />
         <div className="flex min-w-0 flex-col gap-5">
-          <WeekList rows={week} timeZone={timeZone} weather={weather} />
+          <LatestEmail timeZone={timeZone} />
           <FamilyList messages={summary.messages} timeZone={timeZone} />
         </div>
-        <LatestEmail timeZone={timeZone} />
         <NewsCard className="@min-[36rem]/content:col-span-2 @min-[52rem]/content:col-span-1" />
       </div>
     </TodayWorkspace>

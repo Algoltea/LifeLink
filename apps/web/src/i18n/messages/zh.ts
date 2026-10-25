@@ -20,6 +20,7 @@ import { guest } from "./zh/guest";
 import { imessageSetup } from "./zh/imessage-setup";
 import { landing } from "./zh/landing";
 import { mahjong } from "./zh/mahjong";
+import { markets } from "./zh/markets";
 import { onboarding } from "./zh/onboarding";
 import { photoInput } from "./zh/photo-input";
 import { recap } from "./zh/recap";
@@ -61,6 +62,7 @@ const zh: Messages = {
   imessageSetup,
   landing,
   mahjong,
+  markets,
   onboarding,
   photoInput,
   recap,
