@@ -5,7 +5,7 @@
  */
 import { v } from "convex/values";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { recordIncoming } from "./lib/incoming";
@@ -132,11 +132,14 @@ const LONG_LIST_ITEMS: [string, number, string | null, number][] = [
  * Added on its own so accounts that already have sample data also get it the
  * next time practice mode is turned on.
  */
-const addLongList = async (ctx: MutationCtx, ownerId: Id<"profiles">) => {
+const addLongList = async (ctx: MutationCtx, owner: Doc<"profiles">) => {
+  const ownerId = owner._id;
+  const listName = owner.presentationDemo ? "Monthly stock-up" : LONG_LIST_NAME;
+
   const existing = await ctx.db
     .query("groceryLists")
     .withIndex("by_owner", (index) => index.eq("ownerId", ownerId))
-    .filter((row) => row.eq(row.field("name"), LONG_LIST_NAME))
+    .filter((row) => row.eq(row.field("name"), listName))
     .first();
 
   if (existing !== null) {
@@ -154,9 +157,10 @@ const addLongList = async (ctx: MutationCtx, ownerId: Id<"profiles">) => {
       unit,
     })),
     lastHandoff: null,
-    name: LONG_LIST_NAME,
+    name: listName,
     ownerId,
     preferences: ["Store brand is fine", "Low sodium where possible"],
+    sample: true,
     updatedAt: Date.now(),
   });
 };
@@ -177,7 +181,7 @@ export const seed = internalMutation({
       .first();
 
     if (existing !== null) {
-      await addLongList(ctx, owner._id);
+      await addLongList(ctx, owner);
       await addFullerDay(ctx, owner);
 
       return;
@@ -361,10 +365,11 @@ export const seed = internalMutation({
       name: "Weekly groceries",
       ownerId: owner._id,
       preferences: ["Low sodium", "Store brand is fine"],
+      sample: true,
       updatedAt: now,
     });
 
-    await addLongList(ctx, owner._id);
+    await addLongList(ctx, owner);
     await addFullerDay(ctx, owner);
 
     await ctx.db.insert("spendingLimits", {

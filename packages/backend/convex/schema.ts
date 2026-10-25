@@ -584,6 +584,8 @@ export default defineSchema({
     name: v.string(),
     ownerId: v.id("profiles"),
     preferences: v.array(v.string()),
+    // Preserve provenance even when presentation accounts use ordinary list names.
+    sample: v.optional(v.boolean()),
     updatedAt: v.number(),
     // At most one list per person: the baseline each week's list starts from.
     usual: v.optional(v.boolean()),
@@ -792,6 +794,8 @@ export default defineSchema({
     displayName: v.string(),
     postalCode: v.union(v.string(), v.null()),
     preferredName: v.string(),
+    // Operator-created accounts only. These must remain in simulated mode.
+    presentationDemo: v.optional(v.boolean()),
     role: v.union(v.literal("owner"), v.literal("family")),
     signOffName: v.union(v.string(), v.null()),
     timeZone: v.string(),
@@ -1060,6 +1064,7 @@ export default defineSchema({
     preferred: v.optional(v.boolean()),
     username: v.union(v.string(), v.null()),
   })
+    .index("by_chatId", ["chatId"])
     .index("by_code", ["code"])
     .index("by_contact", ["contactId"])
     .index("by_expected_username", ["expectedUsername"]),

@@ -19,6 +19,7 @@ import type * as connections from "../connections.js";
 import type * as contacts from "../contacts.js";
 import type * as crons from "../crons.js";
 import type * as demo from "../demo.js";
+import type * as demoAccounts from "../demoAccounts.js";
 import type * as drive from "../drive.js";
 import type * as emailWarnings from "../emailWarnings.js";
 import type * as emails from "../emails.js";
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   crons: typeof crons;
   demo: typeof demo;
+  demoAccounts: typeof demoAccounts;
   drive: typeof drive;
   emailWarnings: typeof emailWarnings;
   emails: typeof emails;

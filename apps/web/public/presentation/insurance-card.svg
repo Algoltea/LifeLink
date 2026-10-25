@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="856" height="540" viewBox="0 0 856 540" role="img" aria-label="Health insurance card">
+  <defs>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1f5f7a"/>
+      <stop offset="1" stop-color="#2f8aa6"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="848" height="532" rx="36" fill="#fbfaf6" stroke="#c9c2b4" stroke-width="4"/>
+  <path d="M4 40a36 36 0 0 1 36-36h776a36 36 0 0 1 36 36v96H4z" fill="url(#band)"/>
+  <circle cx="84" cy="70" r="34" fill="#fbfaf6" opacity=".95"/>
+  <path d="M66 70h36M84 52v36" stroke="#1f5f7a" stroke-width="10" stroke-linecap="round"/>
+  <text x="136" y="64" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#fff">Harbor Mutual Health</text>
+  <text x="136" y="100" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#e3f1f6">Medicare Supplement · Plan G</text>
+  <g font-family="Helvetica, Arial, sans-serif" fill="#2b2a27">
+    <text x="48" y="190" font-size="18" fill="#6b665c">MEMBER NAME</text>
+    <text x="48" y="224" font-size="32" font-weight="700">RUTH M RIVERA</text>
+    <text x="48" y="284" font-size="18" fill="#6b665c">MEMBER ID</text>
+    <text x="48" y="316" font-size="28" font-family="Courier New, monospace" font-weight="700">HMH 4821 0937 55</text>
+    <text x="500" y="284" font-size="18" fill="#6b665c">GROUP</text>
+    <text x="500" y="316" font-size="28" font-family="Courier New, monospace" font-weight="700">SR-20417</text>
+    <text x="48" y="376" font-size="18" fill="#6b665c">EFFECTIVE</text>
+    <text x="48" y="406" font-size="26">01/01/2026</text>
+    <text x="500" y="376" font-size="18" fill="#6b665c">RxBIN / RxPCN</text>
+    <text x="500" y="406" font-size="26">610455 / HMHRX</text>
+  </g>
+  <rect x="48" y="434" width="760" height="68" rx="14" fill="#eef5f7"/>
+  <g font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#1f5f7a">
+    <text x="72" y="476">Office visit $0</text>
+    <text x="300" y="476">Specialist $0</text>
+    <text x="520" y="476">Emergency room $0</text>
+  </g>
+</svg>

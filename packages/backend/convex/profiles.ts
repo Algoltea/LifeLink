@@ -38,7 +38,7 @@ const defaultPreferences = (
   updatedAt: Date.now(),
 });
 
-const preferencesOf = async (
+export const preferencesOf = async (
   ctx: MutationCtx,
   profile: Doc<"profiles">
 ): Promise<Doc<"preferences">> => {
@@ -339,6 +339,17 @@ export const setDemoMode = mutation({
         code: "owner_only",
         message: "Only the account owner can change practice mode.",
       });
+    }
+
+    if (profile.presentationDemo && !args.enabled) {
+      throw new ConvexError({
+        code: "presentation_demo_locked",
+        message: "This presentation account always uses simulated data.",
+      });
+    }
+
+    if (profile.presentationDemo && profile.demoMode && args.enabled) {
+      return;
     }
 
     if (args.enabled && !demoModeAllowed()) {

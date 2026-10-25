@@ -597,7 +597,9 @@ export const connectPractice = mutation({
       }
 
       await ctx.db.patch(existing._id, {
-        accountLabel: "Practice account",
+        accountLabel: owner.presentationDemo
+          ? owner.displayName
+          : "Practice account",
         connectedAt: Date.now(),
         externalAccountId: null,
         lastError: null,
@@ -611,7 +613,9 @@ export const connectPractice = mutation({
     }
 
     return await ctx.db.insert("connections", {
-      accountLabel: "Practice account",
+      accountLabel: owner.presentationDemo
+        ? owner.displayName
+        : "Practice account",
       connectedAt: Date.now(),
       externalAccountId: null,
       lastError: null,

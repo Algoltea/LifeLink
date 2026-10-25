@@ -17,6 +17,7 @@ import {
 import { audit } from "./lib/audit";
 import { developerConfigured } from "./lib/capabilities";
 import { requireOwned, requireOwner } from "./lib/session";
+import { requireTelegramLinkingAllowed } from "./lib/telegram";
 
 const LINK_LIFETIME_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -105,6 +106,7 @@ export const createLink = mutation({
   args: { contactId: v.id("contacts") },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx);
+    requireTelegramLinkingAllowed(owner);
 
     const contact = requireOwned(
       await ctx.db.get(args.contactId),
