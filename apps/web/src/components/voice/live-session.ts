@@ -61,7 +61,8 @@ const fromBase64 = (data: string): Int16Array => {
 };
 
 interface LiveCallbacks {
-  onCaption: (who: "assistant" | "you", text: string) => void;
+  /** Ask leaves this out: it shows a status, and the reply arrives in the chat. */
+  onCaption?: (who: "assistant" | "you", text: string) => void;
   onClosed: (reason: string | null) => void;
   onRequest: (request: string) => Promise<string>;
   onSpeaking: (speaking: boolean) => void;
@@ -235,7 +236,7 @@ const startLiveSession = async (
   /** Plays the model's audio and shows both sides' captions. */
   const present = (content: LiveServerMessage["serverContent"]): void => {
     if (content?.inputTranscription?.text) {
-      callbacks.onCaption("you", content.inputTranscription.text);
+      callbacks.onCaption?.("you", content.inputTranscription.text);
     }
 
     if (silent) {
@@ -249,7 +250,7 @@ const startLiveSession = async (
     }
 
     if (content?.outputTranscription?.text) {
-      callbacks.onCaption("assistant", content.outputTranscription.text);
+      callbacks.onCaption?.("assistant", content.outputTranscription.text);
     }
   };
 

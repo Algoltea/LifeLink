@@ -1,13 +1,13 @@
 import type { voice as english } from "../en/voice";
 
 const voice: typeof english = {
-  captions: "Subtítulos",
+  connecting: "Conectando…",
   connectionProblem: "Hubo un problema con la conexión de voz.",
   dictationStopped:
     "El dictado se detuvo. Inténtelo de nuevo o escriba en su lugar.",
   emptyRequest: "No se preparó nada porque la solicitud estaba vacía.",
   inputLabel: "¿Con qué necesita ayuda?",
-  lifeLinkSaid: "LifeLink dijo: ",
+  listening: "Escuchando…",
   microphoneBusy:
     "Otra aplicación está usando el micrófono. Ciérrela e inténtelo de nuevo o escriba en su lugar.",
   microphoneDenied:
@@ -24,6 +24,7 @@ const voice: typeof english = {
     "No se pudo preparar. Pídale que lo intente de nuevo o que lo escriba.",
   prepared:
     "Preparado. Ya está en pantalla; no pasa nada hasta que se apruebe allí.",
+  preparing: "Preparando su solicitud…",
   readAloudUnavailable:
     "La lectura en voz alta no está disponible. Inténtelo de nuevo.",
   retry:
@@ -48,12 +49,9 @@ const voice: typeof english = {
   startFailed: (error: string) =>
     `La voz no se inició: ${error} Puede escribir en su lugar.`,
   stop: "Detener",
-  talking:
-    "Hablando con LifeLink. Todo lo que prepare aparecerá en pantalla para que lo apruebe.",
   unavailable:
     "La voz no está disponible ahora. Escriba su solicitud. No se envía nada hasta que lo apruebe.",
   voiceStopped: "Se detuvo la voz.",
-  youSaid: "Usted dijo: ",
 };
 
 export { voice };

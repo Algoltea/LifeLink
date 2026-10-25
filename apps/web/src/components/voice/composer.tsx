@@ -6,9 +6,10 @@ import { cn } from "@lifelink/ui/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowUpIcon,
+  AudioLinesIcon,
   LoaderCircleIcon,
   MicIcon,
-  SquareIcon,
+  Volume2Icon,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -28,31 +29,76 @@ import {
 } from "./live-session";
 import type { AudioRig, LiveHandle } from "./live-session";
 
-interface Caption {
-  id: number;
-  text: string;
-  who: "assistant" | "you";
-}
-
 type VoiceState = "connecting" | "idle" | "live";
 
 const errorText = (cause: unknown): string =>
   messageOf(cause instanceof Error ? cause : null);
 
-const voiceHintFor = (
+/** What the voice session is doing now: one short status instead of a transcript. */
+type VoiceStatus = "connecting" | "listening" | "preparing" | "speaking";
+
+const voiceStatusFor = (
   voice: VoiceState,
+  submitting: boolean,
+  speaking: boolean
+): VoiceStatus | null => {
+  if (voice === "idle") {
+    return null;
+  }
+
+  if (voice === "connecting") {
+    return "connecting";
+  }
+
+  if (submitting) {
+    return "preparing";
+  }
+
+  return speaking ? "speaking" : "listening";
+};
+
+const voiceHintFor = (
+  status: VoiceStatus | null,
   available: boolean,
   t: Messages["voice"]
 ): string => {
-  if (!available) {
-    return t.unavailable;
+  if (status) {
+    return t[status];
   }
 
-  if (voice === "live" || voice === "connecting") {
-    return t.talking;
+  return available ? t.speakHint : t.unavailable;
+};
+
+/** The Speak button's icon shows the session's status at a glance. */
+const VoiceStatusIcon = ({ status }: { status: VoiceStatus | null }) => {
+  if (status === "connecting" || status === "preparing") {
+    return (
+      <LoaderCircleIcon
+        aria-hidden="true"
+        className="size-5 motion-safe:animate-spin"
+      />
+    );
   }
 
-  return t.speakHint;
+  if (status === "speaking") {
+    return (
+      <Volume2Icon
+        aria-hidden="true"
+        className="size-5 motion-safe:animate-pulse"
+      />
+    );
+  }
+
+  if (status === "listening") {
+    return (
+      <AudioLinesIcon
+        aria-hidden="true"
+        className="size-5 motion-safe:animate-pulse"
+      />
+    );
+  }
+
+  return <MicIcon aria-hidden="true" className="size-5" />;
 };
 
 /** The voice hint: inside the box beside the buttons when compact, otherwise centred under it. */
@@ -72,6 +118,7 @@ const ComposerHint = ({
         ? "order-last basis-full @min-[36rem]/composer:order-none @min-[36rem]/composer:flex-1 @min-[36rem]/composer:basis-0 @min-[36rem]/composer:px-2"
         : "-mt-2 text-center"
     )}
+    aria-live="polite"
     id={id}
   >
     {children}
@@ -112,7 +159,6 @@ const ComposerSession = ({
   const createLive = useAction(api.voice.createLiveSession);
   const status = useQuery(api.status.integrations);
   const { online, queueRequest } = useOffline();
-  const { preferences } = usePreferences();
   const [localText, setLocalText] = useState("");
   const text = draft ?? localText;
   const setText = onDraftChange ?? setLocalText;
@@ -120,14 +166,12 @@ const ComposerSession = ({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voice, setVoice] = useState<VoiceState>("idle");
-  const [captions, setCaptions] = useState<Caption[]>([]);
   const [speaking, setSpeaking] = useState(false);
   const live = useRef<LiveHandle | null>(null);
   // The microphone while a live session is still connecting; Stop and unmount release it.
   const pendingRig = useRef<AudioRig | null>(null);
   // Ends a microphone request still waiting on the browser's permission prompt.
   const voiceAbort = useRef<AbortController | null>(null);
-  const captionId = useRef(0);
   const inputId = useId();
   const hintId = useId();
   const pending = useRef(false);
@@ -195,26 +239,6 @@ const ComposerSession = ({
     }
   };
 
-  const addCaption = (who: Caption["who"], piece: string): void => {
-    setCaptions((existing) => {
-      const last = existing.at(-1);
-
-      if (last?.who === who) {
-        return [
-          ...existing.slice(0, -1),
-          { ...last, text: `${last.text}${piece}` },
-        ];
-      }
-
-      captionId.current += 1;
-
-      return [
-        ...existing.slice(-7),
-        { id: captionId.current, text: piece.trimStart(), who },
-      ];
-    });
-  };
-
   const stopVoice = (): void => {
     voiceRun.current += 1;
     voiceAbort.current?.abort();
@@ -234,7 +258,6 @@ const ComposerSession = ({
       voiceRun.current += 1;
       const run = voiceRun.current;
       setVoice("connecting");
-      setCaptions([]);
 
       // Stop, a newer attempt, or leaving the page ends this one.
       const cancelled = (): boolean =>
@@ -270,11 +293,6 @@ const ComposerSession = ({
           session.model,
           {
             // Callbacks from an attempt that already ended must not touch the current one.
-            onCaption: (who, piece) => {
-              if (!cancelled()) {
-                addCaption(who, piece);
-              }
-            },
             onClosed: (reason) => {
               if (cancelled()) {
                 return;
@@ -335,7 +353,8 @@ const ComposerSession = ({
   const voiceAvailable = liveConfigured && online;
   const listening = voice !== "idle";
 
-  const voiceHint = voiceHintFor(voice, voiceAvailable, t);
+  const voiceStatus = voiceStatusFor(voice, submitting, speaking);
+  const voiceHint = voiceHintFor(voiceStatus, voiceAvailable, t);
 
   const [rowHint, belowHint] = placeHint(
     compact,
@@ -397,15 +416,7 @@ const ComposerSession = ({
             }}
             type="button"
           >
-            {listening ? (
-              <SquareIcon
-                aria-hidden="true"
-                className="size-4"
-                fill="currentColor"
-              />
-            ) : (
-              <MicIcon aria-hidden="true" className="size-5" />
-            )}
+            <VoiceStatusIcon status={voiceStatus} />
             {listening ? t.stop : t.speak}
           </button>
           {rowHint}
@@ -435,33 +446,6 @@ const ComposerSession = ({
         </ErrorNote>
       ) : null}
       {voiceError ? <ErrorNote>{voiceError}</ErrorNote> : null}
-      {listening && preferences.captions && captions.length > 0 ? (
-        <section
-          aria-label={t.captions}
-          aria-live="polite"
-          className="bg-surface flex max-h-40 flex-col gap-2 overflow-y-auto rounded-xl px-5 py-4"
-        >
-          {captions.map((caption) => (
-            <p
-              className={cn(
-                "text-xl leading-snug",
-                caption.who === "you"
-                  ? "text-muted-foreground"
-                  : "font-semibold"
-              )}
-              key={caption.id}
-            >
-              <span className="sr-only">
-                {caption.who === "you" ? t.youSaid : t.lifeLinkSaid}
-              </span>
-              {caption.text}
-            </p>
-          ))}
-          {speaking ? (
-            <p className="text-muted-foreground text-base">{t.speaking}</p>
-          ) : null}
-        </section>
-      ) : null}
     </div>
   );
 };

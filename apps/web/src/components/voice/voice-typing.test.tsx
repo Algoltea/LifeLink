@@ -123,9 +123,9 @@ describe("voice typing", () => {
     expect(latest.voice?.state).toBe("listening");
 
     act(() => {
-      callbacks?.onCaption("you", "Hello");
-      callbacks?.onCaption("assistant", "I should stay quiet");
-      callbacks?.onCaption("you", " love, see you Sunday");
+      callbacks?.onCaption?.("you", "Hello");
+      callbacks?.onCaption?.("assistant", "I should stay quiet");
+      callbacks?.onCaption?.("you", " love, see you Sunday");
     });
 
     expect(words).toStrictEqual(["Hello", "Hello love, see you Sunday"]);
@@ -142,7 +142,7 @@ describe("voice typing", () => {
     expect(stopSession).toHaveBeenCalledOnce();
     expect(latest.voice?.state).toBe("idle");
 
-    act(() => callbacks?.onCaption("you", "late words"));
+    act(() => callbacks?.onCaption?.("you", "late words"));
 
     expect(words).toStrictEqual([]);
   });
