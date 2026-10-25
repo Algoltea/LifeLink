@@ -4,7 +4,11 @@ import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { action, internalQuery } from "./_generated/server";
-import { createCallScreeningToken, createLiveToken } from "./integrations/live";
+import {
+  createCallScreeningToken,
+  createLiveToken,
+  createVoiceTypingToken,
+} from "./integrations/live";
 import {
   MAX_SPEECH_CHARACTERS,
   speechConfigurationError,
@@ -108,6 +112,46 @@ export const createCallScreeningSession = action({
   ): Promise<{ expiresAt: number; model: string; token: string }> => {
     await ctx.runQuery(internal.voice.authorizeCallScreening, {});
     const result = await createCallScreeningToken();
+
+    if (!result.ok) {
+      throw new ConvexError({
+        code: "voice_unavailable",
+        message: result.error,
+      });
+    }
+
+    return {
+      expiresAt: result.expiresAt,
+      model: result.model,
+      token: result.token,
+    };
+  },
+  returns: v.object({
+    expiresAt: v.number(),
+    model: v.string(),
+    token: v.string(),
+  }),
+});
+
+/**
+ * Mint a one-use token for voice typing in Messages and Email: silent input
+ * transcription with no tools. Unlike call screening, Practice mode may use it.
+ */
+export const createVoiceTypingSession = action({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ expiresAt: number; model: string; token: string }> => {
+    const person = await ctx.runQuery(internal.voice.nameForVoice, {});
+
+    if (person === null) {
+      throw new ConvexError({
+        code: "not_signed_in",
+        message: "Please sign in again.",
+      });
+    }
+
+    const result = await createVoiceTypingToken();
 
     if (!result.ok) {
       throw new ConvexError({

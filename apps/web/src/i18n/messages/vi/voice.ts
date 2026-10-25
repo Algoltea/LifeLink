@@ -8,7 +8,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Chưa chuẩn bị gì vì yêu cầu trống.",
   inputLabel: "Quý vị muốn được giúp gì?",
   lifeLinkSaid: "LifeLink nói: ",
-  listening: "Đang nghe. Lời nói sẽ hiện trong ô; nhấn Gửi khi nội dung đúng.",
   microphoneBusy:
     "Ứng dụng khác đang dùng micrô. Đóng ứng dụng đó rồi thử lại hoặc nhập bằng bàn phím.",
   microphoneDenied:
@@ -17,10 +16,6 @@ const voice: Messages["voice"] = {
     "Micrô không khởi động được. Vui lòng thử lại hoặc nhập bằng bàn phím.",
   microphoneMissing:
     "Không tìm thấy micrô. Kiểm tra xem đã kết nối chưa hoặc nhập bằng bàn phím.",
-  network:
-    "Nhập bằng giọng nói hiện cần mạng internet. Vui lòng nhập bằng bàn phím.",
-  noSpeech:
-    "Tôi chưa nghe được gì. Nhấn Nói rồi thử lại, gần micrô hơn một chút.",
   offlineFailed:
     "Không lưu được yêu cầu khi ngoại tuyến. Lời của quý vị vẫn ở đây. Vui lòng thử lại khi có mạng.",
   opening: "Đang mở nơi viết tin nhắn",
@@ -42,8 +37,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "Đã dừng kiểm tra cuộc gọi.",
   send: "Gửi",
   sending: "Đang gửi",
-  serviceDenied:
-    "Nhập bằng giọng nói bị tắt trong trình duyệt này. Vui lòng nhập bằng bàn phím.",
   speak: "Nói",
   speakHint:
     "Nhấn Nói để nói thay vì nhập. Chưa gửi gì cho đến khi quý vị phê duyệt.",
@@ -54,7 +47,7 @@ const voice: Messages["voice"] = {
   talking:
     "Đang trò chuyện với LifeLink. Mọi nội dung chuẩn bị sẽ hiện trên màn hình để quý vị phê duyệt.",
   unavailable:
-    "Trình duyệt này không hỗ trợ giọng nói, vui lòng nhập bằng bàn phím. Chưa gửi gì cho đến khi quý vị phê duyệt.",
+    "Hiện không dùng được giọng nói, vui lòng nhập bằng bàn phím. Chưa gửi gì cho đến khi quý vị phê duyệt.",
   voiceStopped: "Đã dừng giọng nói.",
   youSaid: "Quý vị nói: ",
 };

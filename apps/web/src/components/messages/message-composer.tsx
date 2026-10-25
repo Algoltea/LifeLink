@@ -24,11 +24,10 @@ import { z } from "zod";
 
 import { usePresentationDemo } from "@/components/app/presentation-demo";
 import {
-  dictationAvailable,
-  startDictation,
-} from "@/components/voice/dictation";
-import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
-import { useBrowserCapability } from "@/lib/browser-capability";
+  useLiveConfigured,
+  useVoiceTyping,
+} from "@/components/voice/voice-typing";
+import { currentMessages, useMessages } from "@/i18n/locale";
 import { messageOf } from "@/lib/errors";
 
 const MAX_PHOTOS = 4;
@@ -59,13 +58,10 @@ const errorText = (cause: unknown): string =>
 const ROW_BUTTON =
   "border-border text-label hover:bg-parchment min-h-control min-w-control inline-flex items-center justify-center gap-2 rounded-full border px-3 font-medium transition-[background-color,border-color,color] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent @md/composer:pr-4";
 
-interface Dictation {
-  stop: () => void;
-}
-
 /**
- * Speak instead of typing. The words go into the box after anything typed;
- * nothing is sent. Listening stops when the message is being prepared.
+ * Speak instead of typing, with Gemini Live voice typing. The words go into
+ * the box after anything typed; nothing is sent. Listening stops when the
+ * message is being prepared.
  */
 const SpeakButton = ({
   draft,
@@ -76,51 +72,31 @@ const SpeakButton = ({
   onDraftChange: (draft: MessageDraft) => void;
   preparing: boolean;
 }) => {
-  const [listening, setListening] = useState(false);
-  const dictation = useRef<Dictation | null>(null);
   const t = useMessages().voice;
-  const locale = useLocale();
-  const canDictate = useBrowserCapability(dictationAvailable);
+  const configured = useLiveConfigured();
+  // The draft as it was when Speak was pressed; spoken words follow its text.
+  const base = useRef(draft);
+
+  const voice = useVoiceTyping((words) => {
+    const typed = base.current.body.trimEnd();
+
+    onDraftChange({
+      ...base.current,
+      body: typed.length > 0 ? `${typed} ${words}` : words,
+    });
+  });
+
+  const { listening, stop } = voice;
 
   useEffect(() => {
-    if (preparing) {
-      dictation.current?.stop();
+    if (preparing && listening) {
+      stop();
     }
-  }, [preparing]);
+  }, [listening, preparing, stop]);
 
-  useEffect(() => () => dictation.current?.stop(), []);
-
-  if (!canDictate) {
+  if (!configured) {
     return null;
   }
-
-  const toggle = (): void => {
-    if (dictation.current) {
-      dictation.current.stop();
-
-      return;
-    }
-
-    const typed = draft.body.trimEnd();
-
-    dictation.current = startDictation(
-      (heard) =>
-        onDraftChange({
-          ...draft,
-          body: typed.length > 0 ? `${typed} ${heard}` : heard,
-        }),
-      (problem) => {
-        dictation.current = null;
-        setListening(false);
-
-        if (problem) {
-          toast.error(problem);
-        }
-      },
-      locale
-    );
-    setListening(dictation.current !== null);
-  };
 
   const label = listening ? t.stop : t.speak;
 
@@ -128,20 +104,31 @@ const SpeakButton = ({
     <button
       aria-label={label}
       aria-pressed={listening}
-      disabled={preparing}
       className={cn(
         ROW_BUTTON,
         listening &&
           "bg-foreground text-background hover:bg-foreground/85 border-transparent"
       )}
-      onClick={toggle}
+      disabled={preparing || !voice.available}
+      onClick={() => {
+        if (!listening) {
+          base.current = draft;
+        }
+
+        voice.toggle();
+      }}
       type="button"
     >
-      {listening ? (
+      {voice.state === "connecting" ? (
+        <LoaderCircleIcon
+          aria-hidden="true"
+          className="size-5 motion-safe:animate-spin"
+        />
+      ) : null}
+      {voice.state === "listening" ? (
         <SquareIcon aria-hidden="true" className="size-4" fill="currentColor" />
-      ) : (
-        <MicIcon aria-hidden="true" className="size-5" />
-      )}
+      ) : null}
+      {listening ? null : <MicIcon aria-hidden="true" className="size-5" />}
       <span className="hidden @md/composer:inline">{label}</span>
     </button>
   );

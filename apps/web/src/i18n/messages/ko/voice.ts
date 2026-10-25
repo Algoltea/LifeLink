@@ -8,8 +8,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "요청 내용이 없어 준비하지 않았습니다.",
   inputLabel: "어떤 도움을 원하시나요?",
   lifeLinkSaid: "LifeLink의 말: ",
-  listening:
-    "듣고 있습니다. 하신 말씀이 입력란에 나타납니다. 내용이 맞으면 보내기를 눌러 주세요.",
   microphoneBusy:
     "다른 앱이 마이크를 사용하고 있습니다. 해당 앱을 닫고 다시 시도하시거나 글로 입력해 주세요.",
   microphoneDenied:
@@ -18,9 +16,6 @@ const voice: Messages["voice"] = {
     "마이크를 켜지 못했습니다. 다시 시도하시거나 글로 입력해 주세요.",
   microphoneMissing:
     "마이크를 찾지 못했습니다. 연결되어 있는지 확인하시거나 글로 입력해 주세요.",
-  network: "지금은 음성 입력에 인터넷 연결이 필요합니다. 글로 입력해 주세요.",
-  noSpeech:
-    "말씀을 듣지 못했습니다. 마이크에 조금 더 가까이에서 말하기를 누르고 다시 시도해 주세요.",
   offlineFailed:
     "이 요청을 오프라인으로 저장하지 못했습니다. 입력하신 내용은 그대로 있습니다. 인터넷 연결 후 다시 시도해 주세요.",
   opening: "메시지를 작성할 곳을 여는 중",
@@ -45,8 +40,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "통화 확인이 중단되었습니다.",
   send: "보내기",
   sending: "보내는 중",
-  serviceDenied:
-    "이 브라우저에서는 음성 입력이 꺼져 있습니다. 글로 입력해 주세요.",
   speak: "말하기",
   speakHint:
     "글 대신 말씀하시려면 말하기를 눌러 주세요. 승인하실 때까지 아무것도 보내지 않습니다.",
@@ -57,7 +50,7 @@ const voice: Messages["voice"] = {
   talking:
     "LifeLink와 대화 중입니다. 준비한 내용은 승인하실 수 있도록 화면에 표시됩니다.",
   unavailable:
-    "이 브라우저에서는 음성을 사용할 수 없으니 글로 입력해 주세요. 승인하실 때까지 아무것도 보내지 않습니다.",
+    "지금은 음성을 사용할 수 없으니 글로 입력해 주세요. 승인하실 때까지 아무것도 보내지 않습니다.",
   voiceStopped: "음성이 중단되었습니다.",
   youSaid: "내가 한 말: ",
 };

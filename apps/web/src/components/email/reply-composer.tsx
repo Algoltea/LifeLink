@@ -13,11 +13,10 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 
 import {
-  dictationAvailable,
-  startDictation,
-} from "@/components/voice/dictation";
+  useLiveConfigured,
+  useVoiceTyping,
+} from "@/components/voice/voice-typing";
 import { useMessages } from "@/i18n/locale";
-import { useBrowserCapability } from "@/lib/browser-capability";
 import { messageOf } from "@/lib/errors";
 
 const errorText = (cause: unknown): string =>
@@ -67,9 +66,9 @@ const ReplyComposer = ({
   const router = useRouter();
   const [pending, setPending] = useState<"draft" | "send" | null>(null);
   const busy = pending !== null;
-  const canDictate = useBrowserCapability(dictationAvailable);
-  const [listening, setListening] = useState(false);
-  const dictation = useRef<{ stop: () => void } | null>(null);
+  const configured = useLiveConfigured();
+  // The words typed before Speak was pressed; spoken words follow them.
+  const before = useRef("");
   const latest = useRef(reply);
   useEffect(() => {
     latest.current = reply;
@@ -78,33 +77,18 @@ const ReplyComposer = ({
   const hintId = useId();
   const messages = useMessages();
   const t = messages.email.replyComposer;
-  useEffect(() => () => dictation.current?.stop(), []);
 
-  const toggleDictation = () => {
-    if (dictation.current !== null) {
-      dictation.current.stop();
-
-      return;
-    }
-
-    const before = latest.current.body.trimEnd();
-    dictation.current = startDictation(
-      (spoken) => {
-        onChange(
-          edited(latest.current, before ? `${before} ${spoken}` : spoken)
-        );
-      },
-      () => {
-        dictation.current = null;
-        setListening(false);
-        inputRef.current?.focus();
-      }
+  const voice = useVoiceTyping((spoken) => {
+    onChange(
+      edited(
+        latest.current,
+        before.current ? `${before.current} ${spoken}` : spoken
+      )
     );
-    setListening(dictation.current !== null);
-  };
+  });
 
   const prepare = async (delivery: "draft" | "send") => {
-    dictation.current?.stop();
+    voice.stop();
     setPending(delivery);
 
     try {
@@ -170,20 +154,27 @@ const ReplyComposer = ({
           value={reply.body}
         />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {canDictate ? (
+          {configured ? (
             <Button
-              aria-pressed={listening}
+              aria-pressed={voice.listening}
               className="rounded-full pr-4 pl-3"
-              onClick={toggleDictation}
+              disabled={busy || !voice.available}
+              onClick={() => {
+                if (!voice.listening) {
+                  before.current = latest.current.body.trimEnd();
+                }
+
+                voice.toggle();
+              }}
               size="sm"
               variant="outline"
             >
-              {listening ? (
+              {voice.listening ? (
                 <SquareIcon aria-hidden="true" />
               ) : (
                 <MicIcon aria-hidden="true" />
               )}
-              {listening ? t.stopListening : t.speak}
+              {voice.listening ? t.stopListening : t.speak}
             </Button>
           ) : (
             <span />

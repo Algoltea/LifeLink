@@ -8,8 +8,6 @@ const voice: typeof english = {
   emptyRequest: "No se preparó nada porque la solicitud estaba vacía.",
   inputLabel: "¿Con qué necesita ayuda?",
   lifeLinkSaid: "LifeLink dijo: ",
-  listening:
-    "Escuchando. Sus palabras aparecerán en el cuadro; pulse Enviar cuando estén bien.",
   microphoneBusy:
     "Otra aplicación está usando el micrófono. Ciérrela e inténtelo de nuevo o escriba en su lugar.",
   microphoneDenied:
@@ -18,10 +16,6 @@ const voice: typeof english = {
     "El micrófono no se inició. Inténtelo de nuevo o escriba en su lugar.",
   microphoneMissing:
     "No se encontró un micrófono. Compruebe que haya uno conectado o escriba en su lugar.",
-  network:
-    "El dictado necesita una conexión a internet en este momento. Escriba en su lugar.",
-  noSpeech:
-    "No escuché nada. Pulse Hablar e inténtelo de nuevo, un poco más cerca del micrófono.",
   offlineFailed:
     "No pudimos guardar esta solicitud sin conexión. Sus palabras siguen aquí. Inténtelo de nuevo cuando tenga conexión.",
   opening: "Abriendo un espacio para su mensaje",
@@ -47,8 +41,6 @@ const voice: typeof english = {
   screeningStopped: "Se detuvo la revisión de llamadas.",
   send: "Enviar",
   sending: "Enviando",
-  serviceDenied:
-    "El dictado está desactivado en este navegador. Escriba en su lugar.",
   speak: "Hablar",
   speakHint:
     "Pulse Hablar para hablar en vez de escribir. No se envía nada hasta que lo apruebe.",
@@ -59,7 +51,7 @@ const voice: typeof english = {
   talking:
     "Hablando con LifeLink. Todo lo que prepare aparecerá en pantalla para que lo apruebe.",
   unavailable:
-    "La voz no está disponible en este navegador. Escriba su solicitud. No se envía nada hasta que lo apruebe.",
+    "La voz no está disponible ahora. Escriba su solicitud. No se envía nada hasta que lo apruebe.",
   voiceStopped: "Se detuvo la voz.",
   youSaid: "Usted dijo: ",
 };

@@ -7,8 +7,6 @@ const voice: Messages["voice"] = {
   emptyRequest: "Non è stato preparato nulla perché la richiesta era vuota.",
   inputLabel: "Per cosa desidera aiuto?",
   lifeLinkSaid: "LifeLink ha detto: ",
-  listening:
-    "In ascolto. Le parole appariranno nel riquadro; prema Invia quando sono corrette.",
   microphoneBusy:
     "Un’altra applicazione sta usando il microfono. La chiuda e riprovi, oppure scriva.",
   microphoneDenied:
@@ -16,10 +14,6 @@ const voice: Messages["voice"] = {
   microphoneFailed: "Il microfono non si è avviato. Riprovi oppure scriva.",
   microphoneMissing:
     "Non è stato trovato un microfono. Controlli che sia collegato, oppure scriva.",
-  network:
-    "Al momento la dettatura richiede una connessione a Internet. Per favore, scriva.",
-  noSpeech:
-    "Non ho sentito nulla. Prema Parla e riprovi avvicinandosi un po’ al microfono.",
   offlineFailed:
     "Non è stato possibile salvare questa richiesta senza connessione. Le Sue parole sono ancora qui. Riprovi quando sarà online.",
   opening: "Apertura di uno spazio per il Suo messaggio",
@@ -43,8 +37,6 @@ const voice: Messages["voice"] = {
   screeningStopped: "Il controllo chiamata è stato interrotto.",
   send: "Invia",
   sending: "Invio",
-  serviceDenied:
-    "La dettatura è disattivata in questo browser. Per favore, scriva.",
   speak: "Parla",
   speakHint:
     "Prema Parla per parlare invece di scrivere. Nulla viene inviato finché non lo approva.",
@@ -54,7 +46,7 @@ const voice: Messages["voice"] = {
   talking:
     "Sta parlando con LifeLink. Tutto ciò che prepara appare sullo schermo per la Sua approvazione.",
   unavailable:
-    "La voce non è disponibile in questo browser: per favore, scriva. Nulla viene inviato finché non lo approva.",
+    "La voce non è disponibile in questo momento: per favore, scriva. Nulla viene inviato finché non lo approva.",
   voiceStopped: "La voce è stata interrotta.",
   youSaid: "Lei ha detto: ",
 };
