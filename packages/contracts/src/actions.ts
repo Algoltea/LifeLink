@@ -43,6 +43,16 @@ interface CreateReminderDetails {
   title: string;
 }
 
+/** An appointment saved to the person's own week inside LifeLink. */
+interface CreateAppointmentDetails {
+  endsAt: number;
+  kind: "create_appointment";
+  location: string | null;
+  notes: string | null;
+  startsAt: number;
+  title: string;
+}
+
 interface FamilyUpdateDetails {
   granteeIds: string[];
   kind: "family_update";
@@ -108,6 +118,7 @@ type ActionDetails =
   | CalendarEventDetails
   | DriveNoteDetails
   | ConfirmArrangementDetails
+  | CreateAppointmentDetails
   | CreateReminderDetails
   | EmailDraftDetails
   | EmailReplyDetails
@@ -145,6 +156,17 @@ const consequentialDetails = (details: ActionDetails): CanonicalValue => {
         kind: details.kind,
         remindAt: details.remindAt,
         shareWithCircle: details.shareWithCircle,
+        title: details.title,
+      };
+    }
+
+    case "create_appointment": {
+      return {
+        endsAt: details.endsAt,
+        kind: details.kind,
+        location: details.location,
+        notes: details.notes,
+        startsAt: details.startsAt,
         title: details.title,
       };
     }
@@ -239,6 +261,7 @@ export type {
   ActionKind,
   CalendarEventDetails,
   ConfirmArrangementDetails,
+  CreateAppointmentDetails,
   CreateReminderDetails,
   DriveNoteDetails,
   EmailDraftDetails,

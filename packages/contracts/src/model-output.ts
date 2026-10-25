@@ -16,6 +16,7 @@ const assistantIntents = [
   "ride_request",
   "send_message",
   "create_reminder",
+  "create_appointment",
   "grocery_list",
   "scam_check",
   "email_summary",
@@ -27,6 +28,17 @@ const assistantPlanSchema = z.strictObject({
   appointmentId: nullableString.describe(
     "Id of the stored appointment the request refers to, copied exactly from context, or null."
   ),
+  // Optional so proposals written before appointments could be added still parse.
+  appointmentLocation: nullableString
+    .optional()
+    .describe(
+      "For create_appointment: where it is, as the person said it, or null."
+    ),
+  appointmentTitle: nullableString
+    .optional()
+    .describe(
+      "For create_appointment: a short name, such as Dentist or Eye doctor. Otherwise null."
+    ),
   clarificationQuestion: nullableString.describe(
     "One short question when the recipient, date, or time is unclear; otherwise null."
   ),
@@ -75,6 +87,7 @@ const proposalIntents = [
   "ride_request",
   "send_message",
   "create_reminder",
+  "create_appointment",
   "grocery_list",
   "scam_check",
 ] as const;
