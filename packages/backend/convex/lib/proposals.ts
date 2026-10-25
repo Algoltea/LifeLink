@@ -25,7 +25,7 @@ import { createAction } from "./lifecycle";
 import { ownerLocale } from "./locale";
 import { resolveMessageRecipients } from "./messageRecipients";
 import { proposalMessagesFor } from "./proposalMessages";
-import { DAY, formatDay, formatWhen, parseAbsoluteIso } from "./time";
+import { DAY, MINUTE, formatDay, formatWhen, parseAbsoluteIso } from "./time";
 
 const UPCOMING_WINDOW = 45 * DAY;
 const MAX_GROCERY_ITEMS = 50;
@@ -269,6 +269,68 @@ const proposeReminder = async (
   );
 };
 
+const APPOINTMENT_LENGTH = 60 * MINUTE;
+const MAX_APPOINTMENT_TITLE = 120;
+const MAX_APPOINTMENT_LOCATION = 200;
+
+/** An appointment the model heard about waits in the chat until the person approves adding it. */
+const proposeAppointment = async (
+  planning: Planning
+): Promise<ProposalOutcome> => {
+  const { ctx, locale, owner, proposal } = planning;
+  const startsAt = parseAbsoluteIso(proposal.dateTimeIso);
+
+  const title = (proposal.appointmentTitle ?? "")
+    .trim()
+    .slice(0, MAX_APPOINTMENT_TITLE);
+
+  if (startsAt === null || startsAt < planning.now || title.length === 0) {
+    return outcome(proposalMessagesFor(locale).whichAppointment);
+  }
+
+  const location =
+    proposal.appointmentLocation?.trim().slice(0, MAX_APPOINTMENT_LOCATION) ||
+    null;
+
+  const { stepIds, taskId } = await createTask(ctx, {
+    appointmentId: null,
+    contactId: null,
+    kind: "create_appointment",
+    mode: planning.mode,
+    origin: planning.origin,
+    ownerId: owner._id,
+    request: planning.request,
+    steps: [{ kind: "create_appointment", label: "Add the appointment" }],
+    title: `Appointment: ${title}`,
+  });
+
+  await createAction(ctx, {
+    ambiguities: [],
+    details: {
+      endsAt: startsAt + APPOINTMENT_LENGTH,
+      kind: "create_appointment",
+      location,
+      notes: null,
+      startsAt,
+      title,
+    },
+    mode: planning.mode,
+    ownerId: owner._id,
+    proposedBy: "model",
+    rationale: proposal.dateTimeAsSaid,
+    stepId: stepIds[0] ?? null,
+    taskId,
+  });
+
+  return outcome(
+    proposalMessagesFor(locale).appointmentPrepared(
+      title,
+      formatWhen(startsAt, owner.timeZone, intlLocaleOf(locale))
+    ),
+    taskId
+  );
+};
+
 /** Adding items to the person's own list is reversible and spends nothing, so it needs no approval. */
 const addGroceries = async (planning: Planning): Promise<ProposalOutcome> => {
   const { ctx, locale, now, owner } = planning;
@@ -381,6 +443,10 @@ const applyProposal = async (
 
     case "create_reminder": {
       return await proposeReminder(planning);
+    }
+
+    case "create_appointment": {
+      return await proposeAppointment(planning);
     }
 
     case "grocery_list": {

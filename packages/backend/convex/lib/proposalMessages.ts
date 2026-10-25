@@ -6,6 +6,7 @@ interface RideAppointment {
 }
 
 interface ProposalMessages {
+  appointmentPrepared: (title: string, when: string) => string;
   groceriesAdded: (items: string, list: string) => string;
   groceryListName: string;
   messagePrepared: (name: string | null) => string;
@@ -20,6 +21,7 @@ interface ProposalMessages {
     appointment: RideAppointment | null
   ) => string;
   scamChecking: string;
+  whichAppointment: string;
   whichGroceries: string;
   whichRecipient: string;
   whichReminder: string;
@@ -28,6 +30,8 @@ interface ProposalMessages {
 /** Only LifeLink's new owner-facing words; names and authored details are interpolated unchanged. */
 const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
   de: {
+    appointmentPrepared: (title, when) =>
+      `Ich kann Ihren Termin „${title}“ am ${when} eintragen. Drücken Sie zum Speichern auf Genehmigen.`,
     groceriesAdded: (items, list) =>
       `Ich habe ${items} zu Ihrer Liste „${list}“ hinzugefügt. Es wurde nichts bestellt.`,
     groceryListName: "Einkäufe",
@@ -49,12 +53,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Ich habe eine Nachricht vorbereitet, um ${name ?? "jemanden"} um eine Fahrt zu bitten${appointment === null ? "" : `: „${appointment.title}“ am ${appointment.day}`}. ${name === null || appointment === null ? "Beantworten Sie zuerst die Frage auf dem Bildschirm. " : ""}Lesen Sie die Nachricht und drücken Sie auf Genehmigen, wenn alles stimmt. Erst dann wird sie gesendet.`,
     scamChecking:
       "Ich prüfe diese Nachricht. Das Ergebnis erscheint gleich unter Betrugsprüfung. Bitte klicken Sie in der Zwischenzeit auf keinen Link in der Nachricht.",
+    whichAppointment:
+      "Wofür ist der Termin, und wann genau? Bitte nennen Sie den Tag und die Uhrzeit.",
     whichGroceries: "Welche Artikel möchten Sie auf Ihre Liste setzen?",
     whichRecipient: "Wem möchten Sie schreiben?",
     whichReminder:
       "Woran und wann genau soll ich Sie erinnern? Bitte nennen Sie den Tag und die Uhrzeit.",
   },
   en: {
+    appointmentPrepared: (title, when) =>
+      `I can save your appointment "${title}" for ${when}. Press Approve to add it.`,
     groceriesAdded: (items, list) =>
       `I added ${items} to your ${list} list. Nothing has been ordered.`,
     groceryListName: "Groceries",
@@ -74,12 +82,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `I've written a message asking ${name ?? "someone"} for a ride${appointment === null ? "" : ` for ${appointment.title} on ${appointment.day}`}. ${name === null || appointment === null ? "First, answer the question on screen. Then read the message and" : "Please read it, and"} press Approve when it looks right. Nothing is sent until you do.`,
     scamChecking:
       "I'm checking that message now. The result will appear under Scam check in a moment. Please don't click any links in it while you wait.",
+    whichAppointment:
+      "What is the appointment for, and exactly when? Please give the day and time.",
     whichGroceries: "Which items would you like on your list?",
     whichRecipient: "Who would you like to write to?",
     whichReminder:
       "What should I remind you about, and exactly when? Please give the day and time.",
   },
   es: {
+    appointmentPrepared: (title, when) =>
+      `Puedo guardar su cita «${title}» para el ${when}. Pulse Aprobar para añadirla.`,
     groceriesAdded: (items, list) =>
       `Añadí ${items} a su lista ${list}. No se ha hecho ningún pedido.`,
     groceryListName: "Compras",
@@ -99,12 +111,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `He preparado un mensaje para pedirle a ${name ?? "alguien"} que le lleve${appointment === null ? "" : ` para ${appointment.title} el ${appointment.day}`}. ${name === null || appointment === null ? "Primero, responda a la pregunta en pantalla. Después lea el mensaje y" : "Léalo y"} pulse Aprobar cuando esté bien. No se envía nada hasta que lo haga.`,
     scamChecking:
       "Estoy revisando ese mensaje. El resultado aparecerá en Revisar estafas en un momento. No pulse ningún enlace mientras espera.",
+    whichAppointment:
+      "¿Para qué es la cita y cuándo exactamente? Dígame el día y la hora.",
     whichGroceries: "¿Qué productos quiere añadir a su lista?",
     whichRecipient: "¿A quién le gustaría escribir?",
     whichReminder:
       "¿Qué quiere que le recuerde y cuándo exactamente? Dígame el día y la hora.",
   },
   fr: {
+    appointmentPrepared: (title, when) =>
+      `Je peux enregistrer votre rendez-vous « ${title} » le ${when}. Appuyez sur Approuver pour l'ajouter.`,
     groceriesAdded: (items, list) =>
       `J'ai ajouté ${items} à votre liste « ${list} ». Aucune commande n'a été passée.`,
     groceryListName: "Courses",
@@ -124,12 +140,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `J'ai préparé un message pour demander à ${name ?? "quelqu'un"} de vous accompagner${appointment === null ? "" : ` pour « ${appointment.title} » le ${appointment.day}`}. ${name === null || appointment === null ? "Répondez d'abord à la question à l'écran. Ensuite, lisez le message et" : "Lisez-le et"} appuyez sur Approuver s'il vous convient. Rien ne sera envoyé avant votre approbation.`,
     scamChecking:
       "Je vérifie ce message. Le résultat apparaîtra bientôt dans Vérifier une arnaque. En attendant, ne cliquez sur aucun lien du message.",
+    whichAppointment:
+      "À quoi correspond ce rendez-vous, et à quel moment ? Indiquez le jour et l'heure.",
     whichGroceries: "Quels articles souhaitez-vous ajouter à votre liste ?",
     whichRecipient: "À qui souhaitez-vous écrire ?",
     whichReminder:
       "Que souhaitez-vous que je vous rappelle, et à quel moment ? Indiquez le jour et l'heure.",
   },
   it: {
+    appointmentPrepared: (title, when) =>
+      `Posso salvare il suo appuntamento «${title}» il ${when}. Prema Approva per aggiungerlo.`,
     groceriesAdded: (items, list) =>
       `Ho aggiunto ${items} alla sua lista «${list}». Non è stato ordinato nulla.`,
     groceryListName: "Spesa",
@@ -149,12 +169,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Ho preparato un messaggio per chiedere un passaggio a ${name ?? "qualcuno"}${appointment === null ? "" : ` per «${appointment.title}» il ${appointment.day}`}. ${name === null || appointment === null ? "Prima risponda alla domanda sullo schermo. " : ""}Legga il messaggio e prema Approva quando va bene. Non verrà inviato nulla finché non approva.`,
     scamChecking:
       "Sto controllando il messaggio. Il risultato apparirà tra poco in Controllo truffe. Nel frattempo, non apra alcun link nel messaggio.",
+    whichAppointment:
+      "Per che cosa è l'appuntamento e quando esattamente? Mi indichi il giorno e l'ora.",
     whichGroceries: "Quali prodotti desidera aggiungere alla lista?",
     whichRecipient: "A chi desidera scrivere?",
     whichReminder:
       "Che cosa desidera ricordare e quando esattamente? Mi indichi il giorno e l'ora.",
   },
   ko: {
+    appointmentPrepared: (title, when) =>
+      `${when}에 “${title}” 일정을 저장할 수 있습니다. 승인을 눌러 추가하세요.`,
     groceriesAdded: (items, list) =>
       `“${list}” 목록에 ${items} 항목을 추가했습니다. 주문한 것은 없습니다.`,
     groceryListName: "장보기",
@@ -174,11 +198,15 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `${name === null ? "누군가" : `${name} 님`}께 차로 데려다 달라고 부탁하는 메시지를 준비했습니다.${appointment === null ? "" : ` 예약은 ${appointment.day}의 “${appointment.title}”입니다.`} ${name === null || appointment === null ? "먼저 화면의 질문에 답해 주세요. " : ""}메시지를 읽고 내용이 맞으면 승인을 눌러 주세요. 승인하기 전에는 아무것도 보내지 않습니다.`,
     scamChecking:
       "메시지를 확인하고 있습니다. 잠시 후 사기 확인에서 결과를 보실 수 있습니다. 기다리는 동안 메시지의 링크를 누르지 마세요.",
+    whichAppointment:
+      "어떤 약속이고 정확히 언제인가요? 날짜와 시간을 말씀해 주세요.",
     whichGroceries: "목록에 어떤 물품을 추가할까요?",
     whichRecipient: "누구에게 메시지를 보내고 싶으세요?",
     whichReminder: "무엇을 언제 알려드릴까요? 날짜와 시간을 말씀해 주세요.",
   },
   pt: {
+    appointmentPrepared: (title, when) =>
+      `Posso salvar seu compromisso «${title}» em ${when}. Toque em Aprovar para adicionar.`,
     groceriesAdded: (items, list) =>
       `Adicionei ${items} à sua lista ${list}. Nenhum pedido foi feito.`,
     groceryListName: "Compras",
@@ -199,12 +227,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Preparei uma mensagem para pedir que ${name ?? "alguém"} leve você${appointment === null ? "" : ` ao compromisso «${appointment.title}» no dia ${appointment.day}`}. ${name === null || appointment === null ? "Primeiro, responda à pergunta na tela. " : ""}Leia a mensagem e toque em Aprovar quando estiver tudo certo. Nada será enviado antes da sua aprovação.`,
     scamChecking:
       "Estou verificando essa mensagem. O resultado aparecerá em Verificar golpes em instantes. Não toque em nenhum link da mensagem enquanto espera.",
+    whichAppointment:
+      "Para que é o compromisso e quando exatamente? Diga o dia e a hora.",
     whichGroceries: "Quais produtos você quer adicionar à sua lista?",
     whichRecipient: "Para quem você gostaria de escrever?",
     whichReminder:
       "O que você quer que eu lembre e quando exatamente? Diga o dia e a hora.",
   },
   tl: {
+    appointmentPrepared: (title, when) =>
+      `Maaari kong i-save ang appointment ninyong “${title}” sa ${when}. Pindutin ang Aprubahan para idagdag ito.`,
     groceriesAdded: (items, list) =>
       `Idinagdag ko ang ${items} sa inyong listahang “${list}”. Wala pang inorder.`,
     groceryListName: "Mga bibilhin",
@@ -225,6 +257,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Naghanda ako ng mensahe para humiling ${name === null ? "sa isang tao" : `kay ${name}`} na ihatid kayo${appointment === null ? "" : ` sa “${appointment.title}” sa ${appointment.day}`}. ${name === null || appointment === null ? "Sagutin muna ang tanong sa screen. " : ""}Basahin ang mensahe at pindutin ang Aprubahan kapag tama na ito. Walang ipapadala hangga't hindi ninyo inaaprubahan.`,
     scamChecking:
       "Sinusuri ko na ang mensaheng iyon. Lalabas ang resulta sa Suriin ang scam sa ilang sandali. Huwag munang pindutin ang anumang link sa mensahe habang naghihintay.",
+    whichAppointment:
+      "Para saan ang appointment, at kailan eksakto? Pakibigay ang araw at oras.",
     whichGroceries:
       "Anong mga bagay ang gusto ninyong idagdag sa inyong listahan?",
     whichRecipient: "Sino ang gusto ninyong sulatan?",
@@ -232,6 +266,8 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       "Ano ang gusto ninyong ipaalala ko, at kailan? Pakibigay ang araw at oras.",
   },
   vi: {
+    appointmentPrepared: (title, when) =>
+      `Tôi có thể lưu cuộc hẹn «${title}» vào ${when}. Nhấn Phê duyệt để thêm.`,
     groceriesAdded: (items, list) =>
       `Tôi đã thêm ${items} vào danh sách «${list}» của bạn. Chưa đặt mua gì cả.`,
     groceryListName: "Mua sắm",
@@ -252,12 +288,16 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `Tôi đã soạn tin nhắn nhờ ${name ?? "một người"} đưa bạn đi${appointment === null ? "" : ` đến cuộc hẹn «${appointment.title}» vào ${appointment.day}`}. ${name === null || appointment === null ? "Trước hết, hãy trả lời câu hỏi trên màn hình. " : ""}Hãy đọc tin nhắn và nhấn Phê duyệt khi thấy phù hợp. Chưa có gì được gửi cho đến khi bạn phê duyệt.`,
     scamChecking:
       "Tôi đang kiểm tra tin nhắn đó. Kết quả sẽ sớm xuất hiện trong Kiểm tra lừa đảo. Trong lúc chờ, đừng nhấn vào liên kết nào trong tin nhắn.",
+    whichAppointment:
+      "Cuộc hẹn này là gì và chính xác vào lúc nào? Vui lòng cho biết ngày và giờ.",
     whichGroceries: "Bạn muốn thêm những món nào vào danh sách?",
     whichRecipient: "Bạn muốn viết cho ai?",
     whichReminder:
       "Bạn muốn tôi nhắc việc gì và vào lúc nào? Vui lòng cho biết ngày và giờ.",
   },
   zh: {
+    appointmentPrepared: (title, when) =>
+      `我可以为您保存${when}的预约“${title}”。请点击“批准”添加。`,
     groceriesAdded: (items, list) =>
       `我已将${items}添加到您的“${list}”清单。没有下单购买任何东西。`,
     groceryListName: "购物清单",
@@ -277,6 +317,7 @@ const PROPOSAL_MESSAGES: Record<InterfaceLocale, ProposalMessages> = {
       `我已准备好一条消息，请${name ?? "他人"}接送您${appointment === null ? "" : `去参加${appointment.day}的“${appointment.title}”预约`}。${name === null || appointment === null ? "请先回答屏幕上的问题。" : ""}请阅读消息，确认无误后点击“批准”。在您批准之前，不会发送任何内容。`,
     scamChecking:
       "我正在检查这条消息。结果稍后会显示在“诈骗检查”中。等待时，请不要点击消息中的任何链接。",
+    whichAppointment: "这是什么预约，具体在什么时候？请告诉我日期和时间。",
     whichGroceries: "您想在清单中添加哪些物品？",
     whichRecipient: "您想给谁写消息？",
     whichReminder: "您希望我提醒您什么？请告诉我具体日期和时间。",

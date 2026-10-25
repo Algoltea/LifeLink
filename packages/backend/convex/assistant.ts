@@ -923,7 +923,8 @@ const instructionsFor = (context: PlanningContext): string =>
     `You are a calm, warm assistant for ${context.preferredName}, an older adult. Today is ${context.today}; the time now is ${context.now} (${context.timeZone}).`,
     "Speak in short, plain sentences. One idea per sentence. No jargon, no emoji.",
     `Reply in ${context.language}, the language the person chose. If they write to you in another language, reply in the language they wrote in.`,
-    "When the person wants something done (ask for a ride, send a message, set a reminder, add groceries, check a suspicious message), call propose_action once.",
+    "When the person wants something done (ask for a ride, send a message, set a reminder, add an appointment, add groceries, check a suspicious message), call propose_action once.",
+    "When the person asks you to add an appointment, or tells you about one they have booked, use create_appointment with a short appointmentTitle, the appointmentLocation if they said it, and dateTimeIso for when it starts. If it is already in the upcoming appointments below, say so instead of adding it again.",
     "propose_action only prepares it for review. After calling it, tell the person in one or two sentences what the tool result says. Never say anything was sent, saved, or ordered unless the tool result says so.",
     "If you are unsure who or when they mean, ask one short question instead of calling the tool.",
     context.presentationDemo
@@ -1030,7 +1031,7 @@ const proposeTool = (
 ) =>
   createTool({
     description:
-      "Prepare a request for the person to review: a ride request, a message to someone, a reminder, grocery items, or a scam check. Nothing happens until the person approves it on screen.",
+      "Prepare a request for the person to review: a ride request, a message to someone, a reminder, an appointment to add, grocery items, or a scam check. Nothing happens until the person approves it on screen.",
     execute: async (
       toolCtx,
       input
@@ -1156,6 +1157,8 @@ const toProposal = (plan: AssistantPlan): Proposal | null => {
 
   return {
     appointmentId: plan.appointmentId,
+    appointmentLocation: plan.appointmentLocation ?? null,
+    appointmentTitle: plan.appointmentTitle ?? null,
     dateTimeAsSaid: plan.dateTimeAsSaid,
     dateTimeIso: plan.dateTimeIso,
     groceryItems: plan.groceryItems,

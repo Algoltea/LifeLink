@@ -4,6 +4,7 @@
  *   await_reply   → the contact answered (an incoming message)
  *   confirm_arrangement → the person confirmed the ride (their approval)
  *   create_reminder     → a reminder is saved and scheduled
+ *   create_appointment  → an appointment is added to the person's week
  *   family_update       → permitted family members can see the plan
  */
 import type { ActionDetails } from "@lifelink/contracts/actions";
@@ -487,6 +488,33 @@ const applyLocalEffect = async (
       return `Reminder saved for ${formatDay(details.remindAt, owner.timeZone)} at ${formatTime(details.remindAt, owner.timeZone)}.`;
     }
 
+    case "create_appointment": {
+      await ctx.db.insert("appointments", {
+        createdAt: Date.now(),
+        endsAt: details.endsAt,
+        location: details.location,
+        mode: action.mode,
+        notes: details.notes,
+        ownerId: owner._id,
+        providerName: null,
+        ridePickupAt: null,
+        rideStatus: "none",
+        rideWithContactId: null,
+        sourceEmailId: null,
+        startsAt: details.startsAt,
+        title: details.title,
+      });
+
+      await audit(ctx, {
+        actor: "person",
+        detail: `Added ${details.title}.`,
+        event: "appointment.created",
+        ownerId: owner._id,
+      });
+
+      return `Appointment saved for ${formatDay(details.startsAt, owner.timeZone)} at ${formatTime(details.startsAt, owner.timeZone)}.`;
+    }
+
     case "confirm_arrangement": {
       const appointmentId =
         details.appointmentId === null
@@ -534,6 +562,7 @@ const applyLocalEffect = async (
 
 const isLocalKind = (kind: ActionDetails["kind"]): boolean =>
   kind === "create_reminder" ||
+  kind === "create_appointment" ||
   kind === "confirm_arrangement" ||
   kind === "family_update";
 

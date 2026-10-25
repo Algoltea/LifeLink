@@ -23,7 +23,7 @@ import {
 } from "./lib/lifecycle";
 import type { Ambiguity } from "./lib/lifecycle";
 import { requireOwned, requireOwner } from "./lib/session";
-import { formatDay, formatTime } from "./lib/time";
+import { MINUTE, formatDay, formatTime } from "./lib/time";
 
 const loadOwnedAction = async (
   ctx: MutationCtx,
@@ -166,13 +166,81 @@ export const approveMessages = mutation({
   },
 });
 
+interface AppointmentEdits {
+  location?: string;
+  notes?: string;
+  startsAt?: number;
+  title?: string;
+}
+
+/** Apply the person's changes to a proposed appointment, keeping its length when the time moves. */
+const reviseAppointment = (
+  details: Extract<ActionDetails, { kind: "create_appointment" }>,
+  edits: AppointmentEdits
+): string[] => {
+  const changes: string[] = [];
+
+  if (edits.title !== undefined) {
+    const title = edits.title.trim();
+
+    if (title.length === 0) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "What is the appointment for?",
+      });
+    }
+
+    if (title !== details.title) {
+      details.title = title;
+      changes.push("changed what it is for");
+    }
+  }
+
+  if (edits.startsAt !== undefined && edits.startsAt !== details.startsAt) {
+    if (edits.startsAt < Date.now()) {
+      throw new ConvexError({
+        code: "invalid",
+        message: "Please choose a time that has not passed yet.",
+      });
+    }
+
+    const length = Math.max(details.endsAt - details.startsAt, 15 * MINUTE);
+    details.startsAt = edits.startsAt;
+    details.endsAt = edits.startsAt + length;
+    changes.push("changed the time");
+  }
+
+  if (edits.location !== undefined) {
+    const location = edits.location.trim() || null;
+
+    if (location !== details.location) {
+      details.location = location;
+      changes.push("changed the place");
+    }
+  }
+
+  if (edits.notes !== undefined) {
+    const notes = edits.notes.trim() || null;
+
+    if (notes !== details.notes) {
+      details.notes = notes;
+      changes.push("changed the notes");
+    }
+  }
+
+  return changes;
+};
+
 /** The person edits details. Consequential edits need a fresh approval. */
 export const revise = mutation({
   args: {
     actionId: v.id("actions"),
     body: v.optional(v.string()),
+    location: v.optional(v.string()),
+    notes: v.optional(v.string()),
     remindAt: v.optional(v.number()),
     shareWithCircle: v.optional(v.boolean()),
+    startsAt: v.optional(v.number()),
     subject: v.optional(v.string()),
     text: v.optional(v.string()),
     title: v.optional(v.string()),
@@ -231,6 +299,10 @@ export const revise = mutation({
           args.shareWithCircle ? "chose to share it" : "chose not to share it"
         );
       }
+    }
+
+    if (details.kind === "create_appointment") {
+      changes.push(...reviseAppointment(details, args));
     }
 
     if (details.kind === "family_update" && args.text !== undefined) {

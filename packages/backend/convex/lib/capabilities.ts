@@ -278,6 +278,7 @@ const executionProblems = async (
     }
 
     case "confirm_arrangement":
+    case "create_appointment":
     case "create_reminder": {
       return [];
     }
