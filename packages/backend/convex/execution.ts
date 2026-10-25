@@ -1528,7 +1528,8 @@ const reconcileDiscord = async (
     token,
     context.conversationId,
     body,
-    context.startedAt
+    context.startedAt,
+    context.idempotencyKey
   );
 
   if (lookup.found === null) {

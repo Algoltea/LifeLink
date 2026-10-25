@@ -137,6 +137,7 @@ const recentSchema = z.array(
       author: z.object({ bot: z.boolean().optional(), id: z.string() }).loose(),
       content: z.string(),
       id: z.string(),
+      nonce: z.union([z.string(), z.number()]).nullish(),
       timestamp: z.string(),
     })
     .loose()
@@ -147,37 +148,107 @@ type DiscordLookup =
   | { found: true; id: string }
   | { found: null };
 
-/** After an uncertain send, look for the exact text sent by the bot since the attempt began. */
+const RECONCILIATION_PAGE_SIZE = 50;
+const MAX_RECONCILIATION_PAGES = 5;
+
+const lookupPage = (
+  messages: z.infer<typeof recentSchema>,
+  content: string,
+  sinceMs: number,
+  expectedNonce: string
+): DiscordLookup | null => {
+  const timestamps = messages.map((message) => Date.parse(message.timestamp));
+
+  if (timestamps.some((timestamp) => !Number.isFinite(timestamp))) {
+    return { found: null };
+  }
+
+  const recentBotMessages = messages.filter(
+    (message, index) =>
+      message.author.bot === true && (timestamps[index] ?? 0) >= sinceMs
+  );
+
+  const matches = recentBotMessages.filter(
+    (message) => String(message.nonce) === expectedNonce
+  );
+
+  const [match] = matches;
+
+  if (match !== undefined) {
+    return matches.length === 1 && match.content === content
+      ? { found: true, id: match.id }
+      : { found: null };
+  }
+
+  // Discord's message nonce is optional. Missing identity cannot prove absence.
+  if (
+    recentBotMessages.some(
+      (message) => message.nonce === null || message.nonce === undefined
+    )
+  ) {
+    return { found: null };
+  }
+
+  if (
+    messages.length < RECONCILIATION_PAGE_SIZE ||
+    timestamps.some((timestamp) => timestamp < sinceMs)
+  ) {
+    return { found: false };
+  }
+
+  return null;
+};
+
+/** Reconcile only a message bearing the same stable nonce as this action's send. */
 const findSentMessage = async (
   token: string,
   channelId: string,
   content: string,
-  sinceMs: number
+  sinceMs: number,
+  idempotencyKey: string
 ): Promise<DiscordLookup> => {
-  const outcome = await request({
-    headers: { Authorization: `Bot ${token}` },
-    method: "GET",
-    url: `${BASE_URL}/channels/${channelId}/messages?limit=50`,
-  });
+  const expectedNonce = await nonceFor(idempotencyKey);
 
-  if (outcome.kind !== "ok") {
-    return { found: null };
+  let before: string | null = null;
+
+  for (let page = 0; page < MAX_RECONCILIATION_PAGES; page += 1) {
+    const cursor =
+      before === null ? "" : `&before=${encodeURIComponent(before)}`;
+
+    // oxlint-disable-next-line no-await-in-loop -- Each page needs the preceding page's oldest message ID.
+    const outcome = await request({
+      headers: { Authorization: `Bot ${token}` },
+      method: "GET",
+      url: `${BASE_URL}/channels/${channelId}/messages?limit=${RECONCILIATION_PAGE_SIZE}${cursor}`,
+    });
+
+    if (outcome.kind !== "ok") {
+      return { found: null };
+    }
+
+    const messages = decodeJson(recentSchema, outcome.body);
+
+    if (messages === null) {
+      return { found: null };
+    }
+
+    const result = lookupPage(messages, content, sinceMs, expectedNonce);
+
+    if (result !== null) {
+      return result;
+    }
+
+    const next = messages.at(-1)?.id;
+
+    if (next === undefined || next === before) {
+      return { found: null };
+    }
+
+    before = next;
   }
 
-  const messages = decodeJson(recentSchema, outcome.body);
-
-  if (messages === null) {
-    return { found: null };
-  }
-
-  const match = messages.find(
-    (message) =>
-      message.author.bot === true &&
-      message.content === content &&
-      Date.parse(message.timestamp) >= sinceMs - 60_000
-  );
-
-  return match === undefined ? { found: false } : { found: true, id: match.id };
+  // A bounded or interrupted history scan cannot establish that a send failed.
+  return { found: null };
 };
 
 const validateDiscord = async (token: string): Promise<boolean> => {
