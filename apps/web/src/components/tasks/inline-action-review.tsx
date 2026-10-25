@@ -6,6 +6,8 @@ import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ConvexError } from "convex/values";
+import type { Route } from "next";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -73,6 +75,13 @@ const InlineActionReview = ({
           view={review.view}
           onEditingChange={onEditingChange}
         />
+        <Link
+          className="min-h-control mt-4 inline-flex items-center text-lg font-semibold underline underline-offset-4"
+          // SAFETY: actionReview verified this stored action's task exists and is owned; /tasks/[taskId] is a real route.
+          href={`/tasks/${review.view.action.taskId}` as Route}
+        >
+          {t.progressAndNext}
+        </Link>
       </div>
     </section>
   );
@@ -336,6 +345,13 @@ const InlineTaskReview = ({ taskId }: { taskId: string }) => {
       <legend className="mb-3 text-lg font-semibold">
         {translateServerMessage(detail.task.title, locale)}
       </legend>
+      <Link
+        className="min-h-control inline-flex items-center self-start text-lg font-semibold underline underline-offset-4"
+        // SAFETY: taskReview loaded this owned task from storage; /tasks/[taskId] is a real route.
+        href={`/tasks/${detail.task._id}` as Route}
+      >
+        {t.progressAndNext}
+      </Link>
       {sorted.map((view) => (
         <section
           className="border-border bg-raised rounded-2xl border p-5"
