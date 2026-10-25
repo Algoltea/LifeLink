@@ -153,6 +153,24 @@ const groceries: Messages["groceries"] = {
     whole:
       "Use um número inteiro para itens individuais ou embalagens. Escolha peso ou volume para uma quantidade medida.",
   },
+  quickAdd: {
+    added: (count) =>
+      `${count === 1 ? "1 item adicionado" : `${count} itens adicionados`}.`,
+    adding: "Adicionando…",
+    button: "Adição rápida",
+    buttonTitle: "Colar uma lista de itens",
+    description:
+      "Cole uma lista de uma nota, mensagem ou e-mail. Cada linha vira um item, e quantidades como “2 lb” ou “x3” são reconhecidas.",
+    label: "Sua lista",
+    none: "Cole ou digite uma lista para ver os itens aqui.",
+    placeholder: "Leite (1 L)\n500 g frango\nOvos x12\nBananas",
+    preview: (count) =>
+      `${count} ${count === 1 ? "item" : "itens"} para adicionar`,
+    submit: (count) => `Adicionar ${count} ${count === 1 ? "item" : "itens"}`,
+    title: "Colar uma lista de compras",
+    tooMany: (room) =>
+      `Esta lista tem espaço para mais ${room} ${room === 1 ? "item" : "itens"}. Remova algumas linhas ou comece uma nova lista.`,
+  },
   receiptBar: {
     estimated: "estimado",
     left: (amount) => ` · ${amount} restantes`,

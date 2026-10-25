@@ -148,6 +148,22 @@ const groceries: Messages["groceries"] = {
     whole:
       "낱개나 포장은 정수로 입력해 주세요. 계량한 양은 무게나 부피 단위를 선택해 주세요.",
   },
+  quickAdd: {
+    added: (count) => `${count}개 품목을 추가했습니다.`,
+    adding: "추가하는 중…",
+    button: "빠른 추가",
+    buttonTitle: "품목 목록 붙여넣기",
+    description:
+      "메모, 문자, 이메일의 목록을 붙여넣으세요. 한 줄이 한 품목이 되며, “2 lb”나 “x3” 같은 수량도 인식합니다.",
+    label: "내 목록",
+    none: "목록을 붙여넣거나 입력하면 여기에 품목이 표시됩니다.",
+    placeholder: "우유 (1 L)\n500 g 닭고기\n달걀 x12\n바나나",
+    preview: (count) => `추가할 품목 ${count}개`,
+    submit: (count) => `${count}개 품목 추가`,
+    title: "장보기 목록 붙여넣기",
+    tooMany: (room) =>
+      `이 목록에는 ${room}개 품목만 더 넣을 수 있습니다. 몇 줄을 지우거나 새 목록을 시작하세요.`,
+  },
   receiptBar: {
     estimated: "예상",
     left: (amount) => ` · ${amount} 남음`,

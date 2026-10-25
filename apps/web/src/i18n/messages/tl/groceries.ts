@@ -152,6 +152,22 @@ const groceries: Messages["groceries"] = {
     whole:
       "Gumamit ng buong bilang para sa paisa-isang bagay o pakete. Pumili ng timbang o dami ng likido para sa sinusukat na dami.",
   },
+  quickAdd: {
+    added: (count) => `Naidagdag ang ${count} bagay.`,
+    adding: "Idinadagdag…",
+    button: "Mabilisang dagdag",
+    buttonTitle: "Mag-paste ng listahan ng mga bagay",
+    description:
+      "Mag-paste ng listahan mula sa note, text, o email. Bawat linya ay magiging isang bagay, at nakikilala ang dami gaya ng “2 lb” o “x3”.",
+    label: "Ang iyong listahan",
+    none: "Mag-paste o mag-type ng listahan para makita rito ang mga bagay.",
+    placeholder: "Gatas (1 gallon)\n2 lb manok\nItlog x12\nSaging",
+    preview: (count) => `${count} bagay na idadagdag`,
+    submit: (count) => `Idagdag ang ${count} bagay`,
+    title: "Mag-paste ng listahan ng pamimili",
+    tooMany: (room) =>
+      `May puwang pa ang listahang ito para sa ${room} bagay. Magtanggal ng ilang linya o magsimula ng bagong listahan.`,
+  },
   receiptBar: {
     estimated: "tantiya",
     left: (amount) => ` · ${amount} ang natitira`,

@@ -155,6 +155,25 @@ const groceries: Messages["groceries"] = {
     whole:
       "Usi un numero intero per singoli articoli o confezioni. Scelga un peso o un volume per una quantità misurata.",
   },
+  quickAdd: {
+    added: (count) =>
+      `${count === 1 ? "Aggiunto 1 articolo" : `Aggiunti ${count} articoli`}.`,
+    adding: "Aggiunta…",
+    button: "Aggiunta rapida",
+    buttonTitle: "Incolla un elenco di articoli",
+    description:
+      "Incolli un elenco da una nota, un messaggio o un’email. Ogni riga diventa un articolo, e quantità come “2 lb” o “x3” vengono riconosciute.",
+    label: "Il suo elenco",
+    none: "Incolli o scriva un elenco per vedere qui gli articoli.",
+    placeholder: "Latte (1 L)\n500 g pollo\nUova x12\nBanane",
+    preview: (count) =>
+      `${count} ${count === 1 ? "articolo" : "articoli"} da aggiungere`,
+    submit: (count) =>
+      `Aggiungi ${count} ${count === 1 ? "articolo" : "articoli"}`,
+    title: "Incolla una lista della spesa",
+    tooMany: (room) =>
+      `Questa lista ha spazio per altri ${room} ${room === 1 ? "articolo" : "articoli"}. Tolga qualche riga o inizi una nuova lista.`,
+  },
   receiptBar: {
     estimated: "stimato",
     left: (amount) => ` · ${amount} disponibili`,
