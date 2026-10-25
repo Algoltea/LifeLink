@@ -738,7 +738,9 @@ export default defineSchema({
     model: v.string(),
     points: v.array(v.string()),
     url: v.string(),
-  }).index("by_url_language", ["url", "language"]),
+    // Missing on summaries written before versions were kept.
+    version: v.optional(v.number()),
+  }).index("by_url_language_version", ["url", "language", "version"]),
 
   photos: defineTable({
     caption: v.union(v.string(), v.null()),

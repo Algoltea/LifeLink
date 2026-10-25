@@ -76,10 +76,13 @@ const onPublisherSite = (url: string): boolean => {
   );
 };
 
+/** Raise when the rules change, so summaries saved under older rules are written again. */
+const SUMMARY_VERSION = 2;
+
 const SUMMARY_RULES = [
   "Summarize one news article for an older adult. Return only JSON.",
   "Use only facts stated in the article text. Do not add facts, guess, or give opinions. If something in the article is unclear, say so plainly.",
-  "gist: one plain sentence, at most 20 words, saying what the article is about.",
+  "gist: one plain sentence, at most 20 words, with the most important thing the title does not already say. Do not repeat or reword the title.",
   `points: up to ${MAX_POINTS} short sentences, at most 20 words each, with the most important facts in order of importance.`,
   "Use everyday words and short sentences, about a 6th-grade reading level. Explain any name, place, or term the first time it appears.",
   "Keep a calm tone. No scary, dramatic, or clickbait wording, even for bad news. No emoji.",
@@ -263,8 +266,11 @@ const savedSummaryFor = async (
 ): Promise<Doc<"newsSummaries"> | null> =>
   await ctx.db
     .query("newsSummaries")
-    .withIndex("by_url_language", (index) =>
-      index.eq("url", url).eq("language", language)
+    .withIndex("by_url_language_version", (index) =>
+      index
+        .eq("url", url)
+        .eq("language", language)
+        .eq("version", SUMMARY_VERSION)
     )
     .first();
 
@@ -352,7 +358,11 @@ export const saveSummary = internalMutation({
 
     // Two first readers can finish together; the first saved summary stays.
     if (existing === null) {
-      await ctx.db.insert("newsSummaries", { ...args, createdAt: Date.now() });
+      await ctx.db.insert("newsSummaries", {
+        ...args,
+        createdAt: Date.now(),
+        version: SUMMARY_VERSION,
+      });
     }
   },
 });
