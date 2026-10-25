@@ -125,15 +125,6 @@ const developerIntegrations: readonly DeveloperIntegration[] = [
         target: "convex",
       },
       {
-        defaultValue: "inception/mercury-3",
-        hint: "Fast model that summarizes a news article when someone opens it.",
-        label: "News summary model on OpenRouter",
-        name: "OPENROUTER_NEWS_MODEL",
-        required: false,
-        secret: false,
-        target: "convex",
-      },
-      {
         defaultValue: "elevenlabs/eleven-v4-turbo",
         hint: "ElevenLabs speech model served through the same OpenRouter key.",
         label: "Read-aloud model on OpenRouter",
