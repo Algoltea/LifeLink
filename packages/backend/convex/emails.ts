@@ -2,8 +2,8 @@ import { INBOX_PAGE_SIZE, localInboxInsight } from "@lifelink/contracts/inbox";
 /**
  * Email through each person's own Gmail or Outlook connection. Summaries run
  * only on emails the person picks. New mail gets a local scam check; cloud
- * summaries and appointment extraction require explicit consent. Replies become drafts that
- * the person reviews; nothing is sent automatically.
+ * summaries and appointment extraction require explicit consent. Replies are
+ * reviewed first; only an approved reply is sent or saved as a draft.
  */
 import {
   appointmentExtractionSchema,
@@ -830,72 +830,124 @@ export const saveAppointment = internalMutation({
   },
 });
 
+const replyArgs = {
+  body: v.string(),
+  emailId: v.id("emails"),
+  startedFrom: v.optional(v.literal("suggestion")),
+};
+
+interface ReplyRequest {
+  body: string;
+  emailId: Id<"emails">;
+  startedFrom?: "suggestion";
+}
+
+/**
+ * Prepare a reply for the person to review. Nothing reaches the mailbox until
+ * they approve this exact version: then it is either saved as a draft or sent
+ * in the original conversation.
+ */
+const prepareReply = async (
+  ctx: MutationCtx,
+  args: ReplyRequest,
+  delivery: "draft" | "send"
+): Promise<Id<"tasks">> => {
+  const owner = await requireOwner(ctx);
+  const email = requireOwned(await ctx.db.get(args.emailId), owner, "email");
+  const body = args.body.trim();
+
+  if (body.length === 0) {
+    throw new ConvexError({
+      code: "invalid",
+      message: "Write your reply first.",
+    });
+  }
+
+  const mode: Doc<"tasks">["mode"] = owner.demoMode ? "simulated" : "live";
+
+  if (mode === "live" && email.connectionId === null) {
+    throw new ConvexError({
+      code: "invalid",
+      message: "This email is not from a connected mailbox.",
+    });
+  }
+
+  const kind = delivery === "send" ? "email_reply" : "email_draft";
+
+  const subject = email.subject.startsWith("Re:")
+    ? email.subject
+    : `Re: ${email.subject}`;
+
+  const { stepIds, taskId } = await createTask(ctx, {
+    appointmentId: null,
+    contactId: null,
+    kind,
+    mode,
+    origin: "text",
+    ownerId: owner._id,
+    request: body,
+    steps: [
+      {
+        kind,
+        label: delivery === "send" ? "Send the reply" : "Save the draft reply",
+      },
+    ],
+    title: `Reply to ${email.fromName ?? email.fromAddress}`,
+  });
+
+  const connectionId = email.connectionId ?? "";
+
+  await createAction(ctx, {
+    ambiguities: [],
+    details:
+      delivery === "send"
+        ? {
+            body,
+            connectionId,
+            inReplyToMessageId: email.providerMessageId,
+            kind: "email_reply",
+            provider: email.provider,
+            subject,
+            threadId: email.providerThreadId,
+            to: email.fromAddress,
+          }
+        : {
+            body,
+            connectionId,
+            kind: "email_draft",
+            provider: email.provider,
+            replyToMessageId: email.providerThreadId,
+            subject,
+            to: email.fromAddress,
+          },
+    mode,
+    ownerId: owner._id,
+    proposedBy: "person",
+    rationale: [
+      args.startedFrom === "suggestion" ? SUGGESTION_RATIONALE : null,
+      delivery === "send"
+        ? "Sent from your mailbox as a reply in the same conversation once you approve it."
+        : "Saved as a draft in your mailbox. You send it from there when you are ready.",
+    ]
+      .filter((part) => part !== null)
+      .join(" "),
+    stepId: stepIds[0] ?? null,
+    taskId,
+  });
+
+  return taskId;
+};
+
 /** Draft a reply for the person to review. It is saved as a draft in their mailbox only after approval. */
 export const draftReply = mutation({
-  args: {
-    body: v.string(),
-    emailId: v.id("emails"),
-    startedFrom: v.optional(v.literal("suggestion")),
-  },
-  handler: async (ctx, args): Promise<Id<"tasks">> => {
-    const owner = await requireOwner(ctx);
-    const email = requireOwned(await ctx.db.get(args.emailId), owner, "email");
-    const body = args.body.trim();
+  args: replyArgs,
+  handler: async (ctx, args): Promise<Id<"tasks">> =>
+    await prepareReply(ctx, args, "draft"),
+});
 
-    if (body.length === 0) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "Write your reply first.",
-      });
-    }
-
-    const mode: Doc<"tasks">["mode"] = owner.demoMode ? "simulated" : "live";
-
-    if (mode === "live" && email.connectionId === null) {
-      throw new ConvexError({
-        code: "invalid",
-        message: "This email is not from a connected mailbox.",
-      });
-    }
-
-    const { stepIds, taskId } = await createTask(ctx, {
-      appointmentId: null,
-      contactId: null,
-      kind: "email_draft",
-      mode,
-      origin: "text",
-      ownerId: owner._id,
-      request: body,
-      steps: [{ kind: "email_draft", label: "Save the draft reply" }],
-      title: `Reply to ${email.fromName ?? email.fromAddress}`,
-    });
-
-    await createAction(ctx, {
-      ambiguities: [],
-      details: {
-        body,
-        connectionId: email.connectionId ?? "",
-        kind: "email_draft",
-        provider: email.provider,
-        replyToMessageId: email.providerThreadId,
-        subject: email.subject.startsWith("Re:")
-          ? email.subject
-          : `Re: ${email.subject}`,
-        to: email.fromAddress,
-      },
-      mode,
-      ownerId: owner._id,
-      proposedBy: "person",
-      rationale: [
-        args.startedFrom === "suggestion" ? SUGGESTION_RATIONALE : null,
-        "Saved as a draft in your mailbox. You send it from there when you are ready.",
-      ]
-        .filter((part) => part !== null)
-        .join(" "),
-      stepId: stepIds[0] ?? null,
-      taskId,
-    });
-
-    return taskId;
-  },
+/** Draft a reply for the person to review. It is sent in the same conversation only after approval. */
+export const sendReply = mutation({
+  args: replyArgs,
+  handler: async (ctx, args): Promise<Id<"tasks">> =>
+    await prepareReply(ctx, args, "send"),
 });

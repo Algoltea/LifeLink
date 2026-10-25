@@ -292,10 +292,11 @@ interface OutgoingMail {
 
 const sendMail = async (
   account: MailAccount,
-  mail: OutgoingMail
+  mail: OutgoingMail,
+  execute: typeof executeTool = executeTool
 ): Promise<ToolOutcome> =>
   account.provider === "gmail"
-    ? await executeTool(
+    ? await execute(
         "GMAIL_SEND_EMAIL",
         account.userId,
         account.connectedAccountId,
@@ -306,7 +307,7 @@ const sendMail = async (
           subject: mail.subject,
         }
       )
-    : await executeTool(
+    : await execute(
         "OUTLOOK_SEND_EMAIL",
         account.userId,
         account.connectedAccountId,
@@ -318,6 +319,48 @@ const sendMail = async (
           to: mail.to,
         }
       );
+
+/**
+ * Send a reply inside the original conversation. Gmail threads by thread ID
+ * and keeps the subject; Outlook replies to the message and addresses its sender.
+ */
+const sendReply = async (
+  account: MailAccount,
+  mail: OutgoingMail,
+  inReplyToMessageId: string,
+  execute: typeof executeTool = executeTool
+): Promise<ToolOutcome> => {
+  if (account.provider === "outlook") {
+    return await execute(
+      "OUTLOOK_REPLY_EMAIL",
+      account.userId,
+      account.connectedAccountId,
+      {
+        comment: mail.body,
+        is_html: false,
+        message_id: inReplyToMessageId,
+      }
+    );
+  }
+
+  // Without a thread there is nothing to reply inside, so send it as a new email.
+  if (mail.threadId === null) {
+    return await sendMail(account, mail, execute);
+  }
+
+  return await execute(
+    "GMAIL_REPLY_TO_THREAD",
+    account.userId,
+    account.connectedAccountId,
+    {
+      include_signature: false,
+      is_html: false,
+      message_body: mail.body,
+      recipient_email: mail.to,
+      thread_id: mail.threadId,
+    }
+  );
+};
 
 const createDraft = async (
   account: MailAccount,
@@ -404,15 +447,25 @@ const findMail = async (
   const messages =
     account.provider === "gmail" ? parseGmail(outcome) : parseOutlook(outcome);
 
+  // Outlook writes "RE:" where LifeLink writes "Re:", so compare without case.
+  const wanted = mail.subject.toLowerCase();
+
   const found = messages.some(
     (message) =>
-      account.provider === "gmail" || message.subject === mail.subject
+      account.provider === "gmail" || message.subject.toLowerCase() === wanted
   );
 
   return found ? "found" : "not_found";
 };
 
-export { createDraft, findMail, listRecentMail, sendMail, splitSender };
+export {
+  createDraft,
+  findMail,
+  listRecentMail,
+  sendMail,
+  sendReply,
+  splitSender,
+};
 
 export type {
   Sender,

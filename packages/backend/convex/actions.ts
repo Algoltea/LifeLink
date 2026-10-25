@@ -79,7 +79,9 @@ export const revise = mutation({
     const changes: string[] = [];
 
     if (
-      (details.kind === "send_message" || details.kind === "email_draft") &&
+      (details.kind === "send_message" ||
+        details.kind === "email_draft" ||
+        details.kind === "email_reply") &&
       args.body !== undefined
     ) {
       const body = args.body.trim();

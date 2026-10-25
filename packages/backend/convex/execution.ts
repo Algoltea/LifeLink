@@ -21,7 +21,12 @@ import {
 } from "./integrations/discord";
 import type { DiscordPhoto } from "./integrations/discord";
 import { findNote, saveNote } from "./integrations/drive";
-import { createDraft, findMail, sendMail } from "./integrations/mail";
+import {
+  createDraft,
+  findMail,
+  sendMail,
+  sendReply,
+} from "./integrations/mail";
 import type { MailAccount, OutgoingMail } from "./integrations/mail";
 import { photonConfig } from "./integrations/photon";
 import type { PhotonResult } from "./integrations/photon";
@@ -83,6 +88,7 @@ const providerFor = (
     }
 
     case "email_draft":
+    case "email_reply":
     case "calendar_event":
     case "drive_note": {
       return "composio";
@@ -190,6 +196,7 @@ const mailboxFor = async (
 ): Promise<MailAccount | null> => {
   const usesConnection =
     details.kind === "email_draft" ||
+    details.kind === "email_reply" ||
     details.kind === "calendar_event" ||
     details.kind === "drive_note";
 
@@ -764,6 +771,15 @@ const mailOf = (details: ActionDetails): OutgoingMail | null => {
     };
   }
 
+  if (details.kind === "email_reply") {
+    return {
+      body: details.body,
+      subject: details.subject,
+      threadId: details.threadId,
+      to: details.to,
+    };
+  }
+
   if (details.kind === "send_message" && details.channel === "email") {
     return {
       body: details.body,
@@ -774,6 +790,44 @@ const mailOf = (details: ActionDetails): OutgoingMail | null => {
   }
 
   return null;
+};
+
+/** Save a draft or send a reply from the person's own mailbox. */
+const performMailbox = async (
+  start: StartedAttempt,
+  details: Extract<ActionDetails, { kind: "email_draft" | "email_reply" }>
+): Promise<PerformResult> => {
+  const mail = mailOf(details);
+
+  if (start.mailbox === null || mail === null) {
+    return {
+      handleCache: null,
+      result: {
+        error: "That mailbox is no longer connected.",
+        kind: "failed_safe",
+      },
+    };
+  }
+
+  if (details.kind === "email_reply") {
+    return {
+      handleCache: null,
+      result: fromTool(
+        await sendReply(start.mailbox, mail, details.inReplyToMessageId),
+        `Reply sent to ${details.to}.`
+      ),
+    };
+  }
+
+  const where = details.provider === "gmail" ? "Gmail" : "Outlook";
+
+  return {
+    handleCache: null,
+    result: fromTool(
+      await createDraft(start.mailbox, mail),
+      `Draft saved in your ${where} Drafts folder. It has not been sent.`
+    ),
+  };
 };
 
 const performLive = async (
@@ -830,28 +884,9 @@ const performLive = async (
       };
     }
 
-    case "email_draft": {
-      const mail = mailOf(details);
-
-      if (start.mailbox === null || mail === null) {
-        return {
-          handleCache: null,
-          result: {
-            error: "That mailbox is no longer connected.",
-            kind: "failed_safe",
-          },
-        };
-      }
-
-      const where = details.provider === "gmail" ? "Gmail" : "Outlook";
-
-      return {
-        handleCache: null,
-        result: fromTool(
-          await createDraft(start.mailbox, mail),
-          `Draft saved in your ${where} Drafts folder. It has not been sent.`
-        ),
-      };
+    case "email_draft":
+    case "email_reply": {
+      return await performMailbox(start, details);
     }
 
     case "calendar_event": {
@@ -960,6 +995,10 @@ const performSimulated = (start: StartedAttempt): PerformResult => {
 
     case "email_draft": {
       return simulated("no draft was saved in your real mailbox.");
+    }
+
+    case "email_reply": {
+      return simulated("the reply was not really sent.");
     }
 
     case "calendar_event": {
@@ -1621,6 +1660,7 @@ const reconcileWithProvider = async (
 
   const isMail =
     details.kind === "email_draft" ||
+    details.kind === "email_reply" ||
     (details.kind === "send_message" && details.channel === "email");
 
   return isMail ? await reconcileMail(context, mailbox) : CANNOT_TELL;
