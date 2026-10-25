@@ -8,6 +8,7 @@ import { Button } from "@lifelink/ui/components/button";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { BellRingIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
@@ -162,6 +163,7 @@ const TodayContent = ({
   const unit = useTemperatureUnit();
   const forecast = forecastOf(weather);
   const t = useMessages();
+  const router = useRouter();
   const lines = currentBriefing(summary, locale);
 
   // Practice accounts arrive with sample data, so the first-run steps are for real accounts only.
@@ -202,7 +204,12 @@ const TodayContent = ({
   ].toSorted((left, right) => left.at - right.at);
 
   return (
-    <TodayWorkspace composer={<Composer compact />}>
+    <TodayWorkspace
+      composer={
+        // Today and Ask share the current conversation, so Ask shows the answer as it arrives.
+        <Composer compact onSubmitted={() => router.push("/ask")} />
+      }
+    >
       <TodayHeader
         lines={lines}
         markets={<MarketTicker timeZone={timeZone} />}
