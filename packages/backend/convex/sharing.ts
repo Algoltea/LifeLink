@@ -241,6 +241,13 @@ export const acceptInvite = mutation({
       });
     }
 
+    if (viewer.role !== "family") {
+      throw new ConvexError({
+        code: "family_only",
+        message: "Use a family member account to accept this invitation.",
+      });
+    }
+
     await ctx.db.patch(grant._id, {
       acceptedAt: now,
       granteeProfileId: viewer._id,
