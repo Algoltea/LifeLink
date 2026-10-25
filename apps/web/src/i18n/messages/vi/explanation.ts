@@ -31,6 +31,7 @@ const explanation: Messages["explanation"] = {
   missingSpoken: (detail) => `Chưa nói rõ: ${detail}`,
   moreDetail: "Thêm chi tiết",
   onlyYou: "Chỉ quý vị được xem.",
+  part: "Phần",
   reading: "Đang đọc tin nhắn…",
   replies: "Các câu trả lời gợi ý",
   repliesHint:

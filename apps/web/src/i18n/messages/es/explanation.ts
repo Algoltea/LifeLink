@@ -30,6 +30,7 @@ const explanation: typeof englishExplanation = {
   missingSpoken: (detail) => `Aún no se ha dicho: ${detail}`,
   moreDetail: "Más detalles",
   onlyYou: "Solo usted puede ver esto.",
+  part: "Parte",
   reading: "Leyendo el mensaje…",
   replies: "Posibles respuestas",
   repliesHint:

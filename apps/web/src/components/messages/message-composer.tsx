@@ -76,23 +76,25 @@ const SpeakButton = ({
   const configured = useLiveConfigured();
   // The draft as it was when Speak was pressed; spoken words follow its text.
   const base = useRef(draft);
+  // The last text voice typing wrote; anything else means the person typed.
+  const written = useRef(draft.body);
 
   const voice = useVoiceTyping((words) => {
     const typed = base.current.body.trimEnd();
+    const body = typed.length > 0 ? `${typed} ${words}` : words;
 
-    onDraftChange({
-      ...base.current,
-      body: typed.length > 0 ? `${typed} ${words}` : words,
-    });
+    written.current = body;
+    onDraftChange({ ...base.current, body });
   });
 
   const { listening, stop } = voice;
 
+  // Typing while listening, or preparing the message, ends voice typing so no words are lost.
   useEffect(() => {
-    if (preparing && listening) {
+    if (listening && (preparing || draft.body !== written.current)) {
       stop();
     }
-  }, [listening, preparing, stop]);
+  }, [draft.body, listening, preparing, stop]);
 
   if (!configured) {
     return null;
@@ -109,10 +111,12 @@ const SpeakButton = ({
         listening &&
           "bg-foreground text-background hover:bg-foreground/85 border-transparent"
       )}
-      disabled={preparing || !voice.available}
+      // Stop always works, even offline; starting needs Gemini Live and a connection.
+      disabled={preparing || (!listening && !voice.available)}
       onClick={() => {
         if (!listening) {
           base.current = draft;
+          written.current = draft.body;
         }
 
         voice.toggle();

@@ -28,6 +28,7 @@ const explanation = {
   missingSpoken: (detail: string) => `Not said yet: ${detail}`,
   moreDetail: "More detail",
   onlyYou: "Only you can see this.",
+  part: "Part",
   reading: "Reading the message…",
   replies: "Possible replies",
   repliesHint:

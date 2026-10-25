@@ -31,6 +31,7 @@ const explanation: Messages["explanation"] = {
   missingSpoken: (detail) => `Noch nicht gesagt: ${detail}`,
   moreDetail: "Mehr Details",
   onlyYou: "Nur Sie können dies sehen.",
+  part: "Teil",
   reading: "Nachricht wird gelesen…",
   replies: "Mögliche Antworten",
   repliesHint:

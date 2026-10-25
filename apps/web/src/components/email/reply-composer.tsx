@@ -69,6 +69,8 @@ const ReplyComposer = ({
   const configured = useLiveConfigured();
   // The words typed before Speak was pressed; spoken words follow them.
   const before = useRef("");
+  // The last text voice typing wrote; anything else means the person typed.
+  const written = useRef(reply.body);
   const latest = useRef(reply);
   useEffect(() => {
     latest.current = reply;
@@ -79,13 +81,20 @@ const ReplyComposer = ({
   const t = messages.email.replyComposer;
 
   const voice = useVoiceTyping((spoken) => {
-    onChange(
-      edited(
-        latest.current,
-        before.current ? `${before.current} ${spoken}` : spoken
-      )
-    );
+    const body = before.current ? `${before.current} ${spoken}` : spoken;
+
+    written.current = body;
+    onChange(edited(latest.current, body));
   });
+
+  const { listening, stop } = voice;
+
+  // Typing while listening ends voice typing, so spoken words never replace it.
+  useEffect(() => {
+    if (listening && reply.body !== written.current) {
+      stop();
+    }
+  }, [listening, reply.body, stop]);
 
   const prepare = async (delivery: "draft" | "send") => {
     voice.stop();
@@ -158,10 +167,11 @@ const ReplyComposer = ({
             <Button
               aria-pressed={voice.listening}
               className="rounded-full pr-4 pl-3"
-              disabled={busy || !voice.available}
+              disabled={busy || (!voice.listening && !voice.available)}
               onClick={() => {
                 if (!voice.listening) {
                   before.current = latest.current.body.trimEnd();
+                  written.current = latest.current.body;
                 }
 
                 voice.toggle();

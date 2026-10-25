@@ -11,6 +11,9 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 
 import { ReadAloudButton } from "@/components/app/bits";
+import { OneAtATime } from "@/components/app/one-at-a-time";
+import type { Step } from "@/components/app/one-at-a-time";
+import { usePreferences } from "@/components/app/preferences";
 import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { ErrorNote } from "@/components/app/states";
 import { messagesFor, useLocale, useMessages } from "@/i18n/locale";
@@ -189,6 +192,7 @@ const ExplanationBody = ({
   const locale = useLocale();
   const words = useWords();
   const presentationDemo = usePresentationDemo();
+  const { preferences } = usePreferences();
   const language = contentLanguage(explanation);
 
   const hasFields =
@@ -196,15 +200,23 @@ const ExplanationBody = ({
     explanation.dates.length > 0 ||
     explanation.missingDetails.length > 0;
 
-  return (
-    <>
-      <p
-        className="min-w-0 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap"
-        lang={language}
-      >
-        {explanation.plainSummary}
-      </p>
-      {hasFields ? (
+  const steps: Step[] = [
+    {
+      content: (
+        <p
+          className="min-w-0 text-lg leading-relaxed wrap-anywhere whitespace-pre-wrap"
+          lang={language}
+        >
+          {explanation.plainSummary}
+        </p>
+      ),
+      key: "summary",
+    },
+  ];
+
+  if (hasFields) {
+    steps.push({
+      content: (
         <dl className="flex flex-col gap-2.5">
           {explanation.requests.length > 0 ? (
             <Field label={words.requests}>
@@ -222,9 +234,10 @@ const ExplanationBody = ({
               <ul className="flex flex-col gap-1">
                 {explanation.dates.map((date) => (
                   <li key={date.quote}>
+                    “{date.quote}”
                     {date.isoDate
-                      ? formatIsoDate(date.isoDate, locale)
-                      : `“${date.quote}”`}
+                      ? ` (${formatIsoDate(date.isoDate, locale)})`
+                      : ""}
                   </li>
                 ))}
               </ul>
@@ -242,8 +255,14 @@ const ExplanationBody = ({
             </Field>
           ) : null}
         </dl>
-      ) : null}
-      {explanation.suggestedReplies.length > 0 ? (
+      ),
+      key: "fields",
+    });
+  }
+
+  if (explanation.suggestedReplies.length > 0) {
+    steps.push({
+      content: (
         <div className="flex flex-col gap-2">
           <p className={SMALL_LABEL}>{words.replies}</p>
           <div className="flex flex-wrap gap-2">
@@ -264,7 +283,18 @@ const ExplanationBody = ({
             {words.repliesHint}
           </p>
         </div>
-      ) : null}
+      ),
+      key: "replies",
+    });
+  }
+
+  return (
+    <>
+      {preferences.stepByStep ? (
+        <OneAtATime noun={words.part} steps={steps} />
+      ) : (
+        steps.map((step) => <div key={step.key}>{step.content}</div>)
+      )}
       <MoreDetail explanation={explanation} />
       <div className="text-muted-foreground text-label flex flex-col gap-1">
         <p>{methodWords(explanation, locale, presentationDemo)}</p>

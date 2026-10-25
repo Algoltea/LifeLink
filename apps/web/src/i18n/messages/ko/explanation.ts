@@ -31,6 +31,7 @@ const explanation: Messages["explanation"] = {
   missingSpoken: (detail) => `아직 언급되지 않은 내용: ${detail}`,
   moreDetail: "자세히 보기",
   onlyYou: "본인만 보실 수 있습니다.",
+  part: "부분",
   reading: "메시지를 읽는 중…",
   replies: "답장 제안",
   repliesHint:

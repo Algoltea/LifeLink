@@ -28,6 +28,7 @@ const explanation: Messages["explanation"] = {
   missingSpoken: (detail: string) => `尚未说明：${detail}`,
   moreDetail: "更多详情",
   onlyYou: "只有您能看到。",
+  part: "部分",
   reading: "正在阅读消息…",
   replies: "可供参考的回复",
   repliesHint:

@@ -30,6 +30,7 @@ const explanation: Messages["explanation"] = {
   missingSpoken: (detail) => `Hindi pa nasasabi: ${detail}`,
   moreDetail: "Higit pang detalye",
   onlyYou: "Kayo lang ang makakakita nito.",
+  part: "Bahagi",
   reading: "Binabasa ang mensahe…",
   replies: "Mga posibleng tugon",
   repliesHint:
