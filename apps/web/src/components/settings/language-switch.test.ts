@@ -1,18 +1,30 @@
 // @vitest-environment happy-dom
 
 import { interfaceLocales } from "@lifelink/contracts/locale";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PreferencesProvider } from "@/components/app/preferences";
+import {
+  PreferencesProvider,
+  useLanguagePreference,
+} from "@/components/app/preferences";
 import { ThemeProvider } from "@/components/theme-provider";
 import { currentMessages, setLocale } from "@/i18n/locale";
 import { LocaleBoundary } from "@/i18n/locale-boundary";
+import { authClient } from "@/lib/auth-client";
 
 import { SettingsScreen } from "./settings-screen";
+
+// Better Auth captures fetch when the client module is initialized.
+const authFetch = vi.hoisted(() => {
+  const request = vi.fn<typeof fetch>();
+  vi.stubGlobal("fetch", request);
+
+  return request;
+});
 
 const initialMe = {
   demoModeAllowed: false,
@@ -27,6 +39,8 @@ const initialMe = {
     theme: "light",
   },
   profile: {
+    _id: "ana-profile",
+    authUserId: "ana",
     city: null,
     demoMode: true,
     displayName: "Ana Example",
@@ -43,6 +57,11 @@ const createBackend = () => {
   let me = initialMe;
   const listeners = new Set<() => void>();
 
+  vi.spyOn(client, "setAuth").mockImplementation((_fetchToken, onChange) => {
+    onChange?.(true);
+  });
+  vi.spyOn(client, "clearAuth").mockImplementation(() => {});
+
   // Keep the real Convex hooks and providers; only replace the transport boundary.
   vi.spyOn(client, "watchQuery").mockImplementation(() => ({
     journal: () => {},
@@ -56,7 +75,7 @@ const createBackend = () => {
       };
     },
   }));
-  const update = vi.spyOn(client, "mutation");
+  const update = vi.spyOn(client, "mutation").mockResolvedValue(null);
 
   return {
     client,
@@ -69,6 +88,24 @@ const createBackend = () => {
     },
     update,
   };
+};
+
+const fetchAccessToken = (): Promise<null> => Promise.resolve(null);
+
+const useTestAuth = () => ({
+  fetchAccessToken,
+  isAuthenticated: true,
+  isLoading: false,
+});
+
+const OtherLanguageControl = () => {
+  const { changeLanguage } = useLanguagePreference();
+
+  return createElement(
+    "button",
+    { onClick: () => changeLanguage("fr"), type: "button" },
+    "Choose French outside Settings"
+  );
 };
 
 describe("changing the screen language", () => {
@@ -88,6 +125,39 @@ describe("changing the screen language", () => {
 
   beforeEach(async () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const date = new Date("2026-10-25T12:00:00Z");
+
+    const session: ReturnType<typeof authClient.useSession> = {
+      data: {
+        session: {
+          createdAt: date,
+          expiresAt: date,
+          id: "ana-session",
+          token: "test-session",
+          updatedAt: date,
+          userId: "ana",
+        },
+        user: {
+          createdAt: date,
+          email: "ana@example.com",
+          emailVerified: true,
+          id: "ana",
+          name: "Ana",
+          updatedAt: date,
+        },
+      },
+      error: null,
+      isPending: false,
+      isRefetching: false,
+      refetch: async () => {},
+    };
+
+    authFetch.mockImplementation(() => {
+      const response = Response.json(session.data);
+
+      return Promise.resolve(response);
+    });
+    authClient.$store.atoms.session?.set(session);
     setLocale("en");
     backend = createBackend();
     container = document.createElement("div");
@@ -97,15 +167,20 @@ describe("changing the screen language", () => {
     await act(() => {
       root.render(
         createElement(
-          ConvexProvider,
-          { client: backend.client },
+          ConvexProviderWithAuth,
+          { client: backend.client, useAuth: useTestAuth },
           createElement(
             ThemeProvider,
             null,
             createElement(
               PreferencesProvider,
               null,
-              createElement(LocaleBoundary, null, createElement(SettingsScreen))
+              createElement(
+                LocaleBoundary,
+                null,
+                createElement(SettingsScreen),
+                createElement(OtherLanguageControl)
+              )
             )
           )
         )
@@ -151,6 +226,7 @@ describe("changing the screen language", () => {
     const name = required<HTMLInputElement>('input[name="name"]');
 
     name.value = "Still unsaved";
+    name.focus();
 
     await act(() => {
       language.value = "es";
@@ -168,15 +244,19 @@ describe("changing the screen language", () => {
     });
 
     expect(required('[role="alert"]').textContent).toBe(
-      currentMessages().settings.choicesNotSaved("Connection lost")
+      currentMessages().settings.choicesNotSaved(
+        currentMessages().common.genericError
+      )
     );
     expect({
       connected: name.isConnected,
+      focused: document.activeElement === name,
       language: language.value,
       pending: language.closest("fieldset")?.disabled,
       value: name.value,
     }).toStrictEqual({
       connected: true,
+      focused: true,
       language: "es",
       pending: false,
       value: "Still unsaved",
@@ -203,8 +283,73 @@ describe("changing the screen language", () => {
     ]);
     expect({
       failure: container.querySelector('[role="alert"]'),
-      saved: container.textContent.includes(currentMessages().settings.saved),
-    }).toStrictEqual({ failure: null, saved: true });
+      locale: language.value,
+      pending: language.closest("fieldset")?.disabled,
+    }).toStrictEqual({ failure: null, locale: "es", pending: false });
+  });
+
+  it("never resaves a Settings language draft after another control changes language", async () => {
+    const name = required<HTMLInputElement>('input[name="name"]');
+    name.value = "Still editing";
+    name.focus();
+
+    const language = required<HTMLSelectElement>(
+      'select[aria-label="Language"]'
+    );
+
+    await act(() => {
+      language.value = "es";
+      language.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(() =>
+      backend.receivePreferences({
+        ...initialMe.preferences,
+        supportLanguage: "es",
+      })
+    );
+
+    const external = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Choose French outside Settings"
+    );
+
+    if (external === undefined) {
+      throw new Error("Missing other language control");
+    }
+
+    await act(() => external.click());
+    await act(() =>
+      backend.receivePreferences({
+        ...initialMe.preferences,
+        supportLanguage: "fr",
+      })
+    );
+
+    expect(document.activeElement).toBe(name);
+
+    const textSize = [
+      ...container.querySelectorAll<HTMLElement>('[role="radio"]'),
+    ].find(
+      (button) =>
+        button.textContent === currentMessages().settings.textSizeLarge
+    );
+
+    if (textSize === undefined) {
+      throw new Error("Missing text size control");
+    }
+
+    await act(() => textSize.click());
+
+    expect(backend.update.mock.calls.map(([, patch]) => patch)).toStrictEqual([
+      { supportLanguage: "es" },
+      { supportLanguage: "fr" },
+      { textScale: 1.15 },
+    ]);
+    expect({
+      document: document.documentElement.lang,
+      selection: language.value,
+    }).toStrictEqual({ document: "fr", selection: "fr" });
+    expect(required('input[name="name"]')).toBe(name);
+    expect(name.value).toBe("Still editing");
   });
 
   it("does not overwrite a local language choice when unrelated preferences update", async () => {

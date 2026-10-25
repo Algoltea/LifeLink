@@ -2,7 +2,7 @@
 
 import type { Doc, Id } from "@lifelink/backend/convex/_generated/dataModel";
 import { interfaceLocales } from "@lifelink/contracts/locale";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -13,6 +13,49 @@ import { PreferencesProvider } from "@/components/app/preferences";
 import { messagesFor, setLocale } from "@/i18n/locale";
 
 import { ExplanationPanel } from "./explanation-panel";
+
+// Better Auth captures fetch when its client is created, before any render.
+const authFetch = vi.hoisted(() => {
+  const date = "2026-10-25T12:00:00.000Z";
+  const userId = "explanation-test-user";
+
+  const session = {
+    session: {
+      createdAt: date,
+      expiresAt: "2026-10-26T12:00:00.000Z",
+      id: `${userId}-session`,
+      token: "test-session",
+      updatedAt: date,
+      userId,
+    },
+    user: {
+      createdAt: date,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      id: userId,
+      name: "Ana Example",
+      updatedAt: date,
+    },
+  };
+
+  const request = vi.fn<typeof fetch>().mockImplementation(() => {
+    const response = Response.json(session);
+
+    return Promise.resolve(response);
+  });
+
+  vi.stubGlobal("fetch", request);
+
+  return request;
+});
+
+const fetchAccessToken = (): Promise<null> => Promise.resolve(null);
+
+const useTestAuth = () => ({
+  fetchAccessToken,
+  isAuthenticated: true,
+  isLoading: false,
+});
 
 const ORIGINAL = "Wait for an answer";
 const REPLY = "Merci, Nguyễn. I'll call at 4:30.";
@@ -42,8 +85,14 @@ describe("explanation language integration", () => {
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    authFetch.mockClear();
+    vi.stubGlobal("fetch", authFetch);
     setLocale("en");
     client = new ConvexReactClient("http://127.0.0.1:3210");
+    vi.spyOn(client, "setAuth").mockImplementation((_fetchToken, onChange) =>
+      onChange?.(true)
+    );
+    vi.spyOn(client, "clearAuth").mockImplementation(() => {});
     vi.spyOn(client, "watchQuery").mockReturnValue({
       journal: () => {},
       localQueryResult: () => EXPLANATION,
@@ -67,7 +116,12 @@ describe("explanation language integration", () => {
   it("keeps presentation explanations local and sends the same request arguments", async () => {
     const me = {
       preferences: null,
-      profile: { demoMode: true, presentationDemo: true },
+      profile: {
+        _id: "explanation-test-profile",
+        authUserId: "explanation-test-user",
+        demoMode: true,
+        presentationDemo: true,
+      },
     };
 
     vi.spyOn(client, "watchQuery").mockImplementation((...args) => {
@@ -84,14 +138,14 @@ describe("explanation language integration", () => {
 
     act(() =>
       root.render(
-        <ConvexProvider client={client}>
+        <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
           <PreferencesProvider>
             <ExplanationPanel
               onUseReply={vi.fn<(draft: string) => void>()}
               source={{ messageId: MESSAGE_ID }}
             />
           </PreferencesProvider>
-        </ConvexProvider>
+        </ConvexProviderWithAuth>
       )
     );
 
@@ -133,7 +187,12 @@ describe("explanation language integration", () => {
     (enabled) => {
       const me = {
         preferences: null,
-        profile: { demoMode: true, presentationDemo: enabled },
+        profile: {
+          _id: "explanation-test-profile",
+          authUserId: "explanation-test-user",
+          demoMode: true,
+          presentationDemo: enabled,
+        },
       };
 
       const explanation = { ...EXPLANATION, localReason: "practice" };
@@ -150,14 +209,14 @@ describe("explanation language integration", () => {
       });
       act(() =>
         root.render(
-          <ConvexProvider client={client}>
+          <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
             <PreferencesProvider>
               <ExplanationPanel
                 onUseReply={vi.fn<(draft: string) => void>()}
                 source={{ messageId: MESSAGE_ID }}
               />
             </PreferencesProvider>
-          </ConvexProvider>
+          </ConvexProviderWithAuth>
         )
       );
 
@@ -180,12 +239,12 @@ describe("explanation language integration", () => {
 
       act(() => {
         root.render(
-          <ConvexProvider client={client}>
+          <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
             <ExplanationPanel
               onUseReply={useReply}
               source={{ messageId: MESSAGE_ID }}
             />
-          </ConvexProvider>
+          </ConvexProviderWithAuth>
         );
       });
 

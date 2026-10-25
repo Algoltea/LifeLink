@@ -2,7 +2,7 @@
 
 import type { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { getFunctionName } from "convex/server";
 import type { FunctionReturnType } from "convex/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
@@ -21,6 +21,49 @@ import { CircleScreen } from "./circle-screen";
 import type { CircleContact } from "./contact-form";
 import { ContactIMessageSetup } from "./contact-imessage-setup";
 import type { GrantRow } from "./contact-permissions";
+
+// Better Auth captures fetch when its client is created, before any render.
+const authFetch = vi.hoisted(() => {
+  const date = "2026-10-25T12:00:00.000Z";
+  const userId = "test-user";
+
+  const session = {
+    session: {
+      createdAt: date,
+      expiresAt: "2026-10-26T12:00:00.000Z",
+      id: `${userId}-session`,
+      token: "test-session",
+      updatedAt: date,
+      userId,
+    },
+    user: {
+      createdAt: date,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      id: userId,
+      name: "Ana Example",
+      updatedAt: date,
+    },
+  };
+
+  const request = vi.fn<typeof fetch>().mockImplementation(() => {
+    const response = Response.json(session);
+
+    return Promise.resolve(response);
+  });
+
+  vi.stubGlobal("fetch", request);
+
+  return request;
+});
+
+const fetchAccessToken = (): Promise<null> => Promise.resolve(null);
+
+const useTestAuth = () => ({
+  fetchAccessToken,
+  isAuthenticated: true,
+  isLoading: false,
+});
 
 const timestamp = Date.UTC(2026, 9, 24, 12);
 
@@ -90,6 +133,10 @@ interface QueryResults {
 
 const createBackend = () => {
   const client = new ConvexReactClient("http://127.0.0.1:3210");
+  vi.spyOn(client, "setAuth").mockImplementation((_fetchToken, onChange) =>
+    onChange?.(true)
+  );
+  vi.spyOn(client, "clearAuth").mockImplementation(() => {});
 
   const initial: QueryResults = {
     "contacts:list": contacts,
@@ -199,7 +246,7 @@ describe("Practice contacts in the circle and trusted picker", () => {
   const render = (children: ReactNode) =>
     act(() =>
       root.render(
-        <ConvexProvider client={backend.client}>
+        <ConvexProviderWithAuth client={backend.client} useAuth={useTestAuth}>
           <ThemeProvider>
             <PreferencesProvider>
               <AppRouterContext
@@ -217,12 +264,14 @@ describe("Practice contacts in the circle and trusted picker", () => {
               </AppRouterContext>
             </PreferencesProvider>
           </ThemeProvider>
-        </ConvexProvider>
+        </ConvexProviderWithAuth>
       )
     );
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    authFetch.mockClear();
+    vi.stubGlobal("fetch", authFetch);
     setLocale("en");
     backend = createBackend();
     container = document.createElement("div");

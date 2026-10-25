@@ -25,11 +25,14 @@ import { toast } from "sonner";
 
 import { ReadAloudButton, SimulatedPill } from "@/components/app/bits";
 import { PageHeader } from "@/components/app/page-header";
-import { usePreferences } from "@/components/app/preferences";
+import {
+  useLanguagePreference,
+  usePreferences,
+} from "@/components/app/preferences";
 import { usePresentationDemo } from "@/components/app/presentation-demo";
 import { LoadingRows } from "@/components/app/states";
 import { TimeZoneSelect } from "@/components/app/time-zone-select";
-import { currentMessages, setLocale, useMessages } from "@/i18n/locale";
+import { currentMessages, useLocale, useMessages } from "@/i18n/locale";
 import type { Messages } from "@/i18n/locale";
 import { saveDisplay } from "@/lib/display";
 import { messageOf } from "@/lib/errors";
@@ -89,13 +92,17 @@ const usePreferenceSave = (
   applyDisplay = false
 ) => {
   const update = useMutation(api.profiles.updatePreferences);
-  const [draft, setDraft] = useState<Parameters<typeof update>[0]>({});
+
+  // Language has its own shared save/retry state and must never enter this draft.
+  type PreferenceDraft = Omit<Parameters<typeof update>[0], "supportLanguage">;
+
+  const [draft, setDraft] = useState<PreferenceDraft>({});
   const [state, setState] = useState<SaveState>("idle");
   const [failure, setFailure] = useState<string | null>(null);
   const pending = useRef(false);
   const value = { ...stored, ...draft };
 
-  const save = async (patch: Parameters<typeof update>[0]): Promise<void> => {
+  const save = async (patch: PreferenceDraft): Promise<void> => {
     if (pending.current) {
       return;
     }
@@ -264,8 +271,14 @@ const Toggle = ({
 
 const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
   const { failure, save, state, value } = usePreferenceSave(stored, true);
+  const language = useLanguagePreference();
+  const locale = useLocale();
   const t = useMessages().settings;
-  const style = helpStyleOf(value);
+
+  const languageFailure = language.error
+    ? t.choicesNotSaved(currentMessages().common.genericError)
+    : null;
+
   const voiceId = useId();
   const voiceHintId = useId();
 
@@ -283,27 +296,38 @@ const DisplaySettings = ({ stored }: { stored: Doc<"preferences"> }) => {
       <p className="text-muted-foreground pb-6 text-lg leading-7">
         {t.savesAsYouChange}
       </p>
-      <fieldset disabled={state === "pending"} className="min-w-0">
+      <fieldset disabled={language.pending} className="min-w-0">
         <Row description={t.languageDescription} label={t.language}>
           <select
             aria-label={t.language}
             className="border-control bg-raised text-foreground min-h-12 max-w-full self-start rounded-md border px-4 text-base"
-            onChange={(event) => {
-              const supportLanguage = event.target.value;
-
-              // Switch at once; the saved choice confirms it when the account updates.
-              setLocale(interfaceLocaleOf(supportLanguage));
-              void save({ supportLanguage });
-            }}
-            value={style.language}
+            onChange={(event) =>
+              language.changeLanguage(interfaceLocaleOf(event.target.value))
+            }
+            value={locale}
           >
-            {supportLanguages.map((language) => (
-              <option key={language.id} lang={language.id} value={language.id}>
-                {language.label}
+            {supportLanguages.map((option) => (
+              <option key={option.id} lang={option.id} value={option.id}>
+                {option.label}
               </option>
             ))}
           </select>
         </Row>
+      </fieldset>
+      <SaveFeedback
+        failure={languageFailure}
+        state={language.pending ? "pending" : "idle"}
+      />
+      {language.error ? (
+        <Button
+          className="self-start"
+          onClick={() => language.retry()}
+          variant="outline"
+        >
+          {t.trySavingAgain}
+        </Button>
+      ) : null}
+      <fieldset disabled={state === "pending"} className="min-w-0">
         <Row description={t.textSizeDescription} label={t.textSize}>
           <Segmented
             label={t.textSize}

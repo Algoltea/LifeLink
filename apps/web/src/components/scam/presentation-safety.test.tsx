@@ -2,7 +2,7 @@
 
 import type { api } from "@lifelink/backend/convex/_generated/api";
 import type { Id } from "@lifelink/backend/convex/_generated/dataModel";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { getFunctionName } from "convex/server";
 import type { FunctionReturnType } from "convex/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
@@ -19,6 +19,49 @@ import { CallScreening } from "./call-screening";
 import { CallSummary } from "./call-summary";
 import { ScamScreen } from "./scam-screen";
 import { TrustedPeople } from "./trusted-people";
+
+// Better Auth captures fetch when its client is created, before any render.
+const authFetch = vi.hoisted(() => {
+  const date = "2026-10-25T12:00:00.000Z";
+  const userId = "presentation-scam-test";
+
+  const session = {
+    session: {
+      createdAt: date,
+      expiresAt: "2026-10-26T12:00:00.000Z",
+      id: `${userId}-session`,
+      token: "test-session",
+      updatedAt: date,
+      userId,
+    },
+    user: {
+      createdAt: date,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      id: userId,
+      name: "Elena Rivera",
+      updatedAt: date,
+    },
+  };
+
+  const request = vi.fn<typeof fetch>().mockImplementation(() => {
+    const response = Response.json(session);
+
+    return Promise.resolve(response);
+  });
+
+  vi.stubGlobal("fetch", request);
+
+  return request;
+});
+
+const fetchAccessToken = (): Promise<null> => Promise.resolve(null);
+
+const useTestAuth = () => ({
+  fetchAccessToken,
+  isAuthenticated: true,
+  isLoading: false,
+});
 
 const timestamp = Date.UTC(2026, 9, 25, 12);
 const practiceLabel = /practice|sample|simulat|made-up|script/iu;
@@ -51,6 +94,10 @@ const meFor = (
 
 const createBackend = () => {
   const client = new ConvexReactClient("http://127.0.0.1:3210");
+  vi.spyOn(client, "setAuth").mockImplementation((_fetchToken, onChange) =>
+    onChange?.(true)
+  );
+  vi.spyOn(client, "clearAuth").mockImplementation(() => {});
 
   const values = new Map<string, unknown>([
     ["profiles:me", meFor(true, true)],
@@ -105,7 +152,11 @@ describe("presentation scam safety", () => {
     renderVersion += 1;
     await act(() =>
       root.render(
-        <ConvexProvider client={backend.client} key={renderVersion}>
+        <ConvexProviderWithAuth
+          client={backend.client}
+          key={renderVersion}
+          useAuth={useTestAuth}
+        >
           <PreferencesProvider>
             <AppRouterContext
               value={{
@@ -121,7 +172,7 @@ describe("presentation scam safety", () => {
               {children}
             </AppRouterContext>
           </PreferencesProvider>
-        </ConvexProvider>
+        </ConvexProviderWithAuth>
       )
     );
   };
@@ -140,6 +191,8 @@ describe("presentation scam safety", () => {
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    authFetch.mockClear();
+    vi.stubGlobal("fetch", authFetch);
     setLocale("en");
     backend = createBackend();
     container = document.createElement("div");

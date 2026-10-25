@@ -4,11 +4,7 @@ import type {
   Id,
   TableNames,
 } from "@lifelink/backend/convex/_generated/dataModel";
-import {
-  ConvexProvider,
-  ConvexProviderWithAuth,
-  ConvexReactClient,
-} from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { getFunctionName } from "convex/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -23,6 +19,41 @@ import { ActionReview } from "./action-review";
 import type { ActionView } from "./action-review";
 import { JourneyGauge } from "./journey-gauge";
 import type { Step } from "./journey-gauge";
+
+// Better Auth captures fetch when its client is created, before any render.
+const authFetch = vi.hoisted(() => {
+  const date = "2026-10-25T12:00:00.000Z";
+  const userId = "presentation-task-user";
+
+  const session = {
+    session: {
+      createdAt: date,
+      expiresAt: "2026-10-26T12:00:00.000Z",
+      id: `${userId}-session`,
+      token: "test-session",
+      updatedAt: date,
+      userId,
+    },
+    user: {
+      createdAt: date,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      id: userId,
+      name: "Ana Example",
+      updatedAt: date,
+    },
+  };
+
+  const request = vi.fn<typeof fetch>().mockImplementation(() => {
+    const response = Response.json(session);
+
+    return Promise.resolve(response);
+  });
+
+  vi.stubGlobal("fetch", request);
+
+  return request;
+});
 
 const fetchAccessToken = (): Promise<null> => Promise.resolve(null);
 
@@ -110,16 +141,28 @@ describe("presentation task copy", () => {
 
   let me = {
     preferences: null,
-    profile: { demoMode: true, presentationDemo: false },
+    profile: {
+      _id: id("profiles"),
+      authUserId: "presentation-task-user",
+      demoMode: true,
+      presentationDemo: false,
+    },
   };
 
   beforeEach(() => {
     me = {
       preferences: null,
-      profile: { demoMode: true, presentationDemo: false },
+      profile: {
+        _id: id("profiles"),
+        authUserId: "presentation-task-user",
+        demoMode: true,
+        presentationDemo: false,
+      },
     };
     setLocale("en");
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    authFetch.mockClear();
+    vi.stubGlobal("fetch", authFetch);
     client = new ConvexReactClient("http://127.0.0.1:3210");
     vi.spyOn(client, "watchQuery").mockReturnValue({
       journal: () => {},
@@ -146,11 +189,11 @@ describe("presentation task copy", () => {
       const original = structuredClone(view);
 
       const markup = renderToStaticMarkup(
-        <ConvexProvider client={client}>
+        <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
           <PreferencesProvider>
             <ActionReview hue={30} timeZone="America/New_York" view={view} />
           </PreferencesProvider>
-        </ConvexProvider>
+        </ConvexProviderWithAuth>
       );
 
       expect(markup.includes("Practice")).toBe(!enabled);
@@ -176,7 +219,7 @@ describe("presentation task copy", () => {
       me.profile.presentationDemo = true;
 
       const markup = renderToStaticMarkup(
-        <ConvexProvider client={client}>
+        <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
           <PreferencesProvider>
             <JourneyGauge
               mode="simulated"
@@ -184,7 +227,7 @@ describe("presentation task copy", () => {
               steps={[step]}
             />
           </PreferencesProvider>
-        </ConvexProvider>
+        </ConvexProviderWithAuth>
       );
 
       expect(markup).not.toContain("Practice");
@@ -195,7 +238,7 @@ describe("presentation task copy", () => {
       me.profile.presentationDemo = false;
       expect(
         renderToStaticMarkup(
-          <ConvexProvider client={client}>
+          <ConvexProviderWithAuth client={client} useAuth={useTestAuth}>
             <PreferencesProvider>
               <JourneyGauge
                 mode="simulated"
@@ -203,7 +246,7 @@ describe("presentation task copy", () => {
                 steps={[step]}
               />
             </PreferencesProvider>
-          </ConvexProvider>
+          </ConvexProviderWithAuth>
         )
       ).toContain(SUMMARY);
     }
