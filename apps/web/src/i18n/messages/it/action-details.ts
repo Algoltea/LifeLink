@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: " e ",
+  appointment: "Appuntamento",
   budget: (amount) => ` Limite di spesa: ${amount}.`,
   by: (channel) => `Tramite ${channel}`,
   calendar: "Calendario",
@@ -18,6 +19,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "Nessuna stima disponibile.",
   noJustYou: "No, solo Lei",
   notGiven: "Non indicato",
+  notes: "Note",
   onlyGrantees: (names, scope) =>
     `Solo ${names} vedrà questo contenuto, perché Lei condivide ${scope} con queste persone.`,
   peopleYouAllowed: "le persone che ha autorizzato",
@@ -32,6 +34,8 @@ const actionDetails: Messages["actionDetails"] = {
   shoppingRecord:
     "Questo è il record di una precedente richiesta di acquisto. Gli acquisti tramite LifeLink non sono più disponibili.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `Appuntamento: ${title}. ${when}${location ? `, presso ${location}` : ""}.`,
     calendar: (title, when, location) =>
       `${title}. ${when}${location ? `, presso ${location}` : ""}.`,
     confirm: (summary) => `Sta confermando: ${summary}`,

@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: " et ",
+  appointment: "Rendez-vous",
   budget: (amount) => ` Budget : ${amount}.`,
   by: (channel) => `Par ${channel}`,
   calendar: "Calendrier",
@@ -18,6 +19,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "Pas encore d’estimation.",
   noJustYou: "Non, seulement vous",
   notGiven: "Non précisé",
+  notes: "Notes",
   onlyGrantees: (names, scope) =>
     `Seules ces personnes verront ceci : ${names}, car vous partagez avec elles les informations suivantes : ${scope}.`,
   peopleYouAllowed: "les personnes que vous avez autorisées",
@@ -32,6 +34,8 @@ const actionDetails: Messages["actionDetails"] = {
   shoppingRecord:
     "Ceci est la trace d’une ancienne demande de courses. Les achats via LifeLink ne sont plus disponibles.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `Rendez-vous : ${title}. ${when}${location ? `, à ${location}` : ""}.`,
     calendar: (title, when, location) =>
       `${title}. ${when}${location ? `, à ${location}` : ""}.`,
     confirm: (summary) => `Vous confirmez : ${summary}`,

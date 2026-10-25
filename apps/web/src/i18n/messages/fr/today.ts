@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "Ajouter un rendez-vous",
   addPostalCode: "Ajouter votre code postal",
   allEmail: "Tous les courriels",
   allMessages: "Tous les messages",
   appointment: "Rendez-vous",
+  appointmentForm: {
+    date: "Date",
+    heading: "Ajouter un rendez-vous",
+    location: "Où",
+    missingTitle: "Indiquez à quoi correspond ce rendez-vous.",
+    missingWhen: "Choisissez une date et une heure.",
+    notes: "Notes",
+    optional: "Facultatif",
+    pastWhen: "Choisissez une heure qui n'est pas encore passée.",
+    save: "Enregistrer le rendez-vous",
+    saved: (title: string) => `Rendez-vous enregistré : ${title}.`,
+    time: "Heure",
+    title: "C'est pour quoi ?",
+    titleHint: "Par exemple : Dentiste, ou Déjeuner avec Rosa.",
+  },
   check: "Vérifier",
   checkPostalCode: "Vérifier votre code postal",
   connect: "Connecter",

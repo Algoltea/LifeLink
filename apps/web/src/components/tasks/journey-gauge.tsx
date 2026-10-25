@@ -3,6 +3,7 @@ import { cn } from "@lifelink/ui/lib/utils";
 import {
   AlertTriangleIcon,
   BellIcon,
+  CalendarCheckIcon,
   CalendarPlusIcon,
   CircleCheckIcon,
   CircleHelpIcon,
@@ -44,6 +45,10 @@ const markFor = (kind: Step["kind"], className: string): ReactNode => {
 
     case "create_reminder": {
       return <BellIcon aria-hidden="true" className={className} />;
+    }
+
+    case "create_appointment": {
+      return <CalendarCheckIcon aria-hidden="true" className={className} />;
     }
 
     case "family_update": {

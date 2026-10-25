@@ -1,5 +1,6 @@
 const actionDetails = {
   and: " and ",
+  appointment: "Appointment",
   budget: (amount: string) => ` Budget: ${amount}.`,
   by: (channel: string) => `By ${channel}`,
   calendar: "Calendar",
@@ -16,6 +17,7 @@ const actionDetails = {
   noEstimate: "No estimate yet.",
   noJustYou: "No, just you",
   notGiven: "Not given",
+  notes: "Notes",
   onlyGrantees: (names: string, scope: string) =>
     `Only ${names} will see this, because you share ${scope} with them.`,
   peopleYouAllowed: "people you allowed",
@@ -30,6 +32,8 @@ const actionDetails = {
   shoppingRecord:
     "This is a record of an earlier shopping request. Shopping through LifeLink is no longer available.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `Appointment: ${title}. ${when}${location ? `, at ${location}` : ""}.`,
     calendar: (title: string, when: string, location: string | null) =>
       `${title}. ${when}${location ? `, at ${location}` : ""}.`,
     confirm: (summary: string) => `You're confirming: ${summary}`,

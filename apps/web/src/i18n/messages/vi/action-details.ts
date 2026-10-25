@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: " và ",
+  appointment: "Cuộc hẹn",
   budget: (amount) => ` Ngân sách: ${amount}.`,
   by: (channel) => `Qua ${channel}`,
   calendar: "Lịch",
@@ -17,6 +18,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "Chưa có ước tính.",
   noJustYou: "Không, chỉ quý vị",
   notGiven: "Chưa cung cấp",
+  notes: "Ghi chú",
   onlyGrantees: (names, scope) =>
     `Chỉ ${names} được xem nội dung này, vì quý vị chia sẻ ${scope} với họ.`,
   peopleYouAllowed: "những người quý vị cho phép",
@@ -31,6 +33,8 @@ const actionDetails: Messages["actionDetails"] = {
   shoppingRecord:
     "Đây là bản ghi yêu cầu mua sắm trước đây. Hiện không còn có thể mua sắm qua LifeLink.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `Cuộc hẹn: ${title}. ${when}${location ? `, tại ${location}` : ""}.`,
     calendar: (title, when, location) =>
       `${title}. ${when}${location ? `, tại ${location}` : ""}.`,
     confirm: (summary) => `Quý vị đang xác nhận: ${summary}`,

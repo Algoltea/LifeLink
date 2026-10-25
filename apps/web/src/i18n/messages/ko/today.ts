@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "일정 추가",
   addPostalCode: "우편번호 추가",
   allEmail: "모든 이메일",
   allMessages: "모든 메시지",
   appointment: "약속",
+  appointmentForm: {
+    date: "날짜",
+    heading: "일정 추가하기",
+    location: "장소",
+    missingTitle: "어떤 일정인지 적어 주세요.",
+    missingWhen: "날짜와 시간을 선택해 주세요.",
+    notes: "메모",
+    optional: "선택 사항",
+    pastWhen: "아직 지나지 않은 시간을 선택해 주세요.",
+    save: "일정 저장",
+    saved: (title: string) => `일정을 저장했습니다: ${title}.`,
+    time: "시간",
+    title: "어떤 일정인가요?",
+    titleHint: "예: 치과, 또는 로사와 점심",
+  },
   check: "확인",
   checkPostalCode: "우편번호 확인",
   connect: "연결",

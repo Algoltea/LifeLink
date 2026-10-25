@@ -6,6 +6,7 @@ const tasks: Messages["tasks"] = {
   approve: {
     calendar_event: "Aprubahan at idagdag",
     confirm_arrangement: "Kumpirmahin ang masasakyan",
+    create_appointment: "Idagdag ang appointment",
     create_reminder: "I-save ang paalala",
     drive_note: "Aprubahan at i-save",
     email_draft: "Aprubahan at i-save ang burador",
@@ -26,6 +27,8 @@ const tasks: Messages["tasks"] = {
   cancelRequest: "Kanselahin ang kahilingang ito",
   cancelled: "Kinansela ninyo ito. Walang ipinadala.",
   cancelling: "Kinakansela…",
+  changeDetails: "Baguhin ang detalye",
+  changeDetailsSaved: "Na-save. Suriin muna, saka aprubahan.",
   changeWords: "Baguhin ang mga salita",
   changesSaved:
     "Na-save ang mga pagbabago. Suriin ang bagong mensahe bago aprubahan.",

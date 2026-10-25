@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "Thêm cuộc hẹn",
   addPostalCode: "Thêm mã bưu chính",
   allEmail: "Tất cả email",
   allMessages: "Tất cả tin nhắn",
   appointment: "Lịch hẹn",
+  appointmentForm: {
+    date: "Ngày",
+    heading: "Thêm một cuộc hẹn",
+    location: "Ở đâu",
+    missingTitle: "Vui lòng cho biết cuộc hẹn này là gì.",
+    missingWhen: "Vui lòng chọn ngày và giờ.",
+    notes: "Ghi chú",
+    optional: "Không bắt buộc",
+    pastWhen: "Vui lòng chọn thời gian chưa qua.",
+    save: "Lưu cuộc hẹn",
+    saved: (title: string) => `Đã lưu cuộc hẹn: ${title}.`,
+    time: "Giờ",
+    title: "Cuộc hẹn gì?",
+    titleHint: "Ví dụ: Nha sĩ, hoặc Ăn trưa với Rosa.",
+  },
   check: "Kiểm tra",
   checkPostalCode: "Kiểm tra mã bưu chính",
   connect: "Kết nối",

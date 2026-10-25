@@ -46,6 +46,7 @@ const tl: ServerCatalog = {
   exact: {
     ...scamSummaries(),
     "Action not found.": "Hindi natagpuan ang aksyon.",
+    "Add the appointment": "Idagdag ang appointment",
     "Added to your calendar.": "Naidagdag na sa inyong kalendaryo.",
     "An action cannot change into a different kind of action.":
       "Hindi maaaring palitan ang isang aksyon ng ibang uri ng aksyon.",
@@ -304,6 +305,7 @@ const tl: ServerCatalog = {
       "Hindi pa tiyak kung nabigo ang huling pagsubok. Pakitingnan po kung natuloy ito bago subukang muli.",
     "We are still checking this action. Wait for that check to finish.":
       "Sinusuri pa ang aksyong ito. Hintayin po munang matapos ang pagsusuri.",
+    "What is the appointment for?": "Para saan ang appointment?",
     "Which appointment is the ride for?":
       "Para po sa aling appointment ang pagsakay?",
     "Who would you like to ask?": "Sino po ang nais ninyong tanungin?",
@@ -331,6 +333,7 @@ const tl: ServerCatalog = {
       (status) =>
         `Hindi magamit ang pagbabasa nang malakas (${status}). Pakisubukan po ulit mamaya.`,
     ],
+    [/^Appointment: (?<title>.+)$/u, (title) => `Appointment: ${title}`],
     [/^Ride to (?<title>.+)$/u, (title) => `Pagsakay papunta sa ${title}`],
     [
       /^Waiting for (?<name>[^“”"\r\n]+) to answer\.$/u,

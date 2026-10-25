@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "Magdagdag ng appointment",
   addPostalCode: "Idagdag ang inyong postal code",
   allEmail: "Lahat ng email",
   allMessages: "Lahat ng mensahe",
   appointment: "Appointment",
+  appointmentForm: {
+    date: "Petsa",
+    heading: "Magdagdag ng appointment",
+    location: "Saan",
+    missingTitle: "Pakisabi kung para saan ang appointment.",
+    missingWhen: "Pakipili ang petsa at oras.",
+    notes: "Mga tala",
+    optional: "Opsyonal",
+    pastWhen: "Pakipili ang oras na hindi pa lumilipas.",
+    save: "I-save ang appointment",
+    saved: (title: string) => `Na-save ang appointment: ${title}.`,
+    time: "Oras",
+    title: "Para saan ito?",
+    titleHint: "Halimbawa: Dentista, o Tanghalian kasama si Rosa.",
+  },
   check: "Suriin",
   checkPostalCode: "Suriin ang inyong postal code",
   connect: "Ikonekta",

@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: " at ",
+  appointment: "Appointment",
   budget: (amount) => ` Badyet: ${amount}.`,
   by: (channel) => `Sa pamamagitan ng ${channel}`,
   calendar: "Kalendaryo",
@@ -17,6 +18,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "Wala pang tantiya.",
   noJustYou: "Hindi, kayo lang",
   notGiven: "Hindi ibinigay",
+  notes: "Mga tala",
   onlyGrantees: (names, scope) =>
     `Siya o sila lang (${names}) ang makakakita nito, dahil ibinabahagi ninyo ang ${scope} sa kanila.`,
   peopleYouAllowed: "mga taong pinayagan ninyo",
@@ -31,6 +33,8 @@ const actionDetails: Messages["actionDetails"] = {
   shoppingRecord:
     "Tala ito ng dating kahilingan sa pamimili. Hindi na available ang pamimili sa pamamagitan ng LifeLink.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `Appointment: ${title}. ${when}${location ? `, sa ${location}` : ""}.`,
     calendar: (title, when, location) =>
       `${title}. ${when}${location ? `, sa ${location}` : ""}.`,
     confirm: (summary) => `Kinukumpirma ninyo: ${summary}`,

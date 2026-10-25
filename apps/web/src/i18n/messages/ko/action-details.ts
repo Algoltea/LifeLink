@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: " 및 ",
+  appointment: "일정",
   budget: (amount) => ` 예산: ${amount}.`,
   by: (channel) => `보내는 방법: ${channel}`,
   calendar: "캘린더",
@@ -17,6 +18,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "아직 예상 비용이 없습니다.",
   noJustYou: "아니요, 본인만",
   notGiven: "입력되지 않음",
+  notes: "메모",
   onlyGrantees: (names, scope) =>
     `${scope} 항목을 공유하고 계시므로, ${names}만 이 내용을 볼 수 있습니다.`,
   peopleYouAllowed: "허락하신 사람들",
@@ -31,6 +33,8 @@ const actionDetails: Messages["actionDetails"] = {
   shoppingRecord:
     "이전에 요청하신 장보기 기록입니다. LifeLink를 통한 구매는 더 이상 제공되지 않습니다.",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `일정: ${title}. ${when}${location ? `, 장소: ${location}` : ""}.`,
     calendar: (title, when, location) =>
       `${title}. ${when}${location ? `, 장소: ${location}` : ""}.`,
     confirm: (summary) => `확정하실 내용: ${summary}`,

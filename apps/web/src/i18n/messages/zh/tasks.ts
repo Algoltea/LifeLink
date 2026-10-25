@@ -6,6 +6,7 @@ const tasks: Messages["tasks"] = {
   approve: {
     calendar_event: "批准并添加",
     confirm_arrangement: "确认接送",
+    create_appointment: "添加预约",
     create_reminder: "保存提醒",
     drive_note: "批准并保存",
     email_draft: "批准并保存草稿",
@@ -25,6 +26,8 @@ const tasks: Messages["tasks"] = {
   cancelRequest: "取消此请求",
   cancelled: "您已取消。没有发送任何内容。",
   cancelling: "正在取消…",
+  changeDetails: "修改详情",
+  changeDetailsSaved: "已保存。请检查后再批准。",
   changeWords: "修改文字",
   changesSaved: "更改已保存。批准前，请核对更新后的消息。",
   checkNow: "立即检查",

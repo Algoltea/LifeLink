@@ -6,6 +6,7 @@ const tasks: Messages["tasks"] = {
   approve: {
     calendar_event: "Genehmigen und hinzufügen",
     confirm_arrangement: "Fahrt bestätigen",
+    create_appointment: "Termin hinzufügen",
     create_reminder: "Erinnerung speichern",
     drive_note: "Genehmigen und speichern",
     email_draft: "Genehmigen und Entwurf speichern",
@@ -26,6 +27,8 @@ const tasks: Messages["tasks"] = {
   cancelRequest: "Diese Anfrage abbrechen",
   cancelled: "Sie haben dies abgebrochen. Es wurde nichts gesendet.",
   cancelling: "Wird abgebrochen…",
+  changeDetails: "Angaben ändern",
+  changeDetailsSaved: "Gespeichert. Prüfen Sie es und genehmigen Sie dann.",
   changeWords: "Wortlaut ändern",
   changesSaved:
     "Änderungen gespeichert. Prüfen Sie die aktualisierte Nachricht, bevor Sie zustimmen.",

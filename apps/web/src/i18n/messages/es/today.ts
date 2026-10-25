@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "Añadir cita",
   addPostalCode: "Agregue su código postal",
   allEmail: "Todo el correo",
   allMessages: "Todos los mensajes",
   appointment: "Cita",
+  appointmentForm: {
+    date: "Fecha",
+    heading: "Añadir una cita",
+    location: "Dónde",
+    missingTitle: "Indique para qué es la cita.",
+    missingWhen: "Elija una fecha y una hora.",
+    notes: "Notas",
+    optional: "Opcional",
+    pastWhen: "Elija una hora que todavía no haya pasado.",
+    save: "Guardar cita",
+    saved: (title: string) => `Cita guardada: ${title}.`,
+    time: "Hora",
+    title: "¿Para qué es?",
+    titleHint: "Por ejemplo: Dentista, o Almuerzo con Rosa.",
+  },
   check: "Revisar",
   checkPostalCode: "Revise su código postal",
   connect: "Conectar",

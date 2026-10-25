@@ -1,10 +1,26 @@
 import type { Messages } from "../en";
 
 const today: Messages["today"] = {
+  addAppointment: "添加预约",
   addPostalCode: "添加您的邮政编码",
   allEmail: "全部邮件",
   allMessages: "全部消息",
   appointment: "预约安排",
+  appointmentForm: {
+    date: "日期",
+    heading: "添加一个预约",
+    location: "地点",
+    missingTitle: "请写明这是什么预约。",
+    missingWhen: "请选择日期和时间。",
+    notes: "备注",
+    optional: "可选",
+    pastWhen: "请选择一个尚未过去的时间。",
+    save: "保存预约",
+    saved: (title: string) => `已保存预约：${title}。`,
+    time: "时间",
+    title: "是什么预约？",
+    titleHint: "例如：看牙医，或与罗莎共进午餐。",
+  },
   check: "检查",
   checkPostalCode: "核对您的邮政编码",
   connect: "连接",

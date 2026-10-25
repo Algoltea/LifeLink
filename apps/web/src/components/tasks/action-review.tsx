@@ -23,6 +23,11 @@ import { toast } from "sonner";
 import { ModePill } from "@/components/app/bits";
 import { useOffline } from "@/components/app/offline-queue";
 import { usePresentationDemo } from "@/components/app/presentation-demo";
+import {
+  AppointmentFields,
+  draftOf,
+  readDraft,
+} from "@/components/today/appointment-form";
 import { useLocale, useMessages } from "@/i18n/locale";
 import { translateServerMessage } from "@/i18n/server-messages";
 import { messageOf } from "@/lib/errors";
@@ -485,6 +490,147 @@ const WordsEditor = ({
   );
 };
 
+/** Change a proposed appointment before adding it. Saving creates a new version, which needs a fresh approval. */
+const AppointmentEditor = ({
+  actionId,
+  canSave,
+  details,
+  onDone,
+  timeZone,
+}: {
+  actionId: ActionView["action"]["_id"];
+  canSave: boolean;
+  details: Extract<ActionDetails, { kind: "create_appointment" }>;
+  onDone: () => void;
+  timeZone: string;
+}) => {
+  const revise = useMutation(api.actions.revise);
+  const [draft, setDraft] = useState(() => draftOf(details, timeZone));
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const words = useMessages();
+  const t = words.tasks;
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      noValidate
+      onSubmit={async (event) => {
+        event.preventDefault();
+
+        const read = readDraft(draft, timeZone, words.today.appointmentForm);
+
+        if ("error" in read) {
+          setFailure(read.error);
+
+          return;
+        }
+
+        setSaving(true);
+        setFailure(null);
+
+        try {
+          await revise({ actionId, ...read.values });
+          onDone();
+          toast(t.changeDetailsSaved);
+        } catch (error) {
+          setFailure(errorText(error));
+        }
+
+        setSaving(false);
+      }}
+    >
+      {canSave ? null : (
+        <output className="text-muted-foreground text-base">
+          {t.noLongerEditable}
+        </output>
+      )}
+      <AppointmentFields
+        disabled={saving || !canSave}
+        draft={draft}
+        onChange={(next) => {
+          setDraft(next);
+          setFailure(null);
+        }}
+      />
+      {failure ? (
+        <p className="text-negative text-base" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-3">
+        <Button aria-busy={saving} disabled={saving || !canSave} type="submit">
+          {saving ? words.common.saving : words.contactForm.saveChanges}
+        </Button>
+        <Button
+          disabled={saving}
+          onClick={onDone}
+          type="button"
+          variant="ghost"
+        >
+          {t.cancelEditing}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+/** The editor for whatever this action lets the person change, if anything. */
+const DetailsEditor = ({
+  actionId,
+  canSave,
+  details,
+  onDone,
+  timeZone,
+  version,
+}: {
+  actionId: ActionView["action"]["_id"];
+  canSave: boolean;
+  details: ActionDetails;
+  onDone: () => void;
+  timeZone: string;
+  version: number;
+}) => {
+  const body = wordsOf(details);
+
+  if (body !== null) {
+    return (
+      <WordsEditor
+        actionId={actionId}
+        canSave={canSave}
+        initialBody={body}
+        onDone={onDone}
+        version={version}
+      />
+    );
+  }
+
+  if (details.kind === "create_appointment") {
+    return (
+      <AppointmentEditor
+        actionId={actionId}
+        canSave={canSave}
+        details={details}
+        onDone={onDone}
+        timeZone={timeZone}
+      />
+    );
+  }
+
+  return null;
+};
+
+const editLabelOf = (
+  details: ActionDetails,
+  t: { changeDetails: string; changeWords: string }
+): string | null => {
+  if (wordsOf(details) !== null) {
+    return t.changeWords;
+  }
+
+  return details.kind === "create_appointment" ? t.changeDetails : null;
+};
+
 /** For a reminder awaiting approval: whether the trusted circle may see it. Changing it asks for a fresh approval. */
 const ReminderSharing = ({
   actionId,
@@ -575,13 +721,14 @@ type Version = NonNullable<ActionView["current"]>;
 /** Approve (or queue the approval when offline), change the words, or decline. */
 const ApprovalBar = ({
   current,
-  editable,
+  editLabel,
   onEdit,
   questionOpen,
   view,
 }: {
   current: Version;
-  editable: boolean;
+  /** Shown on the button that opens the editor; null when nothing can be changed. */
+  editLabel: string | null;
   onEdit: () => void;
   questionOpen: boolean;
   view: ActionView;
@@ -657,9 +804,9 @@ const ApprovalBar = ({
           ) : null}
           {pending === "approve" ? t.approving : t.approve[kind]}
         </Button>
-        {editable ? (
+        {editLabel ? (
           <Button disabled={busy} onClick={onEdit} size="lg" variant="outline">
-            {t.changeWords}
+            {editLabel}
           </Button>
         ) : null}
         <Button
@@ -776,7 +923,19 @@ const ReviewVersion = ({
   const awaiting = view.action.status === "awaiting_approval";
   const canApprove = awaiting && !retired;
 
-  const body = wordsOf(details);
+  const editor = editing ? (
+    <DetailsEditor
+      actionId={view.action._id}
+      canSave={awaiting}
+      details={details}
+      onDone={() => {
+        setEditing(false);
+        onEditingChange?.(false);
+      }}
+      timeZone={timeZone}
+      version={current.version}
+    />
+  ) : undefined;
 
   const reapproval =
     canApprove &&
@@ -817,20 +976,7 @@ const ReviewVersion = ({
       ) : null}
 
       <DetailsView
-        bodyEditor={
-          editing && body !== null ? (
-            <WordsEditor
-              actionId={view.action._id}
-              canSave={awaiting}
-              initialBody={body}
-              onDone={() => {
-                setEditing(false);
-                onEditingChange?.(false);
-              }}
-              version={current.version}
-            />
-          ) : undefined
-        }
+        bodyEditor={editor}
         details={details}
         granteeNames={view.granteeNames}
         hue={hue}
@@ -864,7 +1010,7 @@ const ReviewVersion = ({
       {awaiting && !editing ? (
         <ApprovalBar
           current={current}
-          editable={body !== null}
+          editLabel={editLabelOf(details, t)}
           onEdit={() => {
             setEditing(true);
             onEditingChange?.(true);

@@ -6,6 +6,7 @@ const tasks: Messages["tasks"] = {
   approve: {
     calendar_event: "승인하고 추가",
     confirm_arrangement: "차편 확정",
+    create_appointment: "일정 추가",
     create_reminder: "알림 저장",
     drive_note: "승인하고 저장",
     email_draft: "승인하고 초안 저장",
@@ -25,6 +26,8 @@ const tasks: Messages["tasks"] = {
   cancelRequest: "이 요청 취소",
   cancelled: "취소하셨습니다. 보낸 내용은 없습니다.",
   cancelling: "취소 중…",
+  changeDetails: "내용 바꾸기",
+  changeDetailsSaved: "저장했습니다. 확인한 뒤 승인해 주세요.",
   changeWords: "내용 수정",
   changesSaved:
     "변경 사항을 저장했습니다. 승인하시기 전에 바뀐 메시지를 검토해 주세요.",

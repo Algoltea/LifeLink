@@ -4,6 +4,7 @@ const tasks = {
   approve: {
     calendar_event: "Approve and add it",
     confirm_arrangement: "Confirm the ride",
+    create_appointment: "Add the appointment",
     create_reminder: "Save the reminder",
     drive_note: "Approve and save it",
     email_draft: "Approve and save the draft",
@@ -24,6 +25,8 @@ const tasks = {
   cancelRequest: "Cancel this request",
   cancelled: "You cancelled this. Nothing was sent.",
   cancelling: "Cancelling…",
+  changeDetails: "Change the details",
+  changeDetailsSaved: "Saved. Look it over, then approve.",
   changeWords: "Change the words",
   changesSaved: "Changes saved. Review the updated message before approving.",
   checkNow: "Check now",

@@ -2,6 +2,7 @@ import type { Messages } from "../en";
 
 const actionDetails: Messages["actionDetails"] = {
   and: "和",
+  appointment: "预约",
   budget: (amount: string) => `预算：${amount}。`,
   by: (channel: string) => `通过${channel}`,
   calendar: "日历",
@@ -17,6 +18,7 @@ const actionDetails: Messages["actionDetails"] = {
   noEstimate: "暂无估算。",
   noJustYou: "否，仅您可见",
   notGiven: "未提供",
+  notes: "备注",
   onlyGrantees: (names: string, scope: string) =>
     `只有 ${names} 能看到，因为您与他们分享了${scope}。`,
   peopleYouAllowed: "您允许的人",
@@ -30,6 +32,8 @@ const actionDetails: Messages["actionDetails"] = {
   sharedWithCircle: "与信任圈分享",
   shoppingRecord: "这是之前购物请求的记录。现在已不能通过 LifeLink 购物。",
   spoken: {
+    appointment: (title: string, when: string, location: string | null) =>
+      `预约：${title}。${when}${location ? `，地点：${location}` : ""}。`,
     calendar: (title: string, when: string, location: string | null) =>
       `${title}。${when}${location ? `，地点：${location}` : ""}。`,
     confirm: (summary: string) => `您正在确认：${summary}`,

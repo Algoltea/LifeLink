@@ -6,6 +6,7 @@ const tasks: Messages["tasks"] = {
   approve: {
     calendar_event: "Phê duyệt và thêm",
     confirm_arrangement: "Xác nhận chuyến đi",
+    create_appointment: "Thêm cuộc hẹn",
     create_reminder: "Lưu lời nhắc",
     drive_note: "Phê duyệt và lưu",
     email_draft: "Phê duyệt và lưu bản nháp",
@@ -26,6 +27,8 @@ const tasks: Messages["tasks"] = {
   cancelRequest: "Hủy yêu cầu này",
   cancelled: "Quý vị đã hủy. Chưa gửi gì.",
   cancelling: "Đang hủy…",
+  changeDetails: "Sửa chi tiết",
+  changeDetailsSaved: "Đã lưu. Hãy xem lại rồi phê duyệt.",
   changeWords: "Sửa lời nhắn",
   changesSaved:
     "Đã lưu thay đổi. Xem lại tin nhắn đã cập nhật trước khi phê duyệt.",

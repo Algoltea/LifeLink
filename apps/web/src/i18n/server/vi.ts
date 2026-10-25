@@ -47,6 +47,7 @@ const vi: ServerCatalog = {
   exact: {
     ...scamSummaries(),
     "Action not found.": "Không tìm thấy thao tác.",
+    "Add the appointment": "Thêm cuộc hẹn",
     "Added to your calendar.": "Đã thêm vào lịch của quý vị.",
     "An action cannot change into a different kind of action.":
       "Không thể đổi một thao tác thành loại thao tác khác.",
@@ -301,6 +302,7 @@ const vi: ServerCatalog = {
       "Chưa chắc lần thử vừa rồi đã thất bại. Vui lòng kiểm tra xem việc đó đã thành công chưa trước khi thử lại.",
     "We are still checking this action. Wait for that check to finish.":
       "Vẫn đang kiểm tra thao tác này. Vui lòng chờ kiểm tra hoàn tất.",
+    "What is the appointment for?": "Cuộc hẹn này là gì?",
     "Which appointment is the ride for?":
       "Quý vị cần đưa đón đến cuộc hẹn nào?",
     "Who would you like to ask?": "Quý vị muốn nhờ ai?",
@@ -327,6 +329,7 @@ const vi: ServerCatalog = {
       /^Read-aloud is unavailable \((?<status>[1-5]\d{2})\)\. Please try again later\.$/u,
       (status) => `Chưa thể đọc thành tiếng (${status}). Vui lòng thử lại sau.`,
     ],
+    [/^Appointment: (?<title>.+)$/u, (title) => `Cuộc hẹn: ${title}`],
     [/^Ride to (?<title>.+)$/u, (title) => `Chuyến đi đến ${title}`],
     [
       /^Waiting for (?<name>[^“”"\r\n]+) to answer\.$/u,

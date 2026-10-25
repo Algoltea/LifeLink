@@ -131,6 +131,14 @@ const spokenDetails = (
       );
     }
 
+    case "create_appointment": {
+      return t.appointment(
+        details.title,
+        formatWhen(details.startsAt, timeZone, locale),
+        details.location
+      );
+    }
+
     case "family_update": {
       return t.update(details.text);
     }
@@ -279,6 +287,40 @@ const DetailsView = ({
             {details.shareWithCircle ? t.yesShared : t.noJustYou}
           </Fact>
         </dl>
+      );
+    }
+
+    case "create_appointment": {
+      return (
+        <div
+          className={cn(
+            "border-border bg-raised flex flex-col gap-5 rounded-xl border px-6 py-6",
+            className
+          )}
+        >
+          {/* The editor takes the details' place inside the same box, as the words editor does in a message. */}
+          {bodyEditor ?? (
+            <>
+              <dl className="grid gap-5 sm:grid-cols-2">
+                <Fact label={t.appointment}>{details.title}</Fact>
+                <Fact label={t.when}>
+                  {formatWhen(details.startsAt, timeZone, locale)}
+                </Fact>
+                <Fact label={t.where}>{details.location ?? t.notGiven}</Fact>
+              </dl>
+              {details.notes ? (
+                <div className="flex flex-col gap-1">
+                  <span className="text-muted-foreground text-base">
+                    {t.notes}
+                  </span>
+                  <p className="text-body leading-relaxed wrap-anywhere whitespace-pre-wrap">
+                    {details.notes}
+                  </p>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
       );
     }
 

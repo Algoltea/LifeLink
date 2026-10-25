@@ -46,6 +46,7 @@ const ko: ServerCatalog = {
   exact: {
     ...scamSummaries(),
     "Action not found.": "작업을 찾지 못했습니다.",
+    "Add the appointment": "일정 추가",
     "Added to your calendar.": "캘린더에 추가했습니다.",
     "An action cannot change into a different kind of action.":
       "작업을 다른 종류의 작업으로 바꿀 수는 없습니다.",
@@ -296,6 +297,7 @@ const ko: ServerCatalog = {
       "지난 시도가 실패했는지 확실하지 않습니다. 다시 시도하시기 전에 처리되었는지 확인해 주세요.",
     "We are still checking this action. Wait for that check to finish.":
       "아직 이 작업을 확인하고 있습니다. 확인이 끝날 때까지 기다려 주세요.",
+    "What is the appointment for?": "어떤 일정인가요?",
     "Which appointment is the ride for?": "어느 약속에 가실 차편인가요?",
     "Who would you like to ask?": "누구에게 부탁하시겠어요?",
     "Write a few words or add a photo first.":
@@ -322,6 +324,7 @@ const ko: ServerCatalog = {
       (status) =>
         `소리 내어 읽기를 사용할 수 없습니다 (${status}). 나중에 다시 시도해 주세요.`,
     ],
+    [/^Appointment: (?<title>.+)$/u, (title) => `일정: ${title}`],
     [/^Ride to (?<title>.+)$/u, (title) => `약속까지의 차편: ${title}`],
     [
       /^Waiting for (?<name>[^“”"\r\n]+) to answer\.$/u,

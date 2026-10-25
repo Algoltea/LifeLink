@@ -80,6 +80,7 @@ const zh: ServerCatalog = {
     ...scamSummaries(),
     ...SPEECH_ERRORS,
     "Action not found.": "找不到此操作。",
+    "Add the appointment": "添加预约",
     "Added to your calendar.": "已添加到您的日历。",
     "An action cannot change into a different kind of action.":
       "操作不能更改为另一种类型。",
@@ -273,6 +274,7 @@ const zh: ServerCatalog = {
       "我们不确定上一次尝试是否失败。重试前，请先核实是否已成功。",
     "We are still checking this action. Wait for that check to finish.":
       "我们仍在检查此操作。请等待检查完成。",
+    "What is the appointment for?": "这是什么预约？",
     "Which appointment is the ride for?": "您需要接送去参加哪项预约？",
     "Who would you like to ask?": "您想请谁帮忙？",
     "Write a few words or add a photo first.": "请先写几句话或添加照片。",
@@ -295,6 +297,7 @@ const zh: ServerCatalog = {
       /^Read-aloud is unavailable \((?<status>[1-5]\d{2})\)\. Please try again later\.$/u,
       (status) => `朗读暂时不可用（${status}）。请稍后重试。`,
     ],
+    [/^Appointment: (?<title>.+)$/u, (title) => `预约：${title}`],
     [/^Ride to (?<title>.+)$/u, (title) => `接送前往 ${title}`],
     [
       /^Waiting for (?<name>[^“”"\r\n]+) to answer\.$/u,

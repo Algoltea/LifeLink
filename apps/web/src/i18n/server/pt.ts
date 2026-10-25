@@ -92,6 +92,7 @@ const pt: ServerCatalog = {
     ...scamSummaries(),
     ...SPEECH_ERRORS,
     "Action not found.": "Ação não encontrada.",
+    "Add the appointment": "Adicionar o compromisso",
     "Added to your calendar.": "Adicionado ao seu calendário.",
     "An action cannot change into a different kind of action.":
       "Uma ação não pode se transformar em outro tipo de ação.",
@@ -305,6 +306,7 @@ const pt: ServerCatalog = {
       "Não temos certeza se a última tentativa falhou. Verifique se ela foi concluída antes de tentar novamente.",
     "We are still checking this action. Wait for that check to finish.":
       "Ainda estamos verificando esta ação. Aguarde a conclusão da verificação.",
+    "What is the appointment for?": "Para que é o compromisso?",
     "Which appointment is the ride for?": "Para qual compromisso é a carona?",
     "Who would you like to ask?": "A quem você gostaria de pedir?",
     "Write a few words or add a photo first.":
@@ -331,6 +333,7 @@ const pt: ServerCatalog = {
       (status) =>
         `A leitura em voz alta não está disponível (${status}). Tente novamente mais tarde.`,
     ],
+    [/^Appointment: (?<title>.+)$/u, (title) => `Compromisso: ${title}`],
     [/^Ride to (?<title>.+)$/u, (title) => `Carona para ${title}`],
     [
       /^Waiting for (?<name>[^“”"\r\n]+) to answer\.$/u,
